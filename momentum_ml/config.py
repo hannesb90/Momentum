@@ -25,6 +25,15 @@ TRAIN_WINDOW_WEEKS = 260        # ~5 år träning
 VAL_WINDOW_WEEKS   = 52         # ~1 år validering
 TEST_STEP_WEEKS    = 13         # Rulla 1 kvartal åt gången
 
+# ── Resursbegränsningar (för svagare hårdvara, t.ex. Raspberry Pi) ───────────
+# Antal CPU-trådar att avsätta för LightGBM/PyTorch-träning. Lämna minst en
+# kärna ledig åt API-servern om de körs på samma maskin samtidigt.
+# Sätts via env-variabeln MOMENTUM_TRAINING_THREADS (se deploy/), annars
+# None = låt biblioteken välja själva (default, använder alla kärnor).
+import os as _os
+_env_threads = _os.environ.get("MOMENTUM_TRAINING_THREADS")
+NUM_TRAINING_THREADS = int(_env_threads) if _env_threads else None
+
 # ── LightGBM ─────────────────────────────────────────────────────────────────
 LGBM_PARAMS = {
     "objective":        "binary",
@@ -39,6 +48,7 @@ LGBM_PARAMS = {
     "n_estimators":     1000,
     "early_stopping_rounds": 50,
     "verbose":          -1,
+    "num_threads":      NUM_TRAINING_THREADS or 0,  # 0 = LightGBM väljer själv
 }
 
 # ── LSTM ─────────────────────────────────────────────────────────────────────

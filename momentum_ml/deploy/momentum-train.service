@@ -1,0 +1,23 @@
+[Unit]
+Description=Momentum ML – nattlig pipeline-körning (data, träning, backtest)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=PATH=/opt/momentum/venv/bin
+# Lämna en kärna åt API:t/OS – justera vid behov för din Pi-modell.
+Environment=MOMENTUM_TRAINING_THREADS=3
+ExecStart=/opt/momentum/venv/bin/python main.py
+
+# Låg prioritet så API:t/dashboarden inte blir lidande under träningen.
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=20
+# Hård gräns ifall datasetet växer mer än väntat (justera om du ser OOM-kills).
+MemoryMax=2G
+
+# Tidsgräns som extra säkerhetsnät mot en hängande körning (justera vid behov).
+TimeoutStartSec=4h

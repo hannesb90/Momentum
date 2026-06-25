@@ -1,0 +1,18 @@
+[Unit]
+Description=Momentum ML API (FastAPI/uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=PATH=/opt/momentum/venv/bin
+ExecStart=/opt/momentum/venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+
+# Alltid på, men låg footprint – ingen särskild nice/io-prioritet behövs
+# eftersom API:t bara läser redan genererade CSV/JSON-filer.
+
+[Install]
+WantedBy=multi-user.target
