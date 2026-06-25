@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=pi
+User=hannesb
 WorkingDirectory=/opt/momentum/momentum_ml
 Environment=PATH=/opt/momentum/venv/bin
 # Lämna en kärna åt API:t/OS – justera vid behov för din Pi-modell.
