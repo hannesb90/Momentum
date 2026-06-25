@@ -78,6 +78,12 @@ def fetch_weekly_data(
         if df is not None:
             result[tickers[0]] = df
 
+    if not result:
+        raise RuntimeError(
+            "Ingen ticker gav tillräcklig data. Kontrollera nätverksåtkomst "
+            "till Yahoo Finance och att tickrarna/perioden är giltiga."
+        )
+
     print(f"[DataLoader] Laddade {len(result)} tickers, "
           f"{min(len(v) for v in result.values())}–"
           f"{max(len(v) for v in result.values())} veckor vardera.")
