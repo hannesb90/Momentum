@@ -97,6 +97,21 @@ DRIFT_WINDOW_WEEKS = 26     # rullande fönster för realiserad prestanda
 DRIFT_AUC_FLOOR    = 0.52   # under denna rullande AUC -> flagga
 DRIFT_MIN_SAMPLES  = 20     # minsta antal observationer för att räkna AUC
 
+# ── Likviditet & marknadsimpact ───────────────────────────────────────────────
+LIQUIDITY_LOOKBACK_WEEKS   = 13     # fönster för genomsnittlig dollarvolym
+LIQUIDITY_MAX_ADV_FRACTION = 0.10   # max andel av ADV som handlas per vecka
+MARKET_IMPACT_COEF         = 0.10   # skala på sqrt(trade_value/ADV)-termen
+MARKET_IMPACT_MAX          = 0.05   # tak för impact-kostnad per trade (5%)
+
+# ── Corporate actions / datakvalitet ──────────────────────────────────────────
+SUSPICIOUS_JUMP_THRESHOLD = 0.60    # flagga veckoavkastning över denna magnitud
+
+# ── Marknadsregimer ───────────────────────────────────────────────────────────
+REGIME_SMA_WEEKS = 26       # trend-proxy för bull/bear/sidledes-klassificering
+
+# ── Frusen holdout ────────────────────────────────────────────────────────────
+HOLDOUT_WEEKS = 104         # ~2 år som modellen aldrig tränas på
+
 # ── Misc ─────────────────────────────────────────────────────────────────────
 RANDOM_SEED        = 42
 CACHE_DIR          = "cache"
