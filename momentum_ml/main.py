@@ -22,6 +22,7 @@ from models.lstm_model import MomentumLSTM
 from models.ensemble import MomentumEnsemble, build_full_output
 from backtest.backtester import MomentumBacktester
 from backtest.bootstrap import print_robustness_report
+from backtest.drift_monitor import attach_realized_outcomes, rolling_drift_report, print_drift_summary
 
 
 def parse_args():
@@ -139,6 +140,14 @@ def main():
 
     results.to_csv(f"{config.RESULTS_DIR}/portfolio.csv")
     print(f"\n  Resultat sparade i: {config.RESULTS_DIR}/")
+
+    # ── 7. Modell-drift ───────────────────────────────────────────────────────
+    print("\nSTEG 7: Modell-drift...")
+    signals_with_outcomes = attach_realized_outcomes(signals_df, all_features)
+    drift_report = rolling_drift_report(signals_with_outcomes)
+    print_drift_summary(drift_report)
+    drift_report.to_csv(f"{config.RESULTS_DIR}/drift_report.csv")
+
     print("\nKLAR!\n")
 
 
