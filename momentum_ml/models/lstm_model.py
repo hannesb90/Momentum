@@ -14,6 +14,12 @@ from pathlib import Path
 from typing import Tuple, Optional, Dict
 import joblib
 
+# MKLDNN:s ARM-backend (oneDNN/ARM Compute Library) använder fuserade RNN-
+# kärnor som antar ARMv8.2-instruktioner (t.ex. asimddp) – saknas på Pi 4B:s
+# Cortex-A72 och kraschar med SIGILL i nn.LSTM:s backward-pass. Native ATen-
+# kärnorna (utan MKLDNN) är portabla och funkar på äldre ARM-CPUer.
+torch.backends.mkldnn.enabled = False
+
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
