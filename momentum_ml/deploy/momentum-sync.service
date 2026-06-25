@@ -1,0 +1,9 @@
+[Unit]
+Description=Momentum ML – auto-sync (git pull + redeploy vid ändringar)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+ExecStart=/opt/momentum/momentum_ml/deploy/sync.sh
