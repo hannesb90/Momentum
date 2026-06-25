@@ -10,7 +10,12 @@ WorkingDirectory=/opt/momentum/momentum_ml
 Environment=PATH=/opt/momentum/venv/bin
 # Lämna en kärna åt API:t/OS – justera vid behov för din Pi-modell.
 Environment=MOMENTUM_TRAINING_THREADS=3
-ExecStart=/opt/momentum/venv/bin/python main.py
+# --skip-lstm: torch-wheelen för aarch64 ger SIGILL på Cortex-A72 (Pi 4B,
+# CPU part 0xd08) – wheelens vektoriserade kärnor (XNNPACK/oneDNN) antar
+# ARM-instruktioner (t.ex. asimddp) som saknas i Features-listan i
+# /proc/cpuinfo på denna CPU. LGBM-halvan är opåverkad och har körts
+# stabilt med riktig data. Ta bort flaggan om torch-kompatibiliteten löses.
+ExecStart=/opt/momentum/venv/bin/python main.py --skip-lstm
 
 # Låg prioritet så API:t/dashboarden inte blir lidande under träningen.
 Nice=15
