@@ -15,7 +15,8 @@ momentum_ml/
 │   ├── lstm_model.py          # LSTM sekvensmodell
 │   └── ensemble.py            # Ensemble + positionssizing
 ├── backtest/
-│   └── backtester.py          # Walk-forward backtest
+│   ├── backtester.py          # Walk-forward backtest (kostnader, DD-guard, korrelationsfilter)
+│   └── bootstrap.py           # Block bootstrap + Probabilistic Sharpe Ratio
 └── main.py                    # Kör hela pipeline
 ```
 
@@ -31,4 +32,19 @@ python main.py --tickers AAPL MSFT NVDA TSLA --start 2010-01-01
 3. `lgbm_model.py`   → walk-forward CV, feature importance
 4. `lstm_model.py`   → sekvensmodell på samma features
 5. `ensemble.py`     → kombinerar, Kelly-sizing, alla outputs
-6. `backtester.py`   → realistisk backtest med kostnader
+6. `backtester.py`   → realistisk backtest med kostnader, drawdown-guard och korrelationsfilter
+7. `bootstrap.py`    → block bootstrap-CI + Probabilistic Sharpe Ratio på backtestresultatet
+
+## Risk management
+- **Drawdown-guard**: total exponering de-levereras linjärt när portföljens drawdown
+  passerar `DRAWDOWN_GUARD_THRESHOLD`, ner till `DRAWDOWN_GUARD_FLOOR` vid 2x tröskeln.
+- **Korrelationsfilter**: positioner med rullande avkastningskorrelation över
+  `MAX_PAIRWISE_CORRELATION` slås ihop så att Kelly-budgeten inte satsas flera
+  gånger på samma underliggande rörelse.
+
+## Robusthet
+`bootstrap.py` kör en block bootstrap på backtestens veckoavkastningar och
+skattar konfidensintervall (p5/p50/p95) för Sharpe, CAGR och Max Drawdown,
+samt Probabilistic Sharpe Ratio (sannolikheten att den sanna Sharpe-kvoten
+är positiv, givet skevhet/kurtosis i avkastningarna). Körs automatiskt
+efter `print_statistics()` i `main.py`.

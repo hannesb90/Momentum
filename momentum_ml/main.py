@@ -21,6 +21,7 @@ from models.lgbm_model import MomentumLGBM
 from models.lstm_model import MomentumLSTM
 from models.ensemble import MomentumEnsemble, build_full_output
 from backtest.backtester import MomentumBacktester
+from backtest.bootstrap import print_robustness_report
 
 
 def parse_args():
@@ -133,6 +134,7 @@ def main():
     backtester = MomentumBacktester(signals_df, data)
     results    = backtester.run()
     backtester.print_statistics()
+    print_robustness_report(results["portfolio_value"].pct_change().dropna())
     backtester.plot(save_path=f"{config.RESULTS_DIR}/backtest.png")
 
     results.to_csv(f"{config.RESULTS_DIR}/portfolio.csv")

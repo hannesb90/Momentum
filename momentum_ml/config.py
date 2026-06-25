@@ -67,6 +67,16 @@ COMMISSION         = 0.001     # 0.1% per trade
 SLIPPAGE           = 0.001     # 0.1% slippage
 INITIAL_CAPITAL    = 1_000_000 # 1 MSEK startkapital
 
+# ── Risk management ───────────────────────────────────────────────────────────
+DRAWDOWN_GUARD_THRESHOLD   = 0.15   # vid -15% drawdown, börja de-leverage
+DRAWDOWN_GUARD_FLOOR       = 0.30   # min kvarvarande exponering vid 2x tröskeln (-30% DD)
+MAX_PAIRWISE_CORRELATION   = 0.85   # över denna nivå räknas tickers som redundanta
+CORRELATION_LOOKBACK_WEEKS = 26
+
+# ── Robusthet (bootstrap) ─────────────────────────────────────────────────────
+BOOTSTRAP_N_SIMS     = 1000
+BOOTSTRAP_BLOCK_WEEKS = 4    # bevarar kort-sikt-autokorrelation vid resampling
+
 # ── Misc ─────────────────────────────────────────────────────────────────────
 RANDOM_SEED        = 42
 CACHE_DIR          = "cache"

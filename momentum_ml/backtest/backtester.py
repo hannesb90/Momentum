@@ -57,6 +57,7 @@ class MomentumBacktester:
         """
         dates = self.signals.index.unique().sort_values()
         cash  = self.capital
+        peak  = self.capital
 
         portfolio_values = []
 
@@ -67,6 +68,8 @@ class MomentumBacktester:
 
             # Beräkna aktuellt portföljvärde
             portfolio_value = cash + self._portfolio_value(date)
+            peak = max(peak, portfolio_value)
+            drawdown = portfolio_value / peak - 1
 
             # Önskad allokering
             target_weights = {}
@@ -74,10 +77,18 @@ class MomentumBacktester:
                 if row["pred_signal"] == 1 and row["position_size"] > 0:
                     target_weights[row["ticker"]] = row["position_size"]
 
+            # Slå ihop kraftigt korrelerade positioner (undvik dold koncentration)
+            target_weights = self._correlation_filter(target_weights, date)
+
             # Normalisera vikter (säkerhet)
             total_w = sum(target_weights.values())
             if total_w > 1.0:
                 target_weights = {t: w / total_w for t, w in target_weights.items()}
+
+            # De-leverage vid drawdown
+            guard = self._drawdown_guard_factor(drawdown)
+            if guard < 1.0:
+                target_weights = {t: w * guard for t, w in target_weights.items()}
 
             # Rebalansera
             cash = self._rebalance(date, target_weights, portfolio_value, cash)
@@ -87,11 +98,78 @@ class MomentumBacktester:
                 "portfolio_value": cash + self._portfolio_value(date),
                 "cash":            cash,
                 "n_positions":     len(self._portfolio),
+                "drawdown_guard":  guard,
             })
 
         results = pd.DataFrame(portfolio_values).set_index("Date")
         self._results = results
         return results
+
+    # ── Risk management ──────────────────────────────────────────────────────
+
+    def _drawdown_guard_factor(self, drawdown: float) -> float:
+        """
+        Skalar ner total exponering linjärt när drawdown (negativt tal,
+        t.ex. -0.20 för -20%) passerar DRAWDOWN_GUARD_THRESHOLD, ner till
+        DRAWDOWN_GUARD_FLOOR vid 2x tröskeln.
+        """
+        threshold = config.DRAWDOWN_GUARD_THRESHOLD
+        floor     = config.DRAWDOWN_GUARD_FLOOR
+        if drawdown >= -threshold:
+            return 1.0
+        excess = (-drawdown - threshold) / threshold
+        return 1.0 - min(excess, 1.0) * (1.0 - floor)
+
+    def _correlation_filter(
+        self,
+        target_weights: Dict[str, float],
+        date: pd.Timestamp,
+    ) -> Dict[str, float]:
+        """
+        Om två kandidater har rullande avkastningskorrelation över
+        MAX_PAIRWISE_CORRELATION, slå ihop deras vikt på den med störst
+        sizing-signal. Förhindrar att Kelly-budgeten i praktiken satsas
+        flera gånger på samma underliggande rörelse.
+        """
+        if len(target_weights) < 2:
+            return target_weights
+
+        lookback = config.CORRELATION_LOOKBACK_WEEKS
+        returns = {}
+        for ticker in target_weights:
+            df = self.prices.get(ticker)
+            if df is None:
+                continue
+            hist = df.loc[:date, "Close"].pct_change().dropna().iloc[-lookback:]
+            if len(hist) >= lookback // 2:
+                returns[ticker] = hist
+
+        if len(returns) < 2:
+            return target_weights
+
+        ret_df = pd.DataFrame(returns).dropna()
+        if len(ret_df) < lookback // 2:
+            return target_weights
+
+        corr = ret_df.corr()
+        weights = dict(target_weights)
+        dropped = set()
+
+        pairs = [(a, b) for i, a in enumerate(corr.columns)
+                 for b in corr.columns[i + 1:]]
+        pairs.sort(key=lambda ab: corr.loc[ab[0], ab[1]], reverse=True)
+
+        for a, b in pairs:
+            if a in dropped or b in dropped:
+                continue
+            if corr.loc[a, b] > config.MAX_PAIRWISE_CORRELATION:
+                loser  = a if weights.get(a, 0) <= weights.get(b, 0) else b
+                winner = b if loser == a else a
+                weights[winner] = weights.get(winner, 0) + weights.get(loser, 0)
+                weights.pop(loser, None)
+                dropped.add(loser)
+
+        return weights
 
     # ── Rebalansering ─────────────────────────────────────────────────────────
 
