@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+momentum_ml/cache/
+momentum_ml/results/
