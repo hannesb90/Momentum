@@ -23,6 +23,7 @@ from models.ensemble import MomentumEnsemble, build_full_output
 from backtest.backtester import MomentumBacktester
 from backtest.bootstrap import print_robustness_report
 from backtest.drift_monitor import attach_realized_outcomes, rolling_drift_report, print_drift_summary
+from backtest.regime import classify_regimes, regime_breakdown, print_regime_breakdown
 
 
 def parse_args():
@@ -33,6 +34,8 @@ def parse_args():
     p.add_argument("--skip-lstm",    action="store_true", help="Kör bara LGBM")
     p.add_argument("--predict-only", action="store_true", help="Ladda modeller, ingen träning")
     p.add_argument("--no-cache",     action="store_true", help="Hämta ny data (ignorera cache)")
+    p.add_argument("--n-trials",     type=int, default=1,
+                   help="Antal testade strategier/parameterval, för Deflated Sharpe Ratio")
     return p.parse_args()
 
 
@@ -64,12 +67,25 @@ def main():
     model_df     = to_model_df(all_features)
     print(f"  Dataset: {len(model_df):,} samples × {model_df[FEATURE_COLS].shape[1]} features")
 
+    # Frusen holdout: de sista HOLDOUT_WEEKS veckorna får modellen aldrig
+    # träna på, så backtesten över den perioden är en äkta out-of-sample-test.
+    all_dates = model_df.index.unique().sort_values()
+    if len(all_dates) > config.HOLDOUT_WEEKS:
+        holdout_start = all_dates[-config.HOLDOUT_WEEKS]
+        dev_df = model_df[model_df.index < holdout_start]
+        print(f"  Frusen holdout: {holdout_start.date()} → slut "
+              f"({config.HOLDOUT_WEEKS}v, modellen tränas aldrig på dessa)")
+    else:
+        holdout_start = None
+        dev_df = model_df
+        print("  [WARN] För kort historik för en frusen holdout, tränar på all data.")
+
     # ── 3. LightGBM ───────────────────────────────────────────────────────────
     print("\nSTEG 3: Tränar LightGBM (walk-forward)...")
     lgbm = MomentumLGBM()
 
     if not args.predict_only:
-        lgbm.fit_walk_forward(model_df)
+        lgbm.fit_walk_forward(dev_df)
         lgbm.save()
         lgbm.print_feature_importance(top_n=15)
     else:
@@ -90,10 +106,10 @@ def main():
         lstm = MomentumLSTM()
 
         if not args.predict_only:
-            # Enkel train/val-split (sista 20% = validering)
-            split = int(len(model_df) * 0.8)
-            train_df = model_df.iloc[:split]
-            val_df   = model_df.iloc[split:]
+            # Enkel train/val-split (sista 20% av dev-perioden = validering)
+            split = int(len(dev_df) * 0.8)
+            train_df = dev_df.iloc[:split]
+            val_df   = dev_df.iloc[split:]
             lstm.fit(train_df, val_df)
             lstm.save()
         else:
@@ -135,7 +151,20 @@ def main():
     backtester = MomentumBacktester(signals_df, data)
     results    = backtester.run()
     backtester.print_statistics()
-    print_robustness_report(results["portfolio_value"].pct_change().dropna())
+
+    if holdout_start is not None and (results.index >= holdout_start).any():
+        dev_stats = backtester.statistics_for_period(end=holdout_start)
+        backtester.print_statistics(dev_stats, title="DEV-PERIOD (tränad på)")
+        holdout_stats = backtester.statistics_for_period(start=holdout_start)
+        backtester.print_statistics(holdout_stats, title="HOLDOUT (frusen, aldrig sedd)")
+
+    port_rets = results["portfolio_value"].pct_change().dropna()
+    print_robustness_report(port_rets, n_trials=args.n_trials)
+
+    regimes = classify_regimes(data)
+    breakdown = regime_breakdown(port_rets, regimes)
+    print_regime_breakdown(breakdown)
+
     backtester.plot(save_path=f"{config.RESULTS_DIR}/backtest.png")
 
     results.to_csv(f"{config.RESULTS_DIR}/portfolio.csv")

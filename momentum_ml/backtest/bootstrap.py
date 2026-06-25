@@ -13,11 +13,14 @@ from typing import Dict
 
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
 
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
+
+EULER_MASCHERONI = 0.5772156649015329
 
 
 def _norm_cdf(z: float) -> float:
@@ -107,16 +110,48 @@ def probabilistic_sharpe_ratio(
     return _norm_cdf(z)
 
 
-def robustness_report(returns: pd.Series) -> Dict:
-    """Sammanställer bootstrap-CI + PSR i ett resultat redo att skrivas ut."""
+def expected_max_sharpe(n_trials: int, trial_sr_std: float = 1.0) -> float:
+    """
+    Förväntat maximum av n_trials oberoende Sharpe-skattningar (alla med
+    sann Sharpe=0, std=trial_sr_std), enligt Bailey & López de Prado.
+    Detta är benchmark-Sharpe:n man måste slå för att en uppmätt Sharpe
+    ska räknas som signal snarare än det bästa resultatet av att testat
+    många strategier/parametrar (multiple-testing-bias).
+    """
+    if n_trials <= 1:
+        return 0.0
+    z_term = (1 - EULER_MASCHERONI) * norm.ppf(1 - 1.0 / n_trials)
+    z_term += EULER_MASCHERONI * norm.ppf(1 - 1.0 / (n_trials * math.e))
+    return trial_sr_std * z_term
+
+
+def deflated_sharpe_ratio(
+    returns: pd.Series,
+    n_trials: int = 1,
+    trial_sr_std: float = 1.0,
+    ann_factor: int = 52,
+) -> float:
+    """
+    PSR med expected_max_sharpe(n_trials) som benchmark i stället för 0,
+    vilket deflaterar konfidensen i proportion till hur många
+    strategier/parameterval som testades innan den här valdes.
+    n_trials=1 reducerar till vanlig PSR.
+    """
+    benchmark_sr = expected_max_sharpe(n_trials, trial_sr_std) * math.sqrt(ann_factor)
+    return probabilistic_sharpe_ratio(returns, benchmark_sr=benchmark_sr, ann_factor=ann_factor)
+
+
+def robustness_report(returns: pd.Series, n_trials: int = 1) -> Dict:
+    """Sammanställer bootstrap-CI + PSR/DSR i ett resultat redo att skrivas ut."""
     boot = block_bootstrap_stats(returns)
     psr  = probabilistic_sharpe_ratio(returns)
-    return {"bootstrap": boot, "psr": psr}
+    dsr  = deflated_sharpe_ratio(returns, n_trials=n_trials)
+    return {"bootstrap": boot, "psr": psr, "dsr": dsr, "n_trials": n_trials}
 
 
-def print_robustness_report(returns: pd.Series):
-    report = robustness_report(returns)
-    boot, psr = report["bootstrap"], report["psr"]
+def print_robustness_report(returns: pd.Series, n_trials: int = 1):
+    report = robustness_report(returns, n_trials=n_trials)
+    boot, psr, dsr = report["bootstrap"], report["psr"], report["dsr"]
 
     print("\n" + "=" * 50)
     print("  ROBUSTHET (block bootstrap, n={})".format(config.BOOTSTRAP_N_SIMS))
@@ -129,4 +164,6 @@ def print_robustness_report(returns: pd.Series):
           f"p95={boot['max_dd']['p95']:.1%}")
     print(f"  P(Sharpe <= 0)        {boot['prob_sharpe_below_0']:.1%}")
     print(f"  Probabilistic Sharpe  {psr:.1%}  (P(sann Sharpe > 0))")
+    if n_trials > 1:
+        print(f"  Deflated Sharpe       {dsr:.1%}  (n_trials={n_trials})")
     print("=" * 50)

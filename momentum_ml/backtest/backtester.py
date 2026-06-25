@@ -8,6 +8,7 @@ Inkluderar:
   - Portföljstatistik: Sharpe, Sortino, Max DD, CAGR, Win rate
 """
 
+import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -201,6 +202,45 @@ class MomentumBacktester:
 
         return weights
 
+    # ── Likviditet & marknadsimpact ──────────────────────────────────────────
+
+    def _avg_dollar_volume(self, ticker: str, date: pd.Timestamp) -> Optional[float]:
+        """Genomsnittlig dollarvolym (Close*Volume) över en historisk lookback,
+        strikt före `date` för att undvika lookahead."""
+        df = self.prices.get(ticker)
+        if df is None:
+            return None
+        hist = df.loc[:date].iloc[:-1].tail(config.LIQUIDITY_LOOKBACK_WEEKS)
+        if hist.empty:
+            return None
+        dollar_vol = (hist["Close"] * hist["Volume"]).mean()
+        return float(dollar_vol) if dollar_vol > 0 else None
+
+    def _liquidity_cap(self, ticker: str, date: pd.Timestamp, trade_value: float) -> float:
+        """Begränsar storleken på en enskild orderflöde till en andel av ADV."""
+        adv = self._avg_dollar_volume(ticker, date)
+        if adv is None:
+            return trade_value
+        max_trade = adv * config.LIQUIDITY_MAX_ADV_FRACTION
+        if abs(trade_value) > max_trade:
+            return math.copysign(max_trade, trade_value)
+        return trade_value
+
+    def _execution_cost_rate(self, ticker: str, date: pd.Timestamp, trade_value: float) -> float:
+        """
+        Total exekveringskostnad som andel av trade_value: courtage + slippage
+        + en sqrt-marknadsimpact-term (impact skalar med sqrt(trade/ADV), inte
+        linjärt – större ordrar kostar proportionellt mer per krona, men
+        konkavt eftersom orderboken fylls på över tid).
+        """
+        base = self.commission + self.slippage
+        adv = self._avg_dollar_volume(ticker, date)
+        if adv is None or adv <= 0:
+            return base
+        impact = config.MARKET_IMPACT_COEF * math.sqrt(abs(trade_value) / adv)
+        impact = min(impact, config.MARKET_IMPACT_MAX)
+        return base + impact
+
     # ── Rebalansering ─────────────────────────────────────────────────────────
 
     def _rebalance(
@@ -221,7 +261,9 @@ class MomentumBacktester:
             if price is None:
                 continue
             shares = self._portfolio.pop(ticker)
-            proceeds = shares * price * (1 - self.slippage - self.commission)
+            trade_value = shares * price
+            cost_rate = self._execution_cost_rate(ticker, date, trade_value)
+            proceeds = trade_value * (1 - cost_rate)
             cash += proceeds
 
         # Köp / justera
@@ -238,9 +280,12 @@ class MomentumBacktester:
             if abs(diff_value) < portfolio_value * 0.005:
                 continue   # under 0.5% – rebalansera ej
 
+            diff_value = self._liquidity_cap(ticker, date, diff_value)
+            cost_rate = self._execution_cost_rate(ticker, date, diff_value)
+
             if diff_value > 0:
                 # Köp
-                cost = diff_value * (1 + self.slippage + self.commission)
+                cost = diff_value * (1 + cost_rate)
                 if cash >= cost:
                     new_shares = diff_value / price
                     self._portfolio[ticker] = current_shares + new_shares
@@ -249,7 +294,7 @@ class MomentumBacktester:
                 # Sälj delvis
                 shares_to_sell = (-diff_value) / price
                 shares_to_sell = min(shares_to_sell, current_shares)
-                proceeds = shares_to_sell * price * (1 - self.slippage - self.commission)
+                proceeds = shares_to_sell * price * (1 - cost_rate)
                 self._portfolio[ticker] = current_shares - shares_to_sell
                 cash += proceeds
                 if self._portfolio[ticker] <= 0:
@@ -279,16 +324,13 @@ class MomentumBacktester:
 
     # ── Statistik ─────────────────────────────────────────────────────────────
 
-    def statistics(self) -> Dict:
-        if not len(self._results):
-            raise RuntimeError("Kör run() först.")
-
-        pv    = self._results["portfolio_value"]
+    @staticmethod
+    def _compute_stats(pv: pd.Series, start_capital: float) -> Dict:
         rets  = pv.pct_change().dropna()
         weeks = len(rets)
         ann   = 52   # veckodata
 
-        cagr      = (pv.iloc[-1] / pv.iloc[0]) ** (ann / weeks) - 1
+        cagr      = (pv.iloc[-1] / pv.iloc[0]) ** (ann / weeks) - 1 if weeks > 0 else 0.0
         sharpe    = (rets.mean() / rets.std()) * np.sqrt(ann) if rets.std() > 0 else 0
         neg_rets  = rets[rets < 0]
         sortino   = (rets.mean() / neg_rets.std()) * np.sqrt(ann) if neg_rets.std() > 0 else 0
@@ -297,7 +339,7 @@ class MomentumBacktester:
         win_rate  = (rets > 0).mean()
         total_ret = pv.iloc[-1] / pv.iloc[0] - 1
 
-        stats = {
+        return {
             "total_return":  f"{total_ret:.1%}",
             "CAGR":          f"{cagr:.1%}",
             "Sharpe":        f"{sharpe:.2f}",
@@ -305,15 +347,41 @@ class MomentumBacktester:
             "Max Drawdown":  f"{max_dd:.1%}",
             "Win Rate":      f"{win_rate:.1%}",
             "Weeks":         weeks,
-            "Start Capital": f"{self.capital:,.0f}",
+            "Start Capital": f"{start_capital:,.0f}",
             "End Capital":   f"{pv.iloc[-1]:,.0f}",
         }
-        return stats
 
-    def print_statistics(self):
-        stats = self.statistics()
+    def statistics(self) -> Dict:
+        if not len(self._results):
+            raise RuntimeError("Kör run() först.")
+        return self._compute_stats(self._results["portfolio_value"], self.capital)
+
+    def statistics_for_period(
+        self,
+        start: Optional[pd.Timestamp] = None,
+        end: Optional[pd.Timestamp] = None,
+    ) -> Dict:
+        """
+        Statistik för en delperiod av en redan körd backtest (t.ex. en
+        frusen holdout-period). OBS: CAGR/Max Drawdown beräknas på
+        portföljvärdet inom fönstret som om det vore en egen path – de
+        speglar inte nödvändigtvis hela körningens path-beroende drawdown.
+        """
+        if not len(self._results):
+            raise RuntimeError("Kör run() först.")
+        pv = self._results["portfolio_value"]
+        if start is not None:
+            pv = pv.loc[pv.index >= start]
+        if end is not None:
+            pv = pv.loc[pv.index <= end]
+        if len(pv) < 2:
+            raise ValueError("För få datapunkter i den angivna perioden.")
+        return self._compute_stats(pv, float(pv.iloc[0]))
+
+    def print_statistics(self, stats: Optional[Dict] = None, title: str = "BACKTEST RESULTAT"):
+        stats = stats if stats is not None else self.statistics()
         print("\n" + "="*50)
-        print("  BACKTEST RESULTAT")
+        print(f"  {title}")
         print("="*50)
         for k, v in stats.items():
             print(f"  {k:<20} {v}")

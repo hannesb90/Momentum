@@ -15,9 +15,10 @@ momentum_ml/
 │   ├── lstm_model.py          # LSTM sekvensmodell
 │   └── ensemble.py            # Ensemble + positionssizing
 ├── backtest/
-│   ├── backtester.py          # Walk-forward backtest (kostnader, DD-guard, korrelations-/sektorfilter)
-│   ├── bootstrap.py           # Block bootstrap + Probabilistic Sharpe Ratio
-│   └── drift_monitor.py       # Rullande AUC/hit-rate mot realiserade utfall
+│   ├── backtester.py          # Walk-forward backtest (kostnader, impact, DD-guard, korrelations-/sektorfilter)
+│   ├── bootstrap.py           # Block bootstrap + Probabilistic/Deflated Sharpe Ratio
+│   ├── drift_monitor.py       # Rullande AUC/hit-rate mot realiserade utfall
+│   └── regime.py              # Bull/bear/sidledes-klassificering + prestanda-breakdown
 └── main.py                    # Kör hela pipeline
 ```
 
@@ -34,8 +35,9 @@ python main.py --tickers AAPL MSFT NVDA TSLA --start 2010-01-01
 4. `lstm_model.py`   → sekvensmodell på samma features
 5. `ensemble.py`     → kombinerar, Kelly-sizing, alla outputs
 6. `backtester.py`   → realistisk backtest med kostnader, drawdown-guard, korrelations- och sektorfilter
-7. `bootstrap.py`    → block bootstrap-CI + Probabilistic Sharpe Ratio på backtestresultatet
-8. `drift_monitor.py` → rullande AUC/hit-rate mot realiserade utfall, flaggar modell-drift
+7. `bootstrap.py`    → block bootstrap-CI + Probabilistic/Deflated Sharpe Ratio på backtestresultatet
+8. `regime.py`       → bryter ner backtestens avkastning per marknadsregim (bull/bear/sidledes)
+9. `drift_monitor.py` → rullande AUC/hit-rate mot realiserade utfall, flaggar modell-drift
 
 ## Risk management
 - **Drawdown-guard**: total exponering de-levereras linjärt när portföljens drawdown
@@ -55,6 +57,28 @@ samt Probabilistic Sharpe Ratio (sannolikheten att den sanna Sharpe-kvoten
 är positiv, givet skevhet/kurtosis i avkastningarna). Körs automatiskt
 efter `print_statistics()` i `main.py`.
 
+**Deflated Sharpe Ratio**: om fler än en strategi/parameteruppsättning
+testats innan den slutgiltiga valdes, deflaterar `--n-trials N` PSR mot
+`expected_max_sharpe(N)` (Bailey & López de Prado) i stället för mot 0,
+så att konfidensen i resultatet sjunker i proportion till hur mycket
+"data snooping" som skett.
+
+## Marknadsregimer
+`regime.py` klassificerar varje vecka som bull/bear/sidledes utifrån ett
+SMA-trend-proxy på ett likaviktat indexsnitt över universumet, och
+bryter ner strategins Sharpe/avg-return/win-rate per regim. Syftet är
+att avgöra om edge:n håller över olika marknadsklimat eller är
+koncentrerad till en specifik period (t.ex. en lång bull-trend) – måtten
+är inte path-dependent CAGR/Max Drawdown eftersom regimperioderna är
+diskontinuerliga i tid.
+
+## Frusen holdout
+`config.HOLDOUT_WEEKS` (default 104v) reserverar de sista veckorna av
+historiken: LightGBM och LSTM tränas aldrig på den perioden. `main.py`
+skriver ut separata statistikblock för "DEV" (tränad på) och "HOLDOUT"
+(frusen, aldrig sedd) så att man kan se om resultaten i dev-perioden
+generaliserar eller om de bara speglar overfitting på walk-forward-CV:n.
+
 ## Modell-drift
 `drift_monitor.py` jämför `prob_up`/`pred_signal` mot de realiserade
 `target_signal`/`target_return`-kolumnerna (samma definition som
@@ -62,6 +86,21 @@ modellen tränades mot) i ett rullande fönster (`DRIFT_WINDOW_WEEKS`) och
 flaggar när rullande AUC faller under `DRIFT_AUC_FLOOR`. Mest relevant
 vid upprepad/live-körning – i en ren historisk backtest visar den om
 edge:n hållit konsekvent över tid eller koncentrerats till en period.
+
+## Likviditet & marknadsimpact
+`backtester.py` begränsar varje enskild orderflöde till
+`LIQUIDITY_MAX_ADV_FRACTION` av tickerns genomsnittliga dollarvolym
+(`LIQUIDITY_LOOKBACK_WEEKS`, strikt historisk för att undvika lookahead),
+och lägger på en sqrt-marknadsimpact-term (`MARKET_IMPACT_COEF * sqrt(trade
+/ ADV)`, tak `MARKET_IMPACT_MAX`) ovanpå courtage/slippage. Detta gör
+kostnaderna mer realistiska för positioner som är stora relativt
+tickerns handelsvolym.
+
+## Datakvalitet / corporate actions
+`data_loader.py` flaggar (men korrigerar inte automatiskt) veckoavkastningar
+över `SUSPICIOUS_JUMP_THRESHOLD` i magnitud – sådana hopp kan vara legitima
+nyheter eller artefakter av ojusterade splits/utdelningar och bör
+granskas manuellt innan modellen tränas på dem.
 
 ## Kända begränsningar
 - **Survivorship bias**: `yfinance` saknar avnoterade/uppköpta bolag, vilket

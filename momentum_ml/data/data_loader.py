@@ -88,6 +88,22 @@ def fetch_weekly_data(
     return result
 
 
+def _check_suspicious_jumps(df: pd.DataFrame, ticker: str) -> None:
+    """
+    Flaggar (men korrigerar inte) veckoavkastningar över
+    SUSPICIOUS_JUMP_THRESHOLD i magnitud. Sådana hopp kan vara legitima
+    (vinstvarningar, biotech-resultat) eller artefakter av ojusterade
+    corporate actions (splits/utdelningar som yfinance missat). Att
+    auto-korrigera riskerar att introducera nya fel, så det här är bara
+    en varning för manuell granskning.
+    """
+    weekly_ret = df["Close"].pct_change().dropna()
+    jumps = weekly_ret[weekly_ret.abs() > config.SUSPICIOUS_JUMP_THRESHOLD]
+    for date, ret in jumps.items():
+        print(f"  [WARN] {ticker} {date.date()}: misstänkt hopp {ret:+.1%} "
+              f"– kontrollera ev. ojusterad corporate action.")
+
+
 def _clean(df: pd.DataFrame, ticker: str) -> Optional[pd.DataFrame]:
     """Droppar NaN-rader, kontrollerar minimilängd."""
     required = ["Open", "High", "Low", "Close", "Volume"]
@@ -106,6 +122,8 @@ def _clean(df: pd.DataFrame, ticker: str) -> Optional[pd.DataFrame]:
         print(f"  [WARN] {ticker}: för kort historik ({len(df)} veckor), "
               f"behöver minst {min_rows}.")
         return None
+
+    _check_suspicious_jumps(df, ticker)
 
     return df
 
