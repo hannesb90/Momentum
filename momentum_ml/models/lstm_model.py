@@ -126,9 +126,12 @@ class MomentumLSTM:
 
     def __init__(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if config.NUM_TRAINING_THREADS and self.device.type == "cpu":
+            torch.set_num_threads(config.NUM_TRAINING_THREADS)
         self.net: Optional[MomentumLSTMNet] = None
         self.scaler = None
-        print(f"[LSTM] Använder: {self.device}")
+        print(f"[LSTM] Använder: {self.device} "
+              f"({torch.get_num_threads()} trådar)")
 
     # ── Träning ──────────────────────────────────────────────────────────────
 
