@@ -35,6 +35,10 @@ def parse_args():
     p.add_argument("--end",          default=config.END_DATE)
     p.add_argument("--skip-lstm",    action="store_true", help="Kör bara LGBM")
     p.add_argument("--predict-only", action="store_true", help="Ladda modeller, ingen träning")
+    p.add_argument("--train-lgbm-only", action="store_true",
+                   help="(internt) Tränar bara LightGBM i denna process")
+    p.add_argument("--train-lstm-only", action="store_true",
+                   help="(internt) Tränar bara LSTM i denna process")
     p.add_argument("--no-cache",     action="store_true", help="Hämta ny data (ignorera cache)")
     p.add_argument("--n-trials",     type=int, default=1,
                    help="Antal testade strategier/parameterval, för Deflated Sharpe Ratio")
@@ -83,35 +87,54 @@ def main():
         print("  [WARN] För kort historik för en frusen holdout, tränar på all data.")
 
     # ── 3. LightGBM + LSTM (träning) ─────────────────────────────────────────
-    if not args.predict_only:
+    if args.train_lgbm_only:
         print("\nSTEG 3: Tränar LightGBM (walk-forward)...")
         lgbm = MomentumLGBM()
         lgbm.fit_walk_forward(dev_df)
         lgbm.save()
         lgbm.print_feature_importance(top_n=15)
+        return
+
+    if args.train_lstm_only:
+        print("\nSTEG 4: Tränar LSTM...")
+        lstm = MomentumLSTM()
+        # Enkel train/val-split (sista 20% av dev-perioden = validering)
+        split = int(len(dev_df) * 0.8)
+        train_df = dev_df.iloc[:split]
+        val_df   = dev_df.iloc[split:]
+        lstm.fit(train_df, val_df)
+        lstm.save()
+        return
+
+    if not args.predict_only:
+        # Träning (LGBM, LSTM) och prediktion körs i HELT FRISKA processer
+        # var för sig. Bekräftat på Pi 4B (Cortex-A72): körs LightGBMs
+        # OpenMP-trådpool och PyTorchs trådpool sekventiellt i samma
+        # process kraschar nästa bibliotek med SIGILL – gäller både
+        # LGBM-train → LGBM-predict och LGBM-train → LSTM-backward.
+        # Trådpool-state överlever uppenbarligen inte en sådan övergång på
+        # denna ARM-CPU. Varje steg får därför sin egen process; data-
+        # cachen gör att steg 1-2 (hämtning/features) körs snabbt igen.
+        base_cmd = [sys.executable, __file__,
+                    "--tickers", *args.tickers, "--start", args.start]
+        if args.end:
+            base_cmd += ["--end", args.end]
+
+        print("\n[Main] Tränar LightGBM i ny process...")
+        result = subprocess.run(base_cmd + ["--train-lgbm-only"])
+        if result.returncode != 0:
+            sys.exit(result.returncode)
 
         if not args.skip_lstm:
-            print("\nSTEG 4: Tränar LSTM...")
-            lstm = MomentumLSTM()
-            # Enkel train/val-split (sista 20% av dev-perioden = validering)
-            split = int(len(dev_df) * 0.8)
-            train_df = dev_df.iloc[:split]
-            val_df   = dev_df.iloc[split:]
-            lstm.fit(train_df, val_df)
-            lstm.save()
+            print("\n[Main] Tränar LSTM i ny process...")
+            result = subprocess.run(base_cmd + ["--train-lstm-only"])
+            if result.returncode != 0:
+                sys.exit(result.returncode)
         else:
             print("\nSTEG 4: LSTM hoppas över.")
 
-        # Prediktion/backtest körs i en FRISK process. Bekräftat på Pi 4B
-        # (Cortex-A72): att anropa Booster.predict()/torch-inferens i samma
-        # process som just körde lgb.train()/LSTM-träning kraschar med
-        # SIGILL (trådpool-state överlever inte träning -> prediktion på
-        # denna ARM-CPU). Datacachen gör att steg 1-2 körs snabbt igen.
         print("\n[Main] Träning klar. Kör prediktion/backtest i ny process...")
-        cmd = [sys.executable, __file__, "--predict-only",
-               "--tickers", *args.tickers, "--start", args.start]
-        if args.end:
-            cmd += ["--end", args.end]
+        cmd = base_cmd + ["--predict-only"]
         if args.skip_lstm:
             cmd.append("--skip-lstm")
         result = subprocess.run(cmd)
