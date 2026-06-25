@@ -1,0 +1,73 @@
+"""
+config.py – Alla parametrar för momentum ML-systemet.
+Ändra här; rör inte modellkoden.
+"""
+
+# ── Data ─────────────────────────────────────────────────────────────────────
+DEFAULT_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META", "JPM"]
+START_DATE      = "2010-01-01"
+END_DATE        = None          # None = idag
+INTERVAL        = "1wk"        # veckodata
+
+# ── Feature-fönster (veckor) ─────────────────────────────────────────────────
+MOMENTUM_WINDOWS   = [4, 8, 13, 26, 52]
+VOLATILITY_WINDOWS = [4, 13, 26]
+VOLUME_WINDOWS     = [4, 13]
+EMA_PAIRS          = [(8, 21), (13, 34), (21, 55)]
+ADX_PERIOD         = 14
+
+# ── Targets ──────────────────────────────────────────────────────────────────
+FORWARD_WEEKS      = 4          # Förutsägningshorisont
+RETURN_THRESHOLD   = 0.05       # >5% = positiv klass
+
+# ── Walk-forward backtest ────────────────────────────────────────────────────
+TRAIN_WINDOW_WEEKS = 260        # ~5 år träning
+VAL_WINDOW_WEEKS   = 52         # ~1 år validering
+TEST_STEP_WEEKS    = 13         # Rulla 1 kvartal åt gången
+
+# ── LightGBM ─────────────────────────────────────────────────────────────────
+LGBM_PARAMS = {
+    "objective":        "binary",
+    "metric":           ["binary_logloss", "auc"],
+    "learning_rate":    0.05,
+    "num_leaves":       63,
+    "min_child_samples":50,
+    "subsample":        0.8,
+    "colsample_bytree": 0.8,
+    "reg_alpha":        0.1,
+    "reg_lambda":       1.0,
+    "n_estimators":     1000,
+    "early_stopping_rounds": 50,
+    "verbose":          -1,
+}
+
+# ── LSTM ─────────────────────────────────────────────────────────────────────
+LSTM_SEQUENCE_LEN  = 26        # 26 veckors historik per sample
+LSTM_HIDDEN_SIZE   = 128
+LSTM_NUM_LAYERS    = 2
+LSTM_DROPOUT       = 0.2
+LSTM_EPOCHS        = 100
+LSTM_BATCH_SIZE    = 64
+LSTM_LR            = 1e-3
+LSTM_PATIENCE      = 15        # Early stopping
+
+# ── Ensemble ─────────────────────────────────────────────────────────────────
+ENSEMBLE_LGBM_WEIGHT = 0.6     # Startvikt; justeras av rolling Sharpe
+ENSEMBLE_LSTM_WEIGHT = 0.4
+ROLLING_SHARPE_WINDOW = 12     # Veckor för dynamisk viktning
+
+# ── Positionssizing (Kelly) ───────────────────────────────────────────────────
+KELLY_FRACTION     = 0.25      # Fractional Kelly (25%)
+MAX_POSITION       = 0.20      # Max 20% per position
+MIN_POSITION       = 0.01      # Min 1% (annars ej handel)
+MAX_POSITIONS      = 10        # Max antal samtidiga positioner
+
+# ── Backtest-kostnader ────────────────────────────────────────────────────────
+COMMISSION         = 0.001     # 0.1% per trade
+SLIPPAGE           = 0.001     # 0.1% slippage
+INITIAL_CAPITAL    = 1_000_000 # 1 MSEK startkapital
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+RANDOM_SEED        = 42
+CACHE_DIR          = "cache"
+RESULTS_DIR        = "results"

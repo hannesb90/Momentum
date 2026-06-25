@@ -1,0 +1,198 @@
+"""
+models/lgbm_model.py – LightGBM bas-modell med walk-forward korsvalidering.
+
+Output per sample:
+  - prob_up      : P(avkastning > threshold)   [0..1]
+  - pred_signal  : Köp(1) / Sälj(0)
+  - pred_return  : förväntad avkastning (regression)
+"""
+
+import numpy as np
+import pandas as pd
+import lightgbm as lgb
+import joblib
+import os
+from pathlib import Path
+from typing import Dict, List, Tuple, Optional
+
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+import config
+from features.feature_engineering import FEATURE_COLS
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Walk-forward splitter
+# ─────────────────────────────────────────────────────────────────────────────
+
+def walk_forward_splits(
+    dates: pd.DatetimeIndex,
+    train_weeks: int = config.TRAIN_WINDOW_WEEKS,
+    val_weeks:   int = config.VAL_WINDOW_WEEKS,
+    step_weeks:  int = config.TEST_STEP_WEEKS,
+) -> List[Tuple[pd.DatetimeIndex, pd.DatetimeIndex, pd.DatetimeIndex]]:
+    """
+    Returnerar lista av (train_idx, val_idx, test_idx) som DatetimeIndex.
+    Ingen framåtläckage – train slutar alltid innan val, val innan test.
+    """
+    unique_dates = dates.unique().sort_values()
+    n = len(unique_dates)
+    splits = []
+
+    start = 0
+    while start + train_weeks + val_weeks + step_weeks <= n:
+        train_end = start + train_weeks
+        val_end   = train_end + val_weeks
+        test_end  = val_end + step_weeks
+
+        train_d = unique_dates[start:train_end]
+        val_d   = unique_dates[train_end:val_end]
+        test_d  = unique_dates[val_end:test_end]
+
+        splits.append((train_d, val_d, test_d))
+        start += step_weeks   # rulla ett steg framåt
+
+    return splits
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LightGBM modell
+# ─────────────────────────────────────────────────────────────────────────────
+
+class MomentumLGBM:
+    """
+    Wrapper kring LightGBM med walk-forward träning.
+    Tränar ett klassifikationsmodell (prob_up) och ett regressionsmodell (pred_return).
+    """
+
+    def __init__(self, params: dict = None):
+        self.cls_params = {**(params or config.LGBM_PARAMS), "objective": "binary"}
+        self.reg_params = {**(params or config.LGBM_PARAMS), "objective": "regression",
+                           "metric": ["rmse", "mae"]}
+        self.cls_models: List[lgb.Booster] = []
+        self.reg_models: List[lgb.Booster] = []
+        self.feature_importance_: Optional[pd.DataFrame] = None
+
+    # ── Träning ──────────────────────────────────────────────────────────────
+
+    def fit_walk_forward(self, df: pd.DataFrame) -> "MomentumLGBM":
+        """
+        Tränar walk-forward. df måste ha DatetimeIndex och kolumner i FEATURE_COLS
+        samt 'target_signal' och 'target_return'.
+        """
+        splits = walk_forward_splits(df.index)
+        print(f"[LGBM] Walk-forward: {len(splits)} splits")
+
+        cls_importances, reg_importances = [], []
+
+        for i, (train_d, val_d, test_d) in enumerate(splits):
+            X_tr, y_cls_tr, y_reg_tr = self._slice(df, train_d)
+            X_va, y_cls_va, y_reg_va = self._slice(df, val_d)
+
+            if len(X_tr) < 100:
+                print(f"  Split {i}: för lite data ({len(X_tr)} rader), hoppar.")
+                continue
+
+            # Klassifikation
+            cls_model = self._fit_cls(X_tr, y_cls_tr, X_va, y_cls_va)
+            self.cls_models.append(cls_model)
+            cls_importances.append(cls_model.feature_importance(importance_type="gain"))
+
+            # Regression
+            reg_model = self._fit_reg(X_tr, y_reg_tr, X_va, y_reg_va)
+            self.reg_models.append(reg_model)
+            reg_importances.append(reg_model.feature_importance(importance_type="gain"))
+
+            print(f"  Split {i+1}/{len(splits)}: "
+                  f"träning t.o.m {train_d[-1].date()}, "
+                  f"test {test_d[0].date()}–{test_d[-1].date()}")
+
+        # Feature importance (genomsnitt över splits)
+        self.feature_importance_ = pd.DataFrame({
+            "feature": FEATURE_COLS,
+            "cls_importance": np.mean(cls_importances, axis=0),
+            "reg_importance": np.mean(reg_importances, axis=0),
+        }).sort_values("cls_importance", ascending=False)
+
+        return self
+
+    def _fit_cls(self, X_tr, y_tr, X_va, y_va) -> lgb.Booster:
+        ds_tr = lgb.Dataset(X_tr, label=y_tr)
+        ds_va = lgb.Dataset(X_va, label=y_va, reference=ds_tr)
+        p = {k: v for k, v in self.cls_params.items()
+             if k not in ("n_estimators", "early_stopping_rounds")}
+        return lgb.train(
+            p,
+            ds_tr,
+            num_boost_round=self.cls_params["n_estimators"],
+            valid_sets=[ds_va],
+            callbacks=[
+                lgb.early_stopping(self.cls_params["early_stopping_rounds"], verbose=False),
+                lgb.log_evaluation(period=-1),
+            ],
+        )
+
+    def _fit_reg(self, X_tr, y_tr, X_va, y_va) -> lgb.Booster:
+        ds_tr = lgb.Dataset(X_tr, label=y_tr)
+        ds_va = lgb.Dataset(X_va, label=y_va, reference=ds_tr)
+        p = {k: v for k, v in self.reg_params.items()
+             if k not in ("n_estimators", "early_stopping_rounds")}
+        return lgb.train(
+            p,
+            ds_tr,
+            num_boost_round=self.reg_params["n_estimators"],
+            valid_sets=[ds_va],
+            callbacks=[
+                lgb.early_stopping(self.reg_params["early_stopping_rounds"], verbose=False),
+                lgb.log_evaluation(period=-1),
+            ],
+        )
+
+    # ── Prediktion ────────────────────────────────────────────────────────────
+
+    def predict(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Returnerar DataFrame med kolumner:
+          prob_up, pred_signal, pred_return
+        """
+        X = df[FEATURE_COLS].fillna(0).values
+
+        cls_preds = np.mean([m.predict(X) for m in self.cls_models], axis=0)
+        reg_preds = np.mean([m.predict(X) for m in self.reg_models], axis=0)
+
+        return pd.DataFrame({
+            "prob_up":     cls_preds,
+            "pred_signal": (cls_preds > 0.5).astype(int),
+            "pred_return": reg_preds,
+        }, index=df.index)
+
+    # ── Hjälpare ──────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _slice(df, dates):
+        mask = df.index.isin(dates)
+        sub  = df[mask]
+        X    = sub[FEATURE_COLS].fillna(0).values
+        y_cls= sub["target_signal"].values
+        y_reg= sub["target_return"].values
+        return X, y_cls, y_reg
+
+    # ── Spara/ladda ───────────────────────────────────────────────────────────
+
+    def save(self, path: str = "results/lgbm_model.pkl"):
+        Path(path).parent.mkdir(exist_ok=True, parents=True)
+        joblib.dump(self, path)
+        print(f"[LGBM] Modell sparad: {path}")
+
+    @classmethod
+    def load(cls, path: str = "results/lgbm_model.pkl") -> "MomentumLGBM":
+        return joblib.load(path)
+
+    def print_feature_importance(self, top_n: int = 20):
+        if self.feature_importance_ is None:
+            print("Träna modellen först.")
+            return
+        print(f"\n{'='*50}")
+        print(f"Top-{top_n} feature importance (klassifikation)")
+        print(f"{'='*50}")
+        print(self.feature_importance_.head(top_n).to_string(index=False))
