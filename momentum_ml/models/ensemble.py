@@ -112,6 +112,26 @@ def kelly_position_size(
     return float(np.clip(kelly, 0.0, config.MAX_POSITION))
 
 
+def _apply_portfolio_constraints(weights: Dict[str, float]) -> Dict[str, float]:
+    """
+    Gemensam regeltillämpning för portföljvikter:
+      - kasta bort vikter under MIN_POSITION
+      - begränsa till MAX_POSITIONS (störst vikt vinner)
+      - normalisera om total > 1
+    """
+    weights = {t: w for t, w in weights.items() if w >= config.MIN_POSITION}
+
+    if len(weights) > config.MAX_POSITIONS:
+        top = sorted(weights.items(), key=lambda x: x[1], reverse=True)[:config.MAX_POSITIONS]
+        weights = dict(top)
+
+    total = sum(weights.values())
+    if total > 1.0:
+        weights = {t: w / total for t, w in weights.items()}
+
+    return weights
+
+
 def build_portfolio_weights(
     signals: pd.DataFrame,
     feature_df: pd.DataFrame,   # behövs för volatilitet
@@ -141,22 +161,9 @@ def build_portfolio_weights(
         except Exception:
             vol = 0.20   # default 20% annualiserad vol
 
-        w = kelly_position_size(prob, ret, vol)
-        if w >= config.MIN_POSITION:
-            weights[ticker] = w
+        weights[ticker] = kelly_position_size(prob, ret, vol)
 
-    # Normalisera om total > 1
-    total = sum(weights.values())
-    if total > 1.0:
-        weights = {t: w / total for t, w in weights.items()}
-
-    # Begränsa antal positioner
-    if len(weights) > config.MAX_POSITIONS:
-        top = sorted(weights.items(), key=lambda x: x[1], reverse=True)[:config.MAX_POSITIONS]
-        total_top = sum(w for _, w in top)
-        weights = {t: w / total_top for t, w in top}
-
-    return weights
+    return _apply_portfolio_constraints(weights)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -172,6 +179,10 @@ def build_full_output(
     """
     Returnerar ett long-format DataFrame med alla outputs:
       Date, ticker, prob_up, pred_signal, pred_return, position_size
+
+    position_size tillämpar MIN_POSITION/MAX_POSITIONS/normalisering per datum
+    (samma regler som build_portfolio_weights), så flera tickers med
+    samtidiga köpsignaler konkurrerar om portföljutrymmet korrekt.
     """
     rows = []
 
@@ -188,7 +199,7 @@ def build_full_output(
             except Exception:
                 vol = 0.20
 
-            pos = kelly_position_size(row["prob_up"], row["pred_return"], vol)
+            raw_kelly = kelly_position_size(row["prob_up"], row["pred_return"], vol)
 
             rows.append({
                 "Date":          date,
@@ -196,8 +207,17 @@ def build_full_output(
                 "prob_up":       row["prob_up"],
                 "pred_signal":   int(row["pred_signal"]),
                 "pred_return":   row["pred_return"],
-                "position_size": pos if row["pred_signal"] == 1 else 0.0,
+                "raw_kelly":     raw_kelly if row["pred_signal"] == 1 else 0.0,
             })
 
     df = pd.DataFrame(rows).set_index("Date").sort_index()
+
+    def _size_date(group: pd.DataFrame) -> pd.Series:
+        candidates = group[group["raw_kelly"] > 0]
+        raw_weights = dict(zip(candidates["ticker"], candidates["raw_kelly"]))
+        sized = _apply_portfolio_constraints(raw_weights)
+        return group["ticker"].map(sized).fillna(0.0)
+
+    df["position_size"] = df.groupby(level="Date", group_keys=False).apply(_size_date)
+    df = df.drop(columns="raw_kelly")
     return df
