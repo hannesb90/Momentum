@@ -10,6 +10,7 @@ Användning:
 
 import argparse
 import json
+import subprocess
 import sys
 import os
 import pandas as pd
@@ -81,32 +82,17 @@ def main():
         dev_df = model_df
         print("  [WARN] För kort historik för en frusen holdout, tränar på all data.")
 
-    # ── 3. LightGBM ───────────────────────────────────────────────────────────
-    print("\nSTEG 3: Tränar LightGBM (walk-forward)...")
-    lgbm = MomentumLGBM()
-
+    # ── 3. LightGBM + LSTM (träning) ─────────────────────────────────────────
     if not args.predict_only:
+        print("\nSTEG 3: Tränar LightGBM (walk-forward)...")
+        lgbm = MomentumLGBM()
         lgbm.fit_walk_forward(dev_df)
         lgbm.save()
         lgbm.print_feature_importance(top_n=15)
-    else:
-        lgbm = MomentumLGBM.load()
-        print("  [LGBM] Laddade sparad modell.")
 
-    lgbm_preds_by_ticker = {}
-    for ticker, feat_df in all_features.items():
-        feat_df_clean = feat_df.dropna(subset=FEATURE_COLS[:5])
-        if len(feat_df_clean) > 0:
-            lgbm_preds_by_ticker[ticker] = lgbm.predict(feat_df_clean)
-
-    # ── 4. LSTM ───────────────────────────────────────────────────────────────
-    lstm_preds_by_ticker = {}
-
-    if not args.skip_lstm:
-        print("\nSTEG 4: Tränar LSTM...")
-        lstm = MomentumLSTM()
-
-        if not args.predict_only:
+        if not args.skip_lstm:
+            print("\nSTEG 4: Tränar LSTM...")
+            lstm = MomentumLSTM()
             # Enkel train/val-split (sista 20% av dev-perioden = validering)
             split = int(len(dev_df) * 0.8)
             train_df = dev_df.iloc[:split]
@@ -114,8 +100,39 @@ def main():
             lstm.fit(train_df, val_df)
             lstm.save()
         else:
-            lstm = MomentumLSTM().load()
-            print("  [LSTM] Laddade sparad modell.")
+            print("\nSTEG 4: LSTM hoppas över.")
+
+        # Prediktion/backtest körs i en FRISK process. Bekräftat på Pi 4B
+        # (Cortex-A72): att anropa Booster.predict()/torch-inferens i samma
+        # process som just körde lgb.train()/LSTM-träning kraschar med
+        # SIGILL (trådpool-state överlever inte träning -> prediktion på
+        # denna ARM-CPU). Datacachen gör att steg 1-2 körs snabbt igen.
+        print("\n[Main] Träning klar. Kör prediktion/backtest i ny process...")
+        cmd = [sys.executable, __file__, "--predict-only",
+               "--tickers", *args.tickers, "--start", args.start]
+        if args.end:
+            cmd += ["--end", args.end]
+        if args.skip_lstm:
+            cmd.append("--skip-lstm")
+        result = subprocess.run(cmd)
+        sys.exit(result.returncode)
+
+    # ── Prediktion (laddar sparade modeller) ─────────────────────────────────
+    print("\nSTEG 3: Laddar LightGBM...")
+    lgbm = MomentumLGBM.load()
+    print("  [LGBM] Laddade sparad modell.")
+
+    lgbm_preds_by_ticker = {}
+    for ticker, feat_df in all_features.items():
+        feat_df_clean = feat_df.dropna(subset=FEATURE_COLS[:5])
+        if len(feat_df_clean) > 0:
+            lgbm_preds_by_ticker[ticker] = lgbm.predict(feat_df_clean)
+
+    lstm_preds_by_ticker = {}
+    if not args.skip_lstm:
+        print("\nSTEG 4: Laddar LSTM...")
+        lstm = MomentumLSTM().load()
+        print("  [LSTM] Laddade sparad modell.")
 
         for ticker, feat_df in all_features.items():
             feat_df_clean = feat_df.dropna(subset=FEATURE_COLS[:5])
