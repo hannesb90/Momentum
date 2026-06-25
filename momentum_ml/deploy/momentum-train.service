@@ -10,6 +10,9 @@ WorkingDirectory=/opt/momentum/momentum_ml
 Environment=PATH=/opt/momentum/venv/bin
 # Lämna en kärna åt API:t/OS – justera vid behov för din Pi-modell.
 Environment=MOMENTUM_TRAINING_THREADS=3
+# Obuffrad stdout/stderr så journalctl visar utskrifter i rätt ordning/tid -
+# annars kan parent- och subprocess-utskrifter framstå som hopklumpade.
+Environment=PYTHONUNBUFFERED=1
 ExecStart=/opt/momentum/venv/bin/python main.py
 
 # Låg prioritet så API:t/dashboarden inte blir lidande under träningen.
