@@ -139,6 +139,11 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     feat["target_signal"]   = (fwd_ret > config.RETURN_THRESHOLD).astype(int)  # klassifikation
     feat["target_prob_pos"] = np.nan                              # fylls av modellen
 
+    # Vissa kvoter (volym=0, flat pris -> std=0, OBV/AD-linje som korsar noll)
+    # kan ge inf istället för NaN - normalisera så nedströms NaN-hantering
+    # (dropna/fillna) täcker även dessa fall.
+    feat = feat.replace([np.inf, -np.inf], np.nan)
+
     # ── Rensa bort rader med för många NaN ───────────────────────────────────
     # (behåll rader som har tillräckligt med historik för alla features)
     min_valid = 0.70
