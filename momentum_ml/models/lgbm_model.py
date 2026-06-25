@@ -71,6 +71,9 @@ class MomentumLGBM:
                            "metric": ["rmse", "mae"]}
         self.cls_models: List[lgb.Booster] = []
         self.reg_models: List[lgb.Booster] = []
+        # test-fönstrets startdatum per modell, samma ordning/index som
+        # cls_models/reg_models – används för datum-medveten prediktion.
+        self.split_starts: List[pd.Timestamp] = []
         self.feature_importance_: Optional[pd.DataFrame] = None
 
     # ── Träning ──────────────────────────────────────────────────────────────
@@ -102,6 +105,8 @@ class MomentumLGBM:
             reg_model = self._fit_reg(X_tr, y_reg_tr, X_va, y_reg_va)
             self.reg_models.append(reg_model)
             reg_importances.append(reg_model.feature_importance(importance_type="gain"))
+
+            self.split_starts.append(test_d[0])
 
             print(f"  Split {i+1}/{len(splits)}: "
                   f"träning t.o.m {train_d[-1].date()}, "
@@ -154,17 +159,37 @@ class MomentumLGBM:
         """
         Returnerar DataFrame med kolumner:
           prob_up, pred_signal, pred_return
+
+        Väljer, per datum, den modell vars test-fönster faktiskt täcker det
+        datumet (äkta walk-forward-attribuering) istället för att medel-
+        värdesbilda alla splits – ett medelvärde över 95 modeller tränade på
+        helt olika regimer/perioder späder ut signalen så mycket att
+        sannolikheten nästan aldrig passerar 0.5, oavsett hur stark
+        momentum-uppgången faktiskt var. Datum efter sista test-fönstret
+        (dagens/levande signaler) får senaste modellen – den enda som
+        faktiskt vore tillgänglig i produktion vid den tidpunkten. Datum
+        före första test-fönstret (sällan förekommande) får äldsta modellen.
         """
         X = df[FEATURE_COLS].fillna(0).values
+        model_idx = self._select_model_idx(df.index)
 
-        cls_preds = np.mean([m.predict(X) for m in self.cls_models], axis=0)
-        reg_preds = np.mean([m.predict(X) for m in self.reg_models], axis=0)
+        cls_preds = np.empty(len(df))
+        reg_preds = np.empty(len(df))
+        for idx in np.unique(model_idx):
+            mask = model_idx == idx
+            cls_preds[mask] = self.cls_models[idx].predict(X[mask])
+            reg_preds[mask] = self.reg_models[idx].predict(X[mask])
 
         return pd.DataFrame({
             "prob_up":     cls_preds,
             "pred_signal": (cls_preds > 0.5).astype(int),
             "pred_return": reg_preds,
         }, index=df.index)
+
+    def _select_model_idx(self, dates: pd.DatetimeIndex) -> np.ndarray:
+        starts = pd.DatetimeIndex(self.split_starts)
+        idx = starts.searchsorted(dates, side="right") - 1
+        return np.clip(idx, 0, len(self.split_starts) - 1)
 
     # ── Hjälpare ──────────────────────────────────────────────────────────────
 
