@@ -77,6 +77,26 @@ CORRELATION_LOOKBACK_WEEKS = 26
 BOOTSTRAP_N_SIMS     = 1000
 BOOTSTRAP_BLOCK_WEEKS = 4    # bevarar kort-sikt-autokorrelation vid resampling
 
+# ── Sektorexponering ──────────────────────────────────────────────────────────
+# OBS: statisk mappning för DEFAULT_TICKERS. Lägg till nya tickers här om
+# universet utökas, annars hamnar de i "Okänd" och begränsas inte korrekt.
+SECTOR_MAP = {
+    "AAPL":  "Technology",
+    "MSFT":  "Technology",
+    "NVDA":  "Technology",
+    "GOOGL": "Technology",
+    "META":  "Technology",
+    "TSLA":  "Consumer Discretionary",
+    "AMZN":  "Consumer Discretionary",
+    "JPM":   "Financials",
+}
+MAX_SECTOR_EXPOSURE = 0.40   # max 40% portföljvikt i en enskild sektor
+
+# ── Modell-drift-monitoring ───────────────────────────────────────────────────
+DRIFT_WINDOW_WEEKS = 26     # rullande fönster för realiserad prestanda
+DRIFT_AUC_FLOOR    = 0.52   # under denna rullande AUC -> flagga
+DRIFT_MIN_SAMPLES  = 20     # minsta antal observationer för att räkna AUC
+
 # ── Misc ─────────────────────────────────────────────────────────────────────
 RANDOM_SEED        = 42
 CACHE_DIR          = "cache"

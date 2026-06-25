@@ -1,5 +1,16 @@
 """
 data/data_loader.py – Hämtar och cachar veckodata via yfinance.
+
+OBS: yfinance ger bara historik för tickers som finns/går att slå upp
+idag. Aktier som avnoterats, gått i konkurs eller blivit uppköpta
+saknas helt, vilket ger survivorship bias i backtester – CAGR/Sharpe
+tenderar att överskattas eftersom universumet implicit bara innehåller
+"vinnare". För kapital i den storleksordning som motiverar den här
+strategin bör en datakälla med korrekt point-in-time-universum (t.ex.
+Polygon.io eller Norgate Data, båda betaltjänster) användas innan
+resultat tas på allvar. Att byta källa innebär att skriva en ny
+funktion med samma retur-kontrakt som fetch_weekly_data (Dict[ticker,
+DataFrame] med kolumnerna Open/High/Low/Close/Volume).
 """
 
 import os

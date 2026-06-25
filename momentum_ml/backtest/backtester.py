@@ -80,6 +80,9 @@ class MomentumBacktester:
             # Slå ihop kraftigt korrelerade positioner (undvik dold koncentration)
             target_weights = self._correlation_filter(target_weights, date)
 
+            # Begränsa exponering per sektor
+            target_weights = self._sector_exposure_filter(target_weights)
+
             # Normalisera vikter (säkerhet)
             total_w = sum(target_weights.values())
             if total_w > 1.0:
@@ -119,6 +122,33 @@ class MomentumBacktester:
             return 1.0
         excess = (-drawdown - threshold) / threshold
         return 1.0 - min(excess, 1.0) * (1.0 - floor)
+
+    def _sector_exposure_filter(
+        self,
+        target_weights: Dict[str, float],
+    ) -> Dict[str, float]:
+        """
+        Skalar ner vikter proportionellt inom en sektor om sektorns
+        totalvikt överstiger MAX_SECTOR_EXPOSURE. Tickers som saknas i
+        config.SECTOR_MAP grupperas under "Okänd" och begränsas också.
+        """
+        if not target_weights:
+            return target_weights
+
+        sector_totals: Dict[str, float] = {}
+        for ticker, w in target_weights.items():
+            sector = config.SECTOR_MAP.get(ticker, "Okänd")
+            sector_totals[sector] = sector_totals.get(sector, 0.0) + w
+
+        weights = dict(target_weights)
+        for sector, total in sector_totals.items():
+            if total > config.MAX_SECTOR_EXPOSURE:
+                scale = config.MAX_SECTOR_EXPOSURE / total
+                for ticker in weights:
+                    if config.SECTOR_MAP.get(ticker, "Okänd") == sector:
+                        weights[ticker] *= scale
+
+        return weights
 
     def _correlation_filter(
         self,
