@@ -1,0 +1,5 @@
+# Tillåt hannesb att starta om API-tjänsten utan lösenord, enbart den
+# specifika kommandot - inget bredare sudo-privilegium ges.
+# Installera med: sudo cp momentum-sync.sudoers /etc/sudoers.d/momentum-sync
+#                 sudo chmod 440 /etc/sudoers.d/momentum-sync
+hannesb ALL=(root) NOPASSWD: /usr/bin/systemctl restart momentum-api.service

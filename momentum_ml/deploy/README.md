@@ -61,7 +61,41 @@ sudo nginx -t && sudo systemctl reload nginx
 Lägg på HTTPS (t.ex. `certbot --nginx`) – krävs för att PWA:n ska gå att
 installera och för att service workern ska aktiveras utanför `localhost`.
 
-## 5. Hälsokontroll på Pi:n
+## 5. Auto-sync (git pull + redeploy automatiskt)
+
+`momentum-sync.timer` kör var 15:e minut: hämtar nya commits, kopierar
+ändrad `momentum_ml/`- eller `frontend/`-kod till deploy-katalogerna, bygger
+om frontend och/eller startar om API:t vid behov. `requirements.txt`-ändringar
+flaggas men installeras *inte* automatiskt (för att inte riskera diskutrymmet
+vid en oövervakad `pip install`) – kör då steg 1:s pip-kommando manuellt.
+
+Kräver en avgränsad sudo-rättighet för att kunna starta om API-tjänsten utan
+lösenord (bara den exakta kommandot, inget annat):
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-sync.sudoers /etc/sudoers.d/momentum-sync
+sudo chmod 440 /etc/sudoers.d/momentum-sync
+sudo visudo -c   # validera syntaxen
+```
+
+Installera och starta timern:
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-sync.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-sync.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-sync.timer
+
+# Testköra direkt:
+systemctl start momentum-sync.service
+journalctl -u momentum-sync.service -f
+```
+
+Ändringar i `momentum_ml/deploy/` (systemd-units etc) synkas medvetet inte
+automatiskt – skriptet skriver bara ut en påminnelse om vad som ska köras
+manuellt, eftersom sådana ändringar kan kräva `daemon-reload`/sudo.
+
+## 6. Hälsokontroll på Pi:n
 
 ```bash
 vcgencmd measure_temp        # håll under ~80°C, sätt kylfläns/fläkt annars
