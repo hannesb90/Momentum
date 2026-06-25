@@ -9,6 +9,7 @@ Användning:
 """
 
 import argparse
+import json
 import sys
 import os
 import pandas as pd
@@ -21,7 +22,7 @@ from models.lgbm_model import MomentumLGBM
 from models.lstm_model import MomentumLSTM
 from models.ensemble import MomentumEnsemble, build_full_output
 from backtest.backtester import MomentumBacktester
-from backtest.bootstrap import print_robustness_report
+from backtest.bootstrap import print_robustness_report, robustness_report
 from backtest.drift_monitor import attach_realized_outcomes, rolling_drift_report, print_drift_summary
 from backtest.regime import classify_regimes, regime_breakdown, print_regime_breakdown
 
@@ -151,7 +152,9 @@ def main():
     backtester = MomentumBacktester(signals_df, data)
     results    = backtester.run()
     backtester.print_statistics()
+    overall_stats = backtester.statistics()
 
+    dev_stats = holdout_stats = None
     if holdout_start is not None and (results.index >= holdout_start).any():
         dev_stats = backtester.statistics_for_period(end=holdout_start)
         backtester.print_statistics(dev_stats, title="DEV-PERIOD (tränad på)")
@@ -160,6 +163,7 @@ def main():
 
     port_rets = results["portfolio_value"].pct_change().dropna()
     print_robustness_report(port_rets, n_trials=args.n_trials)
+    robustness = robustness_report(port_rets, n_trials=args.n_trials)
 
     regimes = classify_regimes(data)
     breakdown = regime_breakdown(port_rets, regimes)
@@ -168,6 +172,7 @@ def main():
     backtester.plot(save_path=f"{config.RESULTS_DIR}/backtest.png")
 
     results.to_csv(f"{config.RESULTS_DIR}/portfolio.csv")
+    breakdown.to_csv(f"{config.RESULTS_DIR}/regime_breakdown.csv")
     print(f"\n  Resultat sparade i: {config.RESULTS_DIR}/")
 
     # ── 7. Modell-drift ───────────────────────────────────────────────────────
@@ -176,6 +181,31 @@ def main():
     drift_report = rolling_drift_report(signals_with_outcomes)
     print_drift_summary(drift_report)
     drift_report.to_csv(f"{config.RESULTS_DIR}/drift_report.csv")
+
+    # ── 8. Sammanfattning för frontend ───────────────────────────────────────
+    drift_valid = drift_report.dropna(subset=["auc"])
+    latest_drift = drift_valid.iloc[-1] if not drift_valid.empty else None
+
+    summary = {
+        "generated_at":  pd.Timestamp.utcnow().isoformat(),
+        "tickers":       args.tickers,
+        "period":        {"start": args.start, "end": args.end},
+        "overall":       overall_stats,
+        "dev":           dev_stats,
+        "holdout":       holdout_stats,
+        "robustness":    robustness,
+        "drift": None if latest_drift is None else {
+            "auc":            float(latest_drift["auc"]),
+            "hit_rate":       float(latest_drift["hit_rate"]),
+            "auc_floor":      config.DRIFT_AUC_FLOOR,
+            "flagged":        bool(latest_drift["flag"]),
+            "n_flagged":      int(drift_valid["flag"].sum()),
+            "n_periods":      len(drift_valid),
+        },
+    }
+    with open(f"{config.RESULTS_DIR}/stats.json", "w") as f:
+        json.dump(summary, f, indent=2, default=str)
+    print(f"  Sammanfattning sparad: {config.RESULTS_DIR}/stats.json")
 
     print("\nKLAR!\n")
 
