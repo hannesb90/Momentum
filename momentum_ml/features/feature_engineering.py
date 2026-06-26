@@ -13,7 +13,7 @@ Feature-kategorier:
 
 import numpy as np
 import pandas as pd
-from typing import Dict
+from typing import Dict, Optional
 
 import sys
 from pathlib import Path
@@ -126,6 +126,13 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     ad = _ad_line(h, l, c, v)
     feat["ad_roc_4w"] = _roc(ad, 4)
 
+    # Dollarvolym, absolut nivå – grund för cross-sectional likviditetsrank
+    # (add_cross_sectional). Modellen ser idag ingen skillnad mellan en
+    # djupt likvid large-cap och en tunn micro-cap förutom via
+    # vol_ratio_*w (relativ mot egen historik) – det säger inget om hur
+    # likvid aktien är i absoluta termer jämfört med resten av universumet.
+    feat["dollar_vol_13w"] = (c * v).rolling(13).mean()
+
     # ── 5. Pris-nivå ─────────────────────────────────────────────────────────
     feat["high52_ratio"] = c / h.rolling(52).max()               # nära 52v-high?
     feat["low52_ratio"]  = c / l.rolling(52).min()               # över 52v-low?
@@ -167,9 +174,11 @@ def add_cross_sectional(all_features: Dict[str, pd.DataFrame]) -> Dict[str, pd.D
     roc_4  = pd.DataFrame({t: f["roc_4w"]  for t, f in all_features.items()})
     roc_13 = pd.DataFrame({t: f["roc_13w"] for t, f in all_features.items()})
     roc_26 = pd.DataFrame({t: f["roc_26w"] for t, f in all_features.items()})
+    dvol   = pd.DataFrame({t: f["dollar_vol_13w"] for t, f in all_features.items()})
 
     universe_mean_4  = roc_4.mean(axis=1)
     universe_mean_26 = roc_26.mean(axis=1)
+    dvol_rank = dvol.rank(axis=1, pct=True)   # 0=tunnast, 1=mest likvid i universumet just det datumet
 
     for ticker, feat in all_features.items():
         feat["rs_4w"]   = feat["roc_4w"]  - universe_mean_4
@@ -177,6 +186,7 @@ def add_cross_sectional(all_features: Dict[str, pd.DataFrame]) -> Dict[str, pd.D
         feat["rs_26w"]  = feat["roc_26w"] - universe_mean_26
         feat["rank_4w"] = roc_4.rank(axis=1, pct=True)[ticker]
         feat["rank_26w"]= roc_26.rank(axis=1, pct=True)[ticker]
+        feat["liquidity_rank"] = dvol_rank[ticker]
 
     return all_features
 
@@ -197,6 +207,41 @@ def build_all_features(data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]
     print(f"[Features] Klar. {len(all_feat)} tickers, "
           f"{next(iter(all_feat.values())).shape[1]} features.")
     return all_feat
+
+
+def _category_code(value: Optional[str], categories: list) -> int:
+    """
+    Ordinal kod för en kategori utifrån en fast lista (se config.py
+    SECTOR_CATEGORIES/CAP_TIER_CATEGORIES). Fast lista krävs eftersom
+    träning och prediktion körs i separata processer (main.py) – koderna
+    måste vara identiska mellan körningarna. Okänt/saknat värde får sista
+    kategorins kod ("Okänd").
+    """
+    if value in categories:
+        return categories.index(value)
+    return len(categories) - 1
+
+
+def attach_categorical_features(
+    all_features: Dict[str, pd.DataFrame],
+    sector_map: Optional[Dict[str, str]] = None,
+    cap_tier_map: Optional[Dict[str, str]] = None,
+) -> Dict[str, pd.DataFrame]:
+    """
+    Lägger till sector_code/cap_tier_code (ordinal-kodade, fast lista i
+    config.py) på varje tickers feature-DataFrame, INNAN to_model_df
+    respektive prediktion – main.py använder samma all_features-dict för
+    både träning (via to_model_df) och live-prediktion (direkt iteration),
+    så kolumnerna måste finnas här för att båda vägarna ska se samma
+    FEATURE_COLS. Saknas mappningarna sätts allt till "Okänd"-koden
+    (bakåtkompatibelt, t.ex. för ad-hoc --tickers-körningar).
+    """
+    for ticker, feat in all_features.items():
+        sector = (sector_map or {}).get(ticker)
+        cap_tier = (cap_tier_map or {}).get(ticker)
+        feat["sector_code"]   = _category_code(sector, config.SECTOR_CATEGORIES)
+        feat["cap_tier_code"] = _category_code(cap_tier, config.CAP_TIER_CATEGORIES)
+    return all_features
 
 
 def to_model_df(all_features: Dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -231,5 +276,7 @@ FEATURE_COLS = [
     # Pris-nivå
     "high52_ratio", "low52_ratio", "price_vs_sma52",
     # Cross-sectional
-    "rs_4w", "rs_13w", "rs_26w", "rank_4w", "rank_26w",
+    "rs_4w", "rs_13w", "rs_26w", "rank_4w", "rank_26w", "liquidity_rank",
+    # Klassificering (ordinal-kodad, fast lista i config.py)
+    "sector_code", "cap_tier_code",
 ]

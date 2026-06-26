@@ -102,6 +102,23 @@ SECTOR_MAP = {
 }
 MAX_SECTOR_EXPOSURE = 0.40   # max 40% portföljvikt i en enskild sektor
 
+# Kanoniska kategorilistor för sektor/cap-tier som modell-features
+# (features/feature_engineering.py: sector_code, cap_tier_code). Fast
+# ordning krävs eftersom träning och prediktion körs i separata processer
+# (se main.py) – koderna måste vara identiska mellan de körningarna.
+# "Okänd"/"Unknown" sist fångar allt som inte matchar (t.ex. om universet
+# utökas till nya marknader senare).
+SECTOR_CATEGORIES = [
+    "Communication Services", "Consumer Discretionary", "Consumer Staples",
+    "Energy", "Financials", "Health Care", "Industrials",
+    "Information Technology", "Technology", "Materials", "Real Estate",
+    "Utilities", "Fond", "Okänd",
+]
+CAP_TIER_CATEGORIES = [
+    "Mega Cap", "Large Cap", "Mid Cap", "Small Cap", "Micro Cap", "Nano Cap",
+    "Fond", "Okänd",
+]
+
 # ── Modell-drift-monitoring ───────────────────────────────────────────────────
 DRIFT_WINDOW_WEEKS = 26     # rullande fönster för realiserad prestanda
 DRIFT_AUC_FLOOR    = 0.52   # under denna rullande AUC -> flagga

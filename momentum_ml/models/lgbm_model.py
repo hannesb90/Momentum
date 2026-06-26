@@ -14,6 +14,7 @@ import joblib
 import os
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
+from sklearn.isotonic import IsotonicRegression
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -71,6 +72,14 @@ class MomentumLGBM:
                            "metric": ["rmse", "mae"]}
         self.cls_models: List[lgb.Booster] = []
         self.reg_models: List[lgb.Booster] = []
+        # Kalibrerar rå LGBM-sannolikheter mot faktisk frekvens (isotonic
+        # regression, anpassad på valideringsfönstret – aldrig på
+        # träningsdata, annars kalibrerar man bort modellens egen
+        # overfitting istället för att korrigera den). Utan detta var
+        # prob_up okalibrerad och matades direkt in i Kelly-sizing
+        # (ensemble.py), vilket gör positionsstorlekarna otillförlitliga
+        # om t.ex. 0.65 i praktiken bara träffar 55% av tiden.
+        self.calibrators: List[IsotonicRegression] = []
         # test-fönstrets startdatum per modell, samma ordning/index som
         # cls_models/reg_models – används för datum-medveten prediktion.
         self.split_starts: List[pd.Timestamp] = []
@@ -100,6 +109,7 @@ class MomentumLGBM:
             cls_model = self._fit_cls(X_tr, y_cls_tr, X_va, y_cls_va)
             self.cls_models.append(cls_model)
             cls_importances.append(cls_model.feature_importance(importance_type="gain"))
+            self.calibrators.append(self._fit_calibrator(cls_model, X_va, y_cls_va))
 
             # Regression
             reg_model = self._fit_reg(X_tr, y_reg_tr, X_va, y_reg_va)
@@ -153,6 +163,22 @@ class MomentumLGBM:
             ],
         )
 
+    @staticmethod
+    def _fit_calibrator(cls_model: lgb.Booster, X_va, y_va) -> IsotonicRegression:
+        """
+        Isotonic regression: monoton mappning rå_sannolikhet -> kalibrerad
+        sannolikhet, anpassad på (rå prediktion, faktiskt utfall) i
+        valideringsfönstret. Fångar systematisk över-/undersäkerhet utan
+        att anta en specifik form (till skillnad från Platt-skalning).
+        Fungerar även om valideringsfönstret bara har en klass eller är
+        litet – degenererar då till en konstant/grov mappning, men kraschar
+        inte.
+        """
+        raw_va = cls_model.predict(X_va)
+        calibrator = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
+        calibrator.fit(raw_va, y_va)
+        return calibrator
+
     # ── Prediktion ────────────────────────────────────────────────────────────
 
     def predict(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -177,7 +203,14 @@ class MomentumLGBM:
         reg_preds = np.empty(len(df))
         for idx in np.unique(model_idx):
             mask = model_idx == idx
-            cls_preds[mask] = self.cls_models[idx].predict(X[mask])
+            raw = self.cls_models[idx].predict(X[mask])
+            # Bakåtkompatibelt: äldre sparade modeller (innan kalibrering
+            # infördes) har en tom calibrators-lista – kör då okalibrerat
+            # istället för att krascha vid laddning av en gammal pkl.
+            if idx < len(self.calibrators):
+                cls_preds[mask] = self.calibrators[idx].transform(raw)
+            else:
+                cls_preds[mask] = raw
             reg_preds[mask] = self.reg_models[idx].predict(X[mask])
 
         return pd.DataFrame({

@@ -37,14 +37,47 @@ SECTOR_ETF_MAP = {
 }
 
 
+ROTATION_LOOKBACK_WEEKS = 4   # jämförelsepunkt för rank_change ("kapitalrotation")
+ROTATION_FLAG_THRESHOLD = 2   # min antal ranksteg för att kallas in-/utflöde (annars "Stabil")
+
+
+def _composite_for_offset(feats: list, windows: list, offset: int) -> Optional[float]:
+    """
+    composite_score för en grupp aktier `offset` veckor tillbaka (0 = senaste
+    datapunkten). Samma beräkning som "nu", bara förskjuten – så att rank vid
+    två tidpunkter kan jämföras på lika villkor (median per fönster, sedan
+    medelvärde över fönster).
+    """
+    per_window = []
+    for w in windows:
+        col = f"roc_{w}w"
+        vals = [
+            f[col].iloc[-1 - offset] for f in feats
+            if not f.empty and col in f.columns and len(f) > offset
+            and pd.notna(f[col].iloc[-1 - offset])
+        ]
+        if vals:
+            per_window.append(np.median(vals))
+    return float(np.mean(per_window)) if per_window else np.nan
+
+
 def sector_momentum_snapshot(
     all_features: Dict[str, pd.DataFrame],
     sector_map: Optional[Dict[str, str]] = None,
+    rotation_lookback_weeks: int = ROTATION_LOOKBACK_WEEKS,
 ) -> pd.DataFrame:
     """
     Returnerar en DataFrame (en rad per sektor) med senaste roc_Nw-median
     per sektor (median = robust mot enskilda extremrörelser), antal aktier
-    bakom signalen, en sammanvägd composite_score och föreslagen ETF-ticker.
+    bakom signalen, en sammanvägd composite_score, föreslagen ETF-ticker –
+    samt en rotationssignal: rank_change = hur många placeringar sektorn
+    klättrat/fallit sedan `rotation_lookback_weeks` veckor tillbaka.
+
+    rank_change > 0  → sektorn vinner relativ styrka ("kapital in")
+    rank_change < 0  → sektorn tappar relativ styrka ("kapital ut"/kall)
+    Detta är en relativ rotationsproxy (rank mot resten av universumet just
+    nu), inte ett faktiskt mått på kapitalflöden in/ut ur sektorn – ingen
+    fonddata om nettoflöden finns i pipelinen.
     """
     sector_map = sector_map or config.SECTOR_MAP
     windows = config.MOMENTUM_WINDOWS
@@ -65,6 +98,7 @@ def sector_momentum_snapshot(
                     if not f.empty and col in f.columns and pd.notna(f[col].iloc[-1])]
             row[f"momentum_{w}w"] = float(np.median(vals)) if vals else np.nan
         row["etf_ticker"] = SECTOR_ETF_MAP.get(sector)
+        row["_composite_prev"] = _composite_for_offset(feats, windows, rotation_lookback_weeks)
         rows.append(row)
 
     df = pd.DataFrame(rows)
@@ -75,6 +109,23 @@ def sector_momentum_snapshot(
     df["composite_score"] = df[score_cols].mean(axis=1, skipna=True)
     df = df.sort_values("composite_score", ascending=False).reset_index(drop=True)
     df.insert(0, "rank", df.index + 1)
+
+    # Rank `rotation_lookback_weeks` veckor tillbaka, beräknad på samma sätt
+    prev = df[["sector", "_composite_prev"]].sort_values("_composite_prev", ascending=False)
+    prev_rank = {sector: i + 1 for i, sector in enumerate(prev["sector"])}
+    df["rank_change"] = df["sector"].map(prev_rank) - df["rank"]
+
+    def _flow(change: float) -> str:
+        if pd.isna(change):
+            return "Okänd"
+        if change >= ROTATION_FLAG_THRESHOLD:
+            return "Kapital in"
+        if change <= -ROTATION_FLAG_THRESHOLD:
+            return "Kapital ut"
+        return "Stabil"
+
+    df["flow"] = df["rank_change"].apply(_flow)
+    df = df.drop(columns="_composite_prev")
     return df
 
 
@@ -83,5 +134,5 @@ def print_sector_momentum(df: pd.DataFrame) -> None:
         print("  [Sektor-momentum] Inga sektorer att ranka.")
         return
     print("\n  === SEKTOR-MOMENTUM (rankat, senaste data) ===")
-    cols = ["rank", "sector", "n_stocks", "composite_score", "etf_ticker"]
+    cols = ["rank", "sector", "n_stocks", "composite_score", "rank_change", "flow", "etf_ticker"]
     print(df[cols].to_string(index=False, float_format="{:.3f}".format))

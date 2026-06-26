@@ -138,7 +138,7 @@ def load_sweden_universe(
     min_market_cap: Optional[List[str]] = None,
     include_funds: bool = True,
     include_sector_etfs: bool = True,
-) -> "tuple[List[str], Dict[str, str]]":
+) -> "tuple[List[str], Dict[str, str], Dict[str, str]]":
     """
     Läser det förbyggda universumet av svenska börsbolag
     (data/sweden_universe.csv, källa: JerBouma/FinanceDatabase STO.csv,
@@ -162,14 +162,17 @@ def load_sweden_universe(
     (XLK/XLF/XLE m.fl.) som ger sektor-momentum-signaler trots att
     aktieuniverset i övrigt är begränsat till Sverige.
 
-    Returnerar (tickers, sector_map) – sector_map kan slås ihop med
-    config.SECTOR_MAP för att sektorexponeringsspärren ska fungera även
-    för dessa tickers.
+    Returnerar (tickers, sector_map, cap_tier_map) – sector_map kan slås
+    ihop med config.SECTOR_MAP för att sektorexponeringsspärren ska
+    fungera även för dessa tickers. cap_tier_map ger market_cap_category
+    per ticker, t.ex. för att mata in cap-tier som modell-feature
+    (features/feature_engineering.py).
     """
     import csv
 
     tickers: List[str] = []
     sector_map: Dict[str, str] = {}
+    cap_tier_map: Dict[str, str] = {}
 
     stocks_path = Path(__file__).parent / "sweden_universe.csv"
     with open(stocks_path, encoding="utf-8") as f:
@@ -178,6 +181,7 @@ def load_sweden_universe(
                 continue
             tickers.append(row["ticker"])
             sector_map[row["ticker"]] = row["sector"]
+            cap_tier_map[row["ticker"]] = row["market_cap_category"]
 
     if include_funds:
         funds_path = Path(__file__).parent / "sweden_funds.csv"
@@ -185,6 +189,7 @@ def load_sweden_universe(
             for row in csv.DictReader(f):
                 tickers.append(row["ticker"])
                 sector_map[row["ticker"]] = row["sector"]
+                cap_tier_map[row["ticker"]] = row["market_cap_category"]
 
     if include_sector_etfs:
         etf_path = Path(__file__).parent / "sector_etfs.csv"
@@ -192,8 +197,9 @@ def load_sweden_universe(
             for row in csv.DictReader(f):
                 tickers.append(row["ticker"])
                 sector_map[row["ticker"]] = row["sector"]
+                cap_tier_map[row["ticker"]] = row["market_cap_category"]
 
-    return tickers, sector_map
+    return tickers, sector_map, cap_tier_map
 
 
 def filter_liquid_universe(
