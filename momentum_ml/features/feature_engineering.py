@@ -138,6 +138,25 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     feat["low52_ratio"]  = c / l.rolling(52).min()               # över 52v-low?
     feat["price_vs_sma52"] = c / c.rolling(52).mean() - 1
 
+    # ── 5b. Tidiga entry-signaler (utbrott, acceleration, pullback) ──────────
+    # De övriga momentum-måtten (roc_*, high52_ratio) belönar redan etablerade
+    # trender och fångar därför rörelsen sent. Här läggs signaler som tänder
+    # nära BÖRJAN av en rörelse, så modellen kan lära sig att gå in tidigare.
+    dwin   = config.DONCHIAN_WEEKS
+    high_d = h.rolling(dwin).max()
+    low_d  = l.rolling(dwin).min()
+    rng_d  = (high_d - low_d).replace(0, np.nan)
+    # Position i N-veckors pris-kanal: 0 = vid kanalbotten, 1 = vid kanaltopp.
+    feat["donchian_pos"] = (c - low_d) / rng_d
+    # Utbrott: pris bryter över föregående N-veckors högsta (nytt högsta = ny trend).
+    feat["breakout_nw"]  = (c > high_d.shift(1)).astype(int)
+    # Acceleration ("momentum av momentum"): ökar takten? Fångar inflektionen,
+    # inte bara nivån – positivt innan ROC hunnit bli högt.
+    feat["roc_accel_4w"] = feat["roc_4w"] - feat["roc_4w"].shift(4)
+    # Pullback i upptrend: längre trend upp (pris > SMA52) men kortsiktigt
+    # nedtryckt (låg Bollinger-position) = köp dippen, tidigare/billigare entry.
+    feat["pullback"] = ((feat["price_vs_sma52"] > 0) & (feat["bb_position"] < -0.5)).astype(int)
+
     # ── 6. Targets (LÄCKER EJ – shift bakåt) ─────────────────────────────────
     fwd = config.FORWARD_WEEKS
     fwd_ret = c.shift(-fwd) / c - 1                               # framåtavkastning
@@ -179,6 +198,7 @@ def add_cross_sectional(all_features: Dict[str, pd.DataFrame]) -> Dict[str, pd.D
     universe_mean_4  = roc_4.mean(axis=1)
     universe_mean_26 = roc_26.mean(axis=1)
     dvol_rank = dvol.rank(axis=1, pct=True)   # 0=tunnast, 1=mest likvid i universumet just det datumet
+    rank_13   = roc_13.rank(axis=1, pct=True) # percentilrank på 13v-momentum, per datum
 
     for ticker, feat in all_features.items():
         feat["rs_4w"]   = feat["roc_4w"]  - universe_mean_4
@@ -187,6 +207,10 @@ def add_cross_sectional(all_features: Dict[str, pd.DataFrame]) -> Dict[str, pd.D
         feat["rank_4w"] = roc_4.rank(axis=1, pct=True)[ticker]
         feat["rank_26w"]= roc_26.rank(axis=1, pct=True)[ticker]
         feat["liquidity_rank"] = dvol_rank[ticker]
+        # Rank-rotation: hur aktiens relativa rank ändrats senaste 4v (per-aktie-
+        # analog till sektorns "Kapital in"). Positivt = klättrar i universumet,
+        # dvs. relativ styrka tilltar – ofta ett tidigt rotations-tecken.
+        feat["rank_change_4w"] = rank_13[ticker] - rank_13[ticker].shift(4)
 
     return all_features
 
@@ -275,8 +299,11 @@ FEATURE_COLS = [
     "obv_roc_4w", "obv_roc_13w", "ad_roc_4w",
     # Pris-nivå
     "high52_ratio", "low52_ratio", "price_vs_sma52",
+    # Tidiga entry-signaler (utbrott, acceleration, pullback)
+    "donchian_pos", "breakout_nw", "roc_accel_4w", "pullback",
     # Cross-sectional
     "rs_4w", "rs_13w", "rs_26w", "rank_4w", "rank_26w", "liquidity_rank",
+    "rank_change_4w",
     # Klassificering (ordinal-kodad, fast lista i config.py)
     "sector_code", "cap_tier_code",
 ]

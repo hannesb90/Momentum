@@ -33,6 +33,7 @@ from backtest.bootstrap import print_robustness_report, robustness_report
 from backtest.drift_monitor import attach_realized_outcomes, rolling_drift_report, print_drift_summary
 from backtest.regime import classify_regimes, regime_breakdown, print_regime_breakdown
 from backtest.sector_momentum import sector_momentum_snapshot, print_sector_momentum
+from backtest.threshold_opt import optimize_buy_threshold, print_threshold_search
 
 
 def parse_args():
@@ -61,6 +62,16 @@ def parse_args():
                    help="Min genomsnittlig omsättning/vecka (lokal valuta) för att tas med i universumet")
     p.add_argument("--n-trials",     type=int, default=1,
                    help="Antal testade strategier/parameterval, för Deflated Sharpe Ratio")
+    p.add_argument("--optimize-threshold", action=argparse.BooleanOptionalAction, default=True,
+                   help="Sök fram köptröskeln (prob_up-gräns) på dev-perioden och validera "
+                        "på holdouten, i stället för en fast gräns (default: på). "
+                        "Stäng av med --no-optimize-threshold.")
+    p.add_argument("--buy-threshold", type=float, default=None,
+                   help="Fast köptröskel för prob_up (åsidosätter sökningen). "
+                        "Default: config.BUY_THRESHOLD om sökning är av.")
+    p.add_argument("--threshold-objective", choices=["sharpe", "cagr", "calmar"],
+                   default=config.THRESHOLD_OBJECTIVE,
+                   help="Mål som maximeras när köptröskeln söks fram (default: sharpe)")
     p.add_argument("--ta-filter",    choices=["gate", "score"], default=None,
                    help="Valbart TA-bekräftelsefilter ovanpå modellsignalerna: "
                         "'gate' nollar köpsignaler som tekniska analysen inte bekräftar, "
@@ -197,6 +208,15 @@ def main():
             cmd.append("--skip-lstm")
         if args.ta_filter:
             cmd += ["--ta-filter", args.ta_filter, "--ta-strictness", args.ta_strictness]
+        # Köptröskel-inställningar måste följa med till predikt-processen, där
+        # signalerna (och därmed sökningen/tröskeln) faktiskt byggs.
+        cmd += ["--threshold-objective", args.threshold_objective]
+        if not args.optimize_threshold:
+            cmd.append("--no-optimize-threshold")
+        if args.buy_threshold is not None:
+            cmd += ["--buy-threshold", str(args.buy_threshold)]
+        if args.n_trials != 1:
+            cmd += ["--n-trials", str(args.n_trials)]
         result = subprocess.run(cmd)
         sys.exit(result.returncode)
 
@@ -237,14 +257,50 @@ def main():
     print("\nSTEG 5: Ensemble + positionssizing...")
     if args.ta_filter:
         print(f"  TA-filter: {args.ta_filter} (stränghet: {args.ta_strictness})")
-    ensemble   = MomentumEnsemble()
+    ensemble    = MomentumEnsemble()
+    lstm_preds  = lstm_preds_by_ticker if not args.skip_lstm else None
+    feature_dfs = {t: df.assign(ticker=t) for t, df in all_features.items()}
+
+    # ── 5.0 Data-driven köptröskel ───────────────────────────────────────────
+    # Sök fram prob_up-gränsen på dev-perioden (datum < holdout_start) och låt
+    # holdouten validera valet. Varje testad nivå deflaterar Deflated Sharpe
+    # Ratio, så n_trials höjs till antalet testade trösklar.
+    n_trials = args.n_trials
+    buy_threshold = args.buy_threshold
+    threshold_info = {"optimized": False, "objective": args.threshold_objective}
+    if args.optimize_threshold and args.buy_threshold is None:
+        print("\n  Söker köptröskel (in-sample/dev)...")
+        buy_threshold, grid_results = optimize_buy_threshold(
+            lgbm_preds_by_ticker, lstm_preds, feature_dfs, ensemble, data,
+            in_sample_end=holdout_start,
+            ta_filter=args.ta_filter, ta_strictness=args.ta_strictness,
+            objective=args.threshold_objective,
+        )
+        print_threshold_search(buy_threshold, grid_results, args.threshold_objective)
+        n_trials = max(n_trials, len(grid_results))
+        # JSON tål inte -inf (degenererade trösklar): byt mot None för frontend.
+        grid_json = [
+            {**r, "score": (None if r["score"] == float("-inf") else round(r["score"], 4))}
+            for r in grid_results
+        ]
+        threshold_info = {
+            "optimized": True,
+            "objective": args.threshold_objective,
+            "grid": grid_json,
+        }
+    if buy_threshold is None:
+        buy_threshold = config.BUY_THRESHOLD
+    threshold_info["buy_threshold"] = buy_threshold
+    print(f"  Köptröskel: prob_up > {buy_threshold:.2f}")
+
     signals_df = build_full_output(
         lgbm_preds_by_ticker,
-        lstm_preds_by_ticker if not args.skip_lstm else None,
-        {t: df.assign(ticker=t) for t, df in all_features.items()},
+        lstm_preds,
+        feature_dfs,
         ensemble,
         ta_filter=args.ta_filter,
         ta_strictness=args.ta_strictness,
+        buy_threshold=buy_threshold,
     )
 
     # Sektor per ticker – så frontend (portföljfliken) kan visa
@@ -277,8 +333,8 @@ def main():
         backtester.print_statistics(holdout_stats, title="HOLDOUT (frusen, aldrig sedd)")
 
     port_rets = results["portfolio_value"].pct_change().dropna()
-    print_robustness_report(port_rets, n_trials=args.n_trials)
-    robustness = robustness_report(port_rets, n_trials=args.n_trials)
+    print_robustness_report(port_rets, n_trials=n_trials)
+    robustness = robustness_report(port_rets, n_trials=n_trials)
 
     regimes = classify_regimes(data)
     breakdown = regime_breakdown(port_rets, regimes)
@@ -308,6 +364,7 @@ def main():
         "overall":       overall_stats,
         "dev":           dev_stats,
         "holdout":       holdout_stats,
+        "threshold":     threshold_info,
         "robustness":    robustness,
         "drift": None if latest_drift is None else {
             "auc":            float(latest_drift["auc"]),
