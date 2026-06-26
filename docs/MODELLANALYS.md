@@ -23,7 +23,7 @@ som medvetet väntar):
 | 2 | Benchmark / alfa / beta | ✅ `backtest/benchmark.py`, i stats.json + frontend (Backtest + Overview) |
 | 3 | Live track record | ✅ `backtest/paper_trader.py`, `/api/paper-ledger`, Overview-kort |
 | 5 | Purge/embargo i walk-forward | ✅ `walk_forward_splits(embargo_weeks=FORWARD_WEEKS)` |
-| 6 | Long-only / marknadsexponering | ✅ beta exponerad + tydligt kommunicerad (full long-short kvarstår som större projekt) |
+| 6 | Long-only / marknadsexponering | ✅ Long-only marknadsfilter (Faber/dual-momentum): skalar exponering mot kontanter i bear, aldrig blankning. Beta exponerad. |
 | 7 | Spread för småbolag | ✅ likviditetsberoende halv-spread i kostnadsmodellen |
 | 8 | DSR `trial_sr_std` | ✅ skattas empiriskt från tröskelsökningen |
 | 1 | Survivorship-fri data | ⏳ väntar (kräver betald datakälla) |

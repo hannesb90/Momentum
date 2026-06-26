@@ -40,15 +40,18 @@ class MomentumBacktester:
         initial_capital: float = config.INITIAL_CAPITAL,
         commission:      float = config.COMMISSION,
         slippage:        float = config.SLIPPAGE,
+        market_filter:   bool = True,
     ):
         self.signals     = signals_df
         self.prices      = price_data
         self.capital     = initial_capital
         self.commission  = commission
         self.slippage    = slippage
+        self.market_filter = market_filter
 
         self._portfolio: Dict[str, float] = {}   # {ticker: antal_aktier}
         self._results:   list = []
+        self._regimes = None     # lazy: klassificeras vid första run() om filter på
 
     # ── Kör backtest ──────────────────────────────────────────────────────────
 
@@ -59,6 +62,15 @@ class MomentumBacktester:
         dates = self.signals.index.unique().sort_values()
         cash  = self.capital
         peak  = self.capital
+
+        # Marknadsfilter: klassificera regimer en gång (causalt – SMA ser bara
+        # bakåt). Används för att skala bruttoexponering mot kontanter i björn.
+        if self.market_filter and self._regimes is None:
+            try:
+                from backtest.regime import classify_regimes
+                self._regimes = classify_regimes(self.prices)
+            except Exception:
+                self._regimes = pd.Series(dtype=object)   # kunde ej klassificera -> full exponering
 
         portfolio_values = []
 
@@ -89,6 +101,12 @@ class MomentumBacktester:
             if total_w > 1.0:
                 target_weights = {t: w / total_w for t, w in target_weights.items()}
 
+            # Marknadsfilter: skala ner exponering mot kontanter i svag marknad
+            # (long-only de-risking, aldrig blankning).
+            market_exp = self._market_exposure_factor(date)
+            if market_exp < 1.0:
+                target_weights = {t: w * market_exp for t, w in target_weights.items()}
+
             # De-leverage vid drawdown
             guard = self._drawdown_guard_factor(drawdown)
             if guard < 1.0:
@@ -103,6 +121,7 @@ class MomentumBacktester:
                 "cash":            cash,
                 "n_positions":     len(self._portfolio),
                 "drawdown_guard":  guard,
+                "market_exposure": market_exp,
             })
 
         results = pd.DataFrame(portfolio_values).set_index("Date")
@@ -110,6 +129,24 @@ class MomentumBacktester:
         return results
 
     # ── Risk management ──────────────────────────────────────────────────────
+
+    def _market_exposure_factor(self, date: pd.Timestamp) -> float:
+        """
+        Long-only marknadsfilter: returnerar en bruttoexponeringsfaktor (0..1)
+        utifrån marknadsregimen vid `date` (config.MARKET_FILTER_EXPOSURE).
+        bull -> full, sidledes -> nedskalad, bear -> mest kontanter. Resten
+        hamnar i kontanter (ingen blankning). Okänd/odefinierad regim eller
+        avstängt filter ger full exponering (1.0).
+        """
+        if not self.market_filter or self._regimes is None or len(self._regimes) == 0:
+            return 1.0
+        try:
+            regime = self._regimes.asof(date)   # senaste kända regim <= date
+        except Exception:
+            return 1.0
+        if regime is None or (isinstance(regime, float) and math.isnan(regime)):
+            return 1.0
+        return float(config.MARKET_FILTER_EXPOSURE.get(regime, 1.0))
 
     def _drawdown_guard_factor(self, drawdown: float) -> float:
         """
