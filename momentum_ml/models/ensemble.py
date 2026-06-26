@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
+from models.ta_filter import ta_confirmation
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -175,15 +176,26 @@ def build_full_output(
     lstm_preds_by_ticker: Optional[Dict[str, pd.DataFrame]],
     feature_dfs: Dict[str, pd.DataFrame],
     ensemble: MomentumEnsemble,
+    ta_filter: Optional[str] = None,
+    ta_strictness: str = config.TA_FILTER_STRICTNESS,
 ) -> pd.DataFrame:
     """
     Returnerar ett long-format DataFrame med alla outputs:
-      Date, ticker, prob_up, pred_signal, pred_return, position_size
+      Date, ticker, prob_up, pred_signal, pred_return, ta_score, position_size
 
     position_size tillämpar MIN_POSITION/MAX_POSITIONS/normalisering per datum
     (samma regler som build_portfolio_weights), så flera tickers med
     samtidiga köpsignaler konkurrerar om portföljutrymmet korrekt.
+
+    ta_filter: None (av), "gate" (hård grind – nollar köpsignaler som TA inte
+    bekräftar) eller "score" (mjuk viktning – skalar position_size med andelen
+    uppfyllda TA-villkor). ta_strictness väljer villkorsuppsättning, se
+    models/ta_filter.py. ta_score sparas alltid (1.0 när filtret är av) för
+    transparens.
     """
+    if ta_filter not in (None, "gate", "score"):
+        raise ValueError(f"Okänt ta_filter: {ta_filter!r}. Välj None, 'gate' eller 'score'.")
+
     rows = []
 
     for ticker, lgbm_pred in lgbm_preds_by_ticker.items():
@@ -199,15 +211,37 @@ def build_full_output(
             except Exception:
                 vol = 0.20
 
-            raw_kelly = kelly_position_size(row["prob_up"], row["pred_return"], vol)
+            raw_kelly  = kelly_position_size(row["prob_up"], row["pred_return"], vol)
+            pred_signal = int(row["pred_signal"])
+
+            # ── Valbart TA-bekräftelsefilter ─────────────────────────────────
+            ta_score = 1.0
+            if ta_filter is not None and pred_signal == 1:
+                try:
+                    ta_row = feat_df.loc[date]
+                    if isinstance(ta_row, pd.DataFrame):   # om datumet är duplicerat
+                        ta_row = ta_row.iloc[-1]
+                    passed, score = ta_confirmation(ta_row, ta_strictness)
+                except Exception:
+                    passed, score = False, 0.0   # saknad TA-data = ingen bekräftelse
+
+                if ta_filter == "gate":
+                    ta_score = 1.0 if passed else 0.0
+                    if not passed:
+                        pred_signal = 0          # hård grind: vetar signalen
+                        raw_kelly = 0.0
+                else:  # score: mjuk viktning av storleken
+                    ta_score = score
+                    raw_kelly *= score
 
             rows.append({
                 "Date":          date,
                 "ticker":        ticker,
                 "prob_up":       row["prob_up"],
-                "pred_signal":   int(row["pred_signal"]),
+                "pred_signal":   pred_signal,
                 "pred_return":   row["pred_return"],
-                "raw_kelly":     raw_kelly if row["pred_signal"] == 1 else 0.0,
+                "ta_score":      ta_score,
+                "raw_kelly":     raw_kelly if pred_signal == 1 else 0.0,
             })
 
     df = pd.DataFrame(rows).set_index("Date").sort_index()

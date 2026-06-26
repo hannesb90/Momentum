@@ -123,6 +123,20 @@ UNIVERSE_LIQUIDITY_LOOKBACK_WEEKS = 26         # fönster för det måttet
 # ── Corporate actions / datakvalitet ──────────────────────────────────────────
 SUSPICIOUS_JUMP_THRESHOLD = 0.60    # flagga veckoavkastning över denna magnitud
 
+# ── Teknisk-analys-filter (valbart, slås på med --ta-filter gate|score) ───────
+# Ett bekräftelselager ovanpå modellens köpsignaler, byggt på TA-features som
+# redan beräknas i feature_engineering.py (ingen extra datahämtning). Två lägen:
+#   gate  – hård grind: köpsignalen nollas om villkoren inte uppfylls
+#   score – mjuk viktning: position_size skalas med andelen uppfyllda villkor
+# Stränghet (--ta-strictness) väljer vilka villkor som krävs:
+#   loose    – bara pris > SMA52
+#   moderate – trend (ADX) + riktning upp + pris > SMA52   (default)
+#   strict   – alla ovan + nära 52v-högsta + ej överköpt
+TA_FILTER_STRICTNESS = "moderate"
+TA_FILTER_ADX_MIN    = 20.0   # minsta ADX för att räkna trenden som "riktig"
+TA_FILTER_HIGH52_MIN = 0.90   # high52_ratio: hur nära 52v-högsta (1.0 = vid högsta)
+TA_FILTER_BB_MAX     = 1.0    # bb_position-tak: över detta = för överköpt
+
 # ── Marknadsregimer ───────────────────────────────────────────────────────────
 REGIME_SMA_WEEKS = 26       # trend-proxy för bull/bear/sidledes-klassificering
 

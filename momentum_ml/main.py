@@ -58,6 +58,14 @@ def parse_args():
                    help="Min genomsnittlig omsättning/vecka (lokal valuta) för att tas med i universumet")
     p.add_argument("--n-trials",     type=int, default=1,
                    help="Antal testade strategier/parameterval, för Deflated Sharpe Ratio")
+    p.add_argument("--ta-filter",    choices=["gate", "score"], default=None,
+                   help="Valbart TA-bekräftelsefilter ovanpå modellsignalerna: "
+                        "'gate' nollar köpsignaler som tekniska analysen inte bekräftar, "
+                        "'score' skalar position_size med andelen uppfyllda TA-villkor. "
+                        "Default: av.")
+    p.add_argument("--ta-strictness", choices=["loose", "moderate", "strict"],
+                   default=config.TA_FILTER_STRICTNESS,
+                   help="Hur strikt TA-filtret är (default: moderate)")
     return p.parse_args()
 
 
@@ -179,6 +187,8 @@ def main():
         cmd = base_cmd + ["--predict-only"]
         if args.skip_lstm:
             cmd.append("--skip-lstm")
+        if args.ta_filter:
+            cmd += ["--ta-filter", args.ta_filter, "--ta-strictness", args.ta_strictness]
         result = subprocess.run(cmd)
         sys.exit(result.returncode)
 
@@ -217,12 +227,16 @@ def main():
 
     # ── 5. Ensemble + full output ─────────────────────────────────────────────
     print("\nSTEG 5: Ensemble + positionssizing...")
+    if args.ta_filter:
+        print(f"  TA-filter: {args.ta_filter} (stränghet: {args.ta_strictness})")
     ensemble   = MomentumEnsemble()
     signals_df = build_full_output(
         lgbm_preds_by_ticker,
         lstm_preds_by_ticker if not args.skip_lstm else None,
         {t: df.assign(ticker=t) for t, df in all_features.items()},
         ensemble,
+        ta_filter=args.ta_filter,
+        ta_strictness=args.ta_strictness,
     )
 
     signals_df.to_csv(f"{config.RESULTS_DIR}/signals.csv")
