@@ -228,8 +228,11 @@ code {
   top: 22px;
   left: 50%;
   transform: translateX(-50%);
-  width: 250px;
-  max-width: calc(100vw - 40px);
+  width: 290px;
+  max-width: calc(100vw - 32px);
+  max-height: min(360px, 70vh);
+  display: flex;
+  flex-direction: column;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -245,9 +248,15 @@ code {
 }
 
 .info-popover__title {
+  flex-shrink: 0;
   font-weight: 700;
   margin-bottom: 4px;
   color: #fff;
+}
+
+.info-popover__body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .info-popover__body p {
