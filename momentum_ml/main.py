@@ -29,6 +29,7 @@ from backtest.backtester import MomentumBacktester
 from backtest.bootstrap import print_robustness_report, robustness_report
 from backtest.drift_monitor import attach_realized_outcomes, rolling_drift_report, print_drift_summary
 from backtest.regime import classify_regimes, regime_breakdown, print_regime_breakdown
+from backtest.sector_momentum import sector_momentum_snapshot, print_sector_momentum
 
 
 def parse_args():
@@ -208,6 +209,12 @@ def main():
     else:
         print("\nSTEG 4: LSTM hoppas över.")
 
+    # ── 4.5 Sektor-momentum ───────────────────────────────────────────────────
+    print("\nSTEG 4.5: Sektor-momentum...")
+    sector_df = sector_momentum_snapshot(all_features)
+    print_sector_momentum(sector_df)
+    sector_df.to_csv(f"{config.RESULTS_DIR}/sector_momentum.csv", index=False)
+
     # ── 5. Ensemble + full output ─────────────────────────────────────────────
     print("\nSTEG 5: Ensemble + positionssizing...")
     ensemble   = MomentumEnsemble()
@@ -283,6 +290,7 @@ def main():
             "n_flagged":      int(drift_valid["flag"].sum()),
             "n_periods":      len(drift_valid),
         },
+        "sector_momentum": sector_df.head(5).to_dict(orient="records"),
     }
     with open(f"{config.RESULTS_DIR}/stats.json", "w") as f:
         json.dump(summary, f, indent=2, default=str)
