@@ -302,7 +302,7 @@ def main():
     latest_drift = drift_valid.iloc[-1] if not drift_valid.empty else None
 
     summary = {
-        "generated_at":  pd.Timestamp.utcnow().isoformat(),
+        "generated_at":  pd.Timestamp.now("UTC").isoformat(),
         "tickers":       tickers,
         "period":        {"start": args.start, "end": args.end},
         "overall":       overall_stats,
