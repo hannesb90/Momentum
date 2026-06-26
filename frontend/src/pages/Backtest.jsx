@@ -76,9 +76,15 @@ export function BacktestPage() {
     return portfolio.data.map((row) => ({
       date: row.date,
       value: row.portfolio_value,
+      benchmark: row.benchmark_value ?? null,
       drawdown: row.drawdown * 100,
     }))
   }, [portfolio.data])
+
+  const hasBenchmark = useMemo(
+    () => chartData.some((d) => d.benchmark != null),
+    [chartData],
+  )
 
   if (portfolio.loading || stats.loading) return <Loading />
   if (portfolio.error) return <ErrorBlock error={portfolio.error} />
@@ -93,13 +99,18 @@ export function BacktestPage() {
 
       <div className="chart-card">
         <h3>
-          Portföljvärde
-          <InfoButton title="Portföljvärde">
+          Portföljvärde {hasBenchmark && <span className="chart-legend">— blå: strategi · grå: index (köp-och-behåll)</span>}
+          <InfoButton title="Portföljvärde vs benchmark">
             <p>
-              Hur en tänkt portfölj skulle ha utvecklats över tid om man följt modellens
-              köp/sälj-signaler historiskt, med start på en fast summa.
+              Blå linje: hur en tänkt portfölj skulle ha utvecklats om man följt modellens
+              köp/sälj-signaler historiskt. Grå linje: ett passivt likaviktat köp-och-behåll av
+              samma universum.
             </p>
-            <p>Detta är en backtest, inte dina egna pengar – se fliken Portfölj för dina innehav.</p>
+            <p>
+              Om den blå inte ligger över den grå tillför strategin inget jämfört med att bara äga
+              allt – det är själva testet på om modellen har en edge. Detta är en backtest, inte
+              dina egna pengar.
+            </p>
           </InfoButton>
         </h3>
         <ResponsiveContainer width="100%" height={280}>
@@ -110,8 +121,14 @@ export function BacktestPage() {
             <Tooltip
               contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }}
               labelFormatter={fmtDate}
-              formatter={(v) => [`${Number(v).toLocaleString('sv-SE')} SEK`, 'Portföljvärde']}
+              formatter={(v, name) => [
+                `${Number(v).toLocaleString('sv-SE')} SEK`,
+                name === 'benchmark' ? 'Index (köp-och-behåll)' : 'Strategi',
+              ]}
             />
+            {hasBenchmark && (
+              <Line type="monotone" dataKey="benchmark" stroke="#64748b" dot={false} strokeWidth={1.5} strokeDasharray="4 4" />
+            )}
             <Line type="monotone" dataKey="value" stroke="#2196F3" dot={false} strokeWidth={1.5} />
           </ComposedChart>
         </ResponsiveContainer>
@@ -139,6 +156,48 @@ export function BacktestPage() {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+
+      {stats.data.benchmark && (
+        <div className="stats-block">
+          <h3>
+            Strategi vs index
+            <InfoButton title="Strategi vs index (alfa/beta)">
+              <p>
+                Jämför strategin mot ett passivt likaviktat köp-och-behåll av samma universum.
+                Alfa = strategins årsavkastning minus indexets. Positiv alfa = strategin tillför
+                värde; negativ = du hade tjänat mer på att bara äga allt.
+              </p>
+              <p>
+                Beta = hur mycket strategin följer marknaden. Eftersom strategin är long-only bär
+                den marknadsrisk – en beta nära 1 betyder att den i stort sett rör sig med index.
+              </p>
+            </InfoButton>
+          </h3>
+          <div className="stat-grid">
+            <StatCard
+              label="Alfa (vs index)"
+              value={`${stats.data.benchmark.alpha_cagr >= 0 ? '+' : ''}${(stats.data.benchmark.alpha_cagr * 100).toFixed(1)}%`}
+              tone={stats.data.benchmark.alpha_cagr >= 0 ? 'good' : 'bad'}
+              info="Strategins CAGR minus indexets CAGR. Detta är kärnfrågan: tillför modellen något jämfört med att passivt äga hela universumet? Negativt = nej."
+            />
+            <StatCard
+              label="Beta (marknad)"
+              value={Number.isFinite(stats.data.benchmark.beta) ? stats.data.benchmark.beta.toFixed(2) : '–'}
+              info="Marknadskänslighet. ~1 = rör sig med index, <1 = mindre svängigt än marknaden, >1 = mer. Long-only momentum har typiskt positiv beta och bär alltså marknadsrisk."
+            />
+            <StatCard
+              label="Index CAGR"
+              value={stats.data.benchmark.overall.CAGR}
+              info={`Årlig avkastning för jämförelsen: ${stats.data.benchmark.label}.`}
+            />
+            <StatCard
+              label="Index Sharpe"
+              value={stats.data.benchmark.overall.Sharpe}
+              info="Indexets riskjusterade avkastning – jämför med strategins Sharpe ovan."
+            />
+          </div>
+        </div>
+      )}
 
       <div className="filter-bar filter-bar--secondary">
         <span className="filter-bar__label">Period:</span>

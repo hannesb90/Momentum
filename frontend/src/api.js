@@ -19,4 +19,5 @@ export const api = {
   drift: (limit = 260) => getJson(`/drift?limit=${limit}`),
   regime: () => getJson('/regime'),
   sectorMomentum: () => getJson('/sector-momentum'),
+  paperLedger: (limit = 520) => getJson(`/paper-ledger?limit=${limit}`),
 }

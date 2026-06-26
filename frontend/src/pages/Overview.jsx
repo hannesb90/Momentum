@@ -6,6 +6,7 @@ import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { SignalBadge } from '../components/SignalBadge'
 import { InfoButton } from '../components/InfoButton'
+import { LiveTrackRecord } from '../components/LiveTrackRecord'
 import { fmtPct, fmtSek, fmtNum } from '../format'
 
 export function OverviewPage() {
@@ -60,6 +61,25 @@ export function OverviewPage() {
             {stats.data.period.start} → {stats.data.period.end ?? 'idag'}
           </span>
         </div>
+        {stats.data.benchmark && (
+          <div className="hero__bench">
+            Index (köp-och-behåll): {stats.data.benchmark.overall.CAGR}/år ·{' '}
+            <span className={stats.data.benchmark.alpha_cagr >= 0 ? 'pos' : 'neg'}>
+              alfa {stats.data.benchmark.alpha_cagr >= 0 ? '+' : ''}
+              {(stats.data.benchmark.alpha_cagr * 100).toFixed(1)}%
+            </span>
+            <InfoButton title="Alfa mot index">
+              <p>
+                Jämför strategin mot ett passivt likaviktat köp-och-behåll av samma universum. Alfa
+                = strategins årsavkastning minus indexets.
+              </p>
+              <p>
+                Positiv alfa = strategin tillför värde. Negativ = du hade tjänat mer på att bara äga
+                allt. Se fliken Analys → Backtest för full jämförelse.
+              </p>
+            </InfoButton>
+          </div>
+        )}
         {series.length > 0 && (
           <div className="hero__spark">
             <ResponsiveContainer width="100%" height={64}>
@@ -144,6 +164,9 @@ export function OverviewPage() {
           <div className="tile__value">{overall['Win Rate'] ?? '–'}</div>
         </div>
       </div>
+
+      {/* Live track record (pappershandel) */}
+      <LiveTrackRecord />
 
       {/* Senaste köpsignaler */}
       <div className="section-head">
