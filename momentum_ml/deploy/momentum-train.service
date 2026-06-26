@@ -13,7 +13,12 @@ Environment=MOMENTUM_TRAINING_THREADS=3
 # Obuffrad stdout/stderr så journalctl visar utskrifter i rätt ordning/tid -
 # annars kan parent- och subprocess-utskrifter framstå som hopklumpade.
 Environment=PYTHONUNBUFFERED=1
-ExecStart=/opt/momentum/venv/bin/python main.py
+# Begränsat universum så körningen får plats i RAM på en 2GB-Pi. Hela
+# Sverige-listan (~656 tickers) + LSTM spränger minnet; Large/Mid Cap utan
+# LSTM är en säker nattlig baslinje. Utöka (fler market-cap-nivåer, ta bort
+# --skip-lstm) först efter att du sett i results/health.log att swap inte
+# skenar, eller byt till en Pi med mer RAM.
+ExecStart=/opt/momentum/venv/bin/python main.py --universe sweden --market-cap "Large Cap" "Mid Cap" --skip-lstm --ta-filter score
 
 # Låg prioritet så API:t/dashboarden inte blir lidande under träningen.
 Nice=15
