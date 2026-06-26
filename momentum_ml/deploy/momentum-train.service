@@ -19,8 +19,13 @@ ExecStart=/opt/momentum/venv/bin/python main.py
 Nice=15
 IOSchedulingClass=idle
 CPUWeight=20
-# Hård gräns ifall datasetet växer mer än väntat (justera om du ser OOM-kills).
-MemoryMax=2G
+# Hård minnesgräns. MÅSTE vara LÄGRE än fysiskt RAM (2GB-Pi har ~1.8Gi
+# tillgängligt) – annars dödar kärnan hela systemet (hård omstart) istället
+# för att bara döda träningsprocessen när minnet tar slut. 1.4G lämnar
+# headroom åt OS + API. Sänk vid OOM-kills, men minska hellre arbetsmängden
+# (--market-cap eller --skip-lstm) så taket inte ens nås.
+MemoryMax=1400M
+MemorySwapMax=512M
 
 # Tidsgräns som extra säkerhetsnät mot en hängande körning (justera vid behov).
 TimeoutStartSec=4h
