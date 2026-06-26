@@ -2,6 +2,9 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  BarChart,
+  Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -40,12 +43,90 @@ export function RobustnessPage() {
   const { robustness, drift: driftSummary } = stats.data
   const boot = robustness.bootstrap
 
+  // Köptröskel (data-driven). Saknas i äldre stats.json – rendera bara om den finns.
+  const threshold = stats.data.threshold
+  const OBJ_LABEL = { sharpe: 'Sharpe', cagr: 'CAGR', calmar: 'Calmar' }
+  const gridData = (threshold?.grid ?? []).map((g) => ({
+    threshold: Number(g.threshold).toFixed(2),
+    score: g.score,
+    invested: Math.round((g.invested ?? 0) * 100),
+    chosen: Number(g.threshold) === Number(threshold?.buy_threshold),
+  }))
+
   return (
     <section>
       <h1>Robusthet & modell-drift</h1>
       <p className="page-subtitle">
         Block bootstrap-konfidensintervall, Probabilistic/Deflated Sharpe Ratio och rullande AUC mot realiserade utfall.
       </p>
+
+      {threshold && (
+        <div className="chart-card">
+          <h3>
+            Köptröskel (data-driven)
+            <InfoButton title="Köptröskel (data-driven)">
+              <p>
+                Modellen köper en aktie när dess P(upp) överstiger en tröskel. I stället för en
+                fast gräns söks den fram på dev-perioden (in-sample) och valideras på den frusna
+                holdouten – som aldrig används i sökningen.
+              </p>
+              <p>
+                Varje testad nivå räknas som ett "trial" och deflaterar Deflated Sharpe-måttet
+                ovan, så vi inte lurar oss själva genom att prova många gränser. En lägre tröskel
+                = portföljen är investerad oftare (mindre kontant-drag), men kan ta fler svaga
+                affärer.
+              </p>
+            </InfoButton>
+          </h3>
+
+          <div className="stat-grid">
+            <StatCard
+              label="Vald köptröskel"
+              value={`P(upp) > ${(Number(threshold.buy_threshold) * 100).toFixed(0)}%`}
+              tone="good"
+              info="Den gräns för uppgångssannolikhet som måste passeras för att modellen ska ta en köpposition. Lägre gräns = oftare investerad."
+            />
+            <StatCard
+              label="Optimeringsmål"
+              value={threshold.optimized ? (OBJ_LABEL[threshold.objective] ?? threshold.objective) : 'Fast (ingen sökning)'}
+              info={threshold.optimized
+                ? 'Måttet som maximerades när tröskeln söktes fram på dev-perioden. Sharpe = riskjusterat (default), CAGR = rå avkastning, Calmar = avkastning per drawdown.'
+                : 'Tröskeln är fast inställd (--no-optimize-threshold eller --buy-threshold), ingen datadriven sökning gjordes.'}
+            />
+          </div>
+
+          {gridData.length > 0 && (
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={gridData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="threshold" stroke="#64748b" tick={{ fontSize: 12 }} />
+                  <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
+                    formatter={(v, name) =>
+                      name === 'score'
+                        ? [v == null ? '–' : Number(v).toFixed(3), `${OBJ_LABEL[threshold.objective] ?? threshold.objective}`]
+                        : [`${v}%`, 'Investerad']
+                    }
+                    labelFormatter={(t) => `Tröskel P(upp) > ${(Number(t) * 100).toFixed(0)}%`}
+                  />
+                  <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+                    {gridData.map((row) => (
+                      <Cell key={row.threshold} fill={row.chosen ? 'var(--accent)' : '#334155'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <p className="footnote">
+                Staplarna visar {OBJ_LABEL[threshold.objective] ?? threshold.objective} per testad
+                tröskel på dev-perioden. Den markerade (blå) stapeln är den valda nivån. Jämför med
+                holdout-statistiken nedan för att se om valet höll out-of-sample.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="stat-grid">
         <StatCard
