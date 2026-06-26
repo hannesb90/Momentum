@@ -7,7 +7,7 @@ Type=simple
 User=hannesb
 WorkingDirectory=/opt/momentum/momentum_ml
 Environment=PATH=/opt/momentum/venv/bin
-ExecStart=/opt/momentum/venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 8000
+ExecStart=/opt/momentum/venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 8001
 Restart=on-failure
 RestartSec=5
 
