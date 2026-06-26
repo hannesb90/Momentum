@@ -248,7 +248,9 @@ class MomentumLSTM:
         print(f"[LSTM] Modell sparad: {path}")
 
     def load(self, path: str = "results/lstm_model.pt") -> "MomentumLSTM":
-        ckpt = torch.load(path, map_location=self.device)
+        # weights_only=False: checkpointen innehåller en sklearn StandardScaler,
+        # inte bara tensorer. Filen är vår egen tränade modell, inte extern indata.
+        ckpt = torch.load(path, map_location=self.device, weights_only=False)
         self.net = MomentumLSTMNet().to(self.device)
         self.net.load_state_dict(ckpt["state_dict"])
         self.scaler = ckpt["scaler"]
