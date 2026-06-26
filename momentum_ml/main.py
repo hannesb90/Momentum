@@ -17,7 +17,7 @@ import pandas as pd
 from pathlib import Path
 
 import config
-from data.data_loader import fetch_weekly_data, build_universe_df
+from data.data_loader import fetch_weekly_data, build_universe_df, filter_liquid_universe
 from features.feature_engineering import build_all_features, to_model_df, FEATURE_COLS
 from models.lgbm_model import MomentumLGBM
 from models.lstm_model import MomentumLSTM
@@ -40,6 +40,10 @@ def parse_args():
     p.add_argument("--train-lstm-only", action="store_true",
                    help="(internt) Tränar bara LSTM i denna process")
     p.add_argument("--no-cache",     action="store_true", help="Hämta ny data (ignorera cache)")
+    p.add_argument("--no-liquidity-filter", action="store_true",
+                   help="Kör inte likviditetsfiltret (alla tickers med tillräcklig historik tas med)")
+    p.add_argument("--min-turnover", type=float, default=config.UNIVERSE_MIN_AVG_TURNOVER,
+                   help="Min genomsnittlig omsättning/vecka (lokal valuta) för att tas med i universumet")
     p.add_argument("--n-trials",     type=int, default=1,
                    help="Antal testade strategier/parameterval, för Deflated Sharpe Ratio")
     return p.parse_args()
@@ -66,6 +70,16 @@ def main():
         end=args.end,
         use_cache=not args.no_cache,
     )
+
+    # ── 1.5 Likviditetsfilter ─────────────────────────────────────────────────
+    if not args.no_liquidity_filter:
+        print("\nSTEG 1.5: Likviditetsfilter...")
+        data = filter_liquid_universe(data, min_avg_turnover=args.min_turnover)
+        if not data:
+            raise RuntimeError(
+                "Inga tickers kvar efter likviditetsfiltret – sänk "
+                "--min-turnover eller kör med --no-liquidity-filter."
+            )
 
     # ── 2. Features ───────────────────────────────────────────────────────────
     print("\nSTEG 2: Feature engineering...")
@@ -116,9 +130,12 @@ def main():
         # denna ARM-CPU. Varje steg får därför sin egen process; data-
         # cachen gör att steg 1-2 (hämtning/features) körs snabbt igen.
         base_cmd = [sys.executable, __file__,
-                    "--tickers", *args.tickers, "--start", args.start]
+                    "--tickers", *args.tickers, "--start", args.start,
+                    "--min-turnover", str(args.min_turnover)]
         if args.end:
             base_cmd += ["--end", args.end]
+        if args.no_liquidity_filter:
+            base_cmd += ["--no-liquidity-filter"]
 
         print("\n[Main] Tränar LightGBM i ny process...")
         result = subprocess.run(base_cmd + ["--train-lgbm-only"])

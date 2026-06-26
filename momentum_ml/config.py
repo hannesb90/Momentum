@@ -113,6 +113,13 @@ LIQUIDITY_MAX_ADV_FRACTION = 0.10   # max andel av ADV som handlas per vecka
 MARKET_IMPACT_COEF         = 0.10   # skala på sqrt(trade_value/ADV)-termen
 MARKET_IMPACT_MAX          = 0.05   # tak för impact-kostnad per trade (5%)
 
+# ── Universumfilter (förfilter innan feature engineering/träning) ────────────
+# Tunt handlade bolag drar ner datakvalitet och ökar beräkningstid utan att
+# tillföra mycket – filtreras bort innan resten av pipelinen körs. Tröskeln
+# är i lokal valuta (t.ex. SEK för .ST-tickers, USD för US-tickers).
+UNIVERSE_MIN_AVG_TURNOVER       = 1_000_000   # min genomsnittlig omsättning/vecka
+UNIVERSE_LIQUIDITY_LOOKBACK_WEEKS = 26         # fönster för det måttet
+
 # ── Corporate actions / datakvalitet ──────────────────────────────────────────
 SUSPICIOUS_JUMP_THRESHOLD = 0.60    # flagga veckoavkastning över denna magnitud
 

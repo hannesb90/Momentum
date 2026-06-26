@@ -134,6 +134,40 @@ def _clean(df: pd.DataFrame, ticker: str) -> Optional[pd.DataFrame]:
     return df
 
 
+def filter_liquid_universe(
+    data: Dict[str, pd.DataFrame],
+    min_avg_turnover: float = config.UNIVERSE_MIN_AVG_TURNOVER,
+    lookback_weeks: int = config.UNIVERSE_LIQUIDITY_LOOKBACK_WEEKS,
+) -> Dict[str, pd.DataFrame]:
+    """
+    Filtrerar bort tickers med för låg genomsnittlig omsättning
+    (Close * Volume) de senaste `lookback_weeks` veckorna. Tänkt att köras
+    innan feature engineering/träning vid stora universum (hundratals/
+    tusentals tickers), så att tunt handlade bolag inte drar ner
+    datakvalitet och beräkningstid i resten av pipelinen.
+    """
+    filtered: Dict[str, pd.DataFrame] = {}
+    dropped = []
+
+    for ticker, df in data.items():
+        recent = df.tail(lookback_weeks)
+        avg_turnover = (recent["Close"] * recent["Volume"]).mean()
+        if avg_turnover >= min_avg_turnover:
+            filtered[ticker] = df
+        else:
+            dropped.append((ticker, avg_turnover))
+
+    if dropped:
+        print(f"[DataLoader] Likviditetsfilter: {len(dropped)} tickers under "
+              f"tröskeln ({min_avg_turnover:,.0f}/vecka, {lookback_weeks}v snitt):")
+        for ticker, turnover in sorted(dropped, key=lambda x: x[1]):
+            print(f"  [LIQ] {ticker}: {turnover:,.0f}/vecka")
+
+    print(f"[DataLoader] Kvar efter likviditetsfilter: "
+          f"{len(filtered)}/{len(data)} tickers.")
+    return filtered
+
+
 def build_universe_df(data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     """
     Sätter ihop alla tickers till ett long-format DataFrame.
