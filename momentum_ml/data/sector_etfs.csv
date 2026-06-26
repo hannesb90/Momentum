@@ -1,0 +1,12 @@
+ticker,name,sector,market_cap_category,region
+XLK,Technology Select Sector SPDR Fund,Technology,Fond,US
+XLF,Financial Select Sector SPDR Fund,Financials,Fond,US
+XLV,Health Care Select Sector SPDR Fund,Health Care,Fond,US
+XLY,Consumer Discretionary Select Sector SPDR Fund,Consumer Discretionary,Fond,US
+XLP,Consumer Staples Select Sector SPDR Fund,Consumer Staples,Fond,US
+XLE,Energy Select Sector SPDR Fund,Energy,Fond,US
+XLI,Industrial Select Sector SPDR Fund,Industrials,Fond,US
+XLB,Materials Select Sector SPDR Fund,Materials,Fond,US
+XLU,Utilities Select Sector SPDR Fund,Utilities,Fond,US
+XLRE,Real Estate Select Sector SPDR Fund,Real Estate,Fond,US
+XLC,Communication Services Select Sector SPDR Fund,Communication Services,Fond,US

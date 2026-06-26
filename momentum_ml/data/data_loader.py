@@ -137,6 +137,7 @@ def _clean(df: pd.DataFrame, ticker: str) -> Optional[pd.DataFrame]:
 def load_sweden_universe(
     min_market_cap: Optional[List[str]] = None,
     include_funds: bool = True,
+    include_sector_etfs: bool = True,
 ) -> "tuple[List[str], Dict[str, str]]":
     """
     Läser det förbyggda universumet av svenska börsbolag
@@ -145,17 +146,21 @@ def load_sweden_universe(
 
     min_market_cap: t.ex. ["Large Cap", "Mid Cap"] för att bara ta med
     de kategorierna. None = alla (inklusive Nano/Micro Cap). Gäller bara
-    aktier - fonder/ETF:er (se nedan) tas alltid med om include_funds=True.
+    aktier - fonder/ETF:er (se nedan) tas alltid med oavsett.
 
     include_funds: lägger till data/sweden_funds.csv – breda svenska
     index-/stilfonder som handlas på börsen (XACT Sverige, OMXS30, Norden,
-    Småbolag, High Dividend). OBS: riktiga sektor-ETF:er (motsvarande t.ex.
-    USA:s XLK/XLF/XLE) finns inte på den svenska börsen - bara breda
-    index-/stilfonder. Hävstångsprodukter (XACT Bear/Bull) och
+    Småbolag, High Dividend). Hävstångsprodukter (XACT Bear/Bull) och
     obligationsfonder är medvetet exkluderade: bear/bull har daglig
     ombalansering som ger decay över tid och är olämpliga för
     medelfristig momentum, och obligationsfonder är en annan
     tillgångsklass än aktiemomentum-strategin är byggd för.
+
+    include_sector_etfs: lägger till data/sector_etfs.csv – riktiga
+    GICS-sektor-ETF:er finns inte på den svenska börsen (bara breda
+    index-/stilfonder, se ovan), så dessa är amerikanska SPDR-sektorfonder
+    (XLK/XLF/XLE m.fl.) som ger sektor-momentum-signaler trots att
+    aktieuniverset i övrigt är begränsat till Sverige.
 
     Returnerar (tickers, sector_map) – sector_map kan slås ihop med
     config.SECTOR_MAP för att sektorexponeringsspärren ska fungera även
@@ -177,6 +182,13 @@ def load_sweden_universe(
     if include_funds:
         funds_path = Path(__file__).parent / "sweden_funds.csv"
         with open(funds_path, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                tickers.append(row["ticker"])
+                sector_map[row["ticker"]] = row["sector"]
+
+    if include_sector_etfs:
+        etf_path = Path(__file__).parent / "sector_etfs.csv"
+        with open(etf_path, encoding="utf-8") as f:
             for row in csv.DictReader(f):
                 tickers.append(row["ticker"])
                 sector_map[row["ticker"]] = row["sector"]
