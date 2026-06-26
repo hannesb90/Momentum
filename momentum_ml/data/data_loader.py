@@ -134,6 +134,36 @@ def _clean(df: pd.DataFrame, ticker: str) -> Optional[pd.DataFrame]:
     return df
 
 
+def load_sweden_universe(
+    min_market_cap: Optional[List[str]] = None,
+) -> "tuple[List[str], Dict[str, str]]":
+    """
+    Läser det förbyggda universumet av svenska börsbolag
+    (data/sweden_universe.csv, källa: JerBouma/FinanceDatabase STO.csv,
+    filtrerat till icke-avnoterade aktier med country=Sweden).
+
+    min_market_cap: t.ex. ["Large Cap", "Mid Cap"] för att bara ta med
+    de kategorierna. None = alla (inklusive Nano/Micro Cap).
+
+    Returnerar (tickers, sector_map) – sector_map kan slås ihop med
+    config.SECTOR_MAP för att sektorexponeringsspärren ska fungera även
+    för dessa tickers.
+    """
+    path = Path(__file__).parent / "sweden_universe.csv"
+    tickers: List[str] = []
+    sector_map: Dict[str, str] = {}
+
+    with open(path, encoding="utf-8") as f:
+        import csv
+        for row in csv.DictReader(f):
+            if min_market_cap is not None and row["market_cap_category"] not in min_market_cap:
+                continue
+            tickers.append(row["ticker"])
+            sector_map[row["ticker"]] = row["sector"]
+
+    return tickers, sector_map
+
+
 def filter_liquid_universe(
     data: Dict[str, pd.DataFrame],
     min_avg_turnover: float = config.UNIVERSE_MIN_AVG_TURNOVER,
