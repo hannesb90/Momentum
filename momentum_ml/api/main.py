@@ -102,3 +102,10 @@ def get_regime_breakdown():
     path = _require(RESULTS_DIR / "regime_breakdown.csv")
     df = pd.read_csv(path, index_col=0).reset_index()
     return df.to_dict(orient="records")
+
+
+@app.get("/api/sector-momentum")
+def get_sector_momentum():
+    path = _require(RESULTS_DIR / "sector_momentum.csv")
+    df = pd.read_csv(path)
+    return df.to_dict(orient="records")

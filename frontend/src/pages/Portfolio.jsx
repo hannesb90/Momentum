@@ -1,0 +1,162 @@
+import { useMemo, useState } from 'react'
+import { api } from '../api'
+import { useApiData } from '../useApiData'
+import { usePortfolio } from '../usePortfolio'
+import { Loading, ErrorBlock } from '../components/StatusBlock'
+import { SegmentedControl } from '../components/SegmentedControl'
+import { SignalBadge } from '../components/SignalBadge'
+import { holdingSignal } from '../signalLogic'
+import { EmptyState } from '../components/EmptyState'
+import { fmtPct } from '../format'
+
+const STATUS_FILTERS = [
+  { value: 'all', label: 'Alla' },
+  { value: 'action', label: 'Åtgärd' },
+  { value: 'sell', label: 'Sälj' },
+  { value: 'unknown', label: 'Utan data' },
+]
+
+export function PortfolioPage() {
+  const { holdings, addHolding, removeHolding } = usePortfolio()
+  const signals = useApiData(() => api.latestSignals(), [])
+  const [ticker, setTicker] = useState('')
+  const [shares, setShares] = useState('')
+  const [filter, setFilter] = useState('all')
+
+  const sigByTicker = useMemo(() => {
+    const map = {}
+    for (const s of signals.data ?? []) map[s.ticker.toUpperCase()] = s
+    return map
+  }, [signals.data])
+
+  const enriched = useMemo(() => {
+    return holdings.map((h) => {
+      const sig = sigByTicker[h.ticker.toUpperCase()] ?? null
+      return { ...h, sig, variant: holdingSignal(true, sig) }
+    })
+  }, [holdings, sigByTicker])
+
+  const rows = useMemo(() => {
+    if (filter === 'all') return enriched
+    if (filter === 'sell') return enriched.filter((h) => h.variant === 'sell')
+    if (filter === 'unknown') return enriched.filter((h) => h.variant === 'unknown')
+    if (filter === 'action') return enriched.filter((h) => h.variant === 'sell' || h.variant === 'buy')
+    return enriched
+  }, [enriched, filter])
+
+  function onSubmit(e) {
+    e.preventDefault()
+    if (!ticker.trim()) return
+    addHolding({
+      ticker,
+      shares: shares ? Number(shares) : null,
+    })
+    setTicker('')
+    setShares('')
+  }
+
+  const sellCount = enriched.filter((h) => h.variant === 'sell').length
+  const holdCount = enriched.filter((h) => h.variant === 'hold').length
+
+  return (
+    <section className="page">
+      <div className="page-head">
+        <h1>Min portfölj</h1>
+        <p className="page-subtitle">
+          Följ modellens köp/sälj-signal på dina egna innehav. Sparas lokalt på den här enheten.
+        </p>
+      </div>
+
+      {signals.error && <ErrorBlock error={signals.error} />}
+
+      {/* Lägg till innehav */}
+      <form className="add-form" onSubmit={onSubmit}>
+        <input
+          className="search-input"
+          placeholder="Ticker (t.ex. VOLV-B.ST)"
+          value={ticker}
+          onChange={(e) => setTicker(e.target.value)}
+          aria-label="Ticker"
+        />
+        <input
+          className="search-input search-input--narrow"
+          placeholder="Antal"
+          type="number"
+          min="0"
+          step="any"
+          value={shares}
+          onChange={(e) => setShares(e.target.value)}
+          aria-label="Antal aktier"
+        />
+        <button type="submit" className="btn btn--primary">Lägg till</button>
+      </form>
+
+      {holdings.length === 0 ? (
+        <EmptyState
+          title="Inga innehav ännu"
+          hint="Lägg till dina aktier ovan så matchar vi dem mot modellens senaste signaler."
+        />
+      ) : (
+        <>
+          {/* Sammanfattning */}
+          <div className="tile-grid">
+            <div className="tile">
+              <div className="tile__label">Innehav</div>
+              <div className="tile__value">{holdings.length}</div>
+            </div>
+            <div className="tile">
+              <div className="tile__label">Behåll</div>
+              <div className="tile__value tile__value--good">{holdCount}</div>
+            </div>
+            <div className="tile">
+              <div className="tile__label">Sälj-signal</div>
+              <div className="tile__value tile__value--bad">{sellCount}</div>
+            </div>
+          </div>
+
+          <div className="filter-bar">
+            <SegmentedControl options={STATUS_FILTERS} value={filter} onChange={setFilter} size="sm" />
+          </div>
+
+          {signals.loading ? (
+            <Loading />
+          ) : rows.length === 0 ? (
+            <EmptyState title="Inga innehav matchar filtret" />
+          ) : (
+            <div className="list-card">
+              {rows.map((h) => (
+                <div key={h.ticker} className="holding-row">
+                  <div className="holding-row__main">
+                    <span className="list-row__ticker">{h.ticker}</span>
+                    <span className="list-row__sub">
+                      {h.shares ? `${h.shares} st · ` : ''}
+                      {h.sig ? `P(upp) ${fmtPct(h.sig.prob_up)}` : 'ingen modelltäckning'}
+                    </span>
+                  </div>
+                  <div className="holding-row__side">
+                    {h.sig && <span className="list-row__num">{fmtPct(h.sig.pred_return)}</span>}
+                    <SignalBadge variant={h.variant} />
+                    <button
+                      className="icon-btn"
+                      onClick={() => removeHolding(h.ticker)}
+                      aria-label={`Ta bort ${h.ticker}`}
+                      title="Ta bort"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="footnote">
+            Signal per innehav: <strong>BEHÅLL</strong> = modellen har fortsatt köpsignal,{' '}
+            <strong>SÄLJ</strong> = köpsignalen har försvunnit, <strong>INGEN DATA</strong> = tickern
+            ingår inte i modellens universum.
+          </p>
+        </>
+      )}
+    </section>
+  )
+}

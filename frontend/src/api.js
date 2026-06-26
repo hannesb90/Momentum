@@ -18,4 +18,5 @@ export const api = {
   portfolio: (limit = 1000) => getJson(`/portfolio?limit=${limit}`),
   drift: (limit = 260) => getJson(`/drift?limit=${limit}`),
   regime: () => getJson('/regime'),
+  sectorMomentum: () => getJson('/sector-momentum'),
 }
