@@ -34,6 +34,8 @@ from backtest.drift_monitor import attach_realized_outcomes, rolling_drift_repor
 from backtest.regime import classify_regimes, regime_breakdown, print_regime_breakdown
 from backtest.sector_momentum import sector_momentum_snapshot, print_sector_momentum
 from backtest.threshold_opt import optimize_buy_threshold, print_threshold_search
+from backtest.benchmark import benchmark_report
+from backtest.paper_trader import PaperTrader
 
 
 def parse_args():
@@ -266,6 +268,7 @@ def main():
     # holdouten validera valet. Varje testad nivå deflaterar Deflated Sharpe
     # Ratio, så n_trials höjs till antalet testade trösklar.
     n_trials = args.n_trials
+    trial_sr_std = 1.0   # konservativ schablon tills vi kan skatta den empiriskt
     buy_threshold = args.buy_threshold
     threshold_info = {"optimized": False, "objective": args.threshold_objective}
     if args.optimize_threshold and args.buy_threshold is None:
@@ -278,6 +281,16 @@ def main():
         )
         print_threshold_search(buy_threshold, grid_results, args.threshold_objective)
         n_trials = max(n_trials, len(grid_results))
+        # Skatta trial_sr_std för DSR från de testade trösklarnas in-sample-
+        # Sharpe (objective='sharpe' ger annualiserad Sharpe per trial; dela med
+        # sqrt(52) för per-period-enhet som PSR/DSR använder). Empirisk spridning
+        # ger en korrekt kalibrerad Deflated Sharpe i stället för schablonen 1.0.
+        if args.threshold_objective == "sharpe":
+            import numpy as _np
+            finite = [r["score"] for r in grid_results
+                      if r["score"] not in (None, float("-inf")) and _np.isfinite(r["score"])]
+            if len(finite) >= 2:
+                trial_sr_std = max(float(_np.std(finite, ddof=1)) / _np.sqrt(52), 1e-6)
         # JSON tål inte -inf (degenererade trösklar): byt mot None för frontend.
         grid_json = [
             {**r, "score": (None if r["score"] == float("-inf") else round(r["score"], 4))}
@@ -333,8 +346,28 @@ def main():
         backtester.print_statistics(holdout_stats, title="HOLDOUT (frusen, aldrig sedd)")
 
     port_rets = results["portfolio_value"].pct_change().dropna()
-    print_robustness_report(port_rets, n_trials=n_trials)
-    robustness = robustness_report(port_rets, n_trials=n_trials)
+    print_robustness_report(port_rets, n_trials=n_trials, trial_sr_std=trial_sr_std)
+    robustness = robustness_report(port_rets, n_trials=n_trials, trial_sr_std=trial_sr_std)
+
+    # ── 6.5 Benchmark (alfa/beta mot passivt köp-och-behåll) ──────────────────
+    print("\nSTEG 6.5: Benchmark...")
+    bench = benchmark_report(results["portfolio_value"], data)
+    benchmark_summary = None
+    if bench is not None:
+        results["benchmark_value"] = bench["series"].reindex(results.index)
+        benchmark_summary = {
+            "label":        bench["label"],
+            "overall":      bench["overall"],
+            "alpha_cagr":   bench["alpha_cagr"],
+            "alpha_annual": bench["alpha_annual"],
+            "beta":         bench["beta"],
+        }
+        a = bench["alpha_cagr"]
+        print(f"  Benchmark CAGR: {bench['overall']['CAGR']}  |  "
+              f"Strategi-alfa: {a:+.1%}  |  beta: {bench['beta']:.2f}")
+        if a < 0:
+            print("  [VARNING] Negativ alfa: strategin slår inte ett passivt "
+                  "köp-och-behåll av universumet.")
 
     regimes = classify_regimes(data)
     breakdown = regime_breakdown(port_rets, regimes)
@@ -345,6 +378,28 @@ def main():
     results.to_csv(f"{config.RESULTS_DIR}/portfolio.csv")
     breakdown.to_csv(f"{config.RESULTS_DIR}/regime_breakdown.csv")
     print(f"\n  Resultat sparade i: {config.RESULTS_DIR}/")
+
+    # ── 6.6 Pappershandel (framåtblickande track record) ──────────────────────
+    # Stega pappersportföljen ett steg utifrån senaste live-signalerna. Bygger
+    # en tidsstämplad out-of-sample-historik som ackumuleras körning för körning.
+    try:
+        latest_date = signals_df.index.max()
+        latest_rows = signals_df.loc[[latest_date]] if latest_date is not None else None
+        if latest_rows is not None:
+            tw = {r["ticker"]: float(r["position_size"])
+                  for _, r in latest_rows.iterrows()
+                  if r.get("position_size", 0) and r["position_size"] > 0}
+            paper = PaperTrader()
+            row = paper.step(latest_date, tw, data)
+            if row:
+                print(f"\nSTEG 6.6: Pappershandel registrerad {row['date']}: "
+                      f"värde {row['paper_value']:,.0f} "
+                      f"({row['return_since_start']:+.1%} sedan start), "
+                      f"{row['n_positions']} positioner.")
+            else:
+                print("\nSTEG 6.6: Pappershandel – datumet redan registrerat, hoppar.")
+    except Exception as e:
+        print(f"\nSTEG 6.6: Pappershandel misslyckades (icke-kritiskt): {e}")
 
     # ── 7. Modell-drift ───────────────────────────────────────────────────────
     print("\nSTEG 7: Modell-drift...")
@@ -364,6 +419,7 @@ def main():
         "overall":       overall_stats,
         "dev":           dev_stats,
         "holdout":       holdout_stats,
+        "benchmark":     benchmark_summary,
         "threshold":     threshold_info,
         "robustness":    robustness,
         "drift": None if latest_drift is None else {

@@ -226,15 +226,28 @@ class MomentumBacktester:
             return math.copysign(max_trade, trade_value)
         return trade_value
 
+    def _half_spread(self, adv: Optional[float]) -> float:
+        """
+        Likviditetsberoende halv-spread (bid/ask). Fast courtage+slippage är
+        optimistiskt för tunt handlade bolag; här växer spreaden när ADV ligger
+        under SPREAD_ADV_REF (spread ~ sqrt(ref/adv)), klippt till [MIN, MAX].
+        Saknad ADV behandlas konservativt som den vidaste spreaden.
+        """
+        if adv is None or adv <= 0:
+            return config.SPREAD_MAX
+        spread = config.SPREAD_MIN * math.sqrt(config.SPREAD_ADV_REF / adv)
+        return float(min(max(spread, config.SPREAD_MIN), config.SPREAD_MAX))
+
     def _execution_cost_rate(self, ticker: str, date: pd.Timestamp, trade_value: float) -> float:
         """
         Total exekveringskostnad som andel av trade_value: courtage + slippage
-        + en sqrt-marknadsimpact-term (impact skalar med sqrt(trade/ADV), inte
-        linjärt – större ordrar kostar proportionellt mer per krona, men
-        konkavt eftersom orderboken fylls på över tid).
+        + likviditetsberoende halv-spread + en sqrt-marknadsimpact-term (impact
+        skalar med sqrt(trade/ADV), inte linjärt – större ordrar kostar
+        proportionellt mer per krona, men konkavt eftersom orderboken fylls på
+        över tid).
         """
-        base = self.commission + self.slippage
         adv = self._avg_dollar_volume(ticker, date)
+        base = self.commission + self.slippage + self._half_spread(adv)
         if adv is None or adv <= 0:
             return base
         impact = config.MARKET_IMPACT_COEF * math.sqrt(abs(trade_value) / adv)

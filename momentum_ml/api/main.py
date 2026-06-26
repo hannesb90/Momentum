@@ -109,3 +109,17 @@ def get_sector_momentum():
     path = _require(RESULTS_DIR / "sector_momentum.csv")
     df = pd.read_csv(path)
     return df.to_dict(orient="records")
+
+
+@app.get("/api/paper-ledger")
+def get_paper_ledger(limit: int = 520):
+    """
+    Framåtblickande pappershandels-historik (live track record). Returnerar
+    en tom lista om liggaren ännu inte börjat byggas (första körningarna) i
+    stället för 404 – frontend visar då ett 'ingen historik än'-tillstånd.
+    """
+    path = RESULTS_DIR / "paper_ledger.csv"
+    if not path.exists():
+        return []
+    df = pd.read_csv(path).tail(limit)
+    return df.to_dict(orient="records")

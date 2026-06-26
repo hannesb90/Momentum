@@ -31,13 +31,23 @@ def walk_forward_splits(
     train_weeks: int = config.TRAIN_WINDOW_WEEKS,
     val_weeks:   int = config.VAL_WINDOW_WEEKS,
     step_weeks:  int = config.TEST_STEP_WEEKS,
+    embargo_weeks: int = config.EMBARGO_WEEKS,
 ) -> List[Tuple[pd.DatetimeIndex, pd.DatetimeIndex, pd.DatetimeIndex]]:
     """
     Returnerar lista av (train_idx, val_idx, test_idx) som DatetimeIndex.
     Ingen framåtläckage – train slutar alltid innan val, val innan test.
+
+    Purge/embargo: targets är FORWARD_WEEKS framåtavkastning, så en observation
+    vid tid t bär ett label som beror på pris vid t+FORWARD_WEEKS. Utan gap
+    skulle de sista observationerna i train ha labels som sträcker sig in i
+    val-fönstret (och val in i test) – ett subtilt läckage som blåser upp
+    out-of-sample-måtten. Vi rensar (purgar) därför de sista `embargo_weeks`
+    observationerna ur train- respektive val-segmentet. Se López de Prado,
+    Advances in Financial Machine Learning (purged k-fold).
     """
     unique_dates = dates.unique().sort_values()
     n = len(unique_dates)
+    emb = max(int(embargo_weeks), 0)
     splits = []
 
     start = 0
@@ -46,8 +56,13 @@ def walk_forward_splits(
         val_end   = train_end + val_weeks
         test_end  = val_end + step_weeks
 
-        train_d = unique_dates[start:train_end]
-        val_d   = unique_dates[train_end:val_end]
+        # Purga slutet av train (labels läcker in i val) och slutet av val
+        # (labels läcker in i test). Behåll minst en observation i varje.
+        train_cut = max(train_end - emb, start + 1)
+        val_cut   = max(val_end - emb, train_end + 1)
+
+        train_d = unique_dates[start:train_cut]
+        val_d   = unique_dates[train_end:val_cut]
         test_d  = unique_dates[val_end:test_end]
 
         splits.append((train_d, val_d, test_d))
