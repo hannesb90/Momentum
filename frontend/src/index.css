@@ -267,6 +267,14 @@ code {
   margin-bottom: 0;
 }
 
+.chart-legend {
+  font-size: 0.7rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-muted);
+}
+
 /* ── Stat cards ──────────────────────────────────────────────────────── */
 
 .stat-grid {
@@ -475,6 +483,12 @@ h2 {
 .hero__period {
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+.hero__bench {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 6px;
 }
 
 .hero__spark {
