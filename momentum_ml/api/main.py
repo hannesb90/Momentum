@@ -111,6 +111,17 @@ def get_sector_momentum():
     return df.to_dict(orient="records")
 
 
+@app.get("/api/prices")
+def get_prices(ticker: str, limit: int = 260):
+    """Per-ticker prishistorik (close) för aktiedetaljvyns kursgraf."""
+    path = RESULTS_DIR / "prices.csv"
+    if not path.exists():
+        return []
+    df = pd.read_csv(path)
+    df = df[df["ticker"] == ticker].sort_values("date").tail(limit)
+    return df[["date", "close"]].to_dict(orient="records")
+
+
 @app.get("/api/paper-ledger")
 def get_paper_ledger(limit: int = 520):
     """

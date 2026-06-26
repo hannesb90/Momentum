@@ -342,6 +342,27 @@ def main():
     signals_df.to_csv(f"{config.RESULTS_DIR}/signals.csv")
     print(f"  Signals sparade: {config.RESULTS_DIR}/signals.csv")
 
+    # Per-ticker prishistorik (senaste ~260v) för aktiedetaljvyns kursgraf.
+    # Long-format date/ticker/close – kompakt men räcker för utvecklingskurva.
+    try:
+        price_frames = []
+        for ticker, df in data.items():
+            s = df["Close"].dropna().tail(260)
+            if s.empty:
+                continue
+            price_frames.append(pd.DataFrame({
+                "date": pd.to_datetime(s.index).date.astype(str),
+                "ticker": ticker,
+                "close": s.values.round(4),
+            }))
+        if price_frames:
+            pd.concat(price_frames, ignore_index=True).to_csv(
+                f"{config.RESULTS_DIR}/prices.csv", index=False)
+            print(f"  Prishistorik sparad: {config.RESULTS_DIR}/prices.csv "
+                  f"({len(price_frames)} tickers)")
+    except Exception as e:
+        print(f"  [WARN] Kunde inte spara prishistorik (icke-kritiskt): {e}")
+
     # Visa aktuella signaler (senaste veckan)
     latest = signals_df.groupby("ticker").last().reset_index()
     latest = latest.sort_values("prob_up", ascending=False)
@@ -458,6 +479,8 @@ def main():
         "generated_at":  pd.Timestamp.now("UTC").isoformat(),
         "tickers":       tickers,
         "period":        {"start": args.start, "end": args.end},
+        "horizon_weeks": config.FORWARD_WEEKS,
+        "last_signal_date": str(signals_df.index.max().date()) if len(signals_df) else None,
         "overall":       overall_stats,
         "dev":           dev_stats,
         "holdout":       holdout_stats,

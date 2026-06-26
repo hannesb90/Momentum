@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { useWatchlist } from '../useWatchlist'
@@ -127,7 +128,9 @@ export function WatchlistPage() {
               {sorted.map((h) => (
                 <div key={h.ticker} className="holding-row">
                   <div className="holding-row__main">
-                    <span className="list-row__ticker">{h.ticker}</span>
+                    <Link to={`/aktie/${encodeURIComponent(h.ticker)}`} className="list-row__ticker ticker-link">
+                      {h.ticker}
+                    </Link>
                     <span className="list-row__sub">
                       {h.sig ? `P(upp) ${fmtPct(h.sig.prob_up)}` : 'ingen modelltäckning'}
                     </span>

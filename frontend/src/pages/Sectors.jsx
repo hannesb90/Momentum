@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { SegmentedControl } from '../components/SegmentedControl'
+import { SignalBadge } from '../components/SignalBadge'
 import { EmptyState } from '../components/EmptyState'
 import { InfoButton } from '../components/InfoButton'
-import { fmtNum } from '../format'
+import { fmtNum, fmtPct } from '../format'
 
 const WINDOWS = [
   { value: 'composite_score', label: 'Sammanvägt' },
@@ -24,9 +26,25 @@ const FLOW_FILTERS = [
 
 export function SectorsPage() {
   const { data, error, loading } = useApiData(() => api.sectorMomentum(), [])
+  const signals = useApiData(() => api.latestSignals(), [])
   const [metric, setMetric] = useState('composite_score')
   const [query, setQuery] = useState('')
   const [flowFilter, setFlowFilter] = useState('all')
+  const [expanded, setExpanded] = useState(null)
+
+  // Bolag per sektor, härlett ur signaldatan (varje signal har en sektor).
+  // Låter användaren expandera en sektorrad och se vilka aktier som ingår.
+  const bySector = useMemo(() => {
+    const map = {}
+    for (const s of signals.data ?? []) {
+      const sec = s.sector ?? 'Okänd'
+      ;(map[sec] = map[sec] ?? []).push(s)
+    }
+    for (const sec of Object.keys(map)) {
+      map[sec].sort((a, b) => (Number(b.prob_up) || 0) - (Number(a.prob_up) || 0))
+    }
+    return map
+  }, [signals.data])
 
   const rows = useMemo(() => {
     if (!data) return []
@@ -155,29 +173,69 @@ export function SectorsPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, i) => (
-                  <tr key={row.sector}>
-                    <td>{i + 1}</td>
-                    <td className="ticker-cell">{row.sector}</td>
-                    <td>{row.etf_ticker ?? '–'}</td>
-                    <td>{row.n_stocks ?? '–'}</td>
-                    <td className={Number(row[metric]) >= 0 ? 'pos' : 'neg'}>{fmtNum(row[metric], 3)}</td>
-                    {hasFlow && (
-                      <td>
-                        <span className={`flow-chip flow-chip--${
-                          row.flow === 'Kapital in' ? 'in' : row.flow === 'Kapital ut' ? 'out' : 'flat'
-                        }`}>
-                          {row.flow === 'Kapital in' && '↑ '}
-                          {row.flow === 'Kapital ut' && '↓ '}
-                          {row.flow ?? 'Okänd'}
-                          {row.rank_change != null && row.rank_change !== 0
-                            ? ` (${row.rank_change > 0 ? '+' : ''}${row.rank_change})`
-                            : ''}
-                        </span>
-                      </td>
-                    )}
-                  </tr>
-                ))}
+                {rows.map((row, i) => {
+                  const open = expanded === row.sector
+                  const members = bySector[row.sector] ?? []
+                  const colSpan = hasFlow ? 6 : 5
+                  return (
+                    <Fragment key={row.sector}>
+                      <tr
+                        className="sector-row"
+                        onClick={() => setExpanded(open ? null : row.sector)}
+                      >
+                        <td>{i + 1}</td>
+                        <td className="ticker-cell">
+                          <span className={`sector-caret ${open ? 'sector-caret--open' : ''}`}>▸</span>
+                          {row.sector}
+                        </td>
+                        <td>{row.etf_ticker ?? '–'}</td>
+                        <td>{row.n_stocks ?? '–'}</td>
+                        <td className={Number(row[metric]) >= 0 ? 'pos' : 'neg'}>{fmtNum(row[metric], 3)}</td>
+                        {hasFlow && (
+                          <td>
+                            <span className={`flow-chip flow-chip--${
+                              row.flow === 'Kapital in' ? 'in' : row.flow === 'Kapital ut' ? 'out' : 'flat'
+                            }`}>
+                              {row.flow === 'Kapital in' && '↑ '}
+                              {row.flow === 'Kapital ut' && '↓ '}
+                              {row.flow ?? 'Okänd'}
+                              {row.rank_change != null && row.rank_change !== 0
+                                ? ` (${row.rank_change > 0 ? '+' : ''}${row.rank_change})`
+                                : ''}
+                            </span>
+                          </td>
+                        )}
+                      </tr>
+                      {open && (
+                        <tr className="sector-members-row">
+                          <td colSpan={colSpan}>
+                            {members.length === 0 ? (
+                              <div className="sector-members__empty">
+                                {signals.loading
+                                  ? 'Laddar bolag…'
+                                  : 'Inga bolag med signaler i den här sektorn just nu.'}
+                              </div>
+                            ) : (
+                              <div className="sector-members">
+                                {members.map((m) => (
+                                  <Link
+                                    key={m.ticker}
+                                    to={`/aktie/${encodeURIComponent(m.ticker)}`}
+                                    className="sector-member"
+                                  >
+                                    <span className="sector-member__ticker">{m.ticker}</span>
+                                    <span className="sector-member__prob">P(upp) {fmtPct(m.prob_up)}</span>
+                                    <SignalBadge variant={m.pred_signal === 1 ? 'buy' : 'flat'} />
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>

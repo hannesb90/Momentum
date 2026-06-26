@@ -20,4 +20,6 @@ export const api = {
   regime: () => getJson('/regime'),
   sectorMomentum: () => getJson('/sector-momentum'),
   paperLedger: (limit = 520) => getJson(`/paper-ledger?limit=${limit}`),
+  prices: (ticker, limit = 260) =>
+    getJson(`/prices?ticker=${encodeURIComponent(ticker)}&limit=${limit}`),
 }
