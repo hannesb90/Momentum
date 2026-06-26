@@ -1,0 +1,10 @@
+[Unit]
+Description=Kör momentum-health.service varje minut
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=1min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
