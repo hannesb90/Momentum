@@ -150,7 +150,7 @@ MARKET_IMPACT_MAX          = 0.05   # tak för impact-kostnad per trade (5%)
 # Tunt handlade bolag drar ner datakvalitet och ökar beräkningstid utan att
 # tillföra mycket – filtreras bort innan resten av pipelinen körs. Tröskeln
 # är i lokal valuta (t.ex. SEK för .ST-tickers, USD för US-tickers).
-UNIVERSE_MIN_AVG_TURNOVER       = 1_000_000   # min genomsnittlig omsättning/vecka
+UNIVERSE_MIN_AVG_TURNOVER       = 100_000     # min genomsnittlig omsättning/vecka
 UNIVERSE_LIQUIDITY_LOOKBACK_WEEKS = 26         # fönster för det måttet
 
 # ── Corporate actions / datakvalitet ──────────────────────────────────────────
