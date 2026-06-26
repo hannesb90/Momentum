@@ -5,6 +5,7 @@ import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { EmptyState } from '../components/EmptyState'
+import { InfoButton } from '../components/InfoButton'
 import { fmtNum } from '../format'
 
 const WINDOWS = [
@@ -56,7 +57,19 @@ export function SectorsPage() {
   return (
     <section className="page">
       <div className="page-head">
-        <h1>Sektorer</h1>
+        <h1>
+          Sektorer
+          <InfoButton title="Sektorer">
+            <p>
+              Visar vilka branscher/sektorer som har starkast momentum just nu, beräknat som
+              medianen av bolagens kursutveckling (ROC) i varje sektor.
+            </p>
+            <p>
+              Varje sektor är kopplad till en handelsbar ETF om du vill agera på sektornivå istället
+              för enskilda aktier.
+            </p>
+          </InfoButton>
+        </h1>
         <p className="page-subtitle">
           Momentum aggregerat per sektor (median av bolagens ROC), mappat mot handelsbar sektor-ETF.
           {hasFlow && ' Rotation visar hur sektorns rank förändrats de senaste 4 veckorna – en proxy för var relativ styrka flyttar, inte faktiska fondflöden.'}
@@ -88,7 +101,19 @@ export function SectorsPage() {
       ) : (
         <>
           <div className="chart-card">
-            <h3>Rankning · {windowOptions.find((w) => w.value === metric)?.label}</h3>
+            <h3>
+              Rankning · {windowOptions.find((w) => w.value === metric)?.label}
+              <InfoButton title="Rankningsdiagram">
+                <p>
+                  Staplarna visar sektorernas momentum-poäng för det valda måttet, sorterade från
+                  starkast till svagast. Grönt betyder positivt momentum, rött negativt.
+                </p>
+                <p>
+                  "Sammanvägt" kombinerar flera tidshorisonter (4/13/26/52 veckor) till en enda
+                  poäng, medan de andra måtten visar momentum över just den perioden.
+                </p>
+              </InfoButton>
+            </h3>
             <ResponsiveContainer width="100%" height={Math.max(220, chartData.length * 26)}>
               <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 16 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
@@ -116,7 +141,17 @@ export function SectorsPage() {
                   <th>ETF</th>
                   <th>Bolag</th>
                   <th>Värde</th>
-                  {hasFlow && <th>Rotation (4v)</th>}
+                  {hasFlow && (
+                    <th>
+                      Rotation (4v)
+                      <InfoButton title="Rotation (4v)">
+                        Hur sektorns rankning bland alla sektorer har förändrats de senaste 4
+                        veckorna. "Kapital in" betyder att sektorn klättrat i rank (relativ styrka
+                        ökar), "Kapital ut" att den fallit. Detta är en proxy baserad på rankförändring,
+                        inte faktiska fondflöden.
+                      </InfoButton>
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>

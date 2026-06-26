@@ -2,6 +2,7 @@ import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, 
 import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
+import { InfoButton } from '../components/InfoButton'
 
 const REGIME_LABELS = { bull: 'Bull', bear: 'Bear', sideways: 'Sidledes' }
 const REGIME_COLORS = { bull: '#4CAF50', bear: '#f44336', sideways: '#64748b' }
@@ -19,14 +20,35 @@ export function RegimesPage() {
 
   return (
     <section>
-      <h1>Marknadsregimer</h1>
+      <h1>
+        Marknadsregimer
+        <InfoButton title="Marknadsregimer">
+          <p>
+            Marknaden klassificeras löpande som "Bull" (uppåttrend), "Bear" (nedåttrend) eller
+            "Sidledes" baserat på det allmänna marknadsklimatet. Detta visar hur strategin presterat
+            i varje typ av regim.
+          </p>
+          <p>
+            Måtten är inte "path-dependent" – eftersom regimperioderna hoppar i tiden (diskontinuerliga)
+            går det inte att räkna en sammanhängande CAGR eller Max Drawdown för en regim, bara
+            genomsnitt och Sharpe per vecka inom regimen.
+          </p>
+        </InfoButton>
+      </h1>
       <p className="page-subtitle">
         Strategins prestanda nedbruten per bull/bear/sidledes-regim. OBS: inte path-dependent CAGR/Max
         Drawdown – regimperioderna är diskontinuerliga i tid.
       </p>
 
       <div className="chart-card">
-        <h3>Sharpe per regim</h3>
+        <h3>
+          Sharpe per regim
+          <InfoButton title="Sharpe per regim">
+            Visar strategins riskjusterade avkastning (Sharpe-kvot) separat för varje marknadsregim.
+            Det visar om strategin presterar bäst i uppåttrender, nedåttrender eller sidledes
+            marknader.
+          </InfoButton>
+        </h3>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -51,9 +73,20 @@ export function RegimesPage() {
             <tr>
               <th>Regim</th>
               <th>Veckor</th>
-              <th>Avg avkastning/v</th>
+              <th>
+                Avg avkastning/v
+                <InfoButton title="Avg avkastning/v">
+                  Genomsnittlig veckoavkastning för strategin under veckor klassificerade i denna
+                  regim.
+                </InfoButton>
+              </th>
               <th>Sharpe</th>
-              <th>Win Rate</th>
+              <th>
+                Win Rate
+                <InfoButton title="Win Rate">
+                  Andelen veckor inom regimen som hade positiv avkastning.
+                </InfoButton>
+              </th>
             </tr>
           </thead>
           <tbody>

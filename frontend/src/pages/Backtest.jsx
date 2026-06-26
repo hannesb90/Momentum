@@ -14,6 +14,7 @@ import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { StatCard } from '../components/StatCard'
 import { SegmentedControl } from '../components/SegmentedControl'
+import { InfoButton } from '../components/InfoButton'
 import { fmtDate } from '../format'
 
 const PERIODS = [
@@ -28,12 +29,38 @@ function StatsRow({ title, stats }) {
     <div className="stats-block">
       <h3>{title}</h3>
       <div className="stat-grid">
-        <StatCard label="Total avkastning" value={stats.total_return} />
-        <StatCard label="CAGR" value={stats.CAGR} />
-        <StatCard label="Sharpe" value={stats.Sharpe} tone={Number(stats.Sharpe) >= 1 ? 'good' : 'neutral'} />
-        <StatCard label="Sortino" value={stats.Sortino} />
-        <StatCard label="Max Drawdown" value={stats['Max Drawdown']} tone="bad" />
-        <StatCard label="Win Rate" value={stats['Win Rate']} />
+        <StatCard
+          label="Total avkastning"
+          value={stats.total_return}
+          info="Den totala procentuella förändringen av portföljvärdet från start till slut av perioden."
+        />
+        <StatCard
+          label="CAGR"
+          value={stats.CAGR}
+          info="Compound Annual Growth Rate – den genomsnittliga årliga tillväxttakten, som om avkastningen skett jämnt fördelat över åren."
+        />
+        <StatCard
+          label="Sharpe"
+          value={stats.Sharpe}
+          tone={Number(stats.Sharpe) >= 1 ? 'good' : 'neutral'}
+          info="Avkastning i förhållande till risk (volatilitet). Över 1 är bra, över 2 är mycket starkt."
+        />
+        <StatCard
+          label="Sortino"
+          value={stats.Sortino}
+          info="Liknar Sharpe men straffar bara nedåtrisk (förluster) – uppåtrörelser räknas inte som 'risk'. Ofta mer relevant än Sharpe för strategier med skev avkastningsfördelning."
+        />
+        <StatCard
+          label="Max Drawdown"
+          value={stats['Max Drawdown']}
+          tone="bad"
+          info="Den största nedgången från en topp till en efterföljande botten under perioden – det värsta scenariot man hade behövt stå ut med."
+        />
+        <StatCard
+          label="Win Rate"
+          value={stats['Win Rate']}
+          info="Andelen perioder/affärer med positiv avkastning. Säger inget om hur stora vinsterna respektive förlusterna var."
+        />
       </div>
     </div>
   )
@@ -65,7 +92,16 @@ export function BacktestPage() {
       </p>
 
       <div className="chart-card">
-        <h3>Portföljvärde</h3>
+        <h3>
+          Portföljvärde
+          <InfoButton title="Portföljvärde">
+            <p>
+              Hur en tänkt portfölj skulle ha utvecklats över tid om man följt modellens
+              köp/sälj-signaler historiskt, med start på en fast summa.
+            </p>
+            <p>Detta är en backtest, inte dina egna pengar – se fliken Portfölj för dina innehav.</p>
+          </InfoButton>
+        </h3>
         <ResponsiveContainer width="100%" height={280}>
           <ComposedChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -82,7 +118,13 @@ export function BacktestPage() {
       </div>
 
       <div className="chart-card">
-        <h3>Drawdown</h3>
+        <h3>
+          Drawdown
+          <InfoButton title="Drawdown">
+            Hur många procent portföljvärdet legat under sin senaste topp vid varje tidpunkt. Visar
+            hur djupa och långvariga nedgångarna varit under backtestperioden.
+          </InfoButton>
+        </h3>
         <ResponsiveContainer width="100%" height={160}>
           <ComposedChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />

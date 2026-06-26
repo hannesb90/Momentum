@@ -6,6 +6,7 @@ import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { SignalBadge } from '../components/SignalBadge'
 import { EmptyState } from '../components/EmptyState'
+import { InfoButton } from '../components/InfoButton'
 import { fmtPct } from '../format'
 
 const SIGNAL_FILTERS = [
@@ -48,7 +49,20 @@ export function SignalsPage() {
   return (
     <section className="page">
       <div className="page-head">
-        <h1>Signaler</h1>
+        <h1>
+          Signaler
+          <InfoButton title="Signaler">
+            <p>
+              Modellens senaste bedömning av varje bolag, uppdaterad vecka för vecka. En köpsignal
+              betyder att modellen bedömer sannolikheten för uppgång som tillräckligt hög för att
+              ta en position.
+            </p>
+            <p>
+              Detta är modellens rekommendationer, inte en garanti – använd informationen som ett
+              av flera beslutsunderlag.
+            </p>
+          </InfoButton>
+        </h1>
         <p className="page-subtitle">
           {data.length} bolag · {buyCount} köpsignaler denna vecka
         </p>
@@ -81,11 +95,43 @@ export function SignalsPage() {
             <thead>
               <tr>
                 <th>Ticker</th>
-                <th>P(upp)</th>
-                <th>Signal</th>
-                <th>Förv. avk.</th>
-                {hasTa && <th>TA</th>}
-                <th>Storlek</th>
+                <th>
+                  P(upp)
+                  <InfoButton title="P(upp)">
+                    Modellens beräknade sannolikhet att aktien stiger i värde under nästa period.
+                    Högre procent betyder att modellen är mer säker på en uppgång.
+                  </InfoButton>
+                </th>
+                <th>
+                  Signal
+                  <InfoButton title="Signal">
+                    Köp betyder att P(upp) och förväntad avkastning är höga nog för att modellen ska
+                    föreslå en position. Neutral betyder att aktien inte uppfyller kraven just nu.
+                  </InfoButton>
+                </th>
+                <th>
+                  Förv. avk.
+                  <InfoButton title="Förväntad avkastning">
+                    Modellens prognos för hur mycket aktien kommer förändras i pris under nästa
+                    period, baserat på historiska mönster och tekniska faktorer.
+                  </InfoButton>
+                </th>
+                {hasTa && (
+                  <th>
+                    TA
+                    <InfoButton title="TA-score">
+                      Ett kompletterande tekniskt analyspoäng (0–100%) som visar hur starkt aktiens
+                      pris-/volymmönster ser ut just nu, oberoende av modellens huvudprognos.
+                    </InfoButton>
+                  </th>
+                )}
+                <th>
+                  Storlek
+                  <InfoButton title="Positionsstorlek">
+                    Hur stor andel av portföljen modellen föreslår att placera i just denna aktie,
+                    baserat på signalstyrka och riskhantering (t.ex. begränsad sektorexponering).
+                  </InfoButton>
+                </th>
               </tr>
             </thead>
             <tbody>

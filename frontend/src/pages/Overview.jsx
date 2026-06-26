@@ -5,6 +5,7 @@ import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { SignalBadge } from '../components/SignalBadge'
+import { InfoButton } from '../components/InfoButton'
 import { fmtPct, fmtSek, fmtNum } from '../format'
 
 export function OverviewPage() {
@@ -37,7 +38,19 @@ export function OverviewPage() {
     <section className="page">
       {/* Hero – strategins backtestportfölj som "saldo" */}
       <div className={`hero ${positiveReturn ? 'hero--up' : 'hero--down'}`}>
-        <div className="hero__label">Strategins portfölj · backtest</div>
+        <div className="hero__label">
+          Strategins portfölj · backtest
+          <InfoButton title="Strategins portfölj · backtest">
+            <p>
+              Det här är INTE dina egna pengar – det är hur en tänkt portfölj skulle ha utvecklats om
+              man hade följt modellens köp/sälj-signaler historiskt, med start på en fast summa.
+            </p>
+            <p>
+              Syftet är att visa hur strategin presterat över tid innan du litar på den med riktiga
+              pengar. Se fliken Portfölj för dina egna, faktiska innehav.
+            </p>
+          </InfoButton>
+        </div>
         <div className="hero__value">{fmtSek(latestValue)}</div>
         <div className="hero__return">
           <span className={`hero__chip ${positiveReturn ? 'hero__chip--up' : 'hero__chip--down'}`}>
@@ -73,28 +86,77 @@ export function OverviewPage() {
       {/* Snabbstatistik */}
       <div className="tile-grid">
         <div className="tile">
-          <div className="tile__label">CAGR</div>
+          <div className="tile__label">
+            CAGR
+            <InfoButton title="CAGR">
+              <p>
+                Compound Annual Growth Rate – den genomsnittliga årliga tillväxttakten för
+                backtestportföljen, omräknad som om värdeökningen hade skett jämnt år för år.
+              </p>
+              <p>Ju högre, desto bättre – men jämför alltid med risken (se Sharpe och Max Drawdown).</p>
+            </InfoButton>
+          </div>
           <div className="tile__value">{overall.CAGR ?? '–'}</div>
         </div>
         <div className="tile">
-          <div className="tile__label">Sharpe</div>
+          <div className="tile__label">
+            Sharpe
+            <InfoButton title="Sharpe-kvot">
+              <p>
+                Mäter avkastning i förhållande till hur mycket portföljvärdet svänger (risken). Ett
+                högre tal betyder bättre avkastning per enhet risk som tagits.
+              </p>
+              <p>Som riktmärke: under 1 är svagt, 1–2 är bra, över 2 är mycket starkt.</p>
+            </InfoButton>
+          </div>
           <div className={`tile__value ${Number(overall.Sharpe) >= 1 ? 'tile__value--good' : ''}`}>
             {fmtNum(overall.Sharpe)}
           </div>
         </div>
         <div className="tile">
-          <div className="tile__label">Max Drawdown</div>
+          <div className="tile__label">
+            Max Drawdown
+            <InfoButton title="Max Drawdown">
+              <p>
+                Den största nedgången portföljen haft från en topp till en efterföljande botten,
+                innan den hämtade sig igen. Visar hur illa det kunde gå att hålla strategin under
+                den sämsta perioden i backtesten.
+              </p>
+              <p>Ett stort (negativt) tal betyder att man behöver kunna stå ut med stora nedgångar.</p>
+            </InfoButton>
+          </div>
           <div className="tile__value tile__value--bad">{overall['Max Drawdown'] ?? '–'}</div>
         </div>
         <div className="tile">
-          <div className="tile__label">Win Rate</div>
+          <div className="tile__label">
+            Win Rate
+            <InfoButton title="Win Rate">
+              <p>
+                Andelen av strategins affärer/perioder som gav positiv avkastning. T.ex. 55% betyder
+                att drygt hälften av tillfällena slutade på plus.
+              </p>
+              <p>
+                En hög win rate är inte allt – några stora vinster kan väga upp många små förluster,
+                och vice versa.
+              </p>
+            </InfoButton>
+          </div>
           <div className="tile__value">{overall['Win Rate'] ?? '–'}</div>
         </div>
       </div>
 
       {/* Senaste köpsignaler */}
       <div className="section-head">
-        <h2>Senaste köpsignaler</h2>
+        <h2>
+          Senaste köpsignaler
+          <InfoButton title="Senaste köpsignaler">
+            <p>
+              De aktier modellen senast bedömt ha störst sannolikhet att gå upp (P(upp)) och därför
+              fått en köpsignal. Listan visar bara köpsignaler, sorterade efter förväntad avkastning.
+            </p>
+            <p>Klicka på en rad för att se alla signaler i detalj på fliken Signaler.</p>
+          </InfoButton>
+        </h2>
         <Link to="/signaler" className="section-head__link">Visa alla →</Link>
       </div>
       <div className="list-card">
@@ -117,7 +179,17 @@ export function OverviewPage() {
       {topSectors.length > 0 && (
         <>
           <div className="section-head">
-            <h2>Heta sektorer</h2>
+            <h2>
+              Heta sektorer
+              <InfoButton title="Heta sektorer">
+                <p>
+                  Sektorer som modellen just nu bedömer ha starkast momentum, baserat på en
+                  sammanvägd poäng (composite score) av flera tekniska faktorer för bolagen i
+                  sektorn.
+                </p>
+                <p>Ett högre (mer positivt) värde betyder starkare uppåttrend i sektorn som helhet.</p>
+              </InfoButton>
+            </h2>
             <Link to="/sektorer" className="section-head__link">Visa alla →</Link>
           </div>
           <div className="list-card">

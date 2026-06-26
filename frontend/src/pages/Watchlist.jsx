@@ -8,6 +8,7 @@ import { SegmentedControl } from '../components/SegmentedControl'
 import { SignalBadge } from '../components/SignalBadge'
 import { holdingSignal } from '../signalLogic'
 import { EmptyState } from '../components/EmptyState'
+import { InfoButton } from '../components/InfoButton'
 import { fmtPct } from '../format'
 
 const STATUS_FILTERS = [
@@ -93,11 +94,22 @@ export function WatchlistPage() {
         <>
           <div className="tile-grid">
             <div className="tile">
-              <div className="tile__label">Bevakade</div>
+              <div className="tile__label">
+                Bevakade
+                <InfoButton title="Bevakade">
+                  Antal bolag du valt att hålla ögonen på utan att du äger dem.
+                </InfoButton>
+              </div>
               <div className="tile__value">{tickers.length}</div>
             </div>
             <div className="tile">
-              <div className="tile__label">Köpsignal</div>
+              <div className="tile__label">
+                Köpsignal
+                <InfoButton title="Köpsignal">
+                  Antal bevakade bolag som just nu har en aktiv köpsignal från modellen – en
+                  möjlighet att flytta dem till din portfölj.
+                </InfoButton>
+              </div>
               <div className="tile__value tile__value--good">{buyCount}</div>
             </div>
           </div>

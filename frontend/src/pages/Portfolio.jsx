@@ -7,6 +7,7 @@ import { SegmentedControl } from '../components/SegmentedControl'
 import { SignalBadge } from '../components/SignalBadge'
 import { holdingSignal } from '../signalLogic'
 import { EmptyState } from '../components/EmptyState'
+import { InfoButton } from '../components/InfoButton'
 import { fmtPct } from '../format'
 
 const STATUS_FILTERS = [
@@ -120,15 +121,32 @@ export function PortfolioPage() {
           {/* Sammanfattning */}
           <div className="tile-grid">
             <div className="tile">
-              <div className="tile__label">Innehav</div>
+              <div className="tile__label">
+                Innehav
+                <InfoButton title="Innehav">
+                  Antal olika aktier du har lagt till i din portfölj här i appen.
+                </InfoButton>
+              </div>
               <div className="tile__value">{holdings.length}</div>
             </div>
             <div className="tile">
-              <div className="tile__label">Behåll</div>
+              <div className="tile__label">
+                Behåll
+                <InfoButton title="Behåll">
+                  Antal av dina innehav som fortfarande har en aktiv köpsignal från modellen – inget
+                  tyder på att du behöver agera.
+                </InfoButton>
+              </div>
               <div className="tile__value tile__value--good">{holdCount}</div>
             </div>
             <div className="tile">
-              <div className="tile__label">Sälj-signal</div>
+              <div className="tile__label">
+                Sälj-signal
+                <InfoButton title="Sälj-signal">
+                  Antal av dina innehav där modellens köpsignal har försvunnit sedan du lade till
+                  aktien – ett tecken på att momentumet vänt.
+                </InfoButton>
+              </div>
               <div className="tile__value tile__value--bad">{sellCount}</div>
             </div>
           </div>
@@ -136,7 +154,19 @@ export function PortfolioPage() {
           {sectorExposure.length > 1 && (
             <div className="risk-card">
               <div className="risk-card__head">
-                <h2>Sektorexponering</h2>
+                <h2>
+                  Sektorexponering
+                  <InfoButton title="Sektorexponering">
+                    <p>
+                      Visar hur dina innehav är fördelade mellan olika sektorer, räknat som andel av
+                      antal innehav (inte kronor).
+                    </p>
+                    <p>
+                      Om en stor andel ligger i samma sektor är portföljen mer känslig för händelser
+                      som drabbar just den sektorn – sprid riskerna om möjligt.
+                    </p>
+                  </InfoButton>
+                </h2>
                 {sectorConcentrated && (
                   <span className="risk-chip risk-chip--warn">
                     Hög koncentration ({fmtPct(topSectorShare)} i en sektor)
