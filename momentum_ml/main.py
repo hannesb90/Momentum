@@ -17,7 +17,10 @@ import pandas as pd
 from pathlib import Path
 
 import config
-from data.data_loader import fetch_weekly_data, build_universe_df, filter_liquid_universe
+from data.data_loader import (
+    fetch_weekly_data, build_universe_df, filter_liquid_universe,
+    load_sweden_universe,
+)
 from features.feature_engineering import build_all_features, to_model_df, FEATURE_COLS
 from models.lgbm_model import MomentumLGBM
 from models.lstm_model import MomentumLSTM
@@ -31,6 +34,12 @@ from backtest.regime import classify_regimes, regime_breakdown, print_regime_bre
 def parse_args():
     p = argparse.ArgumentParser(description="Momentum ML Trading System")
     p.add_argument("--tickers",      nargs="+", default=config.DEFAULT_TICKERS)
+    p.add_argument("--universe",     choices=["sweden"], default=None,
+                   help="Använd ett förbyggt universum istället för --tickers, "
+                        "t.ex. 'sweden' för alla svenska börsbolag (data/sweden_universe.csv)")
+    p.add_argument("--market-cap",   nargs="+", default=None,
+                   choices=["Mega Cap", "Large Cap", "Mid Cap", "Small Cap", "Micro Cap", "Nano Cap"],
+                   help="Begränsa --universe till dessa marketcap-kategorier (default: alla)")
     p.add_argument("--start",        default=config.START_DATE)
     p.add_argument("--end",          default=config.END_DATE)
     p.add_argument("--skip-lstm",    action="store_true", help="Kör bara LGBM")
@@ -54,10 +63,16 @@ def main():
     Path(config.CACHE_DIR).mkdir(exist_ok=True)
     Path(config.RESULTS_DIR).mkdir(exist_ok=True)
 
+    if args.universe == "sweden":
+        tickers, sweden_sector_map = load_sweden_universe(min_market_cap=args.market_cap)
+        config.SECTOR_MAP.update(sweden_sector_map)
+    else:
+        tickers = args.tickers
+
     print("\n" + "="*60)
     print("  ML MOMENTUM TRADING SYSTEM")
     print("="*60)
-    print(f"  Tickers : {args.tickers}")
+    print(f"  Tickers : {len(tickers)} st" if len(tickers) > 20 else f"  Tickers : {tickers}")
     print(f"  Period  : {args.start} → {args.end or 'idag'}")
     print(f"  LSTM    : {'nej' if args.skip_lstm else 'ja'}")
     print("="*60 + "\n")
@@ -65,7 +80,7 @@ def main():
     # ── 1. Data ───────────────────────────────────────────────────────────────
     print("STEG 1: Hämtar data...")
     data = fetch_weekly_data(
-        args.tickers,
+        tickers,
         start=args.start,
         end=args.end,
         use_cache=not args.no_cache,
@@ -129,9 +144,14 @@ def main():
         # Trådpool-state överlever uppenbarligen inte en sådan övergång på
         # denna ARM-CPU. Varje steg får därför sin egen process; data-
         # cachen gör att steg 1-2 (hämtning/features) körs snabbt igen.
-        base_cmd = [sys.executable, __file__,
-                    "--tickers", *args.tickers, "--start", args.start,
+        base_cmd = [sys.executable, __file__, "--start", args.start,
                     "--min-turnover", str(args.min_turnover)]
+        if args.universe:
+            base_cmd += ["--universe", args.universe]
+            if args.market_cap:
+                base_cmd += ["--market-cap", *args.market_cap]
+        else:
+            base_cmd += ["--tickers", *args.tickers]
         if args.end:
             base_cmd += ["--end", args.end]
         if args.no_liquidity_filter:
@@ -245,7 +265,7 @@ def main():
 
     summary = {
         "generated_at":  pd.Timestamp.utcnow().isoformat(),
-        "tickers":       args.tickers,
+        "tickers":       tickers,
         "period":        {"start": args.start, "end": args.end},
         "overall":       overall_stats,
         "dev":           dev_stats,
