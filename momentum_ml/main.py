@@ -33,10 +33,12 @@ from backtest.regime import classify_regimes, regime_breakdown, print_regime_bre
 
 def parse_args():
     p = argparse.ArgumentParser(description="Momentum ML Trading System")
-    p.add_argument("--tickers",      nargs="+", default=config.DEFAULT_TICKERS)
-    p.add_argument("--universe",     choices=["sweden"], default=None,
-                   help="Använd ett förbyggt universum istället för --tickers, "
-                        "t.ex. 'sweden' för alla svenska börsbolag (data/sweden_universe.csv)")
+    p.add_argument("--tickers",      nargs="+", default=None,
+                   help="Egen tickerlista. Om satt åsidosätter den --universe.")
+    p.add_argument("--universe",     choices=["sweden"], default="sweden",
+                   help="Förbyggt universum (default: 'sweden' - alla svenska börsbolag "
+                        "+ fonder, data/sweden_universe.csv + sweden_funds.csv). "
+                        "Ignoreras om --tickers anges.")
     p.add_argument("--market-cap",   nargs="+", default=None,
                    choices=["Mega Cap", "Large Cap", "Mid Cap", "Small Cap", "Micro Cap", "Nano Cap"],
                    help="Begränsa --universe till dessa marketcap-kategorier (default: alla)")
@@ -63,11 +65,13 @@ def main():
     Path(config.CACHE_DIR).mkdir(exist_ok=True)
     Path(config.RESULTS_DIR).mkdir(exist_ok=True)
 
-    if args.universe == "sweden":
+    if args.tickers:
+        tickers = args.tickers
+    elif args.universe == "sweden":
         tickers, sweden_sector_map = load_sweden_universe(min_market_cap=args.market_cap)
         config.SECTOR_MAP.update(sweden_sector_map)
     else:
-        tickers = args.tickers
+        tickers = config.DEFAULT_TICKERS
 
     print("\n" + "="*60)
     print("  ML MOMENTUM TRADING SYSTEM")
@@ -146,12 +150,12 @@ def main():
         # cachen gör att steg 1-2 (hämtning/features) körs snabbt igen.
         base_cmd = [sys.executable, __file__, "--start", args.start,
                     "--min-turnover", str(args.min_turnover)]
-        if args.universe:
+        if args.tickers:
+            base_cmd += ["--tickers", *args.tickers]
+        else:
             base_cmd += ["--universe", args.universe]
             if args.market_cap:
                 base_cmd += ["--market-cap", *args.market_cap]
-        else:
-            base_cmd += ["--tickers", *args.tickers]
         if args.end:
             base_cmd += ["--end", args.end]
         if args.no_liquidity_filter:
