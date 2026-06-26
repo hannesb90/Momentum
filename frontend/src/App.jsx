@@ -1,9 +1,10 @@
 import { Routes, Route } from 'react-router-dom'
 import { NavBar } from './components/NavBar'
+import { OverviewPage } from './pages/Overview'
 import { SignalsPage } from './pages/Signals'
-import { BacktestPage } from './pages/Backtest'
-import { RobustnessPage } from './pages/Robustness'
-import { RegimesPage } from './pages/Regimes'
+import { PortfolioPage } from './pages/Portfolio'
+import { SectorsPage } from './pages/Sectors'
+import { AnalysisPage } from './pages/Analysis'
 
 export default function App() {
   return (
@@ -11,10 +12,11 @@ export default function App() {
       <NavBar />
       <main className="app__content">
         <Routes>
-          <Route path="/" element={<SignalsPage />} />
-          <Route path="/backtest" element={<BacktestPage />} />
-          <Route path="/robusthet" element={<RobustnessPage />} />
-          <Route path="/regimer" element={<RegimesPage />} />
+          <Route path="/" element={<OverviewPage />} />
+          <Route path="/signaler" element={<SignalsPage />} />
+          <Route path="/portfolj" element={<PortfolioPage />} />
+          <Route path="/sektorer" element={<SectorsPage />} />
+          <Route path="/analys" element={<AnalysisPage />} />
         </Routes>
       </main>
     </div>

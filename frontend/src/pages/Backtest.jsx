@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -13,10 +13,14 @@ import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { StatCard } from '../components/StatCard'
+import { SegmentedControl } from '../components/SegmentedControl'
+import { fmtDate } from '../format'
 
-function fmtDate(d) {
-  return new Date(d).toLocaleDateString('sv-SE', { year: '2-digit', month: 'short' })
-}
+const PERIODS = [
+  { value: 'overall', label: 'Hela perioden' },
+  { value: 'dev', label: 'Dev' },
+  { value: 'holdout', label: 'Holdout' },
+]
 
 function StatsRow({ title, stats }) {
   if (!stats) return null
@@ -38,6 +42,7 @@ function StatsRow({ title, stats }) {
 export function BacktestPage() {
   const portfolio = useApiData(() => api.portfolio(), [])
   const stats = useApiData(() => api.stats(), [])
+  const [period, setPeriod] = useState('overall')
 
   const chartData = useMemo(() => {
     if (!portfolio.data) return []
@@ -93,9 +98,13 @@ export function BacktestPage() {
         </ResponsiveContainer>
       </div>
 
-      <StatsRow title="Hela perioden" stats={stats.data.overall} />
-      <StatsRow title="Dev-period (tränad på)" stats={stats.data.dev} />
-      <StatsRow title="Holdout (frusen, aldrig sedd)" stats={stats.data.holdout} />
+      <div className="filter-bar filter-bar--secondary">
+        <span className="filter-bar__label">Period:</span>
+        <SegmentedControl options={PERIODS} value={period} onChange={setPeriod} size="sm" />
+      </div>
+      {period === 'overall' && <StatsRow title="Hela perioden" stats={stats.data.overall} />}
+      {period === 'dev' && <StatsRow title="Dev-period (tränad på)" stats={stats.data.dev} />}
+      {period === 'holdout' && <StatsRow title="Holdout (frusen, aldrig sedd)" stats={stats.data.holdout} />}
     </section>
   )
 }
