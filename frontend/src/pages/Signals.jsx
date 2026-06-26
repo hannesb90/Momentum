@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
@@ -97,9 +97,11 @@ export function SignalsPage() {
                 <th>Ticker</th>
                 <th>
                   P(upp)
-                  <InfoButton title="P(upp)">
-                    Modellens beräknade sannolikhet att aktien stiger i värde under nästa period.
-                    Högre procent betyder att modellen är mer säker på en uppgång.
+                  <InfoButton title="P(upp) – nästa 4 veckor">
+                    Modellens beräknade sannolikhet att aktien stiger i värde under de kommande
+                    4 veckorna. En "period" = 4 veckor (modellens prognoshorisont), och signalerna
+                    uppdateras varje vecka utifrån den senaste datan. Högre procent = modellen är
+                    mer säker på en uppgång.
                   </InfoButton>
                 </th>
                 <th>
@@ -111,9 +113,9 @@ export function SignalsPage() {
                 </th>
                 <th>
                   Förv. avk.
-                  <InfoButton title="Förväntad avkastning">
-                    Modellens prognos för hur mycket aktien kommer förändras i pris under nästa
-                    period, baserat på historiska mönster och tekniska faktorer.
+                  <InfoButton title="Förväntad avkastning (4 veckor)">
+                    Modellens prognos för hur mycket aktien kommer förändras i pris under de
+                    kommande 4 veckorna, baserat på historiska mönster och tekniska faktorer.
                   </InfoButton>
                 </th>
                 {hasTa && (
@@ -137,7 +139,11 @@ export function SignalsPage() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.ticker}>
-                  <td className="ticker-cell">{row.ticker}</td>
+                  <td className="ticker-cell">
+                    <Link to={`/aktie/${encodeURIComponent(row.ticker)}`} className="ticker-link">
+                      {row.ticker}
+                    </Link>
+                  </td>
                   <td>{fmtPct(row.prob_up)}</td>
                   <td><SignalBadge variant={row.pred_signal === 1 ? 'buy' : 'flat'} /></td>
                   <td>{fmtPct(row.pred_return)}</td>

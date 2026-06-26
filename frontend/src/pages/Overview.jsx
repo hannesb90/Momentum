@@ -202,7 +202,7 @@ export function OverviewPage() {
       <div className="list-card">
         {topBuys.length === 0 && <div className="list-card__empty">Inga aktiva köpsignaler just nu.</div>}
         {topBuys.map((s) => (
-          <Link to="/signaler" key={s.ticker} className="list-row">
+          <Link to={`/aktie/${encodeURIComponent(s.ticker)}`} key={s.ticker} className="list-row">
             <div className="list-row__main">
               <span className="list-row__ticker">{s.ticker}</span>
               <span className="list-row__sub">P(upp) {fmtPct(s.prob_up)}</span>

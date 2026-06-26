@@ -275,6 +275,79 @@ code {
   color: var(--text-muted);
 }
 
+/* ── Klickbara tickers + sektor-expansion ─────────────────────────────── */
+
+.ticker-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.ticker-link:hover {
+  text-decoration: underline;
+}
+
+.sector-row {
+  cursor: pointer;
+}
+
+.sector-row:hover {
+  background: var(--bg-elevated);
+}
+
+.sector-caret {
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.sector-caret--open {
+  transform: rotate(90deg);
+}
+
+.sector-members-row > td {
+  background: var(--bg-elevated);
+  padding: 8px 12px;
+}
+
+.sector-members {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sector-member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.sector-member:hover {
+  background: var(--bg-card);
+}
+
+.sector-member__ticker {
+  font-weight: 600;
+  color: var(--accent);
+  min-width: 90px;
+}
+
+.sector-member__prob {
+  flex: 1;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.sector-members__empty {
+  padding: 8px 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 /* ── Stat cards ──────────────────────────────────────────────────────── */
 
 .stat-grid {
