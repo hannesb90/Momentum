@@ -99,12 +99,48 @@ manuellt, eftersom sådana ändringar kan kräva `daemon-reload`/sudo.
 
 ```bash
 vcgencmd measure_temp        # håll under ~80°C, sätt kylfläns/fläkt annars
-vcgencmd get_throttled       # 0x0 = ingen throttling hittills
+vcgencmd get_throttled       # 0x0 = ingen throttling/undervoltage hittills
 free -h                      # kontrollera att MemoryMax=2G inte är för snålt
 systemctl status momentum-api.service momentum-train.timer
 ```
 
 Om träningen behöver mer tid är det ofarligt att låta den ta längre – den
 körs ändå på natten utan deadline. Justera istället `MOMENTUM_TRAINING_THREADS`
-nedåt eller minska `config.DEFAULT_TICKERS`/historikens längd om Pi:n
-fortfarande är på gränsen (hög temp, swap-användning, throttling-flaggor).
+nedåt eller minska universumet (`--market-cap "Large Cap" "Mid Cap"` istället
+för hela Sverige-listan) om Pi:n fortfarande är på gränsen (hög temp,
+swap-användning, throttling-flaggor).
+
+### Kontinuerlig övervakning (temperatur/spänning/minne)
+
+En Pi 4B kan starta om helt vid sammanhållen hög CPU-belastning om
+strömadaptern/kabeln är undermålig (undervoltage) eller kylningen är
+otillräcklig (thermal throttling/shutdown) – `MemoryMax=2G` i
+`momentum-train.service` skyddar bara den tjänstens cgroup, inte hela
+systemet mot OOM. `momentum-health.timer` loggar temperatur, `vcgencmd
+get_throttled`-bitmask, ledigt minne och swap-användning varje minut till
+`results/health.log`, och skriver en `[VARNING]`-rad till journalen vid hög
+temp (≥78°C), aktiv undervoltage/throttling, eller lågt ledigt minne
+(<200MB).
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-health.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-health.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-health.timer
+
+# Följ varningar live:
+journalctl -u momentum-health.service -f -p warning
+
+# Hela historiken:
+tail -f /opt/momentum/momentum_ml/results/health.log
+```
+
+Efter en oväntad omstart, kontrollera **föregående boot** för att avgöra
+grundorsak (kraschar tyst utan ren shutdown-sekvens = troligen
+strömbortfall/undervoltage, inte en mjuk OOM-kill):
+
+```bash
+vcgencmd get_throttled                       # bit 16/18 satt = har hänt sedan boot
+journalctl -b -1 -p err --since "-2h"
+dmesg -T 2>/dev/null | grep -iE "oom|under|throttl|temp"
+```

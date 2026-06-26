@@ -1,0 +1,7 @@
+[Unit]
+Description=Momentum ML – hälsokontroll (temperatur/spänning/minne)
+
+[Service]
+Type=oneshot
+User=hannesb
+ExecStart=/opt/momentum/momentum_ml/deploy/health_monitor.sh
