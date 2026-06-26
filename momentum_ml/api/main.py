@@ -7,7 +7,7 @@ kör inga modeller eller backtester själv. Kör pipelinen om
 `results/`-filerna saknas eller är gamla.
 
 Användning:
-  uvicorn api.main:app --reload --port 8000
+  uvicorn api.main:app --reload --port 8001
 """
 
 import json
