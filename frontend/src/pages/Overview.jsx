@@ -61,6 +61,23 @@ export function OverviewPage() {
             {stats.data.period.start} → {stats.data.period.end ?? 'idag'}
           </span>
         </div>
+        {stats.data.market?.enabled && stats.data.market.regime && (
+          <div className="hero__bench">
+            Marknadsläge:{' '}
+            {{ bull: 'Bull (full exponering)', bear: 'Bear (defensiv)', sideways: 'Sidledes (nedskalad)' }[
+              stats.data.market.regime
+            ] ?? stats.data.market.regime}{' '}
+            · rekommenderad exponering {Math.round(stats.data.market.exposure * 100)}%
+            <InfoButton title="Marknadsfilter (long-only)">
+              <p>
+                Strategin blankar aldrig. I stället drar den ner andelen som är investerad mot
+                kontanter när den breda marknaden är svag (bear), och kör fullt i stark trend
+                (bull). Detta sänker marknadsrisken och nedgångarna utan blankning.
+              </p>
+              <p>Rekommenderad exponering visar hur stor del av portföljen som bör vara investerad nu.</p>
+            </InfoButton>
+          </div>
+        )}
         {stats.data.benchmark && (
           <div className="hero__bench">
             Index (köp-och-behåll): {stats.data.benchmark.overall.CAGR}/år ·{' '}

@@ -78,6 +78,10 @@ def parse_args():
     p.add_argument("--threshold-objective", choices=["sharpe", "cagr", "calmar"],
                    default=config.THRESHOLD_OBJECTIVE,
                    help="Mål som maximeras när köptröskeln söks fram (default: sharpe)")
+    p.add_argument("--market-filter", action=argparse.BooleanOptionalAction, default=True,
+                   help="Long-only marknadsfilter: skala ner exponering mot kontanter i svag "
+                        "marknad (bull/sidledes/bear) i stället för att blanka (default: på). "
+                        "Stäng av med --no-market-filter.")
     p.add_argument("--ta-filter",    choices=["gate", "score"], default=None,
                    help="Valbart TA-bekräftelsefilter ovanpå modellsignalerna: "
                         "'gate' nollar köpsignaler som tekniska analysen inte bekräftar, "
@@ -225,6 +229,8 @@ def main():
         # Köptröskel-inställningar måste följa med till predikt-processen, där
         # signalerna (och därmed sökningen/tröskeln) faktiskt byggs.
         cmd += ["--threshold-objective", args.threshold_objective]
+        if not args.market_filter:
+            cmd.append("--no-market-filter")
         if not args.optimize_threshold:
             cmd.append("--no-optimize-threshold")
         if args.buy_threshold is not None:
@@ -345,7 +351,9 @@ def main():
 
     # ── 6. Backtest ───────────────────────────────────────────────────────────
     print("\nSTEG 6: Backtest...")
-    backtester = MomentumBacktester(signals_df, data)
+    if args.market_filter:
+        print("  Marknadsfilter: på (long-only de-risking i svag marknad)")
+    backtester = MomentumBacktester(signals_df, data, market_filter=args.market_filter)
     results    = backtester.run()
     backtester.print_statistics()
     overall_stats = backtester.statistics()
@@ -385,6 +393,24 @@ def main():
     breakdown = regime_breakdown(port_rets, regimes)
     print_regime_breakdown(breakdown)
 
+    # Aktuell marknadsregim + rekommenderad long-only-exponering (för live-
+    # signaler, pappershandel och frontend). full=1.0 om filtret är av.
+    current_regime = None
+    current_exposure = 1.0
+    if args.market_filter and len(regimes) > 0:
+        try:
+            current_regime = regimes.asof(regimes.index.max())
+            current_exposure = float(config.MARKET_FILTER_EXPOSURE.get(current_regime, 1.0))
+        except Exception:
+            current_regime, current_exposure = None, 1.0
+    market_summary = {
+        "enabled":  bool(args.market_filter),
+        "regime":   None if current_regime is None else str(current_regime),
+        "exposure": current_exposure,
+    }
+    print(f"  Aktuell marknadsregim: {current_regime} -> "
+          f"rekommenderad exponering {current_exposure:.0%}")
+
     backtester.plot(save_path=f"{config.RESULTS_DIR}/backtest.png")
 
     results.to_csv(f"{config.RESULTS_DIR}/portfolio.csv")
@@ -401,6 +427,10 @@ def main():
             tw = {r["ticker"]: float(r["position_size"])
                   for _, r in latest_rows.iterrows()
                   if r.get("position_size", 0) and r["position_size"] > 0}
+            # Skala live-vikterna med marknadsfiltret så pappersportföljen
+            # de-riskar i svag marknad precis som backtesten (ingen blankning).
+            if current_exposure < 1.0:
+                tw = {t: w * current_exposure for t, w in tw.items()}
             paper = PaperTrader()
             row = paper.step(latest_date, tw, data)
             if row:
@@ -432,6 +462,7 @@ def main():
         "dev":           dev_stats,
         "holdout":       holdout_stats,
         "benchmark":     benchmark_summary,
+        "market":        market_summary,
         "threshold":     threshold_info,
         "robustness":    robustness,
         "drift": None if latest_drift is None else {
