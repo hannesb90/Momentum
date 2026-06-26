@@ -15,6 +15,7 @@ VOLATILITY_WINDOWS = [4, 13, 26]
 VOLUME_WINDOWS     = [4, 13]
 EMA_PAIRS          = [(8, 21), (13, 34), (21, 55)]
 ADX_PERIOD         = 14
+DONCHIAN_WEEKS     = 20         # utbrottsfönster (pris bryter N-veckors high/low)
 
 # ── Targets ──────────────────────────────────────────────────────────────────
 FORWARD_WEEKS      = 4          # Förutsägningshorisont
@@ -65,6 +66,21 @@ LSTM_PATIENCE      = 15        # Early stopping
 ENSEMBLE_LGBM_WEIGHT = 0.6     # Startvikt; justeras av rolling Sharpe
 ENSEMBLE_LSTM_WEIGHT = 0.4
 ROLLING_SHARPE_WINDOW = 12     # Veckor för dynamisk viktning
+
+# ── Köptröskel (data-driven) ─────────────────────────────────────────────────
+# pred_signal = 1 om prob_up > BUY_THRESHOLD. Istället för en hårdkodad 0.5
+# kan tröskeln sökas fram på dev-perioden (in-sample) och valideras på den
+# frusna holdouten – se backtest/threshold_opt.py och flaggan
+# --optimize-threshold (default på). Detta löser "nästan alltid i kontanter"-
+# problemet: en välkalibrerad P(>5% på 4v) passerar sällan 0.5, så portföljen
+# blir sällan investerad. Låt datan välja nivån istället för att gissa.
+BUY_THRESHOLD = 0.5
+# Kandidatrutnät som söks igenom. Varje testad nivå är ett "trial" som
+# deflaterar Deflated Sharpe Ratio (multipeltestning) – se --n-trials.
+BUY_THRESHOLD_GRID = [0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
+# Mål som maximeras vid sökningen: 'sharpe' (default, riskjusterat),
+# 'cagr' (rå avkastning – överanpassar lättare) eller 'calmar' (CAGR/|maxDD|).
+THRESHOLD_OBJECTIVE = "sharpe"
 
 # ── Positionssizing (Kelly) ───────────────────────────────────────────────────
 KELLY_FRACTION     = 0.25      # Fractional Kelly (25%)

@@ -178,6 +178,7 @@ def build_full_output(
     ensemble: MomentumEnsemble,
     ta_filter: Optional[str] = None,
     ta_strictness: str = config.TA_FILTER_STRICTNESS,
+    buy_threshold: Optional[float] = None,
 ) -> pd.DataFrame:
     """
     Returnerar ett long-format DataFrame med alla outputs:
@@ -187,6 +188,11 @@ def build_full_output(
     (samma regler som build_portfolio_weights), så flera tickers med
     samtidiga köpsignaler konkurrerar om portföljutrymmet korrekt.
 
+    buy_threshold: köpsignal sätts om prob_up > buy_threshold. None =
+    config.BUY_THRESHOLD. Tröskeln kan optimeras på dev-perioden (se
+    backtest/threshold_opt.py) – därför härleds pred_signal här i stället för
+    att förlita sig på ensemblens hårdkodade 0.5.
+
     ta_filter: None (av), "gate" (hård grind – nollar köpsignaler som TA inte
     bekräftar) eller "score" (mjuk viktning – skalar position_size med andelen
     uppfyllda TA-villkor). ta_strictness väljer villkorsuppsättning, se
@@ -195,6 +201,8 @@ def build_full_output(
     """
     if ta_filter not in (None, "gate", "score"):
         raise ValueError(f"Okänt ta_filter: {ta_filter!r}. Välj None, 'gate' eller 'score'.")
+
+    buy_threshold = config.BUY_THRESHOLD if buy_threshold is None else buy_threshold
 
     rows = []
 
@@ -212,7 +220,7 @@ def build_full_output(
                 vol = 0.20
 
             raw_kelly  = kelly_position_size(row["prob_up"], row["pred_return"], vol)
-            pred_signal = int(row["pred_signal"])
+            pred_signal = int(row["prob_up"] > buy_threshold)
 
             # ── Valbart TA-bekräftelsefilter ─────────────────────────────────
             ta_score = 1.0
