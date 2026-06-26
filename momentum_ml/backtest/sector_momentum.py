@@ -18,20 +18,22 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
 
 # Sverige saknar egna GICS-sektor-ETF:er (se data/sweden_funds.csv) - mappar
-# istället mot de amerikanska SPDR-sektorfonderna i data/sector_etfs.csv.
+# istället mot iShares STOXX Europe 600-sektorserien (Xetra), som är
+# handelsbar via svenska nätmäklare (Avanza/Montrose m.fl.). US SPDR-listan
+# i data/sector_etfs.csv finns kvar som referens/fallback.
 SECTOR_ETF_MAP = {
-    "Technology":             "XLK",
-    "Information Technology": "XLK",
-    "Financials":             "XLF",
-    "Health Care":            "XLV",
-    "Consumer Discretionary": "XLY",
-    "Consumer Staples":       "XLP",
-    "Energy":                 "XLE",
-    "Industrials":            "XLI",
-    "Materials":              "XLB",
-    "Utilities":              "XLU",
-    "Real Estate":            "XLRE",
-    "Communication Services": "XLC",
+    "Technology":             "EXV3",
+    "Information Technology": "EXV3",
+    "Financials":             "EXH2",
+    "Health Care":            "EXV4",
+    "Consumer Discretionary": "EXH8",
+    "Consumer Staples":       "EXH3",
+    "Energy":                 "EXH1",
+    "Industrials":            "EXH4",
+    "Materials":              "EXV6",
+    "Utilities":              "EXH9",
+    "Real Estate":            "EXI5",
+    "Communication Services": "EXV2",
 }
 
 

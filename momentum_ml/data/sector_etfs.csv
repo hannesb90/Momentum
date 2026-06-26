@@ -1,12 +1,23 @@
 ticker,name,sector,market_cap_category,region
-XLK,Technology Select Sector SPDR Fund,Technology,Fond,US
-XLF,Financial Select Sector SPDR Fund,Financials,Fond,US
-XLV,Health Care Select Sector SPDR Fund,Health Care,Fond,US
-XLY,Consumer Discretionary Select Sector SPDR Fund,Consumer Discretionary,Fond,US
-XLP,Consumer Staples Select Sector SPDR Fund,Consumer Staples,Fond,US
-XLE,Energy Select Sector SPDR Fund,Energy,Fond,US
-XLI,Industrial Select Sector SPDR Fund,Industrials,Fond,US
-XLB,Materials Select Sector SPDR Fund,Materials,Fond,US
-XLU,Utilities Select Sector SPDR Fund,Utilities,Fond,US
-XLRE,Real Estate Select Sector SPDR Fund,Real Estate,Fond,US
-XLC,Communication Services Select Sector SPDR Fund,Communication Services,Fond,US
+EXV3.DE,iShares STOXX Europe 600 Technology UCITS ETF (DE),Technology,Fond,EU
+EXH2.DE,iShares STOXX Europe 600 Financial Services UCITS ETF (DE),Financials,Fond,EU
+EXV4.DE,iShares STOXX Europe 600 Health Care UCITS ETF (DE),Health Care,Fond,EU
+EXH8.DE,iShares STOXX Europe 600 Retail UCITS ETF (DE),Consumer Discretionary,Fond,EU
+EXH3.DE,iShares STOXX Europe 600 Food & Beverage UCITS ETF (DE),Consumer Staples,Fond,EU
+EXH1.DE,iShares STOXX Europe 600 Oil & Gas UCITS ETF (DE),Energy,Fond,EU
+EXH4.DE,iShares STOXX Europe 600 Industrial Goods & Services UCITS ETF (DE),Industrials,Fond,EU
+EXV6.DE,iShares STOXX Europe 600 Basic Resources UCITS ETF (DE),Materials,Fond,EU
+EXH9.DE,iShares STOXX Europe 600 Utilities UCITS ETF (DE),Utilities,Fond,EU
+EXI5.DE,iShares STOXX Europe 600 Real Estate UCITS ETF (DE),Real Estate,Fond,EU
+EXV2.DE,iShares STOXX Europe 600 Telecommunications UCITS ETF (DE),Communication Services,Fond,EU
+ZPDT.DE,SPDR S&P U.S. Technology Select Sector UCITS ETF,Technology,Fond,US-UCITS
+ZPDF.DE,SPDR S&P U.S. Financials Select Sector UCITS ETF,Financials,Fond,US-UCITS
+ZPDH.DE,SPDR S&P U.S. Health Care Select Sector UCITS ETF,Health Care,Fond,US-UCITS
+ZPDD.DE,SPDR S&P U.S. Consumer Discretionary Select Sector UCITS ETF,Consumer Discretionary,Fond,US-UCITS
+ZPDS.DE,SPDR S&P U.S. Consumer Staples Select Sector UCITS ETF,Consumer Staples,Fond,US-UCITS
+ZPDE.DE,SPDR S&P U.S. Energy Select Sector UCITS ETF,Energy,Fond,US-UCITS
+ZPDI.DE,SPDR S&P U.S. Industrials Select Sector UCITS ETF,Industrials,Fond,US-UCITS
+ZPDM.DE,SPDR S&P U.S. Materials Select Sector UCITS ETF,Materials,Fond,US-UCITS
+ZPDU.DE,SPDR S&P U.S. Utilities Select Sector UCITS ETF,Utilities,Fond,US-UCITS
+XRES.DE,Invesco Real Estate S&P US Select Sector UCITS ETF,Real Estate,Fond,US-UCITS
+ZPDK.DE,SPDR S&P U.S. Communication Services Select Sector UCITS ETF,Communication Services,Fond,US-UCITS
