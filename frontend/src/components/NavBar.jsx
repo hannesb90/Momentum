@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { TickerSearch } from './TickerSearch'
 
 const ICONS = {
   home: (
@@ -18,12 +19,19 @@ const ICONS = {
     </>
   ),
   analysis: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />,
+  watchlist: (
+    <>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
 }
 
 const links = [
   { to: '/', label: 'Hem', icon: 'home' },
   { to: '/signaler', label: 'Signaler', icon: 'signals' },
   { to: '/portfolj', label: 'Portfölj', icon: 'portfolio' },
+  { to: '/bevakning', label: 'Bevakning', icon: 'watchlist' },
   { to: '/sektorer', label: 'Sektorer', icon: 'sectors' },
   { to: '/analys', label: 'Analys', icon: 'analysis' },
 ]
@@ -65,6 +73,7 @@ export function NavBar() {
           </NavLink>
         ))}
       </div>
+      <TickerSearch />
     </nav>
   )
 }

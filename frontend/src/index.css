@@ -135,7 +135,29 @@ code {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(139, 92, 246, 0.22));
 }
 
+.navbar__search {
+  display: flex;
+}
+
+.navbar__search-input {
+  width: 160px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.navbar__search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 @media (max-width: 720px) {
+  .navbar__search {
+    display: none;
+  }
   .navbar {
     position: fixed;
     bottom: 0;
@@ -644,6 +666,95 @@ h2 {
 .icon-btn:hover {
   background: rgba(239, 68, 68, 0.14);
   color: var(--bad);
+}
+
+/* ── Riskkort (sektorexponering m.m.) ─────────────────────────────────── */
+
+.risk-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.risk-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.risk-card__head h2 {
+  margin: 0;
+}
+
+.risk-chip {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.risk-chip--warn {
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--bad);
+}
+
+.risk-card__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.risk-bar__label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.risk-bar__track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.risk-bar__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.risk-bar__fill--warn {
+  background: var(--bad);
+}
+
+.flow-chip {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.flow-chip--in {
+  background: rgba(34, 197, 94, 0.14);
+  color: var(--good);
+}
+
+.flow-chip--out {
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--bad);
+}
+
+.flow-chip--flat {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
 }
 
 /* ── Empty state / footnote ──────────────────────────────────────────── */

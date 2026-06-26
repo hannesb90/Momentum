@@ -15,10 +15,17 @@ const WINDOWS = [
   { value: 'momentum_52w', label: '52v' },
 ]
 
+const FLOW_FILTERS = [
+  { value: 'all', label: 'Alla' },
+  { value: 'Kapital in', label: 'Kapital in' },
+  { value: 'Kapital ut', label: 'Kapital ut' },
+]
+
 export function SectorsPage() {
   const { data, error, loading } = useApiData(() => api.sectorMomentum(), [])
   const [metric, setMetric] = useState('composite_score')
   const [query, setQuery] = useState('')
+  const [flowFilter, setFlowFilter] = useState('all')
 
   const rows = useMemo(() => {
     if (!data) return []
@@ -27,8 +34,13 @@ export function SectorsPage() {
       const q = query.trim().toLowerCase()
       r = r.filter((s) => (s.sector ?? '').toLowerCase().includes(q))
     }
+    if (flowFilter !== 'all') {
+      r = r.filter((s) => s.flow === flowFilter)
+    }
     return [...r].sort((a, b) => (Number(b[metric]) || 0) - (Number(a[metric]) || 0))
-  }, [data, metric, query])
+  }, [data, metric, query, flowFilter])
+
+  const hasFlow = data?.some((r) => r.flow != null)
 
   if (loading) return <Loading />
   if (error) return <ErrorBlock error={error} />
@@ -47,6 +59,7 @@ export function SectorsPage() {
         <h1>Sektorer</h1>
         <p className="page-subtitle">
           Momentum aggregerat per sektor (median av bolagens ROC), mappat mot handelsbar sektor-ETF.
+          {hasFlow && ' Rotation visar hur sektorns rank förändrats de senaste 4 veckorna – en proxy för var relativ styrka flyttar, inte faktiska fondflöden.'}
         </p>
       </div>
 
@@ -63,6 +76,12 @@ export function SectorsPage() {
         <span className="filter-bar__label">Mått:</span>
         <SegmentedControl options={windowOptions} value={metric} onChange={setMetric} size="sm" />
       </div>
+      {hasFlow && (
+        <div className="filter-bar filter-bar--secondary">
+          <span className="filter-bar__label">Rotation:</span>
+          <SegmentedControl options={FLOW_FILTERS} value={flowFilter} onChange={setFlowFilter} size="sm" />
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <EmptyState title="Ingen sektordata" hint="Kör pipelinen för att generera sector_momentum.csv." />
@@ -97,6 +116,7 @@ export function SectorsPage() {
                   <th>ETF</th>
                   <th>Bolag</th>
                   <th>Värde</th>
+                  {hasFlow && <th>Rotation (4v)</th>}
                 </tr>
               </thead>
               <tbody>
@@ -107,6 +127,20 @@ export function SectorsPage() {
                     <td>{row.etf_ticker ?? '–'}</td>
                     <td>{row.n_stocks ?? '–'}</td>
                     <td className={Number(row[metric]) >= 0 ? 'pos' : 'neg'}>{fmtNum(row[metric], 3)}</td>
+                    {hasFlow && (
+                      <td>
+                        <span className={`flow-chip flow-chip--${
+                          row.flow === 'Kapital in' ? 'in' : row.flow === 'Kapital ut' ? 'out' : 'flat'
+                        }`}>
+                          {row.flow === 'Kapital in' && '↑ '}
+                          {row.flow === 'Kapital ut' && '↓ '}
+                          {row.flow ?? 'Okänd'}
+                          {row.rank_change != null && row.rank_change !== 0
+                            ? ` (${row.rank_change > 0 ? '+' : ''}${row.rank_change})`
+                            : ''}
+                        </span>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

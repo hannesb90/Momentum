@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
@@ -21,7 +22,8 @@ const SORTS = [
 
 export function SignalsPage() {
   const { data, error, loading } = useApiData(() => api.latestSignals(), [])
-  const [query, setQuery] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [signalFilter, setSignalFilter] = useState('all')
   const [sort, setSort] = useState('prob_up')
 
@@ -58,7 +60,11 @@ export function SignalsPage() {
           type="search"
           placeholder="Sök ticker…"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value
+            setQuery(v)
+            setSearchParams(v ? { q: v } : {}, { replace: true })
+          }}
         />
         <SegmentedControl options={SIGNAL_FILTERS} value={signalFilter} onChange={setSignalFilter} size="sm" />
       </div>

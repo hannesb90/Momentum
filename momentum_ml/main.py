@@ -9,6 +9,7 @@ Användning:
 """
 
 import argparse
+import gc
 import json
 import subprocess
 import sys
@@ -21,7 +22,9 @@ from data.data_loader import (
     fetch_weekly_data, build_universe_df, filter_liquid_universe,
     load_sweden_universe,
 )
-from features.feature_engineering import build_all_features, to_model_df, FEATURE_COLS
+from features.feature_engineering import (
+    build_all_features, to_model_df, attach_categorical_features, FEATURE_COLS,
+)
 from models.lgbm_model import MomentumLGBM
 from models.lstm_model import MomentumLSTM
 from models.ensemble import MomentumEnsemble, build_full_output
@@ -74,10 +77,11 @@ def main():
     Path(config.CACHE_DIR).mkdir(exist_ok=True)
     Path(config.RESULTS_DIR).mkdir(exist_ok=True)
 
+    cap_tier_map = {}
     if args.tickers:
         tickers = args.tickers
     elif args.universe == "sweden":
-        tickers, sweden_sector_map = load_sweden_universe(min_market_cap=args.market_cap)
+        tickers, sweden_sector_map, cap_tier_map = load_sweden_universe(min_market_cap=args.market_cap)
         config.SECTOR_MAP.update(sweden_sector_map)
     else:
         tickers = config.DEFAULT_TICKERS
@@ -112,8 +116,12 @@ def main():
     # ── 2. Features ───────────────────────────────────────────────────────────
     print("\nSTEG 2: Feature engineering...")
     all_features = build_all_features(data)
+    all_features = attach_categorical_features(
+        all_features, sector_map=config.SECTOR_MAP, cap_tier_map=cap_tier_map,
+    )
     model_df     = to_model_df(all_features)
     print(f"  Dataset: {len(model_df):,} samples × {model_df[FEATURE_COLS].shape[1]} features")
+    gc.collect()
 
     # Frusen holdout: de sista HOLDOUT_WEEKS veckorna får modellen aldrig
     # träna på, så backtesten över den perioden är en äkta out-of-sample-test.
@@ -238,6 +246,11 @@ def main():
         ta_filter=args.ta_filter,
         ta_strictness=args.ta_strictness,
     )
+
+    # Sektor per ticker – så frontend (portföljfliken) kan visa
+    # sektorexponering/koncentrationsrisk över användarens egna innehav,
+    # inte bara modellsignal per enskild ticker.
+    signals_df["sector"] = signals_df["ticker"].map(config.SECTOR_MAP).fillna("Okänd")
 
     signals_df.to_csv(f"{config.RESULTS_DIR}/signals.csv")
     print(f"  Signals sparade: {config.RESULTS_DIR}/signals.csv")

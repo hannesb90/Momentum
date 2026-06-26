@@ -36,6 +36,25 @@ export function PortfolioPage() {
     })
   }, [holdings, sigByTicker])
 
+  // Sektorexponering över de egna innehaven – ren signalmatchning per ticker
+  // säger inget om koncentrationsrisk om flera innehav råkar ligga i samma
+  // sektor. Räknar per innehav (inte kronor) eftersom andelen användare
+  // inte fyller i "Antal" – en grov men ärlig approximation.
+  const sectorExposure = useMemo(() => {
+    if (enriched.length === 0) return []
+    const counts = {}
+    for (const h of enriched) {
+      const sector = h.sig?.sector ?? 'Okänd/utan data'
+      counts[sector] = (counts[sector] ?? 0) + 1
+    }
+    return Object.entries(counts)
+      .map(([sector, n]) => ({ sector, n, share: n / enriched.length }))
+      .sort((a, b) => b.share - a.share)
+  }, [enriched])
+
+  const topSectorShare = sectorExposure[0]?.share ?? 0
+  const sectorConcentrated = sectorExposure.length > 1 && topSectorShare >= 0.5
+
   const rows = useMemo(() => {
     if (filter === 'all') return enriched
     if (filter === 'sell') return enriched.filter((h) => h.variant === 'sell')
@@ -113,6 +132,39 @@ export function PortfolioPage() {
               <div className="tile__value tile__value--bad">{sellCount}</div>
             </div>
           </div>
+
+          {sectorExposure.length > 1 && (
+            <div className="risk-card">
+              <div className="risk-card__head">
+                <h2>Sektorexponering</h2>
+                {sectorConcentrated && (
+                  <span className="risk-chip risk-chip--warn">
+                    Hög koncentration ({fmtPct(topSectorShare)} i en sektor)
+                  </span>
+                )}
+              </div>
+              <div className="risk-card__bars">
+                {sectorExposure.map(({ sector, n, share }) => (
+                  <div key={sector} className="risk-bar">
+                    <div className="risk-bar__label">
+                      <span>{sector}</span>
+                      <span>{n} st · {fmtPct(share)}</span>
+                    </div>
+                    <div className="risk-bar__track">
+                      <div
+                        className={`risk-bar__fill${share >= 0.5 ? ' risk-bar__fill--warn' : ''}`}
+                        style={{ width: `${Math.max(share * 100, 2)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="footnote">
+                Räknat per innehav (inte kronor). Säger inget om korrelation mellan dina innehav
+                inom samma sektor – bara hur många som delar sektor.
+              </p>
+            </div>
+          )}
 
           <div className="filter-bar">
             <SegmentedControl options={STATUS_FILTERS} value={filter} onChange={setFilter} size="sm" />
