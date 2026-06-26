@@ -62,6 +62,10 @@ def parse_args():
                    help="Kör inte likviditetsfiltret (alla tickers med tillräcklig historik tas med)")
     p.add_argument("--min-turnover", type=float, default=config.UNIVERSE_MIN_AVG_TURNOVER,
                    help="Min genomsnittlig omsättning/vecka (lokal valuta) för att tas med i universumet")
+    p.add_argument("--min-history", type=int, default=config.MIN_HISTORY_WEEKS,
+                   help="Minsta historik (veckor) för att en ticker ska tas med (default "
+                        f"{config.MIN_HISTORY_WEEKS}). OBS: cachen lagrar data efter detta filter "
+                        "– kör med --no-cache efter en sänkning för att hämta in fler bolag.")
     p.add_argument("--n-trials",     type=int, default=1,
                    help="Antal testade strategier/parameterval, för Deflated Sharpe Ratio")
     p.add_argument("--optimize-threshold", action=argparse.BooleanOptionalAction, default=True,
@@ -87,6 +91,8 @@ def parse_args():
 
 def main():
     args = parse_args()
+    # Gör --min-history globalt verksam (data_loader._clean läser config direkt).
+    config.MIN_HISTORY_WEEKS = args.min_history
     Path(config.CACHE_DIR).mkdir(exist_ok=True)
     Path(config.RESULTS_DIR).mkdir(exist_ok=True)
 
@@ -179,7 +185,8 @@ def main():
         # denna ARM-CPU. Varje steg får därför sin egen process; data-
         # cachen gör att steg 1-2 (hämtning/features) körs snabbt igen.
         base_cmd = [sys.executable, __file__, "--start", args.start,
-                    "--min-turnover", str(args.min_turnover)]
+                    "--min-turnover", str(args.min_turnover),
+                    "--min-history", str(args.min_history)]
         if args.tickers:
             base_cmd += ["--tickers", *args.tickers]
         else:
@@ -192,7 +199,12 @@ def main():
             base_cmd += ["--no-liquidity-filter"]
 
         print("\n[Main] Tränar LightGBM i ny process...")
-        result = subprocess.run(base_cmd + ["--train-lgbm-only"])
+        # --no-cache forwardas ENBART till första processen: den hämtar nytt och
+        # skriver cachen, resten (LSTM/predict) läser samma cache.
+        lgbm_cmd = base_cmd + ["--train-lgbm-only"]
+        if args.no_cache:
+            lgbm_cmd += ["--no-cache"]
+        result = subprocess.run(lgbm_cmd)
         if result.returncode != 0:
             sys.exit(result.returncode)
 
