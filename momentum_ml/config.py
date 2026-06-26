@@ -9,6 +9,15 @@ START_DATE      = "2010-01-01"
 END_DATE        = None          # None = idag
 INTERVAL        = "1wk"        # veckodata
 
+# Minsta historik (veckor) för att en ticker ska tas med. Modellen tränas på
+# POOLAD tvärsnittsdata, så en aktie behöver bara nog historik för sina egna
+# features (~52v ROC + FORWARD_WEEKS label + buffert) – INTE en hel egen
+# träningsperiod. Tidigare krävdes TRAIN_WINDOW_WEEKS+LSTM+FORWARD (=290v ≈
+# 5,6 år), vilket uteslöt nästan alla små-/nyintroducerade bolag och kapade
+# universumet till ~120. 78v ≈ 1,5 år släpper in dem. OBS: tickers med <36v
+# får ingen LSTM-prediktion (men väl LGBM). Sänk inte under ~60v.
+MIN_HISTORY_WEEKS = 78
+
 # ── Feature-fönster (veckor) ─────────────────────────────────────────────────
 MOMENTUM_WINDOWS   = [4, 8, 13, 26, 52]
 VOLATILITY_WINDOWS = [4, 13, 26]
@@ -186,6 +195,16 @@ TA_FILTER_BB_MAX     = 1.0    # bb_position-tak: över detta = för överköpt
 
 # ── Marknadsregimer ───────────────────────────────────────────────────────────
 REGIME_SMA_WEEKS = 26       # trend-proxy för bull/bear/sidledes-klassificering
+
+# ── Marknadsfilter (long-only exponerings-overlay) ────────────────────────────
+# Long-only momentum bär full marknadsrisk. I stället för att blanka (som vi
+# medvetet INTE gör) drar vi ner portföljens bruttoexponering mot kontanter när
+# den breda marknaden är svag, och kör fullt i stark trend. Detta är klassisk
+# trendfilter-/dual-momentum-logik (Faber; Antonacci) och sänker både beta och
+# björnmarknads-drawdowns utan blankning. Faktorn multipliceras på målvikterna;
+# resten hamnar i kontanter automatiskt. Använder samma bull/bear/sidledes-
+# klassificering som regim-fliken (backtest/regime.py).
+MARKET_FILTER_EXPOSURE = {"bull": 1.0, "sideways": 0.6, "bear": 0.25}
 
 # ── Frusen holdout ────────────────────────────────────────────────────────────
 HOLDOUT_WEEKS = 104         # ~2 år som modellen aldrig tränas på

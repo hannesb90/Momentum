@@ -42,7 +42,9 @@ def fetch_weekly_data(
     Hämtar OHLCV-veckodata för en lista tickers.
     Returnerar dict {ticker: DataFrame med kolumner Open/High/Low/Close/Volume}.
     """
-    cache_key = f"{','.join(sorted(tickers))}_{start}_{end}"
+    # min_history ingår i nyckeln: cachen lagrar data EFTER historikfiltret, så
+    # en ändrad tröskel måste ge en ny cache (annars returneras gamla survivors).
+    cache_key = f"{','.join(sorted(tickers))}_{start}_{end}_h{config.MIN_HISTORY_WEEKS}"
     cp = _cache_path(cache_key)
 
     if use_cache and cp.exists():
@@ -123,7 +125,7 @@ def _clean(df: pd.DataFrame, ticker: str) -> Optional[pd.DataFrame]:
     df["Volume"] = df["Volume"].fillna(0)
     df.sort_index(inplace=True)
 
-    min_rows = config.TRAIN_WINDOW_WEEKS + config.LSTM_SEQUENCE_LEN + config.FORWARD_WEEKS
+    min_rows = config.MIN_HISTORY_WEEKS
     if len(df) < min_rows:
         print(f"  [WARN] {ticker}: för kort historik ({len(df)} veckor), "
               f"behöver minst {min_rows}.")
