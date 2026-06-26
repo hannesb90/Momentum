@@ -141,16 +141,26 @@ def deflated_sharpe_ratio(
     return probabilistic_sharpe_ratio(returns, benchmark_sr=benchmark_sr, ann_factor=ann_factor)
 
 
-def robustness_report(returns: pd.Series, n_trials: int = 1) -> Dict:
-    """Sammanställer bootstrap-CI + PSR/DSR i ett resultat redo att skrivas ut."""
+def robustness_report(returns: pd.Series, n_trials: int = 1,
+                      trial_sr_std: float = 1.0) -> Dict:
+    """
+    Sammanställer bootstrap-CI + PSR/DSR i ett resultat redo att skrivas ut.
+
+    trial_sr_std: spridningen (std) i de testade strategiernas Sharpe-kvoter,
+    i per-period-enhet. Default 1.0 är en konservativ schablon; skattas den
+    empiriskt från faktiska trials (t.ex. tröskelsökningens in-sample-Sharpe)
+    blir DSR korrekt kalibrerad i stället för pessimistisk/optimistisk.
+    """
     boot = block_bootstrap_stats(returns)
     psr  = probabilistic_sharpe_ratio(returns)
-    dsr  = deflated_sharpe_ratio(returns, n_trials=n_trials)
-    return {"bootstrap": boot, "psr": psr, "dsr": dsr, "n_trials": n_trials}
+    dsr  = deflated_sharpe_ratio(returns, n_trials=n_trials, trial_sr_std=trial_sr_std)
+    return {"bootstrap": boot, "psr": psr, "dsr": dsr,
+            "n_trials": n_trials, "trial_sr_std": trial_sr_std}
 
 
-def print_robustness_report(returns: pd.Series, n_trials: int = 1):
-    report = robustness_report(returns, n_trials=n_trials)
+def print_robustness_report(returns: pd.Series, n_trials: int = 1,
+                            trial_sr_std: float = 1.0):
+    report = robustness_report(returns, n_trials=n_trials, trial_sr_std=trial_sr_std)
     boot, psr, dsr = report["bootstrap"], report["psr"], report["dsr"]
 
     print("\n" + "=" * 50)

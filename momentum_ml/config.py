@@ -25,6 +25,11 @@ RETURN_THRESHOLD   = 0.05       # >5% = positiv klass
 TRAIN_WINDOW_WEEKS = 260        # ~5 år träning
 VAL_WINDOW_WEEKS   = 52         # ~1 år validering
 TEST_STEP_WEEKS    = 13         # Rulla 1 kvartal åt gången
+# Purge/embargo mot dataläckage: targets är FORWARD_WEEKS framåtavkastning, så
+# de sista veckornas labels i ett fönster överlappar nästa fönsters features.
+# Vi rensar (purgar) de sista EMBARGO_WEEKS observationerna ur varje segment
+# innan nästa börjar. Se walk_forward_splits och López de Prado (purged CV).
+EMBARGO_WEEKS      = FORWARD_WEEKS  # = 4, en hel label-horisont
 
 # ── Resursbegränsningar (för svagare hårdvara, t.ex. Raspberry Pi) ───────────
 # Antal CPU-trådar att avsätta för LightGBM/PyTorch-träning. Lämna minst en
@@ -145,6 +150,15 @@ LIQUIDITY_LOOKBACK_WEEKS   = 13     # fönster för genomsnittlig dollarvolym
 LIQUIDITY_MAX_ADV_FRACTION = 0.10   # max andel av ADV som handlas per vecka
 MARKET_IMPACT_COEF         = 0.10   # skala på sqrt(trade_value/ADV)-termen
 MARKET_IMPACT_MAX          = 0.05   # tak för impact-kostnad per trade (5%)
+
+# Likviditetsberoende halv-spread (bid/ask). Fast courtage+slippage (0.1%+0.1%)
+# är rimligt för Large Cap men optimistiskt för tunt handlade små-/microbolag
+# där spreaden lätt är 1-3%. Vi lägger på en halv-spread som växer när en
+# akties omsättning (ADV) ligger under en referensnivå, klippt till ett tak.
+# Detta gör att den utökade småbolagsavkastningen inte blir illusorisk.
+SPREAD_ADV_REF = 5_000_000   # ADV (lokal valuta/vecka) där spreaden är "normal"
+SPREAD_MIN     = 0.0005      # 0.05% halv-spread för mycket likvida bolag
+SPREAD_MAX     = 0.020       # 2% tak för de tunnaste namnen
 
 # ── Universumfilter (förfilter innan feature engineering/träning) ────────────
 # Tunt handlade bolag drar ner datakvalitet och ökar beräkningstid utan att
