@@ -116,6 +116,15 @@ KELLY_FRACTION     = 0.25      # Fractional Kelly (25%)
 MAX_POSITION       = 0.20      # Max 20% per position
 MIN_POSITION       = 0.01      # Min 1% (annars ej handel)
 MAX_POSITIONS      = 10        # Max antal samtidiga positioner
+# Conviction-tilt vs likavikt (krympning). prob_up mäter P(+5% på 4v) och är
+# naturligt <0.5 för nästan alla bolag, så absolut Kelly blir 0 för de flesta
+# och portföljen kollapsar till de få namn som råkar ha hög prob_up – inte en
+# diversifierad topp-N. Vi krymper därför conviction-vikten mot likavikt:
+# vikt_i = (1-blend)*likavikt + blend*kelly_normaliserad. 0.0 = ren likavikt,
+# 1.0 = ren conviction. Likavikt är notoriskt svårslaget och krympning minskar
+# estimeringsbrus (Ledoit-Wolf-anda) – varje vald aktie får alltid en
+# meningsfull vikt så vi håller N diversifierade innehav.
+CONVICTION_BLEND   = 0.5
 
 # ── Backtest-kostnader ────────────────────────────────────────────────────────
 COMMISSION         = 0.001     # 0.1% per trade
