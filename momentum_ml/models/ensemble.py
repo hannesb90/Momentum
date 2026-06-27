@@ -262,17 +262,16 @@ def build_full_output(
                 vol = 0.20
 
             raw_kelly = kelly_position_size(row["prob_up"], row["pred_return"], vol)
-            # Kandidat till portföljen = gynnsam Kelly-bet (prob_up > ~0.4, ger
-            # raw_kelly > 0) OCH förväntad avkastning över selektivitetsgolvet
-            # (default 0.0 → håll alla icke-negativa). INGEN absolut tröskel som
-            # lämnar kapital i kontanter – topp-N fyller alltid portföljen, och
-            # kontanter uppstår bara via marknadsfiltret (kris) i backtestern.
-            if row["pred_return"] <= config.MIN_EXPECTED_RETURN:
-                raw_kelly = 0.0
+            # Behörig kandidat = modellen förväntar inte en nedgång (förv.avk över
+            # selektivitetsgolvet, default 0.0). INGEN absolut prob_up-tröskel –
+            # vi rankar RELATIVT och håller de N starkaste (oavsett absolut nivå),
+            # så portföljen alltid fylls. Kontanter uppstår bara när i stort sett
+            # inget bolag har positiv förväntan (bred nedgång) + via marknadsfiltret.
+            eligible = row["pred_return"] > config.MIN_EXPECTED_RETURN
 
             # ── Valbart TA-bekräftelsefilter (opt-in, ovanpå momentum) ────────
             ta_score = 1.0
-            if ta_filter is not None and raw_kelly > 0:
+            if ta_filter is not None and eligible:
                 try:
                     ta_row = feat_df.loc[date]
                     if isinstance(ta_row, pd.DataFrame):   # om datumet är duplicerat
@@ -284,7 +283,7 @@ def build_full_output(
                 if ta_filter == "gate":
                     ta_score = 1.0 if passed else 0.0
                     if not passed:
-                        raw_kelly = 0.0          # hård grind: vetar kandidaten
+                        eligible = False          # hård grind: vetar kandidaten
                 else:  # score: mjuk viktning av conviction
                     ta_score = score
                     raw_kelly *= score
@@ -296,21 +295,30 @@ def build_full_output(
                 "pred_return":   row["pred_return"],
                 "ta_score":      ta_score,
                 "raw_kelly":     raw_kelly,
+                "eligible":      int(eligible),
             })
 
     df = pd.DataFrame(rows).set_index("Date").sort_index()
 
-    # Alltid-investerad topp-N: håll de N starkaste varje datum, conviction-
-    # viktat och normaliserat till ~100% (ingen kontant-drag från en absolut
-    # tröskel). Marknadsfilter + sektor-/korrelationsspärrar i backtestern drar
-    # ner exponeringen i kris.
+    # Alltid-investerad topp-N (tvärsnitts-momentum): bland behöriga kandidater,
+    # ranka efter prob_up (conviction, alltid definierad) och håll de N starkaste
+    # – oavsett absolut nivå. Vikta efter Kelly-conviction; om den är degenererad
+    # (alla ~0, dvs svag edge) faller vi tillbaka på likavikt så portföljen ändå
+    # fylls. Normaliserat till ~100%. Marknadsfilter/sektor-/korrelationsspärrar
+    # i backtestern drar ner exponeringen i kris.
     def _size_date(group: pd.DataFrame) -> pd.Series:
-        raw = {t: v for t, v in zip(group["ticker"], group["raw_kelly"]) if v > 0}
-        sized = _topn_invested_weights(raw)
+        cand = group[group["eligible"] == 1]
+        if cand.empty:
+            return pd.Series(0.0, index=group.index)
+        top = cand.sort_values("prob_up", ascending=False).head(config.MAX_POSITIONS)
+        w = dict(zip(top["ticker"], top["raw_kelly"]))
+        if sum(w.values()) <= 0:                 # ingen conviction -> likavikt
+            w = {t: 1.0 for t in top["ticker"]}
+        sized = _topn_invested_weights(w)
         return group["ticker"].map(sized).fillna(0.0)
 
     df["position_size"] = df.groupby(level="Date", group_keys=False).apply(_size_date)
     # pred_signal = "hålls i portföljen nu" (topp-N), inte en absolut tröskel.
     df["pred_signal"] = (df["position_size"] > 0).astype(int)
-    df = df.drop(columns="raw_kelly")
+    df = df.drop(columns=["raw_kelly", "eligible"])
     return df
