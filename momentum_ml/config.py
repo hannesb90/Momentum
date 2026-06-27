@@ -51,6 +51,12 @@ XS_TARGET_QUANTILE = 0.67       # topp-tertil = positiv klass
 # kan ändå de-riska däremellan (se backtester.run).
 REBALANCE_WEEKS    = FORWARD_WEEKS  # = 4
 
+# Delisting-detektor: om en ticker saknar ny kurs i mer än så här många veckor
+# (relativt universumets senaste datum) tolkas bolaget som avnoterat och tas bort
+# – ska inte visas som aktuell signal eller störa beräkningarna. Se
+# data_loader.filter_active_universe.
+STALE_MAX_WEEKS    = 4
+
 # ── Walk-forward backtest ────────────────────────────────────────────────────
 TRAIN_WINDOW_WEEKS = 260        # ~5 år träning
 VAL_WINDOW_WEEKS   = 52         # ~1 år validering

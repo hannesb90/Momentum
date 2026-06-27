@@ -243,6 +243,50 @@ def filter_liquid_universe(
     return filtered
 
 
+def filter_active_universe(
+    data: Dict[str, pd.DataFrame],
+    max_stale_weeks: int = config.STALE_MAX_WEEKS,
+) -> Dict[str, pd.DataFrame]:
+    """
+    Tar bort avnoterade/döda bolag: om en tickers SENASTE datapunkt är äldre än
+    `max_stale_weeks` veckor före universumets senaste datum (referens = "nu")
+    har bolaget ingen ny kurs och tolkas som avnoterat – det ska varken visas
+    som en aktuell signal eller störa beräkningarna.
+
+    OBS: detta tar även bort bolagets historik ur träningen. Det är ett pragmatiskt
+    "städa bort döda namn"-filter; en SURVIVORSHIP-korrekt lösning (behåll döda
+    bolags historik från en riktig avnoterings-datakälla) är ett separat, större
+    steg.
+    """
+    if not data:
+        return data
+    last_dates = {t: df.index.max() for t, df in data.items() if len(df)}
+    if not last_dates:
+        return data
+    ref = max(last_dates.values())
+    cutoff = ref - pd.Timedelta(weeks=max_stale_weeks)
+
+    active: Dict[str, pd.DataFrame] = {}
+    dropped = []
+    for ticker, df in data.items():
+        last = last_dates.get(ticker)
+        if last is not None and last >= cutoff:
+            active[ticker] = df
+        else:
+            dropped.append((ticker, last))
+
+    if dropped:
+        print(f"[DataLoader] Avnoterade/inaktiva (ingen kurs sedan >{max_stale_weeks}v "
+              f"före {ref.date()}): {len(dropped)} st")
+        for ticker, last in sorted(dropped, key=lambda x: str(x[1])):
+            stamp = last.date() if last is not None else "—"
+            print(f"  [DELISTED] {ticker}: senaste kurs {stamp}")
+
+    print(f"[DataLoader] Aktiva kvar efter delisting-filter: "
+          f"{len(active)}/{len(data)} tickers.")
+    return active
+
+
 def build_universe_df(data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     """
     Sätter ihop alla tickers till ett long-format DataFrame.
