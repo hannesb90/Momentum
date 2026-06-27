@@ -110,8 +110,9 @@ def main():
     if args.tickers:
         tickers = args.tickers
     elif args.universe == "sweden":
-        tickers, sweden_sector_map, cap_tier_map = load_sweden_universe(min_market_cap=args.market_cap)
+        tickers, sweden_sector_map, cap_tier_map, sweden_name_map = load_sweden_universe(min_market_cap=args.market_cap)
         config.SECTOR_MAP.update(sweden_sector_map)
+        config.NAME_MAP.update(sweden_name_map)
     else:
         tickers = config.DEFAULT_TICKERS
 
@@ -346,6 +347,10 @@ def main():
     # sektorexponering/koncentrationsrisk över användarens egna innehav,
     # inte bara modellsignal per enskild ticker.
     signals_df["sector"] = signals_df["ticker"].map(config.SECTOR_MAP).fillna("Okänd")
+    # Bolagsnamn per ticker – så frontend kan visa namn (inte bara ticker) i
+    # listor/aktievyn och låta användaren söka på bolagsnamn. Faller tillbaka på
+    # tickern om namn saknas (t.ex. ad-hoc --tickers-körningar).
+    signals_df["name"] = signals_df["ticker"].map(config.NAME_MAP).fillna(signals_df["ticker"])
 
     signals_df.to_csv(f"{config.RESULTS_DIR}/signals.csv")
     print(f"  Signals sparade: {config.RESULTS_DIR}/signals.csv")

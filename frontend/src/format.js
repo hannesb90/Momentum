@@ -18,3 +18,14 @@ export function toneForSignedPct(v) {
   if (v == null) return 'neutral'
   return Number(v) >= 0 ? 'good' : 'bad'
 }
+
+// Snyggar till bolagsnamn för visning: tar bort juridiska suffix som
+// "AB (publ.)", "(publ)", "AB" i slutet. Faller tillbaka på tickern om namn
+// saknas (t.ex. gammal signals.csv utan namn-kolumn).
+export function cleanName(name, ticker) {
+  if (!name || name === ticker) return ticker ?? name ?? ''
+  return String(name)
+    .replace(/\s*\(publ\.?\)\s*$/i, '')
+    .replace(/\s+AB\s*$/i, '')
+    .trim() || (ticker ?? name)
+}

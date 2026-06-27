@@ -164,17 +164,19 @@ def load_sweden_universe(
     (XLK/XLF/XLE m.fl.) som ger sektor-momentum-signaler trots att
     aktieuniverset i övrigt är begränsat till Sverige.
 
-    Returnerar (tickers, sector_map, cap_tier_map) – sector_map kan slås
-    ihop med config.SECTOR_MAP för att sektorexponeringsspärren ska
+    Returnerar (tickers, sector_map, cap_tier_map, name_map) – sector_map kan
+    slås ihop med config.SECTOR_MAP för att sektorexponeringsspärren ska
     fungera även för dessa tickers. cap_tier_map ger market_cap_category
     per ticker, t.ex. för att mata in cap-tier som modell-feature
-    (features/feature_engineering.py).
+    (features/feature_engineering.py). name_map ger bolagsnamn per ticker
+    (visas i frontend och möjliggör sök på namn).
     """
     import csv
 
     tickers: List[str] = []
     sector_map: Dict[str, str] = {}
     cap_tier_map: Dict[str, str] = {}
+    name_map: Dict[str, str] = {}
 
     stocks_path = Path(__file__).parent / "sweden_universe.csv"
     with open(stocks_path, encoding="utf-8") as f:
@@ -184,6 +186,7 @@ def load_sweden_universe(
             tickers.append(row["ticker"])
             sector_map[row["ticker"]] = row["sector"]
             cap_tier_map[row["ticker"]] = row["market_cap_category"]
+            name_map[row["ticker"]] = row["name"]
 
     if include_funds:
         funds_path = Path(__file__).parent / "sweden_funds.csv"
@@ -192,6 +195,7 @@ def load_sweden_universe(
                 tickers.append(row["ticker"])
                 sector_map[row["ticker"]] = row["sector"]
                 cap_tier_map[row["ticker"]] = row["market_cap_category"]
+                name_map[row["ticker"]] = row["name"]
 
     if include_sector_etfs:
         etf_path = Path(__file__).parent / "sector_etfs.csv"
@@ -200,8 +204,9 @@ def load_sweden_universe(
                 tickers.append(row["ticker"])
                 sector_map[row["ticker"]] = row["sector"]
                 cap_tier_map[row["ticker"]] = row["market_cap_category"]
+                name_map[row["ticker"]] = row["name"]
 
-    return tickers, sector_map, cap_tier_map
+    return tickers, sector_map, cap_tier_map, name_map
 
 
 def filter_liquid_universe(
