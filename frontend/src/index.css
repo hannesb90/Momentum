@@ -108,27 +108,36 @@ code {
   font-size: 0.9rem;
 }
 
-/* Segment-toggle (storbolag / småbolag) */
-.segment-toggle {
-  display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--border);
+/* Segment-toggle (storbolag / småbolag) – egen sticky topp-rad, syns på alla
+   skärmar (navbaren göms/flyttas till botten på mobil). */
+.segment-bar {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  padding: 8px;
+  background: rgba(11, 17, 32, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
 }
 .segment-toggle__btn {
-  border: none;
+  flex: 1;
+  max-width: 220px;
+  border: 1px solid var(--border);
   background: transparent;
   color: var(--muted, #94a3b8);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
-  padding: 5px 14px;
+  padding: 8px 14px;
   border-radius: 999px;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 .segment-toggle__btn--active {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
   color: #fff;
 }
 
@@ -471,6 +480,29 @@ tr:last-child td {
 
 .ticker-cell {
   font-weight: 600;
+}
+
+/* Mobil: krymp tabellen så bolagsdata får plats utan att scrolla i sidled */
+@media (max-width: 640px) {
+  table {
+    font-size: 0.8rem;
+  }
+  th,
+  td {
+    padding: 8px 7px;
+  }
+  .col-ta {
+    display: none;        /* TA-kolumnen göms på smal skärm – minst kritisk */
+  }
+  .ticker-link__name {
+    max-width: 8.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ticker-link__ticker {
+    font-size: 0.68rem;
+  }
 }
 
 .cell-strong {

@@ -123,7 +123,7 @@ export function SignalsPage() {
                   </InfoButton>
                 </th>
                 {hasTa && (
-                  <th>
+                  <th className="col-ta">
                     TA
                     <InfoButton title="TA-score">
                       Ett kompletterande tekniskt analyspoäng (0–100%) som visar hur starkt aktiens
@@ -152,7 +152,7 @@ export function SignalsPage() {
                   <td>{fmtPct(row.prob_up)}</td>
                   <td><SignalBadge variant={row.pred_signal === 1 ? 'buy' : 'flat'} /></td>
                   <td>{fmtPct(row.pred_return)}</td>
-                  {hasTa && <td>{row.ta_score == null ? '–' : fmtPct(row.ta_score, 0)}</td>}
+                  {hasTa && <td className="col-ta">{row.ta_score == null ? '–' : fmtPct(row.ta_score, 0)}</td>}
                   <td>{fmtPct(row.position_size)}</td>
                 </tr>
               ))}
