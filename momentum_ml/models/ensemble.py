@@ -311,10 +311,19 @@ def build_full_output(
         if cand.empty:
             return pd.Series(0.0, index=group.index)
         top = cand.sort_values("prob_up", ascending=False).head(config.MAX_POSITIONS)
-        w = dict(zip(top["ticker"], top["raw_kelly"]))
-        if sum(w.values()) <= 0:                 # ingen conviction -> likavikt
-            w = {t: 1.0 for t in top["ticker"]}
-        sized = _topn_invested_weights(w)
+        n = len(top)
+        eq = 1.0 / n
+        # Conviction-tilt KRYMPT mot likavikt så portföljen inte kollapsar till
+        # de få namn vars absoluta Kelly råkar vara > 0 (prob_up mäter P(+5%) och
+        # är <0.5 för nästan alla -> Kelly=0). Varje valt namn får minst
+        # (1-blend)*likavikt, så vi håller N diversifierade innehav.
+        kelly = top["raw_kelly"].clip(lower=0.0)
+        ksum = float(kelly.sum())
+        tilt = (kelly / ksum) if ksum > 0 else pd.Series(eq, index=top.index)
+        blend = float(getattr(config, "CONVICTION_BLEND", 0.5))
+        raw = {t: (1.0 - blend) * eq + blend * float(tw)
+               for t, tw in zip(top["ticker"], tilt)}
+        sized = _topn_invested_weights(raw)
         return group["ticker"].map(sized).fillna(0.0)
 
     df["position_size"] = df.groupby(level="Date", group_keys=False).apply(_size_date)
