@@ -74,46 +74,59 @@ class MomentumBacktester:
 
         portfolio_values = []
 
-        for date in dates:
-            day_signals = self.signals.loc[date]
-            if isinstance(day_signals, pd.Series):
-                day_signals = day_signals.to_frame().T
+        # Rebalansera på prognoshorisonten (var REBALANCE_WEEKS:e vecka), inte
+        # varje vecka. Modellen förutsäger FORWARD_WEEKS framåt; att handla varje
+        # vecka på den signalen churnar portföljen (~40%+ omsättning/vecka) och
+        # äts upp av courtage/spread/impact. Mellan schemalagda rebalanseringar
+        # HÅLLS innehaven – men marknadsfiltret/drawdown-guarden får ändå
+        # de-riska (sälja ned mot kontanter) i kris, aldrig köpa upp off-schema.
+        rebalance_weeks = max(int(getattr(config, "REBALANCE_WEEKS", 1)), 1)
 
+        for i, date in enumerate(dates):
             # Beräkna aktuellt portföljvärde
             portfolio_value = cash + self._portfolio_value(date)
             peak = max(peak, portfolio_value)
             drawdown = portfolio_value / peak - 1
 
-            # Önskad allokering
-            target_weights = {}
-            for _, row in day_signals.iterrows():
-                if row["pred_signal"] == 1 and row["position_size"] > 0:
-                    target_weights[row["ticker"]] = row["position_size"]
-
-            # Slå ihop kraftigt korrelerade positioner (undvik dold koncentration)
-            target_weights = self._correlation_filter(target_weights, date)
-
-            # Begränsa exponering per sektor
-            target_weights = self._sector_exposure_filter(target_weights)
-
-            # Normalisera vikter (säkerhet)
-            total_w = sum(target_weights.values())
-            if total_w > 1.0:
-                target_weights = {t: w / total_w for t, w in target_weights.items()}
-
-            # Marknadsfilter: skala ner exponering mot kontanter i svag marknad
-            # (long-only de-risking, aldrig blankning).
             market_exp = self._market_exposure_factor(date)
-            if market_exp < 1.0:
-                target_weights = {t: w * market_exp for t, w in target_weights.items()}
-
-            # De-leverage vid drawdown
             guard = self._drawdown_guard_factor(drawdown)
-            if guard < 1.0:
-                target_weights = {t: w * guard for t, w in target_weights.items()}
 
-            # Rebalansera
-            cash = self._rebalance(date, target_weights, portfolio_value, cash)
+            if i % rebalance_weeks == 0:
+                # ── Schemalagd full rebalansering ────────────────────────────
+                day_signals = self.signals.loc[date]
+                if isinstance(day_signals, pd.Series):
+                    day_signals = day_signals.to_frame().T
+
+                # Önskad allokering
+                target_weights = {}
+                for _, row in day_signals.iterrows():
+                    if row["pred_signal"] == 1 and row["position_size"] > 0:
+                        target_weights[row["ticker"]] = row["position_size"]
+
+                # Slå ihop kraftigt korrelerade positioner (undvik dold koncentration)
+                target_weights = self._correlation_filter(target_weights, date)
+
+                # Begränsa exponering per sektor
+                target_weights = self._sector_exposure_filter(target_weights)
+
+                # Normalisera vikter (säkerhet)
+                total_w = sum(target_weights.values())
+                if total_w > 1.0:
+                    target_weights = {t: w / total_w for t, w in target_weights.items()}
+
+                # Marknadsfilter: skala ner exponering mot kontanter i svag marknad
+                # (long-only de-risking, aldrig blankning).
+                if market_exp < 1.0:
+                    target_weights = {t: w * market_exp for t, w in target_weights.items()}
+
+                # De-leverage vid drawdown
+                if guard < 1.0:
+                    target_weights = {t: w * guard for t, w in target_weights.items()}
+
+                cash = self._rebalance(date, target_weights, portfolio_value, cash)
+            else:
+                # ── Håll – men de-riska om regim/guard kräver LÄGRE exponering ─
+                cash = self._derisk_to_cap(date, market_exp * guard, portfolio_value, cash)
 
             portfolio_values.append({
                 "Date":            date,
@@ -351,6 +364,33 @@ class MomentumBacktester:
                     del self._portfolio[ticker]
 
         return cash
+
+    def _derisk_to_cap(
+        self,
+        date: pd.Timestamp,
+        cap: float,
+        portfolio_value: float,
+        cash: float,
+    ) -> float:
+        """
+        Mellan schemalagda rebalanseringar: sälj ENDAST ned (aldrig köp) om den
+        investerade andelen överstiger taket `cap` (= marknadsexponering ×
+        drawdown-guard). Bevarar kris-de-riskning utan att churna i lugna
+        perioder. Behåller relativa vikter mellan innehaven.
+        """
+        if not self._portfolio or portfolio_value <= 0:
+            return cash
+        invested = self._portfolio_value(date)
+        inv_frac = invested / portfolio_value
+        if inv_frac <= cap + 1e-6:
+            return cash   # redan under taket – håll, ingen handel
+        scale = max(cap, 0.0) / inv_frac
+        target = {}
+        for ticker, shares in self._portfolio.items():
+            price = self._get_price(ticker, date)
+            if price:
+                target[ticker] = (shares * price / portfolio_value) * scale
+        return self._rebalance(date, target, portfolio_value, cash)
 
     # ── Hjälpare ──────────────────────────────────────────────────────────────
 
