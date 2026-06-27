@@ -26,8 +26,18 @@ EMA_PAIRS          = [(8, 21), (13, 34), (21, 55)]
 ADX_PERIOD         = 14
 DONCHIAN_WEEKS     = 20         # utbrottsfönster (pris bryter N-veckors high/low)
 
+# Klassisk "12-1"-momentum: formation 52v, hoppa över senaste 4v (skip-month).
+# Skip-fönstret är avgörande – på 1-4 veckors sikt dominerar REVERSAL (aktier som
+# just stigit rekylerar), medan trenden 12→1 mån håller i sig (Jegadeesh-Titman).
+MOM_FORMATION_WEEKS = 52
+MOM_SKIP_WEEKS      = 4
+
 # ── Targets ──────────────────────────────────────────────────────────────────
-FORWARD_WEEKS      = 4          # Förutsägningshorisont
+# Prognoshorisont. VIKTIGT: 4v låg i reversal-regimen – modellen lärde sig då att
+# undvika just de aktier som trendar (t.ex. SAAB under försvarsrusningen fick
+# aldrig prob_up över basnivån). Klassisk momentum håller 1-3 mån; 13v (≈kvartal)
+# ligger i momentum-regimen. Styr även REBALANCE_WEEKS och EMBARGO_WEEKS nedan.
+FORWARD_WEEKS      = 13         # Förutsägningshorisont (≈ kvartal, momentum-regim)
 RETURN_THRESHOLD   = 0.05       # >5% = positiv klass (endast om XS_TARGET=False)
 
 # Tvärsnitts-target (cross-sectional). Det gamla absoluta targetet ("går DENNA

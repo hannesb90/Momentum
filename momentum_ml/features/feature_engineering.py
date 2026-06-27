@@ -86,6 +86,12 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     for w in config.MOMENTUM_WINDOWS:
         feat[f"roc_{w}w"] = _roc(c, w)
 
+    # Klassisk "12-1" momentum: avkastning från ~12 mån sedan till ~1 mån sedan
+    # (hoppar över senaste MOM_SKIP_WEEKS för att undvika kortsiktig reversal).
+    # Det mest evidensbackade momentum-måttet (Jegadeesh-Titman) – skip-fönstret
+    # är nyckeln till att fånga uthålliga trender i stället för spikar som rekylerar.
+    feat["mom_12_1"] = c.shift(config.MOM_SKIP_WEEKS) / c.shift(config.MOM_FORMATION_WEEKS) - 1
+
     # Skew och kurtosis av veckoavkastning (13v)
     wr = c.pct_change()
     feat["ret_skew_13w"]  = wr.rolling(13).skew()
@@ -324,6 +330,7 @@ def to_model_df(all_features: Dict[str, pd.DataFrame]) -> pd.DataFrame:
 FEATURE_COLS = [
     # Momentum
     *[f"roc_{w}w" for w in config.MOMENTUM_WINDOWS],
+    "mom_12_1",
     "ret_skew_13w", "ret_kurt_13w",
     # Trend
     *[f"ema_cross_{f}_{s}" for f, s in config.EMA_PAIRS],
