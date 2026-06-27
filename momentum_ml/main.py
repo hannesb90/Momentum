@@ -187,6 +187,15 @@ def main():
         return
 
     if not args.predict_only:
+        # MINNE: i orkestreringsläget bygger varje subprocess (LGBM/LSTM/predict)
+        # om data+features SJÄLV från cachen. Den här parent-processen behöver
+        # alltså INTE hålla kvar sina kopior medan barnen kör – annars ligger två
+        # fulla universum i RAM samtidigt (parent + barn) och tippar över i swap
+        # på en 2GB-Pi (märks tydligt på hela Sverige-universumet, ~483 tickers).
+        # Frigör innan vi startar barnen; parent gör bara sys.exit efteråt.
+        del data, all_features, model_df, dev_df
+        gc.collect()
+
         # Träning (LGBM, LSTM) och prediktion körs i HELT FRISKA processer
         # var för sig. Bekräftat på Pi 4B (Cortex-A72): körs LightGBMs
         # OpenMP-trådpool och PyTorchs trådpool sekventiellt i samma
