@@ -7,11 +7,20 @@ set -euo pipefail
 SRC_DIR=/opt/momentum/src
 BRANCH=claude/pr-momentum-wr0x1f
 
+# Kör git som den INLOGGADE användaren, inte root. Servicen/scriptet körs ofta
+# med sudo (för systemctl/rsync nedan), men då saknar root ~/.ssh/config med
+# 'github-momentum'-aliaset → "Could not resolve hostname github-momentum" och
+# pullen misslyckas tyst. Vi kör därför alla git-anrop som $SUDO_USER (faller
+# tillbaka på aktuell användare om scriptet körs utan sudo).
+RUN_AS="${SUDO_USER:-$(id -un)}"
+git_as() { sudo -u "$RUN_AS" -H git -C "$SRC_DIR" "$@"; }
+
+before=$(git_as rev-parse HEAD)
+git_as fetch origin "$BRANCH"
+git_as merge --ff-only "origin/$BRANCH"
+after=$(git_as rev-parse HEAD)
+
 cd "$SRC_DIR"
-before=$(git rev-parse HEAD)
-git fetch origin "$BRANCH"
-git merge --ff-only "origin/$BRANCH"
-after=$(git rev-parse HEAD)
 
 if [ "$before" = "$after" ]; then
     echo "Inga nya ändringar ($before)."
@@ -19,7 +28,7 @@ if [ "$before" = "$after" ]; then
 fi
 
 echo "Ny(a) commit(s): $before -> $after"
-changed=$(git diff --name-only "$before" "$after")
+changed=$(git_as diff --name-only "$before" "$after")
 
 if echo "$changed" | grep -q '^momentum_ml/requirements\.txt$'; then
     echo "[VARNING] requirements.txt har ändrats - kör pip install manuellt:"
