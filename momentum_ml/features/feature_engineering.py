@@ -248,6 +248,14 @@ def build_all_features(data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]
             print(f"  [WARN] {ticker}: feature error: {e}")
 
     all_feat = add_cross_sectional(all_feat)
+
+    # Nedkonvertera float64 -> float32 för hela dicten (halverar RAM). Gäller
+    # även prediktionsprocessen som håller hela universumet i minnet samtidigt.
+    for feat in all_feat.values():
+        float_cols = feat.select_dtypes(include=["float64"]).columns
+        if len(float_cols):
+            feat[float_cols] = feat[float_cols].astype("float32")
+
     print(f"[Features] Klar. {len(all_feat)} tickers, "
           f"{next(iter(all_feat.values())).shape[1]} features.")
     return all_feat
@@ -292,13 +300,23 @@ def to_model_df(all_features: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     """
     Slår ihop alla tickers till ett long-format df med 'ticker'-kolumn.
     Droppar rader där target är NaN (sista FORWARD_WEEKS veckorna).
+
+    Minne: float64-features dominerar RAM-användningen på hela Sverige-
+    universumet (~656 tickers). Vi nedkonverterar därför float-kolumner till
+    float32 PER ticker innan concat – det halverar topp-minnet utan att påverka
+    modellen (LightGBM/precisionen klarar float32 gott). Viktigt för att hela
+    universumet ska få plats i RAM på en 2GB-Pi.
     """
     frames = []
     for ticker, feat in all_features.items():
         tmp = feat.copy()
+        float_cols = tmp.select_dtypes(include=["float64"]).columns
+        if len(float_cols):
+            tmp[float_cols] = tmp[float_cols].astype("float32")
         tmp["ticker"] = ticker
         frames.append(tmp)
     df = pd.concat(frames).sort_index()
+    del frames
     df = df.dropna(subset=["target_return", "target_signal"])
     return df
 
