@@ -53,13 +53,32 @@ function Icon({ name }) {
   )
 }
 
-export function NavBar() {
+function SegmentToggle({ segment, segments, onSegmentChange }) {
+  if (!segments || segments.length < 2) return null
+  return (
+    <div className="segment-toggle" role="group" aria-label="Storlekssegment">
+      {segments.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          className={`segment-toggle__btn${segment === s.id ? ' segment-toggle__btn--active' : ''}`}
+          onClick={() => onSegmentChange(s.id)}
+        >
+          {s.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export function NavBar({ segment, segments, onSegmentChange }) {
   return (
     <nav className="navbar">
       <div className="navbar__brand">
         <span className="navbar__logo">M</span>
         Momentum
       </div>
+      <SegmentToggle segment={segment} segments={segments} onSegmentChange={onSegmentChange} />
       <div className="navbar__links">
         {links.map((link) => (
           <NavLink

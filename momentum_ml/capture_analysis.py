@@ -25,7 +25,13 @@ TOP_N = 50   # antal största rörelser att granska
 
 
 def main():
-    tickers, sector_map, _, name_map = load_sweden_universe(min_market_cap=["Large Cap", "Mid Cap"])
+    # Valfritt segment som argument: python capture_analysis.py [large|small]
+    segment = sys.argv[1] if len(sys.argv) > 1 else config.DEFAULT_SEGMENT
+    seg = config.SEGMENTS.get(segment) or config.SEGMENTS[config.DEFAULT_SEGMENT]
+    results_dir = seg["results_dir"]
+    print(f"[Segment] {segment} ({seg['label']}) – läser {results_dir}/signals.csv")
+
+    tickers, sector_map, _, name_map = load_sweden_universe(min_market_cap=seg["market_cap"])
     config.SECTOR_MAP.update(sector_map)
     data = fetch_weekly_data(tickers, start="2010-01-01", end=None, use_cache=True)
     data = filter_active_universe(data)
@@ -42,7 +48,7 @@ def main():
             rows.append((date, t, float(r)))
     act = pd.DataFrame(rows, columns=["Date", "ticker", "fwd_ret"])
 
-    sig = pd.read_csv("results/signals.csv", parse_dates=["Date"])
+    sig = pd.read_csv(f"{results_dir}/signals.csv", parse_dates=["Date"])
     keep = [c for c in ["Date", "ticker", "prob_up", "pred_signal", "position_size", "name"] if c in sig.columns]
     m = act.merge(sig[keep], on=["Date", "ticker"], how="inner")
     if m.empty:
