@@ -28,7 +28,19 @@ DONCHIAN_WEEKS     = 20         # utbrottsfönster (pris bryter N-veckors high/l
 
 # ── Targets ──────────────────────────────────────────────────────────────────
 FORWARD_WEEKS      = 4          # Förutsägningshorisont
-RETURN_THRESHOLD   = 0.05       # >5% = positiv klass
+RETURN_THRESHOLD   = 0.05       # >5% = positiv klass (endast om XS_TARGET=False)
+
+# Tvärsnitts-target (cross-sectional). Det gamla absoluta targetet ("går DENNA
+# aktie upp >RETURN_THRESHOLD på 4v?") gör att positiv klass nästan försvinner i
+# svaga perioder → prob_up kollapsar mot basfrekvensen för alla bolag (platt,
+# AUC ~0.50, ingen rangordning). Topp-N behöver i stället en RELATIV fråga:
+# "kommer aktien att SLÅ de andra bolagen?". Med XS_TARGET=True sätts positiv
+# klass = aktier vars framåtavkastning ligger i toppen (>= XS_TARGET_QUANTILE) av
+# universumets fördelning SAMMA vecka. Klassbalansen blir då ~konstant oavsett
+# marknadsregim och prob_up får verklig tvärsnitts-dispersion = meningsfull edge
+# att vikta på. (Jegadeesh-Titman-anda: relativ styrka, inte absolut nivå.)
+XS_TARGET          = True
+XS_TARGET_QUANTILE = 0.67       # topp-tertil = positiv klass
 
 # Rebalanseringsfrekvens (veckor). Modellen förutsäger FORWARD_WEEKS framåt, så
 # att rebalansera VARJE vecka på en 4-veckorssignal innebär att man ständigt

@@ -212,6 +212,26 @@ def add_cross_sectional(all_features: Dict[str, pd.DataFrame]) -> Dict[str, pd.D
         # dvs. relativ styrka tilltar – ofta ett tidigt rotations-tecken.
         feat["rank_change_4w"] = rank_13[ticker] - rank_13[ticker].shift(4)
 
+    # ── Tvärsnitts-target (relativ rangordning) ──────────────────────────────
+    # Sätt klassificerings-targetet RELATIVT: positiv klass = aktier vars
+    # framåtavkastning (target_return) ligger i toppen av universumet samma vecka.
+    # Detta ersätter det absoluta ">RETURN_THRESHOLD"-targetet (se config.XS_TARGET).
+    # Ingen lookahead utöver den befintliga forward-fönstret: rankningen för
+    # datum t använder bara avkastningar som realiseras i t:s forward-fönster,
+    # rankade mot samtidiga bolag.
+    if getattr(config, "XS_TARGET", False):
+        fwd_ret = pd.DataFrame({t: f["target_return"] for t, f in all_features.items()})
+        # percentilrank per datum (rad). min_periods via count: rankas bara när
+        # tillräckligt många bolag har en realiserad avkastning den veckan.
+        pr = fwd_ret.rank(axis=1, pct=True)
+        valid = fwd_ret.notna().sum(axis=1) >= 5      # kräv minst 5 bolag för en meningsfull rank
+        q = float(config.XS_TARGET_QUANTILE)
+        for ticker, feat in all_features.items():
+            sig = (pr[ticker] >= q).astype(float)
+            # ogiltigt (saknad avkastning eller för få bolag) -> NaN, droppas i to_model_df
+            sig[fwd_ret[ticker].isna() | ~valid] = np.nan
+            feat["target_signal"] = sig.reindex(feat.index)
+
     return all_features
 
 
