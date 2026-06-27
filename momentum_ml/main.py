@@ -20,7 +20,7 @@ from pathlib import Path
 import config
 from data.data_loader import (
     fetch_weekly_data, build_universe_df, filter_liquid_universe,
-    load_sweden_universe,
+    filter_active_universe, load_sweden_universe,
 )
 from features.feature_engineering import (
     build_all_features, to_model_df, attach_categorical_features, FEATURE_COLS,
@@ -62,6 +62,9 @@ def parse_args():
                    help="Kör inte likviditetsfiltret (alla tickers med tillräcklig historik tas med)")
     p.add_argument("--min-turnover", type=float, default=config.UNIVERSE_MIN_AVG_TURNOVER,
                    help="Min genomsnittlig omsättning/vecka (lokal valuta) för att tas med i universumet")
+    p.add_argument("--stale-weeks", type=int, default=config.STALE_MAX_WEEKS,
+                   help=f"Ta bort bolag utan ny kurs på fler än så här många veckor "
+                        f"(avnoterade/döda; default {config.STALE_MAX_WEEKS})")
     p.add_argument("--min-history", type=int, default=config.MIN_HISTORY_WEEKS,
                    help="Minsta historik (veckor) för att en ticker ska tas med (default "
                         f"{config.MIN_HISTORY_WEEKS}). OBS: cachen lagrar data efter detta filter "
@@ -132,6 +135,13 @@ def main():
         end=args.end,
         use_cache=not args.no_cache,
     )
+
+    # ── 1.4 Delisting-filter (avnoterade/döda bolag) ──────────────────────────
+    # Ett bolag utan ny kurs på >STALE_MAX_WEEKS veckor tolkas som avnoterat och
+    # tas bort – annars dyker döda namn (t.ex. namnbytta/avnoterade) upp som
+    # aktuella signaler och förorenar både listan och beräkningarna.
+    print("\nSTEG 1.4: Delisting-filter...")
+    data = filter_active_universe(data, max_stale_weeks=args.stale_weeks)
 
     # ── 1.5 Likviditetsfilter ─────────────────────────────────────────────────
     if not args.no_liquidity_filter:
@@ -206,6 +216,7 @@ def main():
         # cachen gör att steg 1-2 (hämtning/features) körs snabbt igen.
         base_cmd = [sys.executable, __file__, "--start", args.start,
                     "--min-turnover", str(args.min_turnover),
+                    "--stale-weeks", str(args.stale_weeks),
                     "--min-history", str(args.min_history),
                     "--min-expected-return", str(args.min_expected_return)]
         if args.tickers:
