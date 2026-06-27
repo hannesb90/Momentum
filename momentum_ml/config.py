@@ -88,7 +88,13 @@ ROLLING_SHARPE_WINDOW = 12     # Veckor för dynamisk viktning
 # --optimize-threshold (default på). Detta löser "nästan alltid i kontanter"-
 # problemet: en välkalibrerad P(>5% på 4v) passerar sällan 0.5, så portföljen
 # blir sällan investerad. Låt datan välja nivån istället för att gissa.
-BUY_THRESHOLD = 0.5
+BUY_THRESHOLD = 0.5   # legacy: används ej i alltid-investerad topp-N-design
+# Selektivitetsgolv: en aktie är kandidat till portföljen bara om dess
+# förväntade avkastning (över FORWARD_WEEKS) överstiger detta. Default 0.0 =
+# håll vilket bolag som helst med icke-negativ förväntan → "alltid investerad"
+# (topp-N fyller portföljen). HÖJ för färre/starkare innehav och mer kontanter
+# i svaga perioder (t.ex. 0.015 för att kräva marginal över round-trip-kostnad).
+MIN_EXPECTED_RETURN = 0.0
 # Kandidatrutnät som söks igenom. Varje testad nivå är ett "trial" som
 # deflaterar Deflated Sharpe Ratio (multipeltestning) – se --n-trials.
 BUY_THRESHOLD_GRID = [0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]

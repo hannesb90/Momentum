@@ -133,6 +133,48 @@ def _apply_portfolio_constraints(weights: Dict[str, float]) -> Dict[str, float]:
     return weights
 
 
+def _topn_invested_weights(
+    raw: Dict[str, float],
+    n: int = config.MAX_POSITIONS,
+    max_position: float = config.MAX_POSITION,
+) -> Dict[str, float]:
+    """
+    Alltid-investerad topp-N-allokering (tvärsnitts-momentum).
+
+    I stället för en absolut tröskel som lämnar kapitalet i kontanter när få
+    namn kvalar in, håller vi alltid de N starkaste kandidaterna och fyller
+    ~100% av portföljen. `raw` är conviction per ticker (Kelly utifrån prob_up
+    + volatilitet); vi tar topp-N, viktar PROPORTIONELLT mot conviction och
+    normaliserar till summa 1.0 (fullinvesterad). Varje innehav kapas vid
+    max_position och överskottet fördelas om. Kontanter uppstår sedan bara via
+    marknadsfiltret (kris) och sektor-/korrelationsspärrarna i backtestern, inte
+    för att "inget kvalade in".
+    """
+    if not raw:
+        return {}
+    top = dict(sorted(raw.items(), key=lambda kv: kv[1], reverse=True)[:n])
+    total = sum(top.values())
+    if total <= 0:
+        return {}
+    w = {t: v / total for t, v in top.items()}   # conviction-vikt, fullinvesterad
+
+    # Kapa per innehav vid max_position och fördela om överskottet proportionellt.
+    for _ in range(5):
+        over = {t: v for t, v in w.items() if v > max_position + 1e-9}
+        if not over:
+            break
+        excess = sum(v - max_position for v in over.values())
+        for t in over:
+            w[t] = max_position
+        under = {t: v for t, v in w.items() if v < max_position - 1e-9}
+        under_sum = sum(under.values())
+        if under_sum <= 0:
+            break
+        for t in under:
+            w[t] += excess * (w[t] / under_sum)
+    return w
+
+
 def build_portfolio_weights(
     signals: pd.DataFrame,
     feature_df: pd.DataFrame,   # behövs för volatilitet
@@ -219,12 +261,18 @@ def build_full_output(
             except Exception:
                 vol = 0.20
 
-            raw_kelly  = kelly_position_size(row["prob_up"], row["pred_return"], vol)
-            pred_signal = int(row["prob_up"] > buy_threshold)
+            raw_kelly = kelly_position_size(row["prob_up"], row["pred_return"], vol)
+            # Kandidat till portföljen = gynnsam Kelly-bet (prob_up > ~0.4, ger
+            # raw_kelly > 0) OCH förväntad avkastning över selektivitetsgolvet
+            # (default 0.0 → håll alla icke-negativa). INGEN absolut tröskel som
+            # lämnar kapital i kontanter – topp-N fyller alltid portföljen, och
+            # kontanter uppstår bara via marknadsfiltret (kris) i backtestern.
+            if row["pred_return"] <= config.MIN_EXPECTED_RETURN:
+                raw_kelly = 0.0
 
-            # ── Valbart TA-bekräftelsefilter ─────────────────────────────────
+            # ── Valbart TA-bekräftelsefilter (opt-in, ovanpå momentum) ────────
             ta_score = 1.0
-            if ta_filter is not None and pred_signal == 1:
+            if ta_filter is not None and raw_kelly > 0:
                 try:
                     ta_row = feat_df.loc[date]
                     if isinstance(ta_row, pd.DataFrame):   # om datumet är duplicerat
@@ -236,9 +284,8 @@ def build_full_output(
                 if ta_filter == "gate":
                     ta_score = 1.0 if passed else 0.0
                     if not passed:
-                        pred_signal = 0          # hård grind: vetar signalen
-                        raw_kelly = 0.0
-                else:  # score: mjuk viktning av storleken
+                        raw_kelly = 0.0          # hård grind: vetar kandidaten
+                else:  # score: mjuk viktning av conviction
                     ta_score = score
                     raw_kelly *= score
 
@@ -246,20 +293,24 @@ def build_full_output(
                 "Date":          date,
                 "ticker":        ticker,
                 "prob_up":       row["prob_up"],
-                "pred_signal":   pred_signal,
                 "pred_return":   row["pred_return"],
                 "ta_score":      ta_score,
-                "raw_kelly":     raw_kelly if pred_signal == 1 else 0.0,
+                "raw_kelly":     raw_kelly,
             })
 
     df = pd.DataFrame(rows).set_index("Date").sort_index()
 
+    # Alltid-investerad topp-N: håll de N starkaste varje datum, conviction-
+    # viktat och normaliserat till ~100% (ingen kontant-drag från en absolut
+    # tröskel). Marknadsfilter + sektor-/korrelationsspärrar i backtestern drar
+    # ner exponeringen i kris.
     def _size_date(group: pd.DataFrame) -> pd.Series:
-        candidates = group[group["raw_kelly"] > 0]
-        raw_weights = dict(zip(candidates["ticker"], candidates["raw_kelly"]))
-        sized = _apply_portfolio_constraints(raw_weights)
+        raw = {t: v for t, v in zip(group["ticker"], group["raw_kelly"]) if v > 0}
+        sized = _topn_invested_weights(raw)
         return group["ticker"].map(sized).fillna(0.0)
 
     df["position_size"] = df.groupby(level="Date", group_keys=False).apply(_size_date)
+    # pred_signal = "hålls i portföljen nu" (topp-N), inte en absolut tröskel.
+    df["pred_signal"] = (df["position_size"] > 0).astype(int)
     df = df.drop(columns="raw_kelly")
     return df

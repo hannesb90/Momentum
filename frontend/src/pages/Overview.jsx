@@ -169,8 +169,8 @@ export function OverviewPage() {
             Win Rate
             <InfoButton title="Win Rate">
               <p>
-                Andelen av strategins affärer/perioder som gav positiv avkastning. T.ex. 55% betyder
-                att drygt hälften av tillfällena slutade på plus.
+                Andelen av de veckor då portföljen <strong>faktiskt var investerad</strong> som gav
+                positiv avkastning. Kontantveckor räknas inte (de är varken vinst eller förlust).
               </p>
               <p>
                 En hög win rate är inte allt – några stora vinster kan väga upp många små förluster,

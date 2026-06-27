@@ -59,8 +59,15 @@ function StatsRow({ title, stats }) {
         <StatCard
           label="Win Rate"
           value={stats['Win Rate']}
-          info="Andelen perioder/affärer med positiv avkastning. Säger inget om hur stora vinsterna respektive förlusterna var."
+          info="Andelen av de veckor portföljen faktiskt var investerad som gav positiv avkastning. Kontantveckor räknas inte (varken vinst eller förlust)."
         />
+        {stats.Invested && (
+          <StatCard
+            label="Investerad andel"
+            value={stats.Invested}
+            info="Hur stor del av tiden portföljen var i marknaden (inte kontanter). Låg andel = kontant-drag som tynger CAGR. I den alltid-investerade designen ska denna vara hög utom i kriser, då marknadsfiltret drar ner exponeringen."
+          />
+        )}
       </div>
     </div>
   )

@@ -68,13 +68,17 @@ def parse_args():
                         "– kör med --no-cache efter en sänkning för att hämta in fler bolag.")
     p.add_argument("--n-trials",     type=int, default=1,
                    help="Antal testade strategier/parameterval, för Deflated Sharpe Ratio")
-    p.add_argument("--optimize-threshold", action=argparse.BooleanOptionalAction, default=True,
-                   help="Sök fram köptröskeln (prob_up-gräns) på dev-perioden och validera "
-                        "på holdouten, i stället för en fast gräns (default: på). "
-                        "Stäng av med --no-optimize-threshold.")
+    p.add_argument("--optimize-threshold", action=argparse.BooleanOptionalAction, default=False,
+                   help="(Legacy) Sök fram en absolut köptröskel. Används EJ i den alltid-"
+                        "investerade topp-N-designen, där portföljen alltid håller de N starkaste "
+                        "i stället för att kräva en prob_up-gräns. Default: av.")
     p.add_argument("--buy-threshold", type=float, default=None,
                    help="Fast köptröskel för prob_up (åsidosätter sökningen). "
                         "Default: config.BUY_THRESHOLD om sökning är av.")
+    p.add_argument("--min-expected-return", type=float, default=config.MIN_EXPECTED_RETURN,
+                   help="Minsta förväntade avkastning för att en köpsignal ska utlösas "
+                        f"(default {config.MIN_EXPECTED_RETURN:.1%}) – filtrerar bort signaler "
+                        "vars uppgång äts upp av transaktionskostnader.")
     p.add_argument("--threshold-objective", choices=["sharpe", "cagr", "calmar"],
                    default=config.THRESHOLD_OBJECTIVE,
                    help="Mål som maximeras när köptröskeln söks fram (default: sharpe)")
@@ -97,6 +101,8 @@ def main():
     args = parse_args()
     # Gör --min-history globalt verksam (data_loader._clean läser config direkt).
     config.MIN_HISTORY_WEEKS = args.min_history
+    # Kostnadsgolv för köpsignaler (ensemble.build_full_output läser config).
+    config.MIN_EXPECTED_RETURN = args.min_expected_return
     Path(config.CACHE_DIR).mkdir(exist_ok=True)
     Path(config.RESULTS_DIR).mkdir(exist_ok=True)
 
@@ -190,7 +196,8 @@ def main():
         # cachen gör att steg 1-2 (hämtning/features) körs snabbt igen.
         base_cmd = [sys.executable, __file__, "--start", args.start,
                     "--min-turnover", str(args.min_turnover),
-                    "--min-history", str(args.min_history)]
+                    "--min-history", str(args.min_history),
+                    "--min-expected-return", str(args.min_expected_return)]
         if args.tickers:
             base_cmd += ["--tickers", *args.tickers]
         else:
@@ -281,14 +288,15 @@ def main():
     lstm_preds  = lstm_preds_by_ticker if not args.skip_lstm else None
     feature_dfs = {t: df.assign(ticker=t) for t, df in all_features.items()}
 
-    # ── 5.0 Data-driven köptröskel ───────────────────────────────────────────
-    # Sök fram prob_up-gränsen på dev-perioden (datum < holdout_start) och låt
-    # holdouten validera valet. Varje testad nivå deflaterar Deflated Sharpe
-    # Ratio, så n_trials höjs till antalet testade trösklar.
+    # ── 5.0 Köptröskel (legacy) ──────────────────────────────────────────────
+    # I den alltid-investerade topp-N-designen styr INGEN absolut prob_up-tröskel
+    # om kapitalet investeras – portföljen håller alltid de N starkaste bolagen
+    # (se ensemble._topn_invested_weights). Tröskelsökningen finns kvar som legacy
+    # och körs bara om man uttryckligen anger --optimize-threshold.
     n_trials = args.n_trials
     trial_sr_std = 1.0   # konservativ schablon tills vi kan skatta den empiriskt
     buy_threshold = args.buy_threshold
-    threshold_info = {"optimized": False, "objective": args.threshold_objective}
+    threshold_info = None
     if args.optimize_threshold and args.buy_threshold is None:
         print("\n  Söker köptröskel (in-sample/dev)...")
         buy_threshold, grid_results = optimize_buy_threshold(
@@ -318,11 +326,11 @@ def main():
             "optimized": True,
             "objective": args.threshold_objective,
             "grid": grid_json,
+            "buy_threshold": buy_threshold,
         }
-    if buy_threshold is None:
-        buy_threshold = config.BUY_THRESHOLD
-    threshold_info["buy_threshold"] = buy_threshold
-    print(f"  Köptröskel: prob_up > {buy_threshold:.2f}")
+    print(f"  Portföljläge: alltid-investerad topp-{config.MAX_POSITIONS} "
+          f"(conviction-viktat). Kontanter endast via marknadsfiltret. "
+          f"Selektivitetsgolv: förv.avk > {config.MIN_EXPECTED_RETURN:.1%}")
 
     signals_df = build_full_output(
         lgbm_preds_by_ticker,
