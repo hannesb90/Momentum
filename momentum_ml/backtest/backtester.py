@@ -375,7 +375,8 @@ class MomentumBacktester:
     # ── Statistik ─────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _compute_stats(pv: pd.Series, start_capital: float) -> Dict:
+    def _compute_stats(pv: pd.Series, start_capital: float,
+                       n_positions: Optional[pd.Series] = None) -> Dict:
         rets  = pv.pct_change().dropna()
         weeks = len(rets)
         ann   = 52   # veckodata
@@ -386,10 +387,24 @@ class MomentumBacktester:
         sortino   = (rets.mean() / neg_rets.std()) * np.sqrt(ann) if neg_rets.std() > 0 else 0
         dd        = (pv / pv.cummax() - 1)
         max_dd    = dd.min()
-        win_rate  = (rets > 0).mean()
         total_ret = pv.iloc[-1] / pv.iloc[0] - 1
 
-        return {
+        # Win Rate: räkna BARA veckor då portföljen faktiskt var investerad.
+        # En veckas avkastning rets[t] speglar innehaven under [t-1, t], dvs
+        # positionerna som sattes vid t-1. Kontantveckor (n_positions==0) är
+        # varken vinst eller förlust – att räkna dem som "icke-vinst" gör
+        # win rate missvisande låg. invested_frac visar hur ofta vi var i
+        # marknaden (kontext för varför CAGR kan vara låg = kontant-drag).
+        invested_frac = None
+        if n_positions is not None:
+            invested = (n_positions.reindex(pv.index).shift(1) > 0).reindex(rets.index).fillna(False)
+            inv_rets = rets[invested]
+            win_rate = float((inv_rets > 0).mean()) if len(inv_rets) else 0.0
+            invested_frac = float(invested.mean())
+        else:
+            win_rate = float((rets > 0).mean())
+
+        stats = {
             "total_return":  f"{total_ret:.1%}",
             "CAGR":          f"{cagr:.1%}",
             "Sharpe":        f"{sharpe:.2f}",
@@ -400,11 +415,15 @@ class MomentumBacktester:
             "Start Capital": f"{start_capital:,.0f}",
             "End Capital":   f"{pv.iloc[-1]:,.0f}",
         }
+        if invested_frac is not None:
+            stats["Invested"] = f"{invested_frac:.1%}"
+        return stats
 
     def statistics(self) -> Dict:
         if not len(self._results):
             raise RuntimeError("Kör run() först.")
-        return self._compute_stats(self._results["portfolio_value"], self.capital)
+        return self._compute_stats(self._results["portfolio_value"], self.capital,
+                                   self._results.get("n_positions"))
 
     def statistics_for_period(
         self,
@@ -426,7 +445,8 @@ class MomentumBacktester:
             pv = pv.loc[pv.index <= end]
         if len(pv) < 2:
             raise ValueError("För få datapunkter i den angivna perioden.")
-        return self._compute_stats(pv, float(pv.iloc[0]))
+        npos = self._results["n_positions"].loc[pv.index] if "n_positions" in self._results else None
+        return self._compute_stats(pv, float(pv.iloc[0]), npos)
 
     def print_statistics(self, stats: Optional[Dict] = None, title: str = "BACKTEST RESULTAT"):
         stats = stats if stats is not None else self.statistics()
