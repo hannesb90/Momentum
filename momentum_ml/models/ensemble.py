@@ -323,7 +323,10 @@ def build_full_output(
         blend = float(getattr(config, "CONVICTION_BLEND", 0.5))
         raw = {t: (1.0 - blend) * eq + blend * float(tw)
                for t, tw in zip(top["ticker"], tilt)}
-        sized = _topn_invested_weights(raw)
+        # n=len(raw): raw är redan begränsad till topp-MAX_POSITIONS ovan. Skicka
+        # explicit (default-argumentet fryses vid import → MAX_POSITIONS-ändringar
+        # i en svepning skulle annars kapas till det gamla värdet).
+        sized = _topn_invested_weights(raw, n=len(raw))
         return group["ticker"].map(sized).fillna(0.0)
 
     df["position_size"] = df.groupby(level="Date", group_keys=False).apply(_size_date)
