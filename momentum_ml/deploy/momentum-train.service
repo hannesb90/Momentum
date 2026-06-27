@@ -13,12 +13,21 @@ Environment=MOMENTUM_TRAINING_THREADS=3
 # Obuffrad stdout/stderr så journalctl visar utskrifter i rätt ordning/tid -
 # annars kan parent- och subprocess-utskrifter framstå som hopklumpade.
 Environment=PYTHONUNBUFFERED=1
-# Begränsat universum så körningen får plats i RAM på en 2GB-Pi. Hela
-# Sverige-listan (~656 tickers) + LSTM spränger minnet; Large/Mid Cap utan
-# LSTM är en säker nattlig baslinje. Utöka (fler market-cap-nivåer, ta bort
-# --skip-lstm) först efter att du sett i results/health.log att swap inte
-# skenar, eller byt till en Pi med mer RAM.
-ExecStart=/opt/momentum/venv/bin/python main.py --universe sweden --market-cap "Large Cap" "Mid Cap" --skip-lstm --ta-filter score
+# Helt universum (alla market-cap-nivåer inkl. Small/Micro/Nano). Momentum-
+# premien sitter starkast i mindre, mindre analyserade bolag, så dessa hör hemma
+# i universumet. Likviditetsfiltret (config.UNIVERSE_MIN_AVG_TURNOVER) trimmar
+# bort de som faktiskt inte går att handla.
+#
+# VARNING – RAM: hela Sverige-listan (~656 tickers) drar betydligt mer minne än
+# Large/Mid (~108). På en 2GB-Pi med MemoryMax=1400M nedan finns risk för
+# OOM-kill. Om träningen dör (se journal / results/health.log):
+#   1) höj --min-turnover (färre, mer likvida bolag), och/eller
+#   2) begränsa nivåer igen, t.ex. --market-cap "Large Cap" "Mid Cap" "Small Cap"
+#      (Small Cap ger merparten av momentum-vinsten; Micro/Nano är mest illikvida
+#       + värst survivorship-bias), och/eller
+#   3) höj MemoryMax/MemorySwapMax om Pi:n har mer RAM, eller byt till större Pi.
+# Behåll --skip-lstm: LSTM ovanpå hela universumet spränger minnet säkert.
+ExecStart=/opt/momentum/venv/bin/python main.py --universe sweden --skip-lstm --ta-filter score
 
 # Låg prioritet så API:t/dashboarden inte blir lidande under träningen.
 Nice=15
