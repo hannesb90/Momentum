@@ -30,6 +30,15 @@ DONCHIAN_WEEKS     = 20         # utbrottsfönster (pris bryter N-veckors high/l
 FORWARD_WEEKS      = 4          # Förutsägningshorisont
 RETURN_THRESHOLD   = 0.05       # >5% = positiv klass
 
+# Rebalanseringsfrekvens (veckor). Modellen förutsäger FORWARD_WEEKS framåt, så
+# att rebalansera VARJE vecka på en 4-veckorssignal innebär att man ständigt
+# reagerar på brus och churnar portföljen – på en koncentrerad topp-N-portfölj
+# blir veckovis omsättning ~40%+/vecka, vilket äts upp av courtage/spread/impact
+# (mätt: ~8–20 %-enheter/år kostnadsdrag). Vi håller därför innehaven en hel
+# prognoshorisont och rebalanserar var FORWARD_WEEKS:e vecka. Marknadsfiltret
+# kan ändå de-riska däremellan (se backtester.run).
+REBALANCE_WEEKS    = FORWARD_WEEKS  # = 4
+
 # ── Walk-forward backtest ────────────────────────────────────────────────────
 TRAIN_WINDOW_WEEKS = 260        # ~5 år träning
 VAL_WINDOW_WEEKS   = 52         # ~1 år validering
