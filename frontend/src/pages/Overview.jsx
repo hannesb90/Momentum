@@ -7,7 +7,7 @@ import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { SignalBadge } from '../components/SignalBadge'
 import { InfoButton } from '../components/InfoButton'
 import { LiveTrackRecord } from '../components/LiveTrackRecord'
-import { fmtPct, fmtSek, fmtNum } from '../format'
+import { fmtPct, fmtSek, fmtNum, cleanName } from '../format'
 
 export function OverviewPage() {
   const stats = useApiData(() => api.stats(), [])
@@ -204,8 +204,8 @@ export function OverviewPage() {
         {topBuys.map((s) => (
           <Link to={`/aktie/${encodeURIComponent(s.ticker)}`} key={s.ticker} className="list-row">
             <div className="list-row__main">
-              <span className="list-row__ticker">{s.ticker}</span>
-              <span className="list-row__sub">P(upp) {fmtPct(s.prob_up)}</span>
+              <span className="list-row__ticker">{cleanName(s.name, s.ticker)}</span>
+              <span className="list-row__sub">{s.ticker} · P(upp) {fmtPct(s.prob_up)}</span>
             </div>
             <div className="list-row__side">
               <span className="list-row__num">{fmtPct(s.pred_return)}</span>

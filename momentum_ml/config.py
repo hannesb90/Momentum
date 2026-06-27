@@ -168,6 +168,11 @@ SECTOR_MAP = {
 }
 MAX_SECTOR_EXPOSURE = 0.40   # max 40% portföljvikt i en enskild sektor
 
+# Bolagsnamn per ticker. Fylls från sweden_universe.csv m.fl. i main.py
+# (config.NAME_MAP.update(...)) så signals.csv kan exportera ett namn-fält –
+# frontend visar namn + ticker i listor/aktievyn och kan söka på bolagsnamn.
+NAME_MAP: dict = {}
+
 # Kanoniska kategorilistor för sektor/cap-tier som modell-features
 # (features/feature_engineering.py: sector_code, cap_tier_code). Fast
 # ordning krävs eftersom träning och prediktion körs i separata processer

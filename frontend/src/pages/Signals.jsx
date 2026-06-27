@@ -7,7 +7,7 @@ import { SegmentedControl } from '../components/SegmentedControl'
 import { SignalBadge } from '../components/SignalBadge'
 import { EmptyState } from '../components/EmptyState'
 import { InfoButton } from '../components/InfoButton'
-import { fmtPct } from '../format'
+import { fmtPct, cleanName } from '../format'
 
 const SIGNAL_FILTERS = [
   { value: 'all', label: 'Alla' },
@@ -33,7 +33,11 @@ export function SignalsPage() {
     let r = data
     if (query.trim()) {
       const q = query.trim().toUpperCase()
-      r = r.filter((s) => s.ticker.toUpperCase().includes(q))
+      r = r.filter(
+        (s) =>
+          s.ticker.toUpperCase().includes(q) ||
+          (s.name && String(s.name).toUpperCase().includes(q)),
+      )
     }
     if (signalFilter === 'buy') r = r.filter((s) => s.pred_signal === 1)
     if (signalFilter === 'flat') r = r.filter((s) => s.pred_signal !== 1)
@@ -72,7 +76,7 @@ export function SignalsPage() {
         <input
           className="search-input"
           type="search"
-          placeholder="Sök ticker…"
+          placeholder="Sök ticker eller bolagsnamn…"
           value={query}
           onChange={(e) => {
             const v = e.target.value
@@ -94,7 +98,7 @@ export function SignalsPage() {
           <table>
             <thead>
               <tr>
-                <th>Ticker</th>
+                <th>Bolag</th>
                 <th>
                   P(upp)
                   <InfoButton title="P(upp) – nästa 4 veckor">
@@ -141,7 +145,8 @@ export function SignalsPage() {
                 <tr key={row.ticker}>
                   <td className="ticker-cell">
                     <Link to={`/aktie/${encodeURIComponent(row.ticker)}`} className="ticker-link">
-                      {row.ticker}
+                      <span className="ticker-link__name">{cleanName(row.name, row.ticker)}</span>
+                      <span className="ticker-link__ticker">{row.ticker}</span>
                     </Link>
                   </td>
                   <td>{fmtPct(row.prob_up)}</td>

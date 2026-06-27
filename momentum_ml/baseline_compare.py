@@ -56,7 +56,7 @@ def show(sig, data, label):
 
 
 def main():
-    tickers, sector_map, _ = load_sweden_universe(min_market_cap=["Large Cap", "Mid Cap"])
+    tickers, sector_map, _, _ = load_sweden_universe(min_market_cap=["Large Cap", "Mid Cap"])
     config.SECTOR_MAP.update(sector_map)
     data = fetch_weekly_data(tickers, start="2010-01-01", end=None, use_cache=True)
     data = filter_liquid_universe(data, min_avg_turnover=config.UNIVERSE_MIN_AVG_TURNOVER)

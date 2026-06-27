@@ -10,7 +10,7 @@ import { SignalBadge } from '../components/SignalBadge'
 import { StatCard } from '../components/StatCard'
 import { InfoButton } from '../components/InfoButton'
 import { EmptyState } from '../components/EmptyState'
-import { fmtPct, fmtNum, fmtDate } from '../format'
+import { fmtPct, fmtNum, fmtDate, cleanName } from '../format'
 
 export function StockDetailPage() {
   const { ticker } = useParams()
@@ -62,15 +62,17 @@ export function StockDetailPage() {
 
   const latest = history.data[history.data.length - 1] ?? {}
   const isBuy = latest.pred_signal === 1
+  const displayName = cleanName(latest.name, ticker)
 
   return (
     <section className="page">
       <div className="page-head">
         <Link to="/signaler" className="section-head__link">← Tillbaka</Link>
         <h1>
-          {ticker} <SignalBadge variant={isBuy ? 'buy' : 'flat'} />
+          {displayName} <SignalBadge variant={isBuy ? 'buy' : 'flat'} />
         </h1>
         <p className="page-subtitle">
+          {displayName !== ticker && <span className="page-subtitle__ticker">{ticker} · </span>}
           {latest.sector ?? 'Okänd sektor'}
           {stats.data?.last_signal_date && ` · senaste signal ${stats.data.last_signal_date}`}
         </p>
