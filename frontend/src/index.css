@@ -108,6 +108,30 @@ code {
   font-size: 0.9rem;
 }
 
+/* Segment-toggle (storbolag / småbolag) */
+.segment-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--border);
+}
+.segment-toggle__btn {
+  border: none;
+  background: transparent;
+  color: var(--muted, #94a3b8);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.segment-toggle__btn--active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+}
+
 .navbar__links {
   display: flex;
   gap: 4px;

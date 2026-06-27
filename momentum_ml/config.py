@@ -270,3 +270,16 @@ HOLDOUT_WEEKS = 104         # ~2 år som modellen aldrig tränas på
 RANDOM_SEED        = 42
 CACHE_DIR          = "cache"
 RESULTS_DIR        = "results"
+
+# ── Segment (separata modeller per storleksklass) ─────────────────────────────
+# Två SEPARATA modeller, en per storleksgrupp, så att tvärsnitts-rangordningen
+# sker inom jämförbara bolag (en stabil storbolagstrend drunknar annars i
+# småbolagens större kast – uppmätt: SAAB föll från prob_up 1.0 till 0.35 när
+# universumet blandades). Varje segment tränas/backtestas för sig och skrivs till
+# egen results-mapp; frontend togglar mellan dem som två identiska vyer.
+# market_cap = nivåer som tas med, results_dir = var output hamnar.
+SEGMENTS = {
+    "large": {"label": "Storbolag", "market_cap": ["Large Cap", "Mid Cap"], "results_dir": "results"},
+    "small": {"label": "Småbolag",  "market_cap": ["Small Cap"],            "results_dir": "results/small"},
+}
+DEFAULT_SEGMENT = "large"

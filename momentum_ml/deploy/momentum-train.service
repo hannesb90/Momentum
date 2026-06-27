@@ -13,15 +13,17 @@ Environment=MOMENTUM_TRAINING_THREADS=3
 # Obuffrad stdout/stderr så journalctl visar utskrifter i rätt ordning/tid -
 # annars kan parent- och subprocess-utskrifter framstå som hopklumpade.
 Environment=PYTHONUNBUFFERED=1
-# Universum: Large + Mid Cap. Detta är BEVISAT bättre än hela universumet (testat
-# 2026-06): med klassisk 13-veckorshorisont gav Large/Mid Sharpe 1.07 / alfa
-# -1.7% / holdout -0.9%, medan hela Sverige-listan (~657 tickers inkl. Small/
-# Micro/Nano) gav Sharpe 0.62 / alfa -3.7% / holdout -3.6%. Bredden späder ut
-# tvärsnitts-rangordningen (även SAAB:s tydliga trend trängdes ut av volatila
-# småbolags större enskilda utfall) + drar in smutsig/illikvid data och värre
-# survivorship-bias. Småbolags-momentum kan tas upp igen FÖRST med ren,
-# survivorship-fri data. Behåll --skip-lstm (RAM på 2GB-Pi).
-ExecStart=/opt/momentum/venv/bin/python main.py --universe sweden --market-cap "Large Cap" "Mid Cap" --skip-lstm --ta-filter score
+# Två SEPARATA modeller per storlekssegment (--segment): "large" (Large+Mid,
+# results/) och "small" (Small Cap, results/small/). Att blanda storlekar späder
+# ut tvärsnitts-rangordningen – en stabil storbolagstrend (t.ex. SAAB) drunknar i
+# småbolagens större kast (uppmätt: prob_up 1.0 -> 0.35). Varje segment rankas
+# därför inom jämförbara bolag och får egen modell/results; frontend togglar
+# mellan dem. Type=oneshot kör ExecStart-raderna i tur och ordning (large, sedan
+# small). Behåll --skip-lstm (RAM på 2GB-Pi).
+# OBS: small-segmentets backtest överskattar fortfarande avkastningen tills
+# survivorship-fri data finns (småbolag avnoteras/kraschar oftast).
+ExecStart=/opt/momentum/venv/bin/python main.py --segment large --skip-lstm --ta-filter score
+ExecStart=/opt/momentum/venv/bin/python main.py --segment small --skip-lstm --ta-filter score
 
 # Låg prioritet så API:t/dashboarden inte blir lidande under träningen.
 Nice=15

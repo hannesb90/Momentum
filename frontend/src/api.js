@@ -1,7 +1,15 @@
 const BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
+// Aktivt segment (storbolag/småbolag). Sätts av segment-toggeln och bifogas
+// AUTOMATISKT på varje API-anrop, så sidorna behöver inte känna till segment.
+let currentSegment = 'large'
+export function setApiSegment(s) {
+  if (s) currentSegment = s
+}
+
 async function getJson(path) {
-  const res = await fetch(`${BASE}${path}`)
+  const sep = path.includes('?') ? '&' : '?'
+  const res = await fetch(`${BASE}${path}${sep}segment=${encodeURIComponent(currentSegment)}`)
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.detail || `${res.status} ${res.statusText}`)
@@ -10,6 +18,7 @@ async function getJson(path) {
 }
 
 export const api = {
+  segments: () => getJson('/segments'),
   health: () => getJson('/health'),
   stats: () => getJson('/stats'),
   latestSignals: () => getJson('/signals/latest'),

@@ -49,6 +49,10 @@ def parse_args():
     p.add_argument("--market-cap",   nargs="+", default=None,
                    choices=["Mega Cap", "Large Cap", "Mid Cap", "Small Cap", "Micro Cap", "Nano Cap"],
                    help="Begränsa --universe till dessa marketcap-kategorier (default: alla)")
+    p.add_argument("--segment", choices=list(config.SEGMENTS.keys()), default=None,
+                   help="Storlekssegment (egen modell + egen results-mapp). Sätter "
+                        "--market-cap och results-katalog enligt config.SEGMENTS. "
+                        f"Val: {', '.join(config.SEGMENTS)}")
     p.add_argument("--start",        default=config.START_DATE)
     p.add_argument("--end",          default=config.END_DATE)
     p.add_argument("--skip-lstm",    action="store_true", help="Kör bara LGBM")
@@ -102,12 +106,22 @@ def parse_args():
 
 def main():
     args = parse_args()
+    # Segment: sätt market_cap + results-katalog från config.SEGMENTS. Måste ske
+    # FÖRST (innan results skrivs/läses) och driva config.RESULTS_DIR så att
+    # modell, signals, stats m.m. hamnar i segmentets egen mapp. Resolvas i varje
+    # process (parent + subprocesser) eftersom --segment propageras i base_cmd.
+    if args.segment:
+        seg = config.SEGMENTS[args.segment]
+        args.market_cap = seg["market_cap"]
+        config.RESULTS_DIR = seg["results_dir"]
+        print(f"[Segment] {args.segment} ({seg['label']}): "
+              f"market_cap={seg['market_cap']} -> {config.RESULTS_DIR}/")
     # Gör --min-history globalt verksam (data_loader._clean läser config direkt).
     config.MIN_HISTORY_WEEKS = args.min_history
     # Kostnadsgolv för köpsignaler (ensemble.build_full_output läser config).
     config.MIN_EXPECTED_RETURN = args.min_expected_return
     Path(config.CACHE_DIR).mkdir(exist_ok=True)
-    Path(config.RESULTS_DIR).mkdir(exist_ok=True)
+    Path(config.RESULTS_DIR).mkdir(parents=True, exist_ok=True)
 
     cap_tier_map = {}
     if args.tickers:
@@ -181,7 +195,7 @@ def main():
         print("\nSTEG 3: Tränar LightGBM (walk-forward)...")
         lgbm = MomentumLGBM()
         lgbm.fit_walk_forward(dev_df)
-        lgbm.save()
+        lgbm.save(f"{config.RESULTS_DIR}/lgbm_model.pkl")
         lgbm.print_feature_importance(top_n=15)
         return
 
@@ -193,7 +207,7 @@ def main():
         train_df = dev_df.iloc[:split]
         val_df   = dev_df.iloc[split:]
         lstm.fit(train_df, val_df)
-        lstm.save()
+        lstm.save(f"{config.RESULTS_DIR}/lstm_model.pt")
         return
 
     if not args.predict_only:
@@ -219,11 +233,14 @@ def main():
                     "--stale-weeks", str(args.stale_weeks),
                     "--min-history", str(args.min_history),
                     "--min-expected-return", str(args.min_expected_return)]
+        if args.segment:
+            # Segmentet re-resolvar market_cap + results_dir i varje subprocess.
+            base_cmd += ["--segment", args.segment]
         if args.tickers:
             base_cmd += ["--tickers", *args.tickers]
         else:
             base_cmd += ["--universe", args.universe]
-            if args.market_cap:
+            if args.market_cap and not args.segment:
                 base_cmd += ["--market-cap", *args.market_cap]
         if args.end:
             base_cmd += ["--end", args.end]
@@ -270,7 +287,7 @@ def main():
 
     # ── Prediktion (laddar sparade modeller) ─────────────────────────────────
     print("\nSTEG 3: Laddar LightGBM...")
-    lgbm = MomentumLGBM.load()
+    lgbm = MomentumLGBM.load(f"{config.RESULTS_DIR}/lgbm_model.pkl")
     print("  [LGBM] Laddade sparad modell.")
 
     lgbm_preds_by_ticker = {}
@@ -282,7 +299,7 @@ def main():
     lstm_preds_by_ticker = {}
     if not args.skip_lstm:
         print("\nSTEG 4: Laddar LSTM...")
-        lstm = MomentumLSTM().load()
+        lstm = MomentumLSTM().load(f"{config.RESULTS_DIR}/lstm_model.pt")
         print("  [LSTM] Laddade sparad modell.")
 
         for ticker, feat_df in all_features.items():

@@ -34,6 +34,15 @@ app.add_middleware(
 RESULTS_DIR = Path(config.RESULTS_DIR)
 
 
+def _seg_dir(segment: Optional[str]) -> Path:
+    """Resultatkatalog för ett segment (storbolag/småbolag). Okänt/None faller
+    tillbaka på default-segmentet, så befintliga anrop utan ?segment fungerar."""
+    cfg = config.SEGMENTS.get(segment) if segment else None
+    if cfg is None:
+        cfg = config.SEGMENTS[config.DEFAULT_SEGMENT]
+    return Path(cfg["results_dir"])
+
+
 def _require(path: Path) -> Path:
     if not path.exists():
         raise HTTPException(
@@ -43,21 +52,30 @@ def _require(path: Path) -> Path:
     return path
 
 
+@app.get("/api/segments")
+def get_segments():
+    """Tillgängliga segment för frontend-toggeln."""
+    return {
+        "default": config.DEFAULT_SEGMENT,
+        "segments": [{"id": k, "label": v["label"]} for k, v in config.SEGMENTS.items()],
+    }
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
 
 
 @app.get("/api/stats")
-def get_stats():
-    path = _require(RESULTS_DIR / "stats.json")
+def get_stats(segment: Optional[str] = None):
+    path = _require(_seg_dir(segment) / "stats.json")
     with open(path) as f:
         return json.load(f)
 
 
 @app.get("/api/signals/latest")
-def get_latest_signals():
-    path = _require(RESULTS_DIR / "signals.csv")
+def get_latest_signals(segment: Optional[str] = None):
+    path = _require(_seg_dir(segment) / "signals.csv")
     df = pd.read_csv(path, index_col=0, parse_dates=True)
     latest = df.groupby("ticker").last().reset_index()
     latest = latest.sort_values("prob_up", ascending=False)
@@ -65,8 +83,8 @@ def get_latest_signals():
 
 
 @app.get("/api/signals/history")
-def get_signal_history(ticker: Optional[str] = None, limit: int = 260):
-    path = _require(RESULTS_DIR / "signals.csv")
+def get_signal_history(ticker: Optional[str] = None, limit: int = 260, segment: Optional[str] = None):
+    path = _require(_seg_dir(segment) / "signals.csv")
     df = pd.read_csv(path, index_col=0, parse_dates=True)
     if ticker:
         df = df[df["ticker"] == ticker]
@@ -78,8 +96,8 @@ def get_signal_history(ticker: Optional[str] = None, limit: int = 260):
 
 
 @app.get("/api/portfolio")
-def get_portfolio(limit: int = 1000):
-    path = _require(RESULTS_DIR / "portfolio.csv")
+def get_portfolio(limit: int = 1000, segment: Optional[str] = None):
+    path = _require(_seg_dir(segment) / "portfolio.csv")
     df = pd.read_csv(path, index_col=0, parse_dates=True)
     pv = df["portfolio_value"]
     df["drawdown"] = pv / pv.cummax() - 1
@@ -89,8 +107,8 @@ def get_portfolio(limit: int = 1000):
 
 
 @app.get("/api/drift")
-def get_drift(limit: int = 260):
-    path = _require(RESULTS_DIR / "drift_report.csv")
+def get_drift(limit: int = 260, segment: Optional[str] = None):
+    path = _require(_seg_dir(segment) / "drift_report.csv")
     df = pd.read_csv(path, index_col=0, parse_dates=True)
     df = df.sort_index().tail(limit).reset_index()
     df = df.rename(columns={df.columns[0]: "date"})
@@ -98,23 +116,23 @@ def get_drift(limit: int = 260):
 
 
 @app.get("/api/regime")
-def get_regime_breakdown():
-    path = _require(RESULTS_DIR / "regime_breakdown.csv")
+def get_regime_breakdown(segment: Optional[str] = None):
+    path = _require(_seg_dir(segment) / "regime_breakdown.csv")
     df = pd.read_csv(path, index_col=0).reset_index()
     return df.to_dict(orient="records")
 
 
 @app.get("/api/sector-momentum")
-def get_sector_momentum():
-    path = _require(RESULTS_DIR / "sector_momentum.csv")
+def get_sector_momentum(segment: Optional[str] = None):
+    path = _require(_seg_dir(segment) / "sector_momentum.csv")
     df = pd.read_csv(path)
     return df.to_dict(orient="records")
 
 
 @app.get("/api/prices")
-def get_prices(ticker: str, limit: int = 260):
+def get_prices(ticker: str, limit: int = 260, segment: Optional[str] = None):
     """Per-ticker prishistorik (close) för aktiedetaljvyns kursgraf."""
-    path = RESULTS_DIR / "prices.csv"
+    path = _seg_dir(segment) / "prices.csv"
     if not path.exists():
         return []
     df = pd.read_csv(path)
@@ -123,13 +141,13 @@ def get_prices(ticker: str, limit: int = 260):
 
 
 @app.get("/api/paper-ledger")
-def get_paper_ledger(limit: int = 520):
+def get_paper_ledger(limit: int = 520, segment: Optional[str] = None):
     """
     Framåtblickande pappershandels-historik (live track record). Returnerar
     en tom lista om liggaren ännu inte börjat byggas (första körningarna) i
     stället för 404 – frontend visar då ett 'ingen historik än'-tillstånd.
     """
-    path = RESULTS_DIR / "paper_ledger.csv"
+    path = _seg_dir(segment) / "paper_ledger.csv"
     if not path.exists():
         return []
     df = pd.read_csv(path).tail(limit)
