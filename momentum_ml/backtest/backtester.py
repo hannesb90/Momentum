@@ -52,6 +52,7 @@ class MomentumBacktester:
         self._portfolio: Dict[str, float] = {}   # {ticker: antal_aktier}
         self._results:   list = []
         self._regimes = None     # lazy: klassificeras vid första run() om filter på
+        self._close_panel = None # lazy: ffill:ad prispanel byggs i run()
 
     # ── Kör backtest ──────────────────────────────────────────────────────────
 
@@ -62,6 +63,9 @@ class MomentumBacktester:
         dates = self.signals.index.unique().sort_values()
         cash  = self.capital
         peak  = self.capital
+
+        # Förbygg ffill:ad prispanel en gång (snabb O(1)-prisuppslagning).
+        self._build_close_panel(dates)
 
         # Marknadsfilter: klassificera regimer en gång (causalt – SMA ser bara
         # bakåt). Används för att skala bruttoexponering mot kontanter i björn.
@@ -394,7 +398,26 @@ class MomentumBacktester:
 
     # ── Hjälpare ──────────────────────────────────────────────────────────────
 
+    def _build_close_panel(self, dates) -> None:
+        """
+        Förbygg en ffill:ad stängningskurs-panel (datum × ticker) EN gång, så att
+        _get_price blir en O(1)-uppslagning i stället för en dyr get_indexer-
+        ffill per anrop. Avgörande för fart: backtesten slår upp pris per innehav
+        per vecka (808v × N), och get_indexer castar om indexet varje gång.
+        Semantiken är identisk (senaste kurs <= datumet).
+        """
+        panel = pd.DataFrame({t: df["Close"] for t, df in self.prices.items() if "Close" in df})
+        full_idx = panel.index.union(pd.DatetimeIndex(dates))
+        self._close_panel = panel.reindex(full_idx).sort_index().ffill()
+
     def _get_price(self, ticker: str, date: pd.Timestamp) -> Optional[float]:
+        panel = getattr(self, "_close_panel", None)
+        if panel is not None and ticker in panel.columns:
+            try:
+                v = panel.at[date, ticker]
+                return float(v) if pd.notna(v) else None
+            except Exception:
+                pass   # faller tillbaka på get_indexer nedan
         df = self.prices.get(ticker)
         if df is None:
             return None
