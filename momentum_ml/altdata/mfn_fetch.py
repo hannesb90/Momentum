@@ -2,217 +2,175 @@
 altdata/mfn_fetch.py – Hämtar regulatoriska pressmeddelanden från MFN.se och
 cachar dem point-in-time (med publiceringstidsstämpel) för en ärlig backtest.
 
-Varför MFN: Modular Finance distribuerar nordiska regulatoriska PM och har ett
-ARKIV. Varje post har en publiceringstidsstämpel, så vi kan rekonstruera exakt
-vad som var känt vid varje historisk tidpunkt – ingen look-ahead. Det är
-förutsättningen för att över huvud taget kunna backtesta en text-/nyhetssignal
-ärligt.
+MFN exponerar en ren JSON Feed (jsonfeed.org-stil):
+    https://mfn.se/all/s?query=<q>&lang=sv&limit=500   (content-type application/json)
+paginerad via "next_url". Varje item:
+    news_id, url, author{slug,name,tickers,isins}, properties{lang,type,tags},
+    content{publish_date, title, preamble, html, text}        ← fälten NÄSTLADE i content
+Vi plockar id/datum/rubrik/ren-text och bolags-tickers, och filtrerar bort
+fri-text-brus (PM som bara NÄMNER bolaget) genom att matcha author mot ticker/namn.
 
-VIKTIGT – körs på Pi:n. Molncontainern som koden utvecklas i når varken mfn.se
-eller Yahoo (egress-spärr). Kör allt detta på Raspberry Pi:n.
+VIKTIGT – körs på Pi:n (molncontainern når varken mfn.se eller Yahoo).
 
-MFN:s exakta endpoint/JSON-form är inte hårdkodad på tro. Kör FÖRST:
-
-    /opt/momentum/venv/bin/python altdata/mfn_fetch.py probe "Saab"
-
-Det sparar MFN:s råsvar till cache/mfn/_probe_*.txt. Titta på filen (eller
-klistra tillbaka den) så låser vi parsern mot den faktiska formen. Därefter:
-
-    /opt/momentum/venv/bin/python altdata/mfn_fetch.py fetch large   # hela segmentet
-    /opt/momentum/venv/bin/python altdata/mfn_fetch.py one  "Saab"   # ett bolag
-
-Cachen (cache/mfn/<ticker>.json) gör att hämtningen är inkrementell och att
-sentiment-steget aldrig behöver röra nätet igen.
+    python altdata/mfn_fetch.py probe "Saab"     # rök-test mot feeden (gratis)
+    python altdata/mfn_fetch.py one  "Saab" SAAB-B.ST   # ett bolag, filtrerat på ticker
+    python altdata/mfn_fetch.py fetch large      # hela segmentet (cachas per ticker)
 """
 import sys
-import os
 import re
 import json
 import time
 import html as _html
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
 
 try:
     import requests
-except ImportError:  # requests följer med yfinance, men var defensiv
+except ImportError:
     requests = None
 
-_UA = "Mozilla/5.0 (Momentum research; contact via app owner) python-requests"
+_UA = "Mozilla/5.0 (Momentum research) python-requests"
 
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────
-def _http_get(url: str, params: Optional[dict] = None, retries: int = 4) -> "requests.Response":
-    """GET med exponentiell backoff. Respekterar HTTPS_PROXY/CA-bundle via miljön."""
+def _http_get(url: str, params: Optional[dict] = None, retries: int = 4):
     if requests is None:
         raise RuntimeError("paketet 'requests' saknas – pip install requests")
     last = None
     for i in range(retries):
         try:
             r = requests.get(url, params=params, headers={"User-Agent": _UA,
-                             "Accept": "application/json, text/html;q=0.9"}, timeout=30)
+                             "Accept": "application/json"}, timeout=30)
             if r.status_code == 200:
                 return r
             last = RuntimeError(f"HTTP {r.status_code} för {r.url}")
-        except Exception as e:  # noqa: BLE001 – nätfel ska retrias
+        except Exception as e:  # noqa: BLE001
             last = e
         time.sleep(2 ** i)
     raise last or RuntimeError(f"GET misslyckades: {url}")
 
 
-# ── Parser (verifieras mot probe-utdata) ──────────────────────────────────────
+# ── Parser (MFN JSON Feed) ────────────────────────────────────────────────────
 def _strip_html(s: str) -> str:
-    s = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", s, flags=re.S | re.I)
-    s = re.sub(r"<[^>]+>", " ", s)
-    s = _html.unescape(s)
-    return re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"<[^>]+>", " ", s or "")
+    return re.sub(r"\s+", " ", _html.unescape(s)).strip()
 
 
-def _coerce_item(raw: dict) -> Optional[dict]:
-    """Normaliserar ETT MFN-objekt till vårt schema. Robust mot fältnamns-
-    variation eftersom MFN:s exakta nycklar bekräftas med `probe`."""
-    def pick(*keys):
-        for k in keys:
-            v = raw.get(k)
-            if v:
-                return v
+def _coerce(item: dict) -> Optional[dict]:
+    """Normaliserar ETT MFN-feed-item → vårt schema (fälten ligger i content)."""
+    c = item.get("content") or {}
+    author = item.get("author") or {}
+    props = item.get("properties") or {}
+    pid = item.get("news_id") or item.get("group_id")
+    date = c.get("publish_date")
+    if not (pid and date):
         return None
-
-    pid = pick("news_id", "content_id", "id", "guid", "slug")
-    date = pick("publish_date", "published", "date", "created", "pubDate", "datetime")
-    title = pick("title", "subject", "headline")
-    body = pick("content", "body", "html", "text", "description", "summary")
-    lang = pick("lang", "language") or config.MFN_LANG
-    url = pick("url", "link", "permalink")
-    typ = pick("type", "category", "subtype")
-
-    if not (pid and date and (title or body)):
-        return None
-    text = _strip_html(str(body or ""))[: config.MFN_MAX_BODY_CHARS]
+    text = c.get("text") or c.get("preamble") or _strip_html(c.get("html", ""))
     return {
         "id": str(pid),
         "published": str(date),
-        "title": _strip_html(str(title or "")),
-        "type": str(typ or ""),
-        "lang": str(lang),
-        "url": str(url or ""),
-        "text": text,
+        "title": str(c.get("title") or ""),
+        "text": (text or "")[: config.MFN_MAX_BODY_CHARS],
+        "type": str(props.get("type") or ""),
+        "tags": props.get("tags") or [],
+        "lang": str(props.get("lang") or config.MFN_LANG),
+        "url": str(item.get("url") or ""),
+        "author_slug": str(author.get("slug") or ""),
+        "author_name": str(author.get("name") or ""),
+        "tickers": author.get("tickers") or [],
+        "isins": author.get("isins") or [],
     }
 
 
-def parse_mfn_payload(payload) -> List[dict]:
-    """Plockar ut PM-listan ur MFN:s svar oavsett om det är ren JSON eller en
-    HTML-sida med en inbäddad JSON-blob (vanligt på MFN:s Next.js-sajt)."""
-    items: List[dict] = []
-
-    # 1) Redan en lista/dict (JSON-endpoint)
-    def harvest(obj):
-        if isinstance(obj, list):
-            for x in obj:
-                harvest(x)
-        elif isinstance(obj, dict):
-            it = _coerce_item(obj)
-            if it:
-                items.append(it)
-            # gå även ner i kända container-nycklar
-            for k in ("items", "results", "news", "data", "hits", "feed", "entries"):
-                if k in obj:
-                    harvest(obj[k])
-
-    if isinstance(payload, (list, dict)):
-        harvest(payload)
-        return _dedup(items)
-
-    # 2) Text: prova JSON, annars leta inbäddad JSON i HTML
-    text = str(payload)
+def _feed_page(url: str, params: Optional[dict]) -> Tuple[List[dict], Optional[str]]:
+    r = _http_get(url, params)
     try:
-        harvest(json.loads(text))
-        if items:
-            return _dedup(items)
+        data = r.json()
     except Exception:
-        pass
-    for m in re.finditer(r'(\{.*?"publish[_-]?date".*?\})', text, flags=re.S):
-        try:
-            harvest(json.loads(m.group(1)))
-        except Exception:
-            continue
-    return _dedup(items)
+        data = json.loads(r.text)
+    return (data.get("items") or []), data.get("next_url")
 
 
-def _dedup(items: List[dict]) -> List[dict]:
-    seen, out = set(), []
-    for it in items:
-        if it["id"] in seen:
-            continue
-        seen.add(it["id"])
-        out.append(it)
-    return out
-
-
-# ── Endpoints ─────────────────────────────────────────────────────────────────
-def _endpoint_candidates(query: str) -> List[tuple]:
-    """(beskrivning, url, params) – probas i tur och ordning. Verifieras på Pi:n."""
+def _fetch_feed(query: str) -> List[dict]:
+    """Följer next_url-pagineringen tills vi nått historik-golvet eller slut."""
     base = config.MFN_BASE_URL.rstrip("/")
-    lang = config.MFN_LANG
-    return [
-        ("all-json",   f"{base}/all",     {"query": query, "lang": lang, "json": "1", "limit": 500}),
-        ("search",     f"{base}/all/s",   {"query": query, "lang": lang, "limit": 500}),
-        ("author",     f"{base}/a/{_slug(query)}", {"lang": lang}),
-        ("filter",     f"{base}/all",     {"query": query, "lang": lang}),
-    ]
+    max_pages = int(getattr(config, "MFN_MAX_PAGES", 20))
+    hstart = config.START_DATE  # sluta paginera när posterna är äldre än så
+    url, params = f"{base}/all/s", {"query": query, "lang": config.MFN_LANG, "limit": 500}
+    raw: List[dict] = []
+    for _ in range(max_pages):
+        items, nxt = _feed_page(url, params)
+        if not items:
+            break
+        raw.extend(items)
+        oldest = min(((it.get("content") or {}).get("publish_date") or "9999" for it in items),
+                     default="9999")
+        if oldest[:10] < hstart:
+            break
+        if not nxt:
+            break
+        url, params = (nxt if nxt.startswith("http") else base + nxt), None
+        time.sleep(config.MFN_REQUEST_PAUSE_S)
+    return raw
 
 
-def _slug(s: str) -> str:
-    s = s.lower().strip()
-    s = (s.replace("å", "a").replace("ä", "a").replace("ö", "o"))
-    s = re.sub(r"\b(ab|publ|asa|oyj|plc|the)\b", "", s)
-    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
-    return s
+# ── Author-matchning (filtrera bort fri-text-brus) ────────────────────────────
+def _norm(s: str) -> str:
+    return "".join(ch for ch in (s or "").upper() if ch.isalnum())
 
 
-def probe(query: str) -> None:
-    """Hämtar varje endpoint-kandidat och dumpar råsvaret för granskning."""
-    Path(config.MFN_CACHE_DIR).mkdir(parents=True, exist_ok=True)
-    print(f"[probe] frågar MFN om '{query}' – sparar råsvar i {config.MFN_CACHE_DIR}/")
-    for name, url, params in _endpoint_candidates(query):
-        out = Path(config.MFN_CACHE_DIR) / f"_probe_{name}.txt"
-        try:
-            r = _http_get(url, params)
-            body = r.text
-            out.write_text(f"URL: {r.url}\nCT: {r.headers.get('content-type')}\n"
-                           f"LEN: {len(body)}\n{'='*60}\n{body[:20000]}", encoding="utf-8")
-            parsed = parse_mfn_payload(body)
-            print(f"  [{name:8}] {r.status_code}  {len(body):>7} tecken  "
-                  f"→ {len(parsed)} PM tolkade  ({out.name})")
-        except Exception as e:  # noqa: BLE001
-            print(f"  [{name:8}] FEL: {e}")
-    print("\nTitta på filen med flest tolkade PM. Stämmer fälten (id/published/"
-          "title/text)? Då är parsern rätt – kör 'fetch'. Annars klistra in en "
-          "_probe_*.txt så låser jag parsern mot den faktiska formen.")
+def _author_match(c: dict, query: str, ticker: Optional[str]) -> bool:
+    """Behåll bara PM som faktiskt är BOLAGETS egna (inte sådana som nämner det)."""
+    qn = _norm(query)
+    sn, nn = _norm(c["author_slug"]), _norm(c["author_name"])
+    if sn and (sn in qn or qn in sn):
+        return True
+    if nn and (nn in qn or qn in nn):
+        return True
+    if ticker:
+        tn = _norm(ticker.split(".")[0])          # "SAAB-B.ST" -> "SAABB"
+        for t in c["tickers"]:
+            if _norm(t.split(":")[-1]) == tn:     # "XSTO:SAAB B" -> "SAABB"
+                return True
+    return False
 
 
 # ── Hämtning + cache ──────────────────────────────────────────────────────────
-def fetch_company(query: str) -> List[dict]:
-    """Returnerar alla tolkade PM för ett bolag (första endpoint som ger träff)."""
-    for name, url, params in _endpoint_candidates(query):
-        try:
-            r = _http_get(url, params)
-            items = parse_mfn_payload(r.text)
-            if items:
-                return items
-        except Exception:
+def fetch_company(query: str, ticker: Optional[str] = None) -> List[dict]:
+    raw = _fetch_feed(query)
+    out, seen = [], set()
+    for it in raw:
+        c = _coerce(it)
+        if not c or c["id"] in seen:
             continue
-        finally:
-            time.sleep(config.MFN_REQUEST_PAUSE_S)
-    return []
+        if not _author_match(c, query, ticker):
+            continue
+        seen.add(c["id"])
+        out.append(c)
+    return out
+
+
+def probe(query: str) -> None:
+    """Rök-test mot feeden: visar att vi når MFN och att parsern träffar rätt."""
+    Path(config.MFN_CACHE_DIR).mkdir(parents=True, exist_ok=True)
+    base = config.MFN_BASE_URL.rstrip("/")
+    print(f"[probe] frågar MFN-feeden om '{query}'")
+    items, nxt = _feed_page(f"{base}/all/s", {"query": query, "lang": config.MFN_LANG, "limit": 500})
+    coerced = [c for c in (_coerce(it) for it in items) if c]
+    print(f"  {len(items)} feed-items, {len(coerced)} tolkade, next_url={'ja' if nxt else 'nej'}")
+    for c in coerced[:3]:
+        print(f"   • {c['published'][:10]}  [{c['author_slug']:<18}] {c['tickers']}  {c['title'][:60]}")
+    out = Path(config.MFN_CACHE_DIR) / "_probe_feed.json"
+    out.write_text(json.dumps(coerced[:5], ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"  (5 tolkade PM sparade i {out} för granskning)")
+    print("  Ser fälten rätt ut (datum/rubrik/author/tickers)? Kör 'fetch'.")
 
 
 def _load_map() -> Dict[str, str]:
-    """Valfri ticker→MFN-fråga-mappning (altdata/mfn_map.csv). Saknas den
-    härleds frågan ur bolagsnamnet."""
+    """Valfri ticker→MFN-fråga (altdata/mfn_map.csv)."""
     p = Path(__file__).parent / "mfn_map.csv"
     out: Dict[str, str] = {}
     if p.exists():
@@ -223,8 +181,12 @@ def _load_map() -> Dict[str, str]:
     return out
 
 
+def _clean_name(name: str) -> str:
+    n = re.sub(r"\(publ\)|\bAB\b|\bASA\b|\bOyj\b|\bplc\b", "", name, flags=re.I)
+    return re.sub(r"\s+", " ", n).strip(" ,.-")
+
+
 def fetch_universe(segment: str) -> None:
-    """Hämtar + cachar PM för alla tickers i ett segment."""
     from data.data_loader import load_sweden_universe
     seg = config.SEGMENTS.get(segment) or config.SEGMENTS[config.DEFAULT_SEGMENT]
     tickers, _, _, name_map = load_sweden_universe(min_market_cap=seg["market_cap"])
@@ -239,18 +201,17 @@ def fetch_universe(segment: str) -> None:
         if out.exists():
             continue  # inkrementellt – ta bort filen för att hämta om
         query = qmap.get(t) or _clean_name(name_map.get(t, t))
-        items = fetch_company(query)
+        try:
+            items = fetch_company(query, ticker=t)
+        except Exception as e:  # noqa: BLE001
+            print(f"  [{i:>4}/{len(tickers)}] {t:<12} FEL: {e}")
+            continue
         out.write_text(json.dumps({"ticker": t, "query": query, "items": items},
-                                  ensure_ascii=False, indent=0), encoding="utf-8")
+                                  ensure_ascii=False), encoding="utf-8")
         total += len(items)
-        print(f"  [{i:>4}/{len(tickers)}] {t:<12} '{query[:30]:<30}' → {len(items)} PM")
+        print(f"  [{i:>4}/{len(tickers)}] {t:<12} '{query[:28]:<28}' → {len(items)} PM")
+        time.sleep(config.MFN_REQUEST_PAUSE_S)
     print(f"[fetch] klart – {total} PM cachade i {cache_dir}/")
-
-
-def _clean_name(name: str) -> str:
-    """Kort, sökbart bolagsnamn (släpp 'AB (publ)' m.m.)."""
-    n = re.sub(r"\(publ\)|\bAB\b|\bASA\b|\bOyj\b|\bplc\b", "", name, flags=re.I)
-    return re.sub(r"\s+", " ", n).strip(" ,.-")
 
 
 def main():
@@ -262,9 +223,11 @@ def main():
         probe(sys.argv[2] if len(sys.argv) > 2 else "Saab")
     elif cmd == "one":
         q = sys.argv[2]
-        items = fetch_company(q)
-        print(json.dumps(items[:5], ensure_ascii=False, indent=2))
-        print(f"... totalt {len(items)} PM för '{q}'")
+        tk = sys.argv[3] if len(sys.argv) > 3 else None
+        items = fetch_company(q, ticker=tk)
+        print(json.dumps(items[:3], ensure_ascii=False, indent=2))
+        print(f"... totalt {len(items)} PM för '{q}'"
+              f"{f' (ticker {tk})' if tk else ''}")
     elif cmd == "fetch":
         fetch_universe(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
     else:
