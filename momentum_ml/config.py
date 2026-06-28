@@ -137,9 +137,11 @@ LSTM_LR            = 1e-3
 LSTM_PATIENCE      = 15        # Early stopping
 
 # ── Ensemble ─────────────────────────────────────────────────────────────────
-ENSEMBLE_LGBM_WEIGHT = 0.6     # Startvikt; justeras av rolling Sharpe
+# FASTA prior-vikter för LGBM/LSTM-blandningen. Dynamisk rolling-Sharpe-viktning
+# är INTE implementerad (den gamla `ROLLING_SHARPE_WINDOW` + update_weights-stub
+# var ett dött löfte och är borttagna). Se models/ensemble.py.
+ENSEMBLE_LGBM_WEIGHT = 0.6
 ENSEMBLE_LSTM_WEIGHT = 0.4
-ROLLING_SHARPE_WINDOW = 12     # Veckor för dynamisk viktning
 
 # ── Köptröskel (data-driven) ─────────────────────────────────────────────────
 # pred_signal = 1 om prob_up > BUY_THRESHOLD. Istället för en hårdkodad 0.5
