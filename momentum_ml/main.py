@@ -130,6 +130,11 @@ def main():
             config.INDEX_BENCHMARK_TICKER = seg["index_ticker"]
         if "index_label" in seg:
             config.INDEX_BENCHMARK_LABEL = seg["index_label"]
+        # Per-segment momentum-grind: validerad PÅ för stor, AV för små (holdout).
+        if "gate_enabled" in seg:
+            config.MOMENTUM_GATE_ENABLED = seg["gate_enabled"]
+        if "gate_min" in seg:
+            config.MOMENTUM_GATE_MIN = seg["gate_min"]
         print(f"[Segment] {args.segment} ({seg['label']}): "
               f"market_cap={seg['market_cap']} -> {config.RESULTS_DIR}/ "
               f"(N={config.MAX_POSITIONS}, blend={config.CONVICTION_BLEND})")

@@ -213,6 +213,9 @@ SIZING_MODE = "inverse_vol"
 # −3.3→−1.4%, MaxDD −19.9→−17.6%, holdout +1.3→+4.4%. (Fortfarande negativ alfa mot
 # likavikt – en reell förbättring, inte ett index-slag.) OBS: validerat LGBM-only
 # som inverse_vol/vol-target; nästa fulla träning bekräftar med LSTM.
+# PER-SEGMENT: grinden hjälpte STOR men STJÄLPTE SMÅ på holdouten → den styrs nu
+# av gate_enabled/gate_min i SEGMENTS (stor: på, små: av). Värdena här är bara
+# fallback/default om man kör utan --segment.
 MOMENTUM_GATE_ENABLED = True
 MOMENTUM_GATE_MIN     = 0.10  # kräver >10% abs. 12-1-momentum för att hållas
 # Vad gör vi när FÅ namn klarar grinden? Två filosofier (A/B i tune_gate.py):
@@ -433,11 +436,17 @@ SENTIMENT_OOS_START     = "2016"    # rent OOS-fönster (samma som era_analysis.
 # – inte mot OMXS30 (storbolag). Båda ETF:erna återinvesterar utdelning och hämtas
 # auto_adjust=True → totalavkastning på BÅDA sidor (rättvis jämförelse, se nedan).
 SEGMENTS = {
+    # gate_enabled/gate_min per segment: momentum-kvalitetsgrinden hjälpte STORBOLAG
+    # på holdouten (#17: holdout +1.3→+4.4%) men STJÄLPTE SMÅBOLAG på holdouten
+    # (−2.3→−3.8%, trots bättre helperiod – sannolikt småbolagsmomentum-reversal i
+    # holdout-fönstret). Domaren = holdouten → grind PÅ för stor, AV för små.
     "large": {"label": "Storbolag", "market_cap": ["Large Cap", "Mid Cap"], "results_dir": "results",
               "max_positions": 10, "conviction_blend": 0.5,
-              "index_ticker": "XACT-OMXS30.ST",   "index_label": "OMXS30 (XACT)"},
+              "index_ticker": "XACT-OMXS30.ST",   "index_label": "OMXS30 (XACT)",
+              "gate_enabled": True,  "gate_min": 0.10},
     "small": {"label": "Småbolag",  "market_cap": ["Small Cap"],            "results_dir": "results/small",
               "max_positions": 20, "conviction_blend": 0.5,
-              "index_ticker": "XACT-SMABOLAG.ST", "index_label": "Svenska Småbolag (XACT)"},
+              "index_ticker": "XACT-SMABOLAG.ST", "index_label": "Svenska Småbolag (XACT)",
+              "gate_enabled": False, "gate_min": 0.10},
 }
 DEFAULT_SEGMENT = "large"
