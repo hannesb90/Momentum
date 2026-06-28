@@ -122,11 +122,16 @@ Kronologiskt. "Holdout"/"capture" = de ärliga måtten. Baslinjen Large/Mid 13v:
 | 15 | **Target-vol-overlay @10 %** | Sharpe 1.07→**1.16**, Sortino 1.29→**1.60**, MaxDD −28.2→**−20.6 %**, holdout 0.0→**+0.7** (kostar CAGR 14.0→13.4) | ✅ **Adopterat** |
 | 16 | **Extern granskning** (HQM/DMN-rapport) | Mest redan gjort, redan testat-och-förkastat, eller horisont-fel för long-only/kvartal; 2 punkter värda test → #14, #15 | Delvis adopterat |
 | 17 | **Momentum-kvalitetsgrind** (håll bara namn med abs. 12-1 > tröskel) | STOR: robust platå, topp >10% (CAGR 12.4→**14.3**, Sharpe 1.12→**1.25**, alfa −3.3→**−1.4**, MaxDD −19.9→**−17.6**, holdout +1.3→**+4.4**). SMÅ: helperiod bättre men **holdout SÄMRE** (−2.3→−3.8). | ✅ **Adopterat per-segment** (stor: på >10%, små: av) |
+| 18 | **MFN-sentiment (alt-data, A-spåret)** – LLM-poängsatt PM-ton (Haiku), 5 000-sample, OOS 2016+ | **INGEN edge.** Event pos−neg −0.6pp, väsentliga −1.5, **rapporter −0.3**, guidance −0.6, **VD-ton i rapporter +0.1**, tvärsnitt −0.8. Horisont-svep 1/2/4/8/13/26v: −0.4/−0.4/−0.3/−0.2/−0.6/+0.7 (26v = brus). Allt driver +3-4% på bull-basränta; tonen separerar inte. | ❌ **Förkastat** (validate-first, ~35 kr) |
 
-**Två etablerade sanningar ur loggen:**
+**Etablerade sanningar ur loggen:**
 1. Modellen är **maxad på prisdata** – feature-additioner överanpassar (#7, #8).
-2. Risk-hygien (#14, #15) gör kurvan snyggare men **skapar ingen ny alfa** – vi
-   är kvar i negativt territorium mot OMXS30. Edge kräver *ny information* (§6).
+2. Risk-hygien (#14, #15, #17) gör kurvan snyggare men **skapar ingen ny alfa** –
+   kvar i negativt territorium mot OMXS30.
+3. **Alt-data (regulatorisk PM-text) bär ingen OOS-drift** (#18) – inte i order,
+   inte i rapporter, inte i VD-ord, inte på någon horisont. Både pris- OCH
+   text-sentiment-vägarna är därmed uttömda. Marknaden prisar uppenbarligen in
+   även PM-*tonen* effektivt på vår horisont, inte bara den snabba reaktionen.
 
 ---
 
@@ -190,10 +195,11 @@ Anthropic-nyckel i `~/.momentum.env`, (2) bekräftelse att Pi:n når mfn.se
 
 ## 8. Öppna frågor & nästa steg
 
-1. **`era_analysis.py small`** – aldrig kört. Den faktiska obesvarade frågan om
-   småbolag-vs-algo (tolka med survivorship-bromsen på).
-2. **MFN-validering (A-spåret)** – kör hela kedjan på Pi:n när nyckel + mfn.se-
-   åtkomst finns. Avgör om alt-data ger äkta edge.
+1. **`era_analysis.py small`** – ✅ KÖRT: småbolag förlorar mot Svenska Småbolag-
+   index i ren OOS (−6.8% 2016+, −9.3% 2023+), trots survivorship-uppblåst data.
+   Ingen edge i småbolag heller.
+2. **MFN-validering (A-spåret)** – ✅ KÖRT & FÖRKASTAT (#18): ingen OOS-drift i
+   PM-/rapport-/VD-ton på någon horisont. Alt-data-text-spåret är dött.
 3. **Småbolag genom #14/#15** – `tune_sizing.py small` + `tune_voltarget.py small`
    (risk-hygienen är bara validerad på large; configvärdena är globala).
 4. **Survivorship-fri prisdata** – kvarstår som blockare för trovärdiga
@@ -251,7 +257,15 @@ docs/
    edgen är till stor del bortarbitrerad.
 3. Vi har **uttömt prisdata**: feature-additioner överanpassar, sizing/horisont
    är vid optimum, risk-overlays förbättrar bara *risk*, inte alfa.
-4. Den enda trovärdiga vägen till ny edge är **alt-data** (MFN-sentiment,
-   A-spåret) – byggt och validate-first, väntar på nyckel + Pi-åtkomst.
-5. Behåll disciplinen: **bevisa på holdout/OOS, annars reverta.** Det är så vi
-   kommit hit utan att lura oss själva.
+4. **Alt-data-spåret (MFN-sentiment) är testat och förkastat (#18):** PM-/rapport-/
+   VD-ton bär ingen OOS-drift på någon horisont. Både pris och text är därmed
+   uttömda som *alfa*-källor.
+5. **Slutsats/landning:** Momentum är inte ett index-slående system och ska inte
+   marknadsföras så. Det är ett **gediget, transparent analys-/utbildningsverktyg**
+   för svenska aktier, med ärlig OMXS30-jämförelse och reell risk-hygien (grind,
+   inverse-vol, vol-target). Det är en trovärdig produkt; ett falskt edge-påstående
+   vore det inte. (Ev. kvarvarande teoretiska alt-data-trådar – nyhets-/social-buzz,
+   insynshandel, fundamenta – är dyrare/brusigare och bör mötas med samma skepsis;
+   jaga dem inte utan en billig validate-first-test som #18.)
+6. Behåll disciplinen: **bevisa på holdout/OOS, annars reverta.** Det är så vi
+   kommit hit utan att lura oss själva – inklusive att säga "nej" till alt-data.
