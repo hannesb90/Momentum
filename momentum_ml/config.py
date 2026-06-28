@@ -207,8 +207,14 @@ SIZING_MODE = "inverse_vol"
 # blir k/N (k = antal som klarar grinden) → kontanter byggs när momentum är ont om.
 # Ändrar bara sizing (ej modellen) → A/B utan omträning via tune_gate.py. Behåll
 # bara om holdout/alfa förbättras utan att kontant-draget äter mer än det räddar.
-MOMENTUM_GATE_ENABLED = False
-MOMENTUM_GATE_MIN     = 0.0   # kräver positiv 12-1-momentum för att hållas
+# ADOPTERAT 2026-06-28 (tune_gate.py large, tröskel-svep): grinden vid >10% slog
+# baslinjen på VARJE mått och var en robust platå (5–10% alla bättre, topp vid 10%,
+# faller vid 15% – inte en holdout-spik): CAGR 12.4→14.3%, Sharpe 1.12→1.25, alfa
+# −3.3→−1.4%, MaxDD −19.9→−17.6%, holdout +1.3→+4.4%. (Fortfarande negativ alfa mot
+# likavikt – en reell förbättring, inte ett index-slag.) OBS: validerat LGBM-only
+# som inverse_vol/vol-target; nästa fulla träning bekräftar med LSTM.
+MOMENTUM_GATE_ENABLED = True
+MOMENTUM_GATE_MIN     = 0.10  # kräver >10% abs. 12-1-momentum för att hållas
 # Vad gör vi när FÅ namn klarar grinden? Två filosofier (A/B i tune_gate.py):
 #   "cash"        – defensivt: investerad andel = k/N, resten kontant (mindre risk
 #                   när momentum är ont om).

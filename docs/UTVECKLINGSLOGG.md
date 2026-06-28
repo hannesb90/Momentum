@@ -121,6 +121,7 @@ Kronologiskt. "Holdout"/"capture" = de ärliga måtten. Baslinjen Large/Mid 13v:
 | 14 | **Inverse-vol sizing** | Slog conviction på hela rutnätet: CAGR 14.0→**14.3**, Sharpe 1.07→**1.10**, alfa −1.7→**−1.4**, holdout 0.0→**+0.7** | ✅ **Adopterat** |
 | 15 | **Target-vol-overlay @10 %** | Sharpe 1.07→**1.16**, Sortino 1.29→**1.60**, MaxDD −28.2→**−20.6 %**, holdout 0.0→**+0.7** (kostar CAGR 14.0→13.4) | ✅ **Adopterat** |
 | 16 | **Extern granskning** (HQM/DMN-rapport) | Mest redan gjort, redan testat-och-förkastat, eller horisont-fel för long-only/kvartal; 2 punkter värda test → #14, #15 | Delvis adopterat |
+| 17 | **Momentum-kvalitetsgrind** (håll bara namn med abs. 12-1 > tröskel) | Robust PLATÅ i tröskel-svep (topp vid >10%): CAGR 12.4→**14.3**, Sharpe 1.12→**1.25**, alfa −3.3→**−1.4**, MaxDD −19.9→**−17.6**, holdout +1.3→**+4.4**. Slår baslinjen på varje mått. | ✅ **Adopterat (>10%)** |
 
 **Två etablerade sanningar ur loggen:**
 1. Modellen är **maxad på prisdata** – feature-additioner överanpassar (#7, #8).
