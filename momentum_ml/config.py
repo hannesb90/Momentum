@@ -177,6 +177,29 @@ MAX_POSITIONS      = 10        # Max antal samtidiga positioner
 # meningsfull vikt så vi håller N diversifierade innehav.
 CONVICTION_BLEND   = 0.5
 
+# Sizing-läge: hur vikten FÖRDELAS bland de N namn som rangordnats in (urvalet
+# sker alltid på prob_up – tvärsnitts-edgen). A/B-bart i tune_sizing.py:
+#   "conviction"  – tilt ∝ Kelly-conviction (default, bevisad baslinje).
+#   "inverse_vol" – tilt ∝ 1/volatilitet (risk-paritet; lika riskbidrag per namn,
+#                   dämpar att högvolatila namn dominerar – Sortino-hygien).
+# Bägge krymps mot likavikt med CONVICTION_BLEND. Samma N, olika vikt → isolerar
+# sizing-effekten rent.
+SIZING_MODE = "conviction"
+
+# ── Target-vol-overlay (Barroso & Santa-Clara, "Managing the risk of momentum") ─
+# Skalar portföljens BRUTTOEXPONERING kontinuerligt mot en mål-volatilitet i
+# stället för det grova bull/sideways/bear-marknadsfiltret: exp = min(target_vol /
+# realiserad_vol, tak). Litteraturens mest robusta momentum-förbättring – sänker
+# drawdowns/höjer Sharpe genom att dra ner inför turbulens. Long-only & ingen
+# hävstång → taket är 1.0 (overlayn skalar bara NER mot kontanter, aldrig upp).
+# Default AV: skyddar baslinjen – A/B:a med tune_voltarget.py på holdouten först.
+# OBS: realiserad vol mäts på portföljvärdet (efter ev. nedskalning) – en
+# pragmatisk proxy med viss återkoppling; långt lookback dämpar oscillation.
+VOL_TARGET_ENABLED        = False
+VOL_TARGET_ANNUAL         = 0.15   # mål: 15% annualiserad portföljvol
+VOL_TARGET_LOOKBACK_WEEKS = 13     # fönster för realiserad vol
+VOL_TARGET_MAX_LEVERAGE   = 1.0    # tak (1.0 = ingen hävstång, bara de-risking)
+
 # ── Backtest-kostnader ────────────────────────────────────────────────────────
 COMMISSION         = 0.001     # 0.1% per trade
 SLIPPAGE           = 0.001     # 0.1% slippage

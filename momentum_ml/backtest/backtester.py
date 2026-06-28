@@ -78,6 +78,7 @@ class MomentumBacktester:
                 self._regimes = pd.Series(dtype=object)   # kunde ej klassificera -> full exponering
 
         portfolio_values = []
+        pv_running: list = []   # löpande portföljvärden för target-vol-overlayn
 
         # Rebalansera på prognoshorisonten (var REBALANCE_WEEKS:e vecka), inte
         # varje vecka. Modellen förutsäger FORWARD_WEEKS framåt; att handla varje
@@ -96,10 +97,13 @@ class MomentumBacktester:
 
             market_exp = self._market_exposure_factor(date)
             guard = self._drawdown_guard_factor(drawdown)
+            # Target-vol-overlay: causal (ser bara värden t.o.m. nu).
+            pv_running.append(portfolio_value)
+            vol_exp = self._vol_target_factor(pv_running)
 
             if mode == "event":
                 # ── Händelsestyrd rotation (tekniken avgör hålltiden) ────────
-                cash = self._event_rebalance(date, portfolio_value, cash, market_exp, guard)
+                cash = self._event_rebalance(date, portfolio_value, cash, market_exp, guard * vol_exp)
             elif i % rebalance_weeks == 0:
                 # ── Schemalagd full rebalansering ────────────────────────────
                 day_signals = self.signals.loc[date]
@@ -132,10 +136,14 @@ class MomentumBacktester:
                 if guard < 1.0:
                     target_weights = {t: w * guard for t, w in target_weights.items()}
 
+                # Target-vol-overlay: skala ner mot kontanter inför turbulens
+                if vol_exp < 1.0:
+                    target_weights = {t: w * vol_exp for t, w in target_weights.items()}
+
                 cash = self._rebalance(date, target_weights, portfolio_value, cash)
             else:
-                # ── Håll – men de-riska om regim/guard kräver LÄGRE exponering ─
-                cash = self._derisk_to_cap(date, market_exp * guard, portfolio_value, cash)
+                # ── Håll – men de-riska om regim/guard/vol-target kräver LÄGRE exp ─
+                cash = self._derisk_to_cap(date, market_exp * guard * vol_exp, portfolio_value, cash)
                 # Asymmetrisk exit: sälj enskilda innehav vars trend brutits (utan
                 # att köpa nytt – kapitalet roteras in vid nästa schemalagda rebalans).
                 cash = self._trend_exit(date, cash)
@@ -147,6 +155,7 @@ class MomentumBacktester:
                 "n_positions":     len(self._portfolio),
                 "drawdown_guard":  guard,
                 "market_exposure": market_exp,
+                "vol_exposure":    vol_exp,
             })
 
         results = pd.DataFrame(portfolio_values).set_index("Date")
@@ -172,6 +181,30 @@ class MomentumBacktester:
         if regime is None or (isinstance(regime, float) and math.isnan(regime)):
             return 1.0
         return float(config.MARKET_FILTER_EXPOSURE.get(regime, 1.0))
+
+    def _vol_target_factor(self, pv_running: list) -> float:
+        """
+        Target-vol-overlay (Barroso & Santa-Clara): skalar bruttoexponeringen mot
+        en mål-vol. exp = min(VOL_TARGET_ANNUAL / realiserad_vol, tak). Realiserad
+        vol skattas på de senaste VOL_TARGET_LOOKBACK_WEEKS portföljvärdena
+        (causalt – bara värden t.o.m. nu). Taket är 1.0 (ingen hävstång) → skalar
+        bara NER mot kontanter. Avstängt eller för kort historik ger 1.0.
+        """
+        if not getattr(config, "VOL_TARGET_ENABLED", False):
+            return 1.0
+        lb = int(getattr(config, "VOL_TARGET_LOOKBACK_WEEKS", 13))
+        if len(pv_running) < lb + 1:
+            return 1.0
+        vals = pd.Series(pv_running[-(lb + 1):], dtype=float)
+        rets = vals.pct_change().dropna()
+        if len(rets) < 2 or rets.std() == 0:
+            return 1.0
+        realized = float(rets.std()) * math.sqrt(52)
+        if realized <= 0:
+            return 1.0
+        target = float(getattr(config, "VOL_TARGET_ANNUAL", 0.15))
+        cap = float(getattr(config, "VOL_TARGET_MAX_LEVERAGE", 1.0))
+        return float(min(max(target / realized, 0.0), cap))
 
     def _drawdown_guard_factor(self, drawdown: float) -> float:
         """

@@ -25,6 +25,7 @@ from backtest.benchmark import benchmark_report
 
 BLENDS = [0.5, 0.75, 1.0]      # 0=likavikt, 1=ren conviction
 NPOS = [10, 15, 20, 25]         # antal innehav
+MODES = ["conviction", "inverse_vol"]   # tilt-fördelning bland de N namnen
 
 
 def main():
@@ -48,9 +49,10 @@ def main():
 
     hw = config.HOLDOUT_WEEKS
 
-    def evaluate(blend, npos):
+    def evaluate(blend, npos, mode):
         config.CONVICTION_BLEND = blend
         config.MAX_POSITIONS = npos
+        config.SIZING_MODE = mode
         sig = build_full_output(preds, None, feature_dfs, MomentumEnsemble(), ta_filter="score")
         bt = MomentumBacktester(sig, data, market_filter=True)
         bt.run()
@@ -61,22 +63,23 @@ def main():
         ho_cagr = (ho.iloc[-1] / ho.iloc[0]) ** (52 / max(len(ho) - 1, 1)) - 1
         return s["CAGR"], s["Sharpe"], b["alpha_cagr"], ho_cagr
 
-    print("\n" + "=" * 64)
+    print("\n" + "=" * 76)
     print(f"  SIZING-SVEP ({seg['label']}) – alfa mot index, per kombination")
-    print("=" * 64)
-    print(f"  {'blend':>6} {'innehav':>8} {'CAGR':>7} {'Sharpe':>7} {'alfa':>7} {'holdout':>8}")
-    print("-" * 64)
+    print("=" * 76)
+    print(f"  {'läge':>12} {'blend':>6} {'innehav':>8} {'CAGR':>7} {'Sharpe':>7} {'alfa':>7} {'holdout':>8}")
+    print("-" * 76)
     best = None
-    for blend in BLENDS:
-        for npos in NPOS:
-            cagr, sharpe, alpha, ho = evaluate(blend, npos)
-            star = ""
-            if best is None or alpha > best[0]:
-                best = (alpha, blend, npos); star = "  <-- bäst alfa"
-            print(f"  {blend:>6.2f} {npos:>8d} {cagr:>7} {sharpe:>7} "
-                  f"{alpha*100:>+6.1f}% {ho*100:>+7.1f}%{star}")
-    print("-" * 64)
-    print(f"  Bäst alfa: blend={best[1]}, innehav={best[2]}  ({best[0]*100:+.1f}%)")
+    for mode in MODES:
+        for blend in BLENDS:
+            for npos in NPOS:
+                cagr, sharpe, alpha, ho = evaluate(blend, npos, mode)
+                star = ""
+                if best is None or alpha > best[0]:
+                    best = (alpha, mode, blend, npos); star = "  <-- bäst alfa"
+                print(f"  {mode:>12} {blend:>6.2f} {npos:>8d} {cagr:>7} {sharpe:>7} "
+                      f"{alpha*100:>+6.1f}% {ho*100:>+7.1f}%{star}")
+        print("-" * 76)
+    print(f"  Bäst alfa: läge={best[1]}, blend={best[2]}, innehav={best[3]}  ({best[0]*100:+.1f}%)")
     print("  (alfa mot likaviktat köp-och-behåll; holdout = äkta out-of-sample)")
 
 
