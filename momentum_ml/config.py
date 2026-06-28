@@ -275,12 +275,6 @@ BUY_LIMIT_TOLERANCE = 0.015   # köp: max 1.5% över referenskurs
 # gap-ned – lägg en sälj-LIMITORDER på minst referenskurs × (1 - SELL_LIMIT_TOLERANCE).
 SELL_LIMIT_TOLERANCE = 0.015  # sälj: minst 1.5% under referenskurs
 
-# ── PEAD-proxy (post-earnings drift från pris/volym) ──────────────────────────
-# En vecka med volym > PEAD_VOL_MULT × snitt tolkas som rapport-/nyhetsvecka;
-# kursdriften efter håller i sig PEAD_DRIFT_WEEKS veckor. Se feature_engineering.
-PEAD_VOL_MULT    = 2.0
-PEAD_DRIFT_WEEKS = 8
-
 # ── Corporate actions / datakvalitet ──────────────────────────────────────────
 SUSPICIOUS_JUMP_THRESHOLD = 0.60    # flagga veckoavkastning över denna magnitud
 
