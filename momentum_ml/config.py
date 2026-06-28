@@ -199,6 +199,17 @@ CONVICTION_BLEND   = 0.5
 # alfa −1.7→−1.4%, holdout 0.0→+0.7%. Adopterat.
 SIZING_MODE = "inverse_vol"
 
+# Momentum-kvalitetsgrind + villkorad kontant (experiment, default AV). Adresserar
+# en konstruktionsmiss: alltid-investerad topp-N tvingar ~100% i N namn ÄVEN när
+# bara några få har äkta momentum → de få vinnarna späds ut av "minst dåliga"
+# namn (motsatsen till kap-viktning, som låter vinnaren bli stor). Med grinden på
+# hålls bara namn med abs. 12-1-momentum > MOMENTUM_GATE_MIN, och investerad andel
+# blir k/N (k = antal som klarar grinden) → kontanter byggs när momentum är ont om.
+# Ändrar bara sizing (ej modellen) → A/B utan omträning via tune_gate.py. Behåll
+# bara om holdout/alfa förbättras utan att kontant-draget äter mer än det räddar.
+MOMENTUM_GATE_ENABLED = False
+MOMENTUM_GATE_MIN     = 0.0   # kräver positiv 12-1-momentum för att hållas
+
 # ── Target-vol-overlay (Barroso & Santa-Clara, "Managing the risk of momentum") ─
 # Skalar portföljens BRUTTOEXPONERING kontinuerligt mot en mål-volatilitet i
 # stället för det grova bull/sideways/bear-marknadsfiltret: exp = min(target_vol /
