@@ -51,6 +51,8 @@ def _load_scored(segment) -> pd.DataFrame:
                 "sentiment": s.get("sentiment", 0),
                 "materiality": s.get("materiality", 0),
                 "category": s.get("category", "other"),
+                "guidance": s.get("guidance", 0),
+                "ceo_tone": s.get("ceo_tone", 0),
             })
     df = pd.DataFrame(rows).dropna(subset=["published"])
     df["published"] = df["published"].dt.tz_localize(None)
@@ -147,6 +149,31 @@ def main():
             for sp, cat, ncat in sorted(cat_rows, reverse=True):
                 flag = "  <- störst" if (sp, cat, ncat) == max(cat_rows) else ""
                 print(f"    {cat:<10} {sp:+6.1%}-enheter  (n={ncat:,}){flag}")
+
+    # ── 1b. VD-ORD / GUIDANCE (din tes: rapporternas djup-signal) ──────────────
+    print("\n" + "=" * 72)
+    print(f"  VD-ORD / GUIDANCE (OOS {oos}+) – {fwd}v drift (minst algo-konkurrerat)")
+    print("=" * 72)
+    if len(ev) < 30:
+        print("  För få event.")
+    else:
+        gp = ev[ev["guidance"] >= 1]["fwd_ret"]
+        gn = ev[ev["guidance"] <= -1]["fwd_ret"]
+        if len(gp) >= 10 and len(gn) >= 10:
+            print(f"  Guidance höjd(+1) fwd {gp.mean():+.1%} (n={len(gp):,})  |  "
+                  f"sänkt(−1) fwd {gn.mean():+.1%} (n={len(gn):,})  |  SPREAD {gp.mean() - gn.mean():+.1%}")
+        else:
+            print(f"  Få guidance-event (höjd n={len(gp)}, sänkt n={len(gn)}).")
+        for scope, sub in [("alla PM", ev), ("endast rapporter", ev[ev["category"] == "report"])]:
+            cp = sub[sub["ceo_tone"] >= 1]["fwd_ret"]
+            cn = sub[sub["ceo_tone"] <= -1]["fwd_ret"]
+            if len(cp) >= 10 and len(cn) >= 10:
+                print(f"  VD-ton [{scope}]: självsäker fwd {cp.mean():+.1%} (n={len(cp):,})  |  "
+                      f"osäker fwd {cn.mean():+.1%} (n={len(cn):,})  |  SPREAD {cp.mean() - cn.mean():+.1%}")
+            else:
+                print(f"  VD-ton [{scope}]: för få event (självsäker n={len(cp)}, osäker n={len(cn)}).")
+        print("  (Stor positiv spread = VD-ord/guidance bär den durabla edgen → rapport-")
+        print("   fördjupningen bevisad värd det. Svag = den nyansen syns inte i drift.)")
 
     # ── 2. TVÄRSNITT (veckovis aggregerad ton) ────────────────────────────────
     print("\n" + "=" * 72)

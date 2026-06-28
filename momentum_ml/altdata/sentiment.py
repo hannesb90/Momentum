@@ -53,8 +53,12 @@ _SYSTEM = (
     '  "sentiment": heltal -2..2 (ton för aktieägare; -2 mkt negativ, 0 neutral, +2 mkt positiv)\n'
     '  "materiality": heltal 0..3 (kurspåverkan; 0 rutin/admin, 1 mindre, 2 väsentlig, 3 mkt väsentlig)\n'
     f'  "category": en av {_CATEGORIES}\n'
+    '  "guidance": heltal -1..1 (framåtblickande utsikter/prognos: -1 sänkt/svagare, 0 ingen el. oförändrad, 1 höjd/starkare)\n'
+    '  "ceo_tone": heltal -2..2 (VD:s/ledningens TON i ev. kommentar/VD-ord: -2 osäker/defensiv/mycket hedging, '
+    "0 neutral eller saknas, +2 tydligt självsäker/offensiv)\n"
     '  "rationale": max en mening på svenska\n'
-    'Exempel: {"sentiment": 1, "materiality": 2, "category": "order", "rationale": "Stororder lyfter orderboken."}'
+    "guidance och ceo_tone är främst relevanta för RAPPORTER och VD-kommentarer – sätt 0 när de inte är tillämpliga.\n"
+    'Exempel: {"sentiment": 1, "materiality": 2, "category": "order", "guidance": 0, "ceo_tone": 0, "rationale": "Stororder lyfter orderboken."}'
 )
 
 
