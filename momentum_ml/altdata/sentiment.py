@@ -226,12 +226,19 @@ def _load_cached_releases(segment: str) -> List[dict]:
     return out
 
 
-def score_segment(segment: str) -> None:
+def score_segment(segment: str, limit: Optional[int] = None) -> None:
     items = _load_cached_releases(segment)
     if not items:
         print(f"[score] inga cachade PM för '{segment}' – kör mfn_fetch.py fetch {segment} först.")
         return
-    print(f"[score] {len(items)} PM att poängsätta (cachade hoppas över)")
+    if limit and limit < len(items):
+        # SAMPLE: poängsätt bara ett slumpvis urval först (testa mönstret billigt).
+        # Resten poängsätts vid en senare full körning – cachade (samplet) hoppas
+        # då över automatiskt, så inget betalas två gånger. Deterministiskt urval.
+        import random
+        items = random.Random(config.RANDOM_SEED).sample(items, limit)
+        print(f"[score] SAMPLE: {limit:,} slumpvis valda PM (full körning senare poängsätter resten)")
+    print(f"[score] {len(items):,} PM att poängsätta (cachade hoppas över)")
     if config.SENTIMENT_USE_BATCH:
         score_batch(items)
     else:
@@ -292,7 +299,9 @@ def main():
         return
     cmd = sys.argv[1]
     if cmd == "score":
-        score_segment(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
+        seg = sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT
+        limit = int(sys.argv[3]) if len(sys.argv) > 3 else None   # 'score large 3000' = sample
+        score_segment(seg, limit)
     elif cmd == "estimate":
         estimate_cost(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
     elif cmd == "one":
