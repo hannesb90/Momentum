@@ -217,6 +217,36 @@ def score_segment(segment: str) -> None:
     print("[score] klart – kör backtest_sentiment.py för OOS-utvärdering.")
 
 
+def estimate_cost(segment: str) -> None:
+    """OFFLINE kostnadsestimat (ingen nyckel/anrop): räknar PM i OOS-fönstret och
+    projicerar batch-kostnaden. Token-heuristik: ~4 tecken/token (svensk text)."""
+    items = _load_cached_releases(segment)
+    n = len(items)
+    if not n:
+        print(f"[estimate] inga cachade PM för '{segment}' – kör mfn_fetch.py fetch {segment} först.")
+        return
+    sys_tok = len(_SYSTEM) / 4.0
+    in_tok = sum(sys_tok + len(_prompt(it)) / 4.0 for it in items)
+    out_tok = n * 70.0                       # JSON-svaret är litet (~70 tokens)
+    # Haiku 4.5: $1/1M in, $5/1M ut. Batch = -50%. (USD)
+    full = in_tok / 1e6 * 1.0 + out_tok / 1e6 * 5.0
+    batch = full * 0.5
+    usd_sek = 10.6
+    print("\n" + "=" * 60)
+    print(f"  KOSTNADSESTIMAT ({segment}) – {config.SENTIMENT_MODEL}, OFFLINE")
+    print("=" * 60)
+    print(f"  PM att poängsätta (>= {getattr(config,'SENTIMENT_SCORE_FROM','?')}):  {n:,}")
+    print(f"  Snitt input-tokens/PM:   {in_tok/n:,.0f}")
+    print(f"  Totalt input-tokens:     {in_tok/1e6:,.2f}M")
+    print(f"  Totalt output-tokens:    {out_tok/1e6:,.2f}M")
+    print("-" * 60)
+    print(f"  Fullpris:   ${full:,.2f}   (~{full*usd_sek:,.0f} kr)")
+    print(f"  Batch -50%: ${batch:,.2f}   (~{batch*usd_sek:,.0f} kr)   <- vi använder denna")
+    print("-" * 60)
+    print("  OBS: konservativt – promptcache (systemprompten är identisk) kan sänka")
+    print("  input-kostnaden ytterligare. Token-heuristik ±20%.")
+
+
 def score_one(ticker: str) -> None:
     p = Path(config.MFN_CACHE_DIR) / f"{ticker}.json"
     if not p.exists():
@@ -237,6 +267,8 @@ def main():
     cmd = sys.argv[1]
     if cmd == "score":
         score_segment(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
+    elif cmd == "estimate":
+        estimate_cost(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
     elif cmd == "one":
         score_one(sys.argv[2])
     else:
