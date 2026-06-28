@@ -295,6 +295,7 @@ def build_full_output(
                 "pred_return":   row["pred_return"],
                 "ta_score":      ta_score,
                 "raw_kelly":     raw_kelly,
+                "vol":           float(vol) if vol and vol > 0 else 0.20,
                 "eligible":      int(eligible),
             })
 
@@ -313,13 +314,21 @@ def build_full_output(
         top = cand.sort_values("prob_up", ascending=False).head(config.MAX_POSITIONS)
         n = len(top)
         eq = 1.0 / n
-        # Conviction-tilt KRYMPT mot likavikt så portföljen inte kollapsar till
-        # de få namn vars absoluta Kelly råkar vara > 0 (prob_up mäter P(+5%) och
-        # är <0.5 för nästan alla -> Kelly=0). Varje valt namn får minst
-        # (1-blend)*likavikt, så vi håller N diversifierade innehav.
-        kelly = top["raw_kelly"].clip(lower=0.0)
-        ksum = float(kelly.sum())
-        tilt = (kelly / ksum) if ksum > 0 else pd.Series(eq, index=top.index)
+        # Tilt KRYMPT mot likavikt så portföljen inte kollapsar till de få namn
+        # vars absoluta vikt råkar vara störst. Varje valt namn får minst
+        # (1-blend)*likavikt, så vi håller N diversifierade innehav. Urvalet (vilka
+        # N) styrs alltid av prob_up ovan – SIZING_MODE styr bara fördelningen:
+        #   conviction  – tilt ∝ Kelly-conviction (default).
+        #   inverse_vol – tilt ∝ 1/volatilitet (risk-paritet, lika riskbidrag).
+        mode = str(getattr(config, "SIZING_MODE", "conviction"))
+        if mode == "inverse_vol":
+            inv = (1.0 / top["vol"].clip(lower=0.05))
+            isum = float(inv.sum())
+            tilt = (inv / isum) if isum > 0 else pd.Series(eq, index=top.index)
+        else:
+            kelly = top["raw_kelly"].clip(lower=0.0)
+            ksum = float(kelly.sum())
+            tilt = (kelly / ksum) if ksum > 0 else pd.Series(eq, index=top.index)
         blend = float(getattr(config, "CONVICTION_BLEND", 0.5))
         raw = {t: (1.0 - blend) * eq + blend * float(tw)
                for t, tw in zip(top["ticker"], tilt)}
@@ -332,5 +341,5 @@ def build_full_output(
     df["position_size"] = df.groupby(level="Date", group_keys=False).apply(_size_date)
     # pred_signal = "hålls i portföljen nu" (topp-N), inte en absolut tröskel.
     df["pred_signal"] = (df["position_size"] > 0).astype(int)
-    df = df.drop(columns=["raw_kelly", "eligible"])
+    df = df.drop(columns=["raw_kelly", "vol", "eligible"])
     return df
