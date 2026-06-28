@@ -313,6 +313,42 @@ RANDOM_SEED        = 42
 CACHE_DIR          = "cache"
 RESULTS_DIR        = "results"
 
+# ── Alt-data: MFN-pressmeddelanden + LLM-sentiment (validate-first) ────────────
+# Hypotes: tvärsnittsmomentum på enbart pris har tappat sin edge i algo-eran
+# (era_analysis.py visade att försprånget mot OMXS30 var uppvärmnings-artefakt).
+# En durabel edge kräver alt-data som algon inte trivialt arbitrerar bort:
+# TONEN i bolagens egna regulatoriska pressmeddelanden (PEAD-anda – marknaden
+# under-reagerar på nyhetston och driften håller i sig veckor framåt).
+#
+# MFN.se (Modular Finance) distribuerar nordiska regulatoriska PM och har ett
+# ARKIV med publiceringstidsstämpel → point-in-time text utan look-ahead, vilket
+# är exakt vad en ärlig backtest kräver. Vi poängsätter varje PM med Claude
+# (sentiment + materialitet) och testar OOS (2016+) om signalens capture-spread
+# är positiv INNAN vi bygger in den i modellen. Engångskostnad ~hundralapp
+# (Haiku 4.5 + Batch-API), löpande drift ~ören/vecka.
+#
+# OBS: körs på Pi:n (molncontainern når varken mfn.se eller Yahoo). MFN:s exakta
+# endpoint/JSON-form ska verifieras med `mfn_fetch.py probe <query>` på Pi:n
+# innan massiv hämtning – se altdata/README.md.
+MFN_BASE_URL        = "https://mfn.se"
+MFN_LANG            = "sv"          # hämta svenska PM (MFN har även "en")
+MFN_REQUEST_PAUSE_S = 0.5          # paus mellan anrop (snäll mot MFN)
+MFN_MAX_BODY_CHARS  = 8000         # klipp PM-text innan LLM (håller token-kostnad nere)
+MFN_CACHE_DIR       = "cache/mfn"   # rå-PM cachas här (JSON per ticker)
+
+# LLM-sentiment (Anthropic). API-NYCKELN läses ur miljövariabeln ANTHROPIC_API_KEY
+# – lägg ALDRIG nyckeln i koden/repot. Haiku räcker för klassificering; höj till
+# Sonnet bara om A/B på ~200 PM visar att Haiku missar nyanser i svensk PM-text.
+SENTIMENT_MODEL     = "claude-haiku-4-5"
+SENTIMENT_USE_BATCH = True          # Batch-API = -50% för historisk massa-poängsättning
+SENTIMENT_CACHE_DIR = "cache/sentiment"  # poäng cachas per PM-id (kör aldrig om samma PM)
+SENTIMENT_MAX_TOKENS = 400
+
+# Backtest av sentiment-signalen: aggregera ett innehavs PM-ton i ett bakåtfönster
+# och mät framåtavkastning (capture-spread, mirror av capture_analysis.py).
+SENTIMENT_LOOKBACK_DAYS = 7         # PM publicerade senaste veckan räknas in i veckans signal
+SENTIMENT_OOS_START     = "2016"    # rent OOS-fönster (samma som era_analysis.py)
+
 # ── Segment (separata modeller per storleksklass) ─────────────────────────────
 # Två SEPARATA modeller, en per storleksgrupp, så att tvärsnitts-rangordningen
 # sker inom jämförbara bolag (en stabil storbolagstrend drunknar annars i
