@@ -428,10 +428,16 @@ SENTIMENT_OOS_START     = "2016"    # rent OOS-fönster (samma som era_analysis.
 #   small – fler innehav (20) diversierar småbolagens högre idiosynkratiska risk
 #           och lyfter alfan från -0.6% till ~+0.6-1.0% (in-sample). OBS: holdout
 #           fortfarande negativ + survivorship-flattrad → ej pålitlig än.
+# index_ticker/index_label per segment: storbolag jämförs mot OMXS30, men SMÅBOLAG
+# ska jämföras mot ett SMÅBOLAGSINDEX (XACT Svenska Småbolag, finns i universumet)
+# – inte mot OMXS30 (storbolag). Båda ETF:erna återinvesterar utdelning och hämtas
+# auto_adjust=True → totalavkastning på BÅDA sidor (rättvis jämförelse, se nedan).
 SEGMENTS = {
     "large": {"label": "Storbolag", "market_cap": ["Large Cap", "Mid Cap"], "results_dir": "results",
-              "max_positions": 10, "conviction_blend": 0.5},
+              "max_positions": 10, "conviction_blend": 0.5,
+              "index_ticker": "XACT-OMXS30.ST",   "index_label": "OMXS30 (XACT)"},
     "small": {"label": "Småbolag",  "market_cap": ["Small Cap"],            "results_dir": "results/small",
-              "max_positions": 20, "conviction_blend": 0.5},
+              "max_positions": 20, "conviction_blend": 0.5,
+              "index_ticker": "XACT-SMABOLAG.ST", "index_label": "Svenska Småbolag (XACT)"},
 }
 DEFAULT_SEGMENT = "large"

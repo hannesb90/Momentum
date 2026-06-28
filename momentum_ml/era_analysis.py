@@ -30,7 +30,10 @@ def cagr_sharpe(s):
 
 def main():
     seg = sys.argv[1] if len(sys.argv) > 1 else config.DEFAULT_SEGMENT
-    rd = (config.SEGMENTS.get(seg) or config.SEGMENTS[config.DEFAULT_SEGMENT])["results_dir"]
+    segcfg = config.SEGMENTS.get(seg) or config.SEGMENTS[config.DEFAULT_SEGMENT]
+    rd = segcfg["results_dir"]
+    # Rätt index per segment (small jämförs mot småbolagsindex, inte OMXS30).
+    ilabel = segcfg.get("index_label", "index")
     df = pd.read_csv(f"{rd}/portfolio.csv", index_col=0, parse_dates=True)
     has_ew = "benchmark_value" in df.columns
     has_omx = "omxs30_value" in df.columns
@@ -44,9 +47,10 @@ def main():
               ("2023", "senaste ~2 år")]
 
     print("\n" + "=" * 78)
-    print(f"  ERA-TEST ({seg}) – håller edgen mot nutid? (alfa mot likaviktat / OMXS30)")
+    print(f"  ERA-TEST ({seg}) – håller edgen mot nutid? (alfa mot likaviktat / {ilabel})")
     print("=" * 78)
-    print(f"  {'från':>6} {'CAGR':>7} {'Sharpe':>7} {'alfa(EW)':>9} {'alfa(OMXS30)':>13}  period")
+    print(f"  {'från':>6} {'CAGR':>7} {'Sharpe':>7} {'alfa(EW)':>9} {'alfa(idx)':>10}  period")
+    print(f"  (idx = {ilabel})")
     print("-" * 78)
     for st, label in starts:
         sub = df[df.index >= st]
@@ -54,10 +58,10 @@ def main():
             continue
         sc, ss = cagr_sharpe(sub["portfolio_value"])
         ew = f"{sc - cagr_sharpe(sub['benchmark_value'])[0]:+.1%}" if has_ew else "  –"
-        omx = f"{sc - cagr_sharpe(sub['omxs30_value'])[0]:+.1%}" if has_omx else "   –"
-        print(f"  {st+'+':>6} {sc:>+7.1%} {ss:>7.2f} {ew:>9} {omx:>13}  {label}")
+        idx = f"{sc - cagr_sharpe(sub['omxs30_value'])[0]:+.1%}" if has_omx else "   –"
+        print(f"  {st+'+':>6} {sc:>+7.1%} {ss:>7.2f} {ew:>9} {idx:>10}  {label}")
     print("-" * 78)
-    print("  Håller alfa(OMXS30) positiv även i 2021+/2023+ -> edgen lever i algo-eran.")
+    print(f"  Håller alfa({ilabel}) positiv även i 2021+/2023+ -> edgen lever i algo-eran.")
 
 
 if __name__ == "__main__":
