@@ -182,14 +182,20 @@ def _load_map() -> Dict[str, str]:
 
 
 def _clean_name(name: str) -> str:
-    n = re.sub(r"\(publ\)|\bAB\b|\bASA\b|\bOyj\b|\bplc\b", "", name, flags=re.I)
+    """Kort, sökbart bolagsnamn. MFN:s /all/s ger HTTP 500 för vissa queries –
+    särskilt med 'Class A/B'-suffix och '&'. Strippa dem (och bolagsformer)."""
+    n = name
+    n = re.sub(r"\bclass\s+[a-d]\b", " ", n, flags=re.I)          # "Class B"
+    n = re.sub(r"\bser(ie|\.)?\s*[a-d]\b", " ", n, flags=re.I)    # "Ser. B"
+    n = re.sub(r"\(publ\.?\)|\bAB\b|\bASA\b|\bOyj\b|\bplc\b|\bInc\b", " ", n, flags=re.I)
+    n = n.replace("&", " ")                                        # '&' bryter MFN-queryn
     return re.sub(r"\s+", " ", n).strip(" ,.-")
 
 
 def fetch_universe(segment: str) -> None:
     from data.data_loader import load_sweden_universe
     seg = config.SEGMENTS.get(segment) or config.SEGMENTS[config.DEFAULT_SEGMENT]
-    tickers, _, _, name_map = load_sweden_universe(min_market_cap=seg["market_cap"])
+    tickers, sector_map, cap_tier_map, name_map = load_sweden_universe(min_market_cap=seg["market_cap"])
     qmap = _load_map()
     cache_dir = Path(config.MFN_CACHE_DIR)
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -197,6 +203,9 @@ def fetch_universe(segment: str) -> None:
     print(f"[fetch] segment={segment} ({seg['label']}) – {len(tickers)} bolag")
     total = 0
     for i, t in enumerate(tickers, 1):
+        # Hoppa fonder/ETF:er – de har inga egna MFN-pressmeddelanden.
+        if cap_tier_map.get(t) == "Fond" or sector_map.get(t) == "Fond":
+            continue
         out = cache_dir / f"{t}.json"
         if out.exists():
             continue  # inkrementellt – ta bort filen för att hämta om
