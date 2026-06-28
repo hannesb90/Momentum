@@ -114,8 +114,14 @@ def main():
         seg = config.SEGMENTS[args.segment]
         args.market_cap = seg["market_cap"]
         config.RESULTS_DIR = seg["results_dir"]
+        # Per-segment sizing (se tune_sizing.py-svepet): large=10/0.5, small=20/0.5.
+        if "max_positions" in seg:
+            config.MAX_POSITIONS = seg["max_positions"]
+        if "conviction_blend" in seg:
+            config.CONVICTION_BLEND = seg["conviction_blend"]
         print(f"[Segment] {args.segment} ({seg['label']}): "
-              f"market_cap={seg['market_cap']} -> {config.RESULTS_DIR}/")
+              f"market_cap={seg['market_cap']} -> {config.RESULTS_DIR}/ "
+              f"(N={config.MAX_POSITIONS}, blend={config.CONVICTION_BLEND})")
     # Gör --min-history globalt verksam (data_loader._clean läser config direkt).
     config.MIN_HISTORY_WEEKS = args.min_history
     # Kostnadsgolv för köpsignaler (ensemble.build_full_output läser config).

@@ -278,8 +278,16 @@ RESULTS_DIR        = "results"
 # universumet blandades). Varje segment tränas/backtestas för sig och skrivs till
 # egen results-mapp; frontend togglar mellan dem som två identiska vyer.
 # market_cap = nivåer som tas med, results_dir = var output hamnar.
+# max_positions/conviction_blend per segment (sizing-svep 2026-06, tune_sizing.py):
+#   large – fler innehav/högre conviction försämrade (alfa -1.7% -> -3.2%); 10
+#           namn @ blend 0.5 var optimum (= globala default). Redan maxad skörd.
+#   small – fler innehav (20) diversierar småbolagens högre idiosynkratiska risk
+#           och lyfter alfan från -0.6% till ~+0.6-1.0% (in-sample). OBS: holdout
+#           fortfarande negativ + survivorship-flattrad → ej pålitlig än.
 SEGMENTS = {
-    "large": {"label": "Storbolag", "market_cap": ["Large Cap", "Mid Cap"], "results_dir": "results"},
-    "small": {"label": "Småbolag",  "market_cap": ["Small Cap"],            "results_dir": "results/small"},
+    "large": {"label": "Storbolag", "market_cap": ["Large Cap", "Mid Cap"], "results_dir": "results",
+              "max_positions": 10, "conviction_blend": 0.5},
+    "small": {"label": "Småbolag",  "market_cap": ["Small Cap"],            "results_dir": "results/small",
+              "max_positions": 20, "conviction_blend": 0.5},
 }
 DEFAULT_SEGMENT = "large"
