@@ -84,12 +84,17 @@ export function BacktestPage() {
       date: row.date,
       value: row.portfolio_value,
       benchmark: row.benchmark_value ?? null,
+      omxs30: row.omxs30_value ?? null,
       drawdown: row.drawdown * 100,
     }))
   }, [portfolio.data])
 
   const hasBenchmark = useMemo(
     () => chartData.some((d) => d.benchmark != null),
+    [chartData],
+  )
+  const hasOmxs30 = useMemo(
+    () => chartData.some((d) => d.omxs30 != null),
     [chartData],
   )
 
@@ -106,12 +111,13 @@ export function BacktestPage() {
 
       <div className="chart-card">
         <h3>
-          Portföljvärde {hasBenchmark && <span className="chart-legend">— blå: strategi · grå: index (köp-och-behåll)</span>}
+          Portföljvärde {hasBenchmark && <span className="chart-legend">— blå: strategi · grå: likaviktat universum{hasOmxs30 && ' · gul: OMXS30'}</span>}
           <InfoButton title="Portföljvärde vs benchmark">
             <p>
               Blå linje: hur en tänkt portfölj skulle ha utvecklats om man följt modellens
               köp/sälj-signaler historiskt. Grå linje: ett passivt likaviktat köp-och-behåll av
-              samma universum.
+              samma universum. Gul linje: OMXS30 (XACT-ETF) – det en bred publik annars köper
+              passivt (kap-viktat, 30 största).
             </p>
             <p>
               Om den blå inte ligger över den grå tillför strategin inget jämfört med att bara äga
@@ -130,11 +136,18 @@ export function BacktestPage() {
               labelFormatter={fmtDate}
               formatter={(v, name) => [
                 `${Number(v).toLocaleString('sv-SE')} SEK`,
-                name === 'benchmark' ? 'Index (köp-och-behåll)' : 'Strategi',
+                name === 'benchmark'
+                  ? 'Likaviktat universum'
+                  : name === 'omxs30'
+                    ? 'OMXS30'
+                    : 'Strategi',
               ]}
             />
             {hasBenchmark && (
               <Line type="monotone" dataKey="benchmark" stroke="#64748b" dot={false} strokeWidth={1.5} strokeDasharray="4 4" />
+            )}
+            {hasOmxs30 && (
+              <Line type="monotone" dataKey="omxs30" stroke="#f59e0b" dot={false} strokeWidth={1.5} strokeDasharray="2 3" />
             )}
             <Line type="monotone" dataKey="value" stroke="#2196F3" dot={false} strokeWidth={1.5} />
           </ComposedChart>
