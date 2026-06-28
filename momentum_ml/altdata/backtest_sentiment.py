@@ -133,6 +133,21 @@ def main():
                 bn = big[big["sentiment"] <= -1]["fwd_ret"].mean()
                 print(f"  Endast VÄSENTLIGA PM (materiality≥2):  spread {bp - bn:+.1%}-enheter  (n={len(big):,})")
 
+            # VAR sitter edgen? Per kategori. Hypotes (din): driften ska vara störst
+            # i rapporter/guidance (djup-tolkning, minst algo-konkurrerad) och svag i
+            # order (algon arbitrerar bort den snabba reaktionen). Detta avgör om
+            # VD-ord/rapport-spåret är värt att fördjupa.
+            print("-" * 72)
+            print("  Per kategori (driften = pos−neg spread):")
+            cat_rows = []
+            for cat, g in ev.groupby("category"):
+                cp, cn = g[g["sentiment"] >= 1]["fwd_ret"], g[g["sentiment"] <= -1]["fwd_ret"]
+                if len(cp) >= 10 and len(cn) >= 10:
+                    cat_rows.append((cp.mean() - cn.mean(), cat, len(g)))
+            for sp, cat, ncat in sorted(cat_rows, reverse=True):
+                flag = "  <- störst" if (sp, cat, ncat) == max(cat_rows) else ""
+                print(f"    {cat:<10} {sp:+6.1%}-enheter  (n={ncat:,}){flag}")
+
     # ── 2. TVÄRSNITT (veckovis aggregerad ton) ────────────────────────────────
     print("\n" + "=" * 72)
     print(f"  TVÄRSNITT (OOS {oos}+) – veckovis ton-rank vs {fwd}v framåtavkastning")
