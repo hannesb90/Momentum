@@ -116,21 +116,6 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     feat["atr_norm"] = _atr(h, l, c, 14) / c                     # ATR% av pris
     feat["vol_ratio"] = feat["rvol_4w"] / feat["rvol_26w"]       # kort/lång vol
 
-    # ── 3b. Momentum-KVALITET (evidensbackade, pris-baserade förstärkningar) ──
-    # Volatilitets-skalad momentum (Barroso & Santa-Clara, "Momentum has its
-    # moments"): momentum per enhet risk är betydligt stabilare/mer lönsamt än rå
-    # momentum. mom_12_1 normaliserat med långsiktig volatilitet.
-    feat["mom_vol_scaled"] = feat["mom_12_1"] / (feat["rvol_26w"] + 1e-6)
-    # Momentum-konsistens / "frog-in-the-pan" (Da, Gurun & Warachka): trender som
-    # byggts i jämna, små steg fortsätter starkare än hackiga hopp. Andel ner-
-    # minus upp-veckor över formationsfönstret, tecken-justerat efter momentum.
-    up = (wr > 0).astype(float)
-    dn = (wr < 0).astype(float)
-    win = config.MOM_FORMATION_WEEKS
-    feat["mom_consistency"] = np.sign(feat["mom_12_1"]) * (
-        dn.rolling(win).mean() - up.rolling(win).mean()
-    )
-
     # Bollinger Band position
     sma20 = c.rolling(20).mean()
     std20 = c.rolling(20).std()
@@ -345,7 +330,7 @@ def to_model_df(all_features: Dict[str, pd.DataFrame]) -> pd.DataFrame:
 FEATURE_COLS = [
     # Momentum
     *[f"roc_{w}w" for w in config.MOMENTUM_WINDOWS],
-    "mom_12_1", "mom_vol_scaled", "mom_consistency",
+    "mom_12_1",
     "ret_skew_13w", "ret_kurt_13w",
     # Trend
     *[f"ema_cross_{f}_{s}" for f, s in config.EMA_PAIRS],

@@ -310,9 +310,7 @@ def build_full_output(
         cand = group[group["eligible"] == 1]
         if cand.empty:
             return pd.Series(0.0, index=group.index)
-        # Ranka på prob_up, bryt oavgjorda (kalibreringen skapar trappor med
-        # många lika prob_up) med den kontinuerliga pred_return → finare urval.
-        top = cand.sort_values(["prob_up", "pred_return"], ascending=False).head(config.MAX_POSITIONS)
+        top = cand.sort_values("prob_up", ascending=False).head(config.MAX_POSITIONS)
         n = len(top)
         eq = 1.0 / n
         # Conviction-tilt KRYMPT mot likavikt så portföljen inte kollapsar till
