@@ -418,6 +418,9 @@ SENTIMENT_MAX_TOKENS = 400
 # och mät framåtavkastning (capture-spread, mirror av capture_analysis.py).
 SENTIMENT_LOOKBACK_DAYS = 7         # PM publicerade senaste veckan räknas in i veckans signal
 SENTIMENT_OOS_START     = "2016"    # rent OOS-fönster (samma som era_analysis.py)
+# Poängsätt bara PM från detta datum (en buffert före OOS-start). Vi backtestar
+# enbart 2016+, så att betala för 2010-2015 års PM är bortkastat. Sänk vid behov.
+SENTIMENT_SCORE_FROM    = "2015-09-01"
 
 # ── Segment (separata modeller per storleksklass) ─────────────────────────────
 # Två SEPARATA modeller, en per storleksgrupp, så att tvärsnitts-rangordningen
