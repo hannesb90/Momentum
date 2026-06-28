@@ -139,16 +139,6 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     # likvid aktien är i absoluta termer jämfört med resten av universumet.
     feat["dollar_vol_13w"] = (c * v).rolling(13).mean()
 
-    # ── 4b. PEAD-proxy (post-earnings drift, ren pris/volym) ──────────────────
-    # En vecka med onormalt hög volym (vr > PEAD_VOL_MULT) är sannolikt en
-    # rapport-/nyhetsvecka. PEAD-anomalin: kursen driver vidare i hoppets riktning
-    # i veckorna efter. Vi fångar den senaste sådana händelsens TECKEN+storlek och
-    # håller kvar den PEAD_DRIFT_WEEKS veckor framåt (drift-fönstret), sedan 0.
-    # Inget lookahead: använder bara volym/avkastning t.o.m. respektive vecka.
-    vr_pead = v / v.rolling(13).mean()
-    event_ret = wr.where(vr_pead > config.PEAD_VOL_MULT)            # avk. på högvolym-veckor
-    feat["pead"] = event_ret.ffill(limit=config.PEAD_DRIFT_WEEKS).fillna(0.0)
-
     # ── 5. Pris-nivå ─────────────────────────────────────────────────────────
     feat["high52_ratio"] = c / h.rolling(52).max()               # nära 52v-high?
     feat["low52_ratio"]  = c / l.rolling(52).min()               # över 52v-low?
@@ -351,7 +341,7 @@ FEATURE_COLS = [
     "atr_norm", "vol_ratio", "bb_position",
     # Volym
     *[f"vol_ratio_{w}w" for w in config.VOLUME_WINDOWS],
-    "obv_roc_4w", "obv_roc_13w", "ad_roc_4w", "pead",
+    "obv_roc_4w", "obv_roc_13w", "ad_roc_4w",
     # Pris-nivå
     "high52_ratio", "low52_ratio", "price_vs_sma52",
     # Tidiga entry-signaler (utbrott, acceleration, pullback)
