@@ -131,13 +131,47 @@ def score_item(item: dict, client=None) -> Optional[dict]:
     return parsed
 
 
-# ── Batch (historisk massa, -50%) ─────────────────────────────────────────────
+# ── Batch (historisk massa, -50%) – RESUMBAR ──────────────────────────────────
+def _pending_path() -> Path:
+    return Path(config.SENTIMENT_CACHE_DIR) / "_pending_batch.json"
+
+
+def _cid(pid: str) -> str:
+    """Giltigt custom_id (≤64, [a-zA-Z0-9_-]). MFN-id är UUID → passerar oförändrat,
+    vilket gör resultaten självmappande (custom_id == sanerat news_id)."""
+    return "".join(c if (c.isalnum() or c in "_-") else "_" for c in pid)[:64]
+
+
+def _harvest(client, batch_id: str, id_by_custom: dict, cached: dict) -> int:
+    """Pollar en batch tills 'ended' och cachar varje lyckat resultat löpande."""
+    while True:
+        b = client.messages.batches.retrieve(batch_id)
+        if b.processing_status == "ended":
+            break
+        print(f"  ...status={b.processing_status} ({b.request_counts})")
+        time.sleep(15)
+    n = 0
+    for res in client.messages.batches.results(batch_id):
+        if res.result.type != "succeeded":
+            continue
+        parsed = _parse_content(res.result.message)
+        if not parsed:
+            continue
+        pid = id_by_custom.get(res.custom_id, res.custom_id)
+        parsed["id"] = pid
+        _cache_path(pid).write_text(json.dumps(parsed, ensure_ascii=False))
+        cached[pid] = parsed
+        n += 1
+    print(f"[batch] hämtade {n} resultat från {batch_id}")
+    return n
+
+
 def score_batch(items: List[dict]) -> Dict[str, dict]:
-    """Poängsätter en lista PM via Batch-API:t. Hoppar över redan cachade."""
-    # Defensiv dedup på id: aldrig betala för samma PM två gånger (A/B-aktier),
-    # även om anroparen skickar dubbletter.
-    todo, seen = [], set()
-    cached = {}
+    """Poängsätter via Batch-API:t. RESUMBAR: batch-ID + id-map sparas till disk
+    direkt vid skapande, varje resultat cachas vid hämtning. Avbryts processen
+    (krediter slut, krasch, Ctrl+C) återansluter nästa körning till samma batch –
+    ingen dubbeldebitering, inget förlorat arbete. Dedup på id (A/B-aktier)."""
+    todo, seen, cached = [], set(), {}
     for it in items:
         pid = it["id"]
         if pid in seen:
@@ -148,42 +182,41 @@ def score_batch(items: List[dict]) -> Dict[str, dict]:
             cached[pid] = json.loads(cp.read_text())
         else:
             todo.append(it)
+    client = _client()
+    pend = _pending_path()
+
+    # 1. Återuppta en väntande batch först (om en tidigare körning avbröts).
+    if pend.exists():
+        try:
+            meta = json.loads(pend.read_text())
+            print(f"[batch] återupptar väntande batch {meta['batch_id']}")
+            _harvest(client, meta["batch_id"], meta.get("id_by_custom", {}), cached)
+        except Exception as e:  # noqa: BLE001 – expirerad/ogiltig → börja om
+            print(f"[batch] kunde ej återuppta ({e}) – startar ny batch.")
+        pend.unlink(missing_ok=True)
+        todo = [it for it in todo if not _cache_path(it["id"]).exists()]
+
     if not todo:
         return cached
-    client = _client()
 
-    # custom_id måste vara unikt + giltigt (≤64 tecken, [a-zA-Z0-9_-]). MFN-id:n
-    # kan innehålla otillåtna tecken/kollidera vid trunkering → använd index-id.
+    # 2. Ny batch för återstående.
+    id_by_custom = {_cid(it["id"]): it["id"] for it in todo}
     requests = [{
-        "custom_id": f"r{i}",
+        "custom_id": _cid(it["id"]),
         "params": {
             "model": config.SENTIMENT_MODEL,
             "max_tokens": config.SENTIMENT_MAX_TOKENS,
             "system": _SYSTEM,
             "messages": [{"role": "user", "content": _prompt(it)}],
         },
-    } for i, it in enumerate(todo)]
-    id_by_custom = {f"r{i}": it["id"] for i, it in enumerate(todo)}
-
+    } for it in todo]
     print(f"[batch] skickar {len(requests)} PM till {config.SENTIMENT_MODEL} (Batch-API, -50%)")
     batch = client.messages.batches.create(requests=requests)
-    while True:
-        b = client.messages.batches.retrieve(batch.id)
-        if b.processing_status == "ended":
-            break
-        print(f"  ...status={b.processing_status} ({b.request_counts})")
-        time.sleep(15)
-
-    for res in client.messages.batches.results(batch.id):
-        if res.result.type != "succeeded":
-            continue
-        parsed = _parse_content(res.result.message)
-        if not parsed:
-            continue
-        pid = id_by_custom.get(res.custom_id, res.custom_id)
-        parsed["id"] = pid
-        _cache_path(pid).write_text(json.dumps(parsed, ensure_ascii=False))
-        cached[pid] = parsed
+    pend.write_text(json.dumps({"batch_id": batch.id, "id_by_custom": id_by_custom},
+                               ensure_ascii=False))
+    print(f"[batch] batch-ID {batch.id} sparat – avbrott är nu ofarliga (återupptas vid omkörning)")
+    _harvest(client, batch.id, id_by_custom, cached)
+    pend.unlink(missing_ok=True)
     print(f"[batch] klart – {len(cached)} poäng totalt")
     return cached
 
