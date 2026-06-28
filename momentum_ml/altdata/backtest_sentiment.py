@@ -209,9 +209,37 @@ def main():
         print(f"  SPREAD (hög − låg):  {top - bot:+.1%}-enheter  "
               f"{'(positiv = ton rangordnar rätt → värt att bygga in)' if top > bot else '(NEGATIV = ingen edge)'}")
 
-    print("\n  Tolkning: är BÅDA spreadarna tydligt positiva (och störst för "
+    # ── 3. HORISONT-SVEP (gratis – PEAD-drift är klassiskt kortare än 13v) ─────
+    # Samma poängsatta PM, olika framåt-horisont. Om en POSITIV spread dyker upp
+    # på t.ex. 1-4v men inte 13v, sitter ev. edgen på kortare drift (vi mäter fel
+    # horisont). Är ALLA horisonter platta/negativa är sentiment-spåret dött.
+    print("\n" + "=" * 72)
+    print(f"  HORISONT-SVEP (OOS {oos}+) – pos−neg spread per framåt-horisont")
+    print("=" * 72)
+    ev_dates = scored[["ticker", "eff_date", "sentiment"]].copy()
+    for h in [1, 2, 4, 8, 13, 26]:
+        parts = []
+        for t, d in data.items():
+            c = d["Close"]
+            parts.append(pd.DataFrame({"ticker": t, "Date": c.index,
+                                       "fr": (c.shift(-h) / c - 1).values}))
+        pxh = pd.concat(parts, ignore_index=True)
+        mh = ev_dates.merge(pxh, left_on=["ticker", "eff_date"], right_on=["ticker", "Date"], how="inner")
+        mh = mh[mh["eff_date"] >= oos].dropna(subset=["fr"])
+        pos = mh[mh["sentiment"] >= 1]["fr"]
+        neg = mh[mh["sentiment"] <= -1]["fr"]
+        if len(pos) >= 10 and len(neg) >= 10:
+            sp = pos.mean() - neg.mean()
+            flag = "  <- POSITIV" if sp > 0.005 else ""
+            print(f"  {h:>2}v: spread {sp:+5.1%}  (pos {pos.mean():+.1%} n={len(pos):,}, "
+                  f"neg {neg.mean():+.1%} n={len(neg):,}){flag}")
+        else:
+            print(f"  {h:>2}v: för få event (pos n={len(pos)}, neg n={len(neg)})")
+
+    print("\n  Tolkning: är BÅDA huvudspreadarna tydligt positiva (och störst för "
           "materiella PM) finns en ärlig edge att bygga in som modell-feature.\n"
-          "  Är de nära noll/negativa har pris-only-modellen redan allt – spara pengarna.")
+          "  Är de nära noll/negativa på ALLA horisonter har pris-only-modellen redan "
+          "allt – spara pengarna.")
 
 
 if __name__ == "__main__":
