@@ -270,7 +270,10 @@ INDEX_BENCHMARK_LABEL  = "OMXS30 (XACT)"
 # inköpsgräns = referenskurs × (1 + BUY_LIMIT_TOLERANCE). Lägg en LIMITORDER på
 # den nivån; fyller priset inte ≤ gränsen avstår du (nästa rebalans fångar den
 # annars). Litet tal eftersom edgen sitter på kvartalshorisont, inte intradag.
-BUY_LIMIT_TOLERANCE = 0.015   # max 1.5% över referenskurs
+BUY_LIMIT_TOLERANCE = 0.015   # köp: max 1.5% över referenskurs
+# Symmetrisk sälj-limit: dumpa inte ett innehav du vill ut ur in i ett tillfälligt
+# gap-ned – lägg en sälj-LIMITORDER på minst referenskurs × (1 - SELL_LIMIT_TOLERANCE).
+SELL_LIMIT_TOLERANCE = 0.015  # sälj: minst 1.5% under referenskurs
 
 # ── Corporate actions / datakvalitet ──────────────────────────────────────────
 SUSPICIOUS_JUMP_THRESHOLD = 0.60    # flagga veckoavkastning över denna magnitud

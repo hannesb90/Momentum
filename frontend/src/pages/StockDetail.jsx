@@ -113,6 +113,13 @@ export function StockDetailPage() {
             info="Lägg en LIMITORDER på max denna kurs. Edgen sitter på kvartalshorisont, så jaga inte en aktie som gapat upp – fyller priset inte ≤ gränsen avstår du (nästa ombalansering fångar den annars)."
           />
         )}
+        {!isBuy && latest.sell_limit != null && (
+          <StatCard
+            label="Sälj-limit (om du äger)"
+            value={fmtSek(latest.sell_limit)}
+            info="Aktien är inte längre rekommenderad. Om du äger den och vill ut: lägg en sälj-LIMITORDER på MINST denna kurs så du inte dumpar in i ett tillfälligt gap-ned."
+          />
+        )}
         {latest.ta_score != null && latest.ta_score !== 1 && (
           <StatCard
             label="TA-score"
