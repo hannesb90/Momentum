@@ -444,9 +444,14 @@ SEGMENTS = {
     # på holdouten (#17: holdout +1.3→+4.4%) men STJÄLPTE SMÅBOLAG på holdouten
     # (−2.3→−3.8%, trots bättre helperiod – sannolikt småbolagsmomentum-reversal i
     # holdout-fönstret). Domaren = holdouten → grind PÅ för stor, AV för små.
+    # Stor-segmentet = Large+Mid → jämför mot en BRED Stockholms-ribba, inte top-30
+    # (OMXS30). XACT Sverige (totalavkastning, utdelnings­återinvesterande ETF) är
+    # apples-to-apples. INTE OMXSPI rakt av – det är ett KURSINDEX (utan utdelning)
+    # och vår portfölj är totalavkastning → orättvist smickrande. Verifiera att
+    # XACT Sverige spårar den breda benchmarken (OMXSB-cap GI), inte OMXS30.
     "large": {"label": "Storbolag", "market_cap": ["Large Cap", "Mid Cap"], "results_dir": "results",
               "max_positions": 10, "conviction_blend": 0.5,
-              "index_ticker": "XACT-OMXS30.ST",   "index_label": "OMXS30 (XACT)",
+              "index_ticker": "XACT-SVERIGE.ST",  "index_label": "OMX Sthlm bred (XACT Sverige)",
               "gate_enabled": True,  "gate_min": 0.10},
     "small": {"label": "Småbolag",  "market_cap": ["Small Cap"],            "results_dir": "results/small",
               "max_positions": 20, "conviction_blend": 0.5,
