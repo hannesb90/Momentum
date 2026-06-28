@@ -61,6 +61,18 @@ XS_TARGET_QUANTILE = 0.67       # topp-tertil = positiv klass
 # kan ändå de-riska däremellan (se backtester.run).
 REBALANCE_WEEKS    = FORWARD_WEEKS  # = 4
 
+# Asymmetrisk exit: behåll de långsamma kvartals-INGÅNGARNA (rid vinnare), men
+# tillåt en SNABB utgång mellan rebalanseringar om ett innehavs trend bryts
+# (priset faller under sitt EXIT_SMA_WEEKS-glidande medel). "Sälj när bolaget är
+# klart" gjort robust – vi kallar inte toppen, vi reagerar på bruten trend.
+# Kapital som frigörs ligger i kontanter tills nästa schemalagda rebalans (då det
+# roteras in i nästa topp-N-namn). Default AV: skyddar den bevisade baslinjen –
+# slå på och A/B-testa (predict-only) innan den görs permanent. På syntetisk
+# slumpdata över-exitade den (korsar SMA hela tiden); på riktiga trender utlöses
+# den långt mer sällan, men måste mätas på riktig holdout först.
+ASYMMETRIC_EXIT    = False
+EXIT_SMA_WEEKS     = 20
+
 # Delisting-detektor: om en ticker saknar ny kurs i mer än så här många veckor
 # (relativt universumets senaste datum) tolkas bolaget som avnoterat och tas bort
 # – ska inte visas som aktuell signal eller störa beräkningarna. Se
@@ -232,6 +244,14 @@ SPREAD_MAX     = 0.020       # 2% tak för de tunnaste namnen
 # är i lokal valuta (t.ex. SEK för .ST-tickers, USD för US-tickers).
 UNIVERSE_MIN_AVG_TURNOVER       = 100_000     # min genomsnittlig omsättning/vecka
 UNIVERSE_LIQUIDITY_LOOKBACK_WEEKS = 26         # fönster för det måttet
+
+# ── Index-benchmark (visuell jämförelse i appen) ──────────────────────────────
+# OMXS30 = vad en bred publik faktiskt köper passivt (kap-viktat, 30 största).
+# Vi använder XACT-OMXS30-ETF:en (finns i universumet) som kursproxy och visar
+# den som en linje mot strategins portfölj. OBS: detta är en ANNAN, oftast mildare
+# ribba än vårt likaviktade köp-och-behåll-benchmark (som alfa/beta räknas mot).
+INDEX_BENCHMARK_TICKER = "XACT-OMXS30.ST"
+INDEX_BENCHMARK_LABEL  = "OMXS30 (XACT)"
 
 # ── Corporate actions / datakvalitet ──────────────────────────────────────────
 SUSPICIOUS_JUMP_THRESHOLD = 0.60    # flagga veckoavkastning över denna magnitud

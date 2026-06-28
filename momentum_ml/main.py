@@ -466,6 +466,31 @@ def main():
             print("  [VARNING] Negativ alfa: strategin slår inte ett passivt "
                   "köp-och-behåll av universumet.")
 
+    # ── 6.5b OMXS30-linje (visuell jämförelse mot "det du annars köper") ──────
+    index_summary = None
+    idx_df = data.get(config.INDEX_BENCHMARK_TICKER)
+    if idx_df is not None and "Close" in idx_df:
+        try:
+            idx_close = idx_df["Close"].reindex(
+                idx_df.index.union(results.index)).sort_index().ffill().reindex(results.index)
+            base = idx_close.dropna().iloc[0] if idx_close.dropna().size else None
+            if base:
+                idx_value = idx_close / base * config.INITIAL_CAPITAL
+                results["omxs30_value"] = idx_value
+                weeks = max(len(idx_value.dropna()) - 1, 1)
+                idx_cagr = (idx_value.dropna().iloc[-1] / config.INITIAL_CAPITAL) ** (52 / weeks) - 1
+                strat_cagr = (results["portfolio_value"].iloc[-1] /
+                              results["portfolio_value"].iloc[0]) ** (52 / max(len(results) - 1, 1)) - 1
+                index_summary = {
+                    "label": config.INDEX_BENCHMARK_LABEL,
+                    "CAGR": f"{idx_cagr:.1%}",
+                    "alpha_cagr": float(strat_cagr - idx_cagr),
+                }
+                print(f"  OMXS30 ({config.INDEX_BENCHMARK_LABEL}): {idx_cagr:.1%}/år  |  "
+                      f"strategi vs OMXS30: {strat_cagr - idx_cagr:+.1%}")
+        except Exception as e:
+            print(f"  [WARN] Kunde inte bygga OMXS30-linje (icke-kritiskt): {e}")
+
     regimes = classify_regimes(data)
     breakdown = regime_breakdown(port_rets, regimes)
     print_regime_breakdown(breakdown)
@@ -541,6 +566,7 @@ def main():
         "dev":           dev_stats,
         "holdout":       holdout_stats,
         "benchmark":     benchmark_summary,
+        "index_benchmark": index_summary,
         "market":        market_summary,
         "threshold":     threshold_info,
         "robustness":    robustness,

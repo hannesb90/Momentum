@@ -53,6 +53,7 @@ class MomentumBacktester:
         self._results:   list = []
         self._regimes = None     # lazy: klassificeras vid första run() om filter på
         self._close_panel = None # lazy: ffill:ad prispanel byggs i run()
+        self._below_sma = None   # lazy: trend-brott-panel (asymmetrisk exit)
 
     # ── Kör backtest ──────────────────────────────────────────────────────────
 
@@ -131,6 +132,9 @@ class MomentumBacktester:
             else:
                 # ── Håll – men de-riska om regim/guard kräver LÄGRE exponering ─
                 cash = self._derisk_to_cap(date, market_exp * guard, portfolio_value, cash)
+                # Asymmetrisk exit: sälj enskilda innehav vars trend brutits (utan
+                # att köpa nytt – kapitalet roteras in vid nästa schemalagda rebalans).
+                cash = self._trend_exit(date, cash)
 
             portfolio_values.append({
                 "Date":            date,
@@ -396,6 +400,30 @@ class MomentumBacktester:
                 target[ticker] = (shares * price / portfolio_value) * scale
         return self._rebalance(date, target, portfolio_value, cash)
 
+    def _trend_exit(self, date: pd.Timestamp, cash: float) -> float:
+        """
+        Asymmetrisk exit: sälj innehav vars trend brutits (kurs < EXIT_SMA_WEEKS-
+        glidande medel) mellan schemalagda rebalanseringar. Köper inget nytt –
+        frigjort kapital roteras in vid nästa rebalans. Rid vinnare, kapa fadande.
+        """
+        if self._below_sma is None or not self._portfolio:
+            return cash
+        for ticker in list(self._portfolio.keys()):
+            try:
+                broken = bool(self._below_sma.at[date, ticker])
+            except Exception:
+                broken = False
+            if not broken:
+                continue
+            price = self._get_price(ticker, date)
+            if price is None:
+                continue
+            shares = self._portfolio.pop(ticker)
+            trade_value = shares * price
+            cost_rate = self._execution_cost_rate(ticker, date, trade_value)
+            cash += trade_value * (1 - cost_rate)
+        return cash
+
     # ── Hjälpare ──────────────────────────────────────────────────────────────
 
     def _build_close_panel(self, dates) -> None:
@@ -408,7 +436,16 @@ class MomentumBacktester:
         """
         panel = pd.DataFrame({t: df["Close"] for t, df in self.prices.items() if "Close" in df})
         full_idx = panel.index.union(pd.DatetimeIndex(dates))
-        self._close_panel = panel.reindex(full_idx).sort_index().ffill()
+        panel = panel.reindex(full_idx).sort_index().ffill()
+        self._close_panel = panel
+        # Trend-brott-panel för asymmetrisk exit: True där kursen ligger UNDER sitt
+        # EXIT_SMA_WEEKS-glidande medel (bruten trend → snabb-sälj mellan rebalanser).
+        if getattr(config, "ASYMMETRIC_EXIT", False):
+            w = int(getattr(config, "EXIT_SMA_WEEKS", 20))
+            sma = panel.rolling(w, min_periods=max(w // 2, 5)).mean()
+            self._below_sma = (panel < sma)
+        else:
+            self._below_sma = None
 
     def _get_price(self, ticker: str, date: pd.Timestamp) -> Optional[float]:
         panel = getattr(self, "_close_panel", None)
