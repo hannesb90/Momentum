@@ -123,6 +123,13 @@ def main():
             config.MAX_POSITIONS = seg["max_positions"]
         if "conviction_blend" in seg:
             config.CONVICTION_BLEND = seg["conviction_blend"]
+        # Per-segment index-benchmark: small ska INTE jämföras mot OMXS30 (storbolag)
+        # utan mot ett småbolagsindex (XACT Svenska Småbolag). Faller tillbaka på
+        # globala värdet om segmentet saknar egna nycklar.
+        if "index_ticker" in seg:
+            config.INDEX_BENCHMARK_TICKER = seg["index_ticker"]
+        if "index_label" in seg:
+            config.INDEX_BENCHMARK_LABEL = seg["index_label"]
         print(f"[Segment] {args.segment} ({seg['label']}): "
               f"market_cap={seg['market_cap']} -> {config.RESULTS_DIR}/ "
               f"(N={config.MAX_POSITIONS}, blend={config.CONVICTION_BLEND})")
