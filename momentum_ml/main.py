@@ -518,7 +518,8 @@ def main():
             print("  [VARNING] Negativ alfa: strategin slår inte ett passivt "
                   "köp-och-behåll av universumet.")
 
-    # ── 6.5b OMXS30-linje (visuell jämförelse mot "det du annars köper") ──────
+    # ── 6.5b Index-linje (visuell jämförelse mot "det du annars köper") ───────
+    # Per-segment index (stor: OMXS30, små: Svenska Småbolag) – se config.SEGMENTS.
     index_summary = None
     idx_df = data.get(config.INDEX_BENCHMARK_TICKER)
     if idx_df is not None and "Close" in idx_df:
@@ -538,8 +539,8 @@ def main():
                     "CAGR": f"{idx_cagr:.1%}",
                     "alpha_cagr": float(strat_cagr - idx_cagr),
                 }
-                print(f"  OMXS30 ({config.INDEX_BENCHMARK_LABEL}): {idx_cagr:.1%}/år  |  "
-                      f"strategi vs OMXS30: {strat_cagr - idx_cagr:+.1%}")
+                print(f"  Index ({config.INDEX_BENCHMARK_LABEL}): {idx_cagr:.1%}/år  |  "
+                      f"strategi vs index: {strat_cagr - idx_cagr:+.1%}")
         except Exception as e:
             print(f"  [WARN] Kunde inte bygga OMXS30-linje (icke-kritiskt): {e}")
 
