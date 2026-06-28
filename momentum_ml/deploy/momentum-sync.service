@@ -6,4 +6,8 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=hannesb
-ExecStart=/opt/momentum/momentum_ml/deploy/sync.sh
+# Kör orkestrerings-scriptet från SRC (git-klonen som alltid pullas), inte från
+# deploy-kopian. deploy/ exkluderas medvetet ur sync:ens rsync, så en sync.sh i
+# deploy-kopian skulle aldrig uppdatera sig själv (bootstrap-fälla). Genom att
+# köra src-versionen får varje git-pull automatiskt den senaste sync-logiken.
+ExecStart=/opt/momentum/src/momentum_ml/deploy/sync.sh
