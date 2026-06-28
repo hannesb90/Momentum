@@ -7,7 +7,7 @@ import { SegmentedControl } from '../components/SegmentedControl'
 import { SignalBadge } from '../components/SignalBadge'
 import { EmptyState } from '../components/EmptyState'
 import { InfoButton } from '../components/InfoButton'
-import { fmtPct, cleanName } from '../format'
+import { fmtPct, fmtSek, cleanName } from '../format'
 
 const SIGNAL_FILTERS = [
   { value: 'all', label: 'Alla' },
@@ -153,7 +153,12 @@ export function SignalsPage() {
                   <td><SignalBadge variant={row.pred_signal === 1 ? 'buy' : 'flat'} /></td>
                   <td>{fmtPct(row.pred_return)}</td>
                   {hasTa && <td className="col-ta">{row.ta_score == null ? '–' : fmtPct(row.ta_score, 0)}</td>}
-                  <td>{fmtPct(row.position_size)}</td>
+                  <td>
+                    {fmtPct(row.position_size)}
+                    {row.pred_signal === 1 && row.limit_price != null && (
+                      <span className="limit-note">köp ≤ {fmtSek(row.limit_price)}</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

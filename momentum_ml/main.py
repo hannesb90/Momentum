@@ -404,6 +404,27 @@ def main():
     # tickern om namn saknas (t.ex. ad-hoc --tickers-körningar).
     signals_df["name"] = signals_df["ticker"].map(config.NAME_MAP).fillna(signals_df["ticker"])
 
+    # Inköpsgräns (limit) för AKTUELLA köpsignaler: lägg en limitorder på
+    # referenskurs × (1 + BUY_LIMIT_TOLERANCE) så att en gap-upp inte äter edgen.
+    # Sätts bara på senaste veckans rader (de man faktiskt handlar på nu).
+    signals_df["limit_price"] = None
+    if len(signals_df):
+        last_date = signals_df.index.max()
+        ref_close = {}
+        for t in signals_df.loc[[last_date], "ticker"].unique():
+            df = data.get(t)
+            s = df["Close"].dropna() if df is not None and "Close" in df else None
+            if s is not None and len(s):
+                ref_close[t] = float(s.iloc[-1])
+        tol = config.BUY_LIMIT_TOLERANCE
+        last_mask = signals_df.index == last_date
+        signals_df.loc[last_mask, "limit_price"] = [
+            round(ref_close[tk] * (1 + tol), 2)
+            if sig == 1 and tk in ref_close else None
+            for tk, sig in zip(signals_df.loc[last_mask, "ticker"],
+                               signals_df.loc[last_mask, "pred_signal"])
+        ]
+
     signals_df.to_csv(f"{config.RESULTS_DIR}/signals.csv")
     print(f"  Signals sparade: {config.RESULTS_DIR}/signals.csv")
 

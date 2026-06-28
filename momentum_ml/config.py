@@ -264,6 +264,14 @@ UNIVERSE_LIQUIDITY_LOOKBACK_WEEKS = 26         # fönster för det måttet
 INDEX_BENCHMARK_TICKER = "XACT-OMXS30.ST"
 INDEX_BENCHMARK_LABEL  = "OMXS30 (XACT)"
 
+# ── Orderläggning (limit för köpsignaler) ─────────────────────────────────────
+# En köpsignal ska inte jagas hur högt som helst – gapar aktien upp innan du
+# hinner köpa är edgen delvis borta. Varje aktuell köpsignal får därför en
+# inköpsgräns = referenskurs × (1 + BUY_LIMIT_TOLERANCE). Lägg en LIMITORDER på
+# den nivån; fyller priset inte ≤ gränsen avstår du (nästa rebalans fångar den
+# annars). Litet tal eftersom edgen sitter på kvartalshorisont, inte intradag.
+BUY_LIMIT_TOLERANCE = 0.015   # max 1.5% över referenskurs
+
 # ── Corporate actions / datakvalitet ──────────────────────────────────────────
 SUSPICIOUS_JUMP_THRESHOLD = 0.60    # flagga veckoavkastning över denna magnitud
 
