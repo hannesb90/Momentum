@@ -183,8 +183,10 @@ CONVICTION_BLEND   = 0.5
 #   "inverse_vol" – tilt ∝ 1/volatilitet (risk-paritet; lika riskbidrag per namn,
 #                   dämpar att högvolatila namn dominerar – Sortino-hygien).
 # Bägge krymps mot likavikt med CONVICTION_BLEND. Samma N, olika vikt → isolerar
-# sizing-effekten rent.
-SIZING_MODE = "conviction"
+# sizing-effekten rent. A/B 2026-06 (tune_sizing.py large): inverse_vol slog
+# conviction på HELA rutnätet vid blend 0.5 – CAGR 14.0→14.3%, Sharpe 1.07→1.10,
+# alfa −1.7→−1.4%, holdout 0.0→+0.7%. Adopterat.
+SIZING_MODE = "inverse_vol"
 
 # ── Target-vol-overlay (Barroso & Santa-Clara, "Managing the risk of momentum") ─
 # Skalar portföljens BRUTTOEXPONERING kontinuerligt mot en mål-volatilitet i
@@ -192,11 +194,13 @@ SIZING_MODE = "conviction"
 # realiserad_vol, tak). Litteraturens mest robusta momentum-förbättring – sänker
 # drawdowns/höjer Sharpe genom att dra ner inför turbulens. Long-only & ingen
 # hävstång → taket är 1.0 (overlayn skalar bara NER mot kontanter, aldrig upp).
-# Default AV: skyddar baslinjen – A/B:a med tune_voltarget.py på holdouten först.
 # OBS: realiserad vol mäts på portföljvärdet (efter ev. nedskalning) – en
 # pragmatisk proxy med viss återkoppling; långt lookback dämpar oscillation.
-VOL_TARGET_ENABLED        = False
-VOL_TARGET_ANNUAL         = 0.15   # mål: 15% annualiserad portföljvol
+# A/B 2026-06 (tune_voltarget.py large): mål 10% var bäst – Sharpe 1.07→1.16,
+# Sortino 1.29→1.60, MaxDD −28.2→−20.6%, holdout 0.0→+0.7% (kostar CAGR
+# 14.0→13.4%). Adopterat: för en bred publik är 7,6 pp mindre drawdown värt det.
+VOL_TARGET_ENABLED        = True
+VOL_TARGET_ANNUAL         = 0.10   # mål: 10% annualiserad portföljvol
 VOL_TARGET_LOOKBACK_WEEKS = 13     # fönster för realiserad vol
 VOL_TARGET_MAX_LEVERAGE   = 1.0    # tak (1.0 = ingen hävstång, bara de-risking)
 
