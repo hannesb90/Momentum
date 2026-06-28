@@ -402,6 +402,7 @@ RESULTS_DIR        = "results"
 MFN_BASE_URL        = "https://mfn.se"
 MFN_LANG            = "sv"          # hämta svenska PM (MFN har även "en")
 MFN_REQUEST_PAUSE_S = 0.5          # paus mellan anrop (snäll mot MFN)
+MFN_MAX_PAGES       = 20           # max feed-sidor per bolag (500 PM/sida; stoppar vid START_DATE)
 MFN_MAX_BODY_CHARS  = 8000         # klipp PM-text innan LLM (håller token-kostnad nere)
 MFN_CACHE_DIR       = "cache/mfn"   # rå-PM cachas här (JSON per ticker)
 
