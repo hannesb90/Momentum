@@ -130,9 +130,20 @@ def score_item(item: dict, client=None) -> Optional[dict]:
 # ── Batch (historisk massa, -50%) ─────────────────────────────────────────────
 def score_batch(items: List[dict]) -> Dict[str, dict]:
     """Poängsätter en lista PM via Batch-API:t. Hoppar över redan cachade."""
-    todo = [it for it in items if not _cache_path(it["id"]).exists()]
-    cached = {it["id"]: json.loads(_cache_path(it["id"]).read_text())
-              for it in items if _cache_path(it["id"]).exists()}
+    # Defensiv dedup på id: aldrig betala för samma PM två gånger (A/B-aktier),
+    # även om anroparen skickar dubbletter.
+    todo, seen = [], set()
+    cached = {}
+    for it in items:
+        pid = it["id"]
+        if pid in seen:
+            continue
+        seen.add(pid)
+        cp = _cache_path(pid)
+        if cp.exists():
+            cached[pid] = json.loads(cp.read_text())
+        else:
+            todo.append(it)
     if not todo:
         return cached
     client = _client()
@@ -180,7 +191,8 @@ def _load_cached_releases(segment: str) -> List[dict]:
     tickers, _, _, _ = load_sweden_universe(min_market_cap=seg["market_cap"])
     cache_dir = Path(config.MFN_CACHE_DIR)
     floor = str(getattr(config, "SENTIMENT_SCORE_FROM", "2015-09-01"))
-    out, skipped = [], 0
+    out, skipped, dups = [], 0, 0
+    seen = set()
     for t in tickers:
         p = cache_dir / f"{t}.json"
         if not p.exists():
@@ -192,11 +204,21 @@ def _load_cached_releases(segment: str) -> List[dict]:
             if str(it.get("published", "")) < floor:
                 skipped += 1
                 continue
+            # DEDUP på news_id: samma PM ligger i både A- och B-aktiens cache
+            # (samma emittent). Utan detta poängsätts (= betalas för) samma PM två
+            # gånger i batchen, och estimate räknar dubbelt.
+            pid = it.get("id")
+            if pid in seen:
+                dups += 1
+                continue
+            seen.add(pid)
             it = dict(it)
             it["ticker"] = t
             out.append(it)
     if skipped:
         print(f"[score] hoppar över {skipped} PM före {floor} (utanför OOS – spar kostnad)")
+    if dups:
+        print(f"[score] dedup: {dups} dubblett-PM (A/B-aktier, samma emittent) – betalas en gång")
     return out
 
 
