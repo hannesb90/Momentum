@@ -13,7 +13,7 @@
 set -euo pipefail
 
 SRC_DIR=/opt/momentum/src
-BRANCH=claude/pr-momentum-wr0x1f
+BRANCH=main
 
 # Kör git som den INLOGGADE användaren, inte root. Servicen/scriptet körs ofta
 # med sudo (för systemctl/rsync nedan), men då saknar root ~/.ssh/config med
