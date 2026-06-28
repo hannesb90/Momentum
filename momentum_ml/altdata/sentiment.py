@@ -146,9 +146,14 @@ def _harvest(client, batch_id: str, id_by_custom: dict, cached: dict) -> int:
     """Pollar en batch tills 'ended' och cachar varje lyckat resultat löpande."""
     while True:
         b = client.messages.batches.retrieve(batch_id)
+        rc = b.request_counts
+        done = rc.succeeded + rc.errored + rc.canceled + rc.expired
+        total = done + rc.processing
+        pct = (100.0 * done / total) if total else 0.0
+        print(f"  ...batch {done:,}/{total:,} klara ({pct:.0f}%) – {rc.succeeded:,} ok, "
+              f"{rc.errored:,} fel  [{b.processing_status}]")
         if b.processing_status == "ended":
             break
-        print(f"  ...status={b.processing_status} ({b.request_counts})")
         time.sleep(15)
     n = 0
     for res in client.messages.batches.results(batch_id):
