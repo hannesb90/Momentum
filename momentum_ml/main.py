@@ -417,10 +417,20 @@ def main():
             if s is not None and len(s):
                 ref_close[t] = float(s.iloc[-1])
         tol = config.BUY_LIMIT_TOLERANCE
+        stol = config.SELL_LIMIT_TOLERANCE
         last_mask = signals_df.index == last_date
         signals_df.loc[last_mask, "limit_price"] = [
             round(ref_close[tk] * (1 + tol), 2)
             if sig == 1 and tk in ref_close else None
+            for tk, sig in zip(signals_df.loc[last_mask, "ticker"],
+                               signals_df.loc[last_mask, "pred_signal"])
+        ]
+        # Sälj-limit för icke-rekommenderade namn (sälj-kandidater om du äger dem):
+        # sälj inte in i ett gap-ned, lägg sälj-limit på minst ref × (1 - stol).
+        signals_df["sell_limit"] = None
+        signals_df.loc[last_mask, "sell_limit"] = [
+            round(ref_close[tk] * (1 - stol), 2)
+            if sig != 1 and tk in ref_close else None
             for tk, sig in zip(signals_df.loc[last_mask, "ticker"],
                                signals_df.loc[last_mask, "pred_signal"])
         ]
