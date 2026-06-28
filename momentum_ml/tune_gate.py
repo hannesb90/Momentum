@@ -26,14 +26,17 @@ from models.ensemble import MomentumEnsemble, build_full_output
 from backtest.backtester import MomentumBacktester
 from backtest.benchmark import benchmark_report
 
+# Tröskel-svep för att se om vinsten vid >5% är en robust PLATÅ eller en ensam
+# SPIK (= selektion-på-holdout-brus). Cash-läge räcker: i Large/Mid är portföljen
+# ändå ~100% investerad (alltid ≥10 namn med momentum), så cash≡concentrate här.
 # (etikett, grind på?, min-momentum, läge, concentrate-tak). Baslinjen först.
 SETTINGS = [
-    ("av (baslinje)",       False, 0.0,  "cash",        0.0),
-    ("grind+kontant >0",    True,  0.0,  "cash",        0.0),
-    ("grind+kontant >5%",   True,  0.05, "cash",        0.0),
-    ("grind+koncentr >0",   True,  0.0,  "concentrate", 0.34),
-    ("grind+koncentr >5%",  True,  0.05, "concentrate", 0.34),
-    ("grind+koncentr 100/2",True,  0.05, "concentrate", 0.50),
+    ("av (baslinje)", False, 0.0,  "cash", 0.0),
+    ("grind >3%",     True,  0.03, "cash", 0.0),
+    ("grind >5%",     True,  0.05, "cash", 0.0),
+    ("grind >7%",     True,  0.07, "cash", 0.0),
+    ("grind >10%",    True,  0.10, "cash", 0.0),
+    ("grind >15%",    True,  0.15, "cash", 0.0),
 ]
 
 
