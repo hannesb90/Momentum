@@ -54,7 +54,10 @@ def _load_scored(segment) -> pd.DataFrame:
                 "guidance": s.get("guidance", 0),
                 "ceo_tone": s.get("ceo_tone", 0),
             })
-    df = pd.DataFrame(rows).dropna(subset=["published"])
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df   # inga poängsatta PM än – main() hanterar tomt graciöst
+    df = df.dropna(subset=["published"]).copy()
     df["published"] = df["published"].dt.tz_localize(None)
     # vikta tonen med materialitet (rutin-PM ska väga lätt)
     df["tone"] = df["sentiment"] * (df["materiality"] + 1)
