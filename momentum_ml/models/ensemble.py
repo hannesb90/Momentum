@@ -25,8 +25,14 @@ from models.ta_filter import ta_confirmation
 
 class MomentumEnsemble:
     """
-    Dynamisk viktning baserat på rolling Sharpe per modell.
-    Startvikter: LGBM=0.6, LSTM=0.4.
+    Kombinerar LGBM + LSTM med FASTA prior-vikter (LGBM 0.6 / LSTM 0.4).
+
+    OBS: dynamisk rolling-Sharpe-viktning är INTE implementerad. Tidigare fanns en
+    `update_weights`-stub (en no-op `pass`) + `config.ROLLING_SHARPE_WINDOW` som
+    antydde att vikterna justerades löpande – det gjorde de aldrig. Vi tog bort
+    det döda löftet hellre än att skeppa ovaliderad dynamik. Att låta vikterna
+    variera med rullande Sharpe ÄR en möjlig framtida A/B, men den ändrar
+    rangordningen och måste då valideras på holdouten (inte gratis).
     """
 
     def __init__(
@@ -63,17 +69,16 @@ class MomentumEnsemble:
         combined = pd.DataFrame(index=idx)
         combined["prob_up"]     = w_lg * lg["prob_up"]    + w_ls * ls["prob_up"]
         combined["pred_return"] = w_lg * lg["pred_return"] + w_ls * ls["pred_return"]
+        # OBS kalibrering: LGBM:s prob_up är isotoniskt kalibrerad, LSTM:s är inte,
+        # och MEDELVÄRDET av två sannolikheter är i allmänhet INTE kalibrerat. Den
+        # blandade prob_up används därför främst för (a) RANGORDNING till topp-N –
+        # robust mot monoton miss-kalibrering – och (b) som visat tal i appen (där
+        # den är ungefärlig). pred_signal nedan (>0.5) skrivs ändå ÖVER i
+        # build_full_output av den alltid-investerade topp-N-logiken, så själva
+        # 0.5-tröskeln är inte aktiv. Att omkalibrera blandningen (eller kalibrera
+        # LSTM före blandning) förbättrar mest det VISADE talet, inte rangordningen.
         combined["pred_signal"] = (combined["prob_up"] > 0.5).astype(int)
         return combined
-
-    def update_weights(self, realized_returns: pd.Series):
-        """
-        Justerar vikterna baserat på rolling Sharpe (senaste ROLLING_SHARPE_WINDOW periods).
-        Anropa efter varje backtest-period med faktiska avkastningar.
-        """
-        # Förenklat: om LGBM historiskt hade bättre Sharpe, öka dess vikt.
-        # I produktion: spara per-modell-avkastning och beräkna Sharpe separat.
-        pass   # utökas i backtester.py
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -96,6 +101,13 @@ def kelly_position_size(
       b = win_loss_ratio (förväntad vinst / förlust)
     
     Skalas sedan med volatilitetsinvers för volatilitets-targeting.
+
+    OBS: `win_loss_ratio` är en FAST prior (1.5), inte estimerad från modellens
+    egen historiska vinst/förlust-kvot per prob_up-nivå – Kelly-storleken är
+    därmed delvis schablon. Latent betydelse just nu: med config.SIZING_MODE=
+    "inverse_vol" (adopterad) används `raw_kelly` INTE för viktningen (1/vol
+    styr), så win_loss_ratio påverkar inte live-signalen. Den blir relevant först
+    om conviction-läget återanvänds – estimera den då från data.
     """
     p = np.clip(prob_up, 0.01, 0.99)
     q = 1 - p

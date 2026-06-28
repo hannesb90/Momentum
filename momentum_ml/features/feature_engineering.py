@@ -34,28 +34,39 @@ def _ema(series: pd.Series, n: int) -> pd.Series:
     return series.ewm(span=n, adjust=False).mean()
 
 
+def _wilder(series: pd.Series, n: int) -> pd.Series:
+    """
+    Wilders utjämning (RMA) = EMA med alpha = 1/n. Detta är den smoothing
+    Welles Wilder definierade för ATR/ADX/DI – INTE ett enkelt rullande medel.
+    Ett `.rolling(n).mean()` ger en annan (snabbare, fönsterbegränsad) serie som
+    inte matchar standard-ADX i litteratur/andra verktyg. ewm(alpha=1/n) ger den
+    rekursiva Wilder-serien.
+    """
+    return series.ewm(alpha=1.0 / n, adjust=False).mean()
+
+
 def _atr(high: pd.Series, low: pd.Series, close: pd.Series, n: int) -> pd.Series:
     tr = pd.concat([
         high - low,
         (high - close.shift(1)).abs(),
         (low  - close.shift(1)).abs(),
     ], axis=1).max(axis=1)
-    return tr.rolling(n).mean()
+    return _wilder(tr, n)
 
 
 def _adx(high: pd.Series, low: pd.Series, close: pd.Series, n: int = 14):
-    """Returnerar (ADX, +DI, -DI)."""
+    """Returnerar (ADX, +DI, -DI) med Wilders smoothing (standarddefinitionen)."""
     up   = high.diff()
     down = -low.diff()
     plus_dm  = np.where((up > down) & (up > 0), up, 0.0)
     minus_dm = np.where((down > up) & (down > 0), down, 0.0)
 
-    atr_n = _atr(high, low, close, n)
-    plus_di  = 100 * pd.Series(plus_dm,  index=close.index).rolling(n).mean() / atr_n
-    minus_di = 100 * pd.Series(minus_dm, index=close.index).rolling(n).mean() / atr_n
+    atr_n = _atr(high, low, close, n)   # Wilder-utjämnad TR
+    plus_di  = 100 * _wilder(pd.Series(plus_dm,  index=close.index), n) / atr_n
+    minus_di = 100 * _wilder(pd.Series(minus_dm, index=close.index), n) / atr_n
 
     dx  = (100 * (plus_di - minus_di).abs() / (plus_di + minus_di)).fillna(0)
-    adx = dx.rolling(n).mean()
+    adx = _wilder(dx, n)
     return adx, plus_di, minus_di
 
 
