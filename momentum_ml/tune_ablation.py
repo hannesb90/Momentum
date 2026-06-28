@@ -20,8 +20,10 @@ VIKTIGT om processer: LGBM-träna→predikt i SAMMA process SIGILL:ar på Pi:ns
 ARM-CPU (se main.py). Därför spawnar varje variant två subprocesser (train→eval),
 exakt som main.py. Kör på Pi:n EFTER att datacachen finns:
 
-    /opt/momentum/venv/bin/python tune_ablation.py large            # logo (default)
-    /opt/momentum/venv/bin/python tune_ablation.py large backward   # girig bakåt
+    /opt/momentum/venv/bin/python tune_ablation.py large                    # logo (default)
+    /opt/momentum/venv/bin/python tune_ablation.py large backward          # girig, mål=blend
+    /opt/momentum/venv/bin/python tune_ablation.py large backward holdout  # girig, mål=holdout-CAGR
+    /opt/momentum/venv/bin/python tune_ablation.py large backward capture  # girig, mål=capture
 
 OBS: ablationen körs på LGBM ENBART (snabbt + konsistent). Den vinnande minimala
 gruppuppsättningen ska re-valideras med fulla pipelinen (LGBM+LSTM) på holdouten
@@ -199,13 +201,34 @@ def run_logo(seg_name, seg):
         print("  Positiv Δcapture = gruppen TILLFÖR brus (skär bort den). Negativ = gruppen bär edge.")
 
 
-def run_backward(seg_name, seg):
+def _score(m: dict, objective: str) -> float:
+    """Mål att MAXIMERA i girig bakåt-eliminering.
+      blend   – holdout-CAGR + capture (pengar + rangordning; default).
+      holdout – bara holdout-CAGR (äkta OOS-avkastning, men brusig på 104v).
+      capture – bara OOS capture-spread (rangordnings-edge, stabilast).
+    Ett pengamedvetet mål skyddar automatiskt grupper som bär avkastning (t.ex.
+    klassificering, som höjde capture när den togs bort men sänkte CAGR/alfa)."""
+    if "error" in m:
+        return float("-inf")
+    cap = m.get("capture", float("nan"))
+    ho = m.get("holdout_cagr", float("nan"))
+    if objective == "capture":
+        v = cap
+    elif objective == "holdout":
+        v = ho
+    else:  # blend
+        v = (0.0 if pd.isna(cap) else cap) + (0.0 if pd.isna(ho) else ho)
+    return float("-inf") if pd.isna(v) else float(v)
+
+
+def run_backward(seg_name, seg, objective="blend"):
     groups = feature_groups()
-    remaining = dict(groups)
     active_groups = set(groups.keys())
     print("\n" + "=" * 92)
-    print(f"  ABLATION (girig bakåt) – {seg['label']} – skär tills capture slutar förbättras")
+    print(f"  ABLATION (girig bakåt, mål={objective}) – {seg['label']} – skär tills målet slutar förbättras")
     print("=" * 92)
+    print(f"  {'variant':>26} {'#f':>4}  {'CAGR':>7} {'Sharpe':>7} {'alfa':>7} {'holdout':>8} {'capture':>9}")
+    print("-" * 92)
 
     def active_cols(grpset):
         keep = set()
@@ -215,31 +238,33 @@ def run_backward(seg_name, seg):
 
     cur = _run_variant(seg_name, active_cols(active_groups))
     print(_fmt("FULL", cur))
-    best_cap = cur.get("capture", float("nan"))
+    best_score = _score(cur, objective)
     path = []
     while len(active_groups) > 1:
         cand = []
-        for g in list(active_groups):
+        for g in sorted(active_groups):
             trial = active_groups - {g}
             m = _run_variant(seg_name, active_cols(trial)); m["group"] = g
             cand.append(m)
             print(_fmt(f"− {g}", m))
-        ok = [c for c in cand if "error" not in c and not pd.isna(c.get("capture", float('nan')))]
+        ok = [c for c in cand if _score(c, objective) > float("-inf")]
         if not ok:
             break
-        best = max(ok, key=lambda r: r["capture"])
-        if pd.isna(best_cap) or best["capture"] >= best_cap:
+        best = max(ok, key=lambda r: _score(r, objective))
+        if _score(best, objective) >= best_score:
             active_groups -= {best["group"]}
-            best_cap = best["capture"]
+            best_score = _score(best, objective)
             path.append(best["group"])
-            print(f"  -> tar bort '{best['group']}' (capture {best_cap*100:+.1f}pp). Kvar: {sorted(active_groups)}")
+            print(f"  -> tar bort '{best['group']}' (mål {best_score:+.4f}). Kvar: {sorted(active_groups)}")
             print("-" * 92)
         else:
-            print(f"  -> STOPP: ingen borttagning förbättrar capture ({best_cap*100:+.1f}pp).")
+            print(f"  -> STOPP: ingen borttagning förbättrar målet ({best_score:+.4f}).")
             break
     print("=" * 92)
     print(f"  Borttagna i ordning: {path}")
-    print(f"  Sweet-spot-grupper kvar: {sorted(active_groups)}  (capture {best_cap*100:+.1f}pp)")
+    print(f"  Sweet-spot-grupper kvar: {sorted(active_groups)}  (mål {best_score:+.4f}, objective={objective})")
+    print("  Re-validera vinnaren med fulla pipelinen: sätt config.DROP_FEATURES till de")
+    print("  borttagna gruppernas features och kör en omträning (main.py --segment).")
 
 
 def main():
@@ -266,7 +291,8 @@ def main():
     config.CONVICTION_BLEND = seg.get("conviction_blend", config.CONVICTION_BLEND)
     print(f"[Segment] {seg_name} ({seg['label']}) – {len(FULL_COLS)} features i full modell")
     if mode == "backward":
-        run_backward(seg_name, seg)
+        objective = args[2] if len(args) > 2 else "blend"   # blend|holdout|capture
+        run_backward(seg_name, seg, objective)
     else:
         run_logo(seg_name, seg)
 

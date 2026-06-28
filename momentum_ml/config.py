@@ -26,6 +26,15 @@ EMA_PAIRS          = [(8, 21), (13, 34), (21, 55)]
 ADX_PERIOD         = 14
 DONCHIAN_WEEKS     = 20         # utbrottsfönster (pris bryter N-veckors high/low)
 
+# Ablation: lista feature-namn som ska UTESLUTAS ur modellens indata genom hela
+# pipelinen (se features/feature_engineering.py). Default tom = full modell.
+# Ablationen (tune_ablation.py LOGO) visade att modellen är överbyggd – varje
+# borttagen grupp höjde capture-spreaden, och "tidig_entry" var aktivt skadlig
+# på holdouten (−5.1% → +1.5%). För att re-validera den borttagningen med FULLA
+# pipelinen (LGBM+LSTM+tröskel), avkommentera och kör en omträning:
+#   DROP_FEATURES = ["donchian_pos", "breakout_nw", "roc_accel_4w", "pullback"]
+DROP_FEATURES: list = []
+
 # Klassisk "12-1"-momentum: formation 52v, hoppa över senaste 4v (skip-month).
 # Skip-fönstret är avgörande – på 1-4 veckors sikt dominerar REVERSAL (aktier som
 # just stigit rekylerar), medan trenden 12→1 mån håller i sig (Jegadeesh-Titman).
