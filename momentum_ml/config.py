@@ -73,6 +73,17 @@ REBALANCE_WEEKS    = FORWARD_WEEKS  # = 4
 ASYMMETRIC_EXIT    = False
 EXIT_SMA_WEEKS     = 20
 
+# Rebalanseringsläge:
+#   "calendar" – rebalansera var REBALANCE_WEEKS:e vecka (bevisad baslinje).
+#   "event"    – HÄNDELSESTYRD rotation: tekniken avgör hålltiden, inte kalendern.
+#                Sälj ett innehav så snart trenden bryts (kurs < EXIT_SMA) ELLER det
+#                faller ur behåll-zonen (topp KEEP_BAND_MULT×N i prob_up-rank); fyll
+#                lediga platser samma vecka med nästa kvalificerade bolag. Stabila
+#                vinnare rids orört (no-trade-band), så omsättningen hålls nere trots
+#                veckovis utvärdering. Default calendar tills event A/B-testats.
+REBALANCE_MODE     = "calendar"
+KEEP_BAND_MULT     = 2.0    # håll ett innehav så länge det är inom topp 2N (hysteres)
+
 # Delisting-detektor: om en ticker saknar ny kurs i mer än så här många veckor
 # (relativt universumets senaste datum) tolkas bolaget som avnoterat och tas bort
 # – ska inte visas som aktuell signal eller störa beräkningarna. Se

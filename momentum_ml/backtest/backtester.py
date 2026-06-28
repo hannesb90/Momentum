@@ -86,6 +86,7 @@ class MomentumBacktester:
         # HÅLLS innehaven – men marknadsfiltret/drawdown-guarden får ändå
         # de-riska (sälja ned mot kontanter) i kris, aldrig köpa upp off-schema.
         rebalance_weeks = max(int(getattr(config, "REBALANCE_WEEKS", 1)), 1)
+        mode = getattr(config, "REBALANCE_MODE", "calendar")
 
         for i, date in enumerate(dates):
             # Beräkna aktuellt portföljvärde
@@ -96,7 +97,10 @@ class MomentumBacktester:
             market_exp = self._market_exposure_factor(date)
             guard = self._drawdown_guard_factor(drawdown)
 
-            if i % rebalance_weeks == 0:
+            if mode == "event":
+                # ── Händelsestyrd rotation (tekniken avgör hålltiden) ────────
+                cash = self._event_rebalance(date, portfolio_value, cash, market_exp, guard)
+            elif i % rebalance_weeks == 0:
                 # ── Schemalagd full rebalansering ────────────────────────────
                 day_signals = self.signals.loc[date]
                 if isinstance(day_signals, pd.Series):
@@ -400,20 +404,25 @@ class MomentumBacktester:
                 target[ticker] = (shares * price / portfolio_value) * scale
         return self._rebalance(date, target, portfolio_value, cash)
 
+    def _is_broken(self, ticker: str, date: pd.Timestamp) -> bool:
+        """True om innehavets trend brutits (kurs < EXIT_SMA_WEEKS-glidande medel)."""
+        if self._below_sma is None or ticker not in self._below_sma.columns:
+            return False
+        try:
+            return bool(self._below_sma.at[date, ticker])
+        except Exception:
+            return False
+
     def _trend_exit(self, date: pd.Timestamp, cash: float) -> float:
         """
-        Asymmetrisk exit: sälj innehav vars trend brutits (kurs < EXIT_SMA_WEEKS-
-        glidande medel) mellan schemalagda rebalanseringar. Köper inget nytt –
-        frigjort kapital roteras in vid nästa rebalans. Rid vinnare, kapa fadande.
+        Asymmetrisk exit (calendar-läget): sälj innehav vars trend brutits mellan
+        schemalagda rebalanseringar. Köper inget nytt – kapitalet roteras in vid
+        nästa rebalans. Rid vinnare, kapa fadande.
         """
         if self._below_sma is None or not self._portfolio:
             return cash
         for ticker in list(self._portfolio.keys()):
-            try:
-                broken = bool(self._below_sma.at[date, ticker])
-            except Exception:
-                broken = False
-            if not broken:
+            if not self._is_broken(ticker, date):
                 continue
             price = self._get_price(ticker, date)
             if price is None:
@@ -423,6 +432,51 @@ class MomentumBacktester:
             cost_rate = self._execution_cost_rate(ticker, date, trade_value)
             cash += trade_value * (1 - cost_rate)
         return cash
+
+    def _event_rebalance(self, date, portfolio_value, cash, market_exp, guard) -> float:
+        """
+        Händelsestyrd rotation: tekniken (inte kalendern) avgör hålltiden.
+          - Behåll ett innehav så länge det är inom behåll-zonen (topp
+            KEEP_BAND_MULT×N i prob_up-rank) OCH trenden inte brutits.
+          - Fyll lediga platser samma vecka med högst rankade kvalificerade bolag.
+          - Likavikt bland innehaven; no-trade-bandet i _rebalance gör att stabila
+            vinnare inte handlas på små förändringar (låg omsättning trots veckovis
+            utvärdering).
+        """
+        day = self.signals.loc[date]
+        if isinstance(day, pd.Series):
+            day = day.to_frame().T
+        n = int(config.MAX_POSITIONS)
+        keep_mult = float(getattr(config, "KEEP_BAND_MULT", 2.0))
+
+        elig = day[day["pred_return"] > config.MIN_EXPECTED_RETURN]
+        elig = elig.sort_values("prob_up", ascending=False)
+        elig_tickers = list(elig["ticker"])
+        keep_set = set(elig_tickers[:max(int(n * keep_mult), 1)])
+
+        held = list(self._portfolio.keys())
+        survivors = [t for t in held if t in keep_set and not self._is_broken(t, date)]
+        slots = n - len(survivors)
+        entries = [t for t in elig_tickers if t not in survivors][:max(slots, 0)]
+        target = survivors + entries
+
+        if target:
+            w = 1.0 / len(target)
+            target_weights = {t: min(w, config.MAX_POSITION) for t in target}
+        else:
+            target_weights = {}
+
+        target_weights = self._correlation_filter(target_weights, date)
+        target_weights = self._sector_exposure_filter(target_weights)
+        total_w = sum(target_weights.values())
+        if total_w > 1.0:
+            target_weights = {t: w / total_w for t, w in target_weights.items()}
+        if market_exp < 1.0:
+            target_weights = {t: w * market_exp for t, w in target_weights.items()}
+        if guard < 1.0:
+            target_weights = {t: w * guard for t, w in target_weights.items()}
+
+        return self._rebalance(date, target_weights, portfolio_value, cash)
 
     # ── Hjälpare ──────────────────────────────────────────────────────────────
 
@@ -438,9 +492,10 @@ class MomentumBacktester:
         full_idx = panel.index.union(pd.DatetimeIndex(dates))
         panel = panel.reindex(full_idx).sort_index().ffill()
         self._close_panel = panel
-        # Trend-brott-panel för asymmetrisk exit: True där kursen ligger UNDER sitt
-        # EXIT_SMA_WEEKS-glidande medel (bruten trend → snabb-sälj mellan rebalanser).
-        if getattr(config, "ASYMMETRIC_EXIT", False):
+        # Trend-brott-panel: True där kursen ligger UNDER sitt EXIT_SMA_WEEKS-
+        # glidande medel. Behövs av asymmetrisk exit (calendar) och av behåll-/
+        # exit-logiken i event-läget.
+        if getattr(config, "ASYMMETRIC_EXIT", False) or getattr(config, "REBALANCE_MODE", "calendar") == "event":
             w = int(getattr(config, "EXIT_SMA_WEEKS", 20))
             sma = panel.rolling(w, min_periods=max(w // 2, 5)).mean()
             self._below_sma = (panel < sma)

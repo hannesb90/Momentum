@@ -69,6 +69,10 @@ def parse_args():
     p.add_argument("--stale-weeks", type=int, default=config.STALE_MAX_WEEKS,
                    help=f"Ta bort bolag utan ny kurs på fler än så här många veckor "
                         f"(avnoterade/döda; default {config.STALE_MAX_WEEKS})")
+    p.add_argument("--rebalance-mode", choices=["calendar", "event"], default=None,
+                   help="calendar = var REBALANCE_WEEKS:e vecka (bevisad); event = "
+                        "händelsestyrd rotation (tekniken avgör hålltiden). A/B via "
+                        "--predict-only. Default = config.REBALANCE_MODE.")
     p.add_argument("--min-history", type=int, default=config.MIN_HISTORY_WEEKS,
                    help="Minsta historik (veckor) för att en ticker ska tas med (default "
                         f"{config.MIN_HISTORY_WEEKS}). OBS: cachen lagrar data efter detta filter "
@@ -122,6 +126,9 @@ def main():
         print(f"[Segment] {args.segment} ({seg['label']}): "
               f"market_cap={seg['market_cap']} -> {config.RESULTS_DIR}/ "
               f"(N={config.MAX_POSITIONS}, blend={config.CONVICTION_BLEND})")
+    # Rebalanseringsläge (calendar/event) – för A/B utan att redigera config.
+    if args.rebalance_mode:
+        config.REBALANCE_MODE = args.rebalance_mode
     # Gör --min-history globalt verksam (data_loader._clean läser config direkt).
     config.MIN_HISTORY_WEEKS = args.min_history
     # Kostnadsgolv för köpsignaler (ensemble.build_full_output läser config).
@@ -239,6 +246,8 @@ def main():
                     "--stale-weeks", str(args.stale_weeks),
                     "--min-history", str(args.min_history),
                     "--min-expected-return", str(args.min_expected_return)]
+        if args.rebalance_mode:
+            base_cmd += ["--rebalance-mode", args.rebalance_mode]
         if args.segment:
             # Segmentet re-resolvar market_cap + results_dir i varje subprocess.
             base_cmd += ["--segment", args.segment]
