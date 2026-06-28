@@ -318,6 +318,29 @@ def estimate_cost(segment: str) -> None:
     print("  input-kostnaden ytterligare. Token-heuristik ±20%.")
 
 
+def batch_status() -> None:
+    """Visar EN ögonblicksbild av den väntande batchens läge (ingen poll-loop,
+    ingen hämtning). Funkar för batchar skapade med den resumbara koden."""
+    pend = _pending_path()
+    if not pend.exists():
+        print("[status] ingen väntande batch lokalt. Antingen klar/hämtad, eller "
+              "skapad med gammal kod – kolla console.anthropic.com → Batches.")
+        return
+    meta = json.loads(pend.read_text())
+    b = _client().messages.batches.retrieve(meta["batch_id"])
+    rc = b.request_counts
+    done = rc.succeeded + rc.errored + rc.canceled + rc.expired
+    total = done + rc.processing
+    pct = (100.0 * done / total) if total else 0.0
+    print(f"[status] batch {meta['batch_id']}")
+    print(f"  {done:,}/{total:,} ({pct:.0f}%) klara – {rc.succeeded:,} ok, "
+          f"{rc.errored:,} fel, {rc.processing:,} kvar  [{b.processing_status}]")
+    if b.processing_status == "ended":
+        print("  -> KLAR. Kör 'score large 5000' (eller utan siffra) för att hämta hem resultaten.")
+    else:
+        print("  -> kör vidare på Anthropics servrar; återkom och kör 'score' för att hämta när den är ended.")
+
+
 def score_one(ticker: str) -> None:
     p = Path(config.MFN_CACHE_DIR) / f"{ticker}.json"
     if not p.exists():
@@ -342,6 +365,8 @@ def main():
         score_segment(seg, limit)
     elif cmd == "estimate":
         estimate_cost(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
+    elif cmd == "status":
+        batch_status()
     elif cmd == "one":
         score_one(sys.argv[2])
     else:
