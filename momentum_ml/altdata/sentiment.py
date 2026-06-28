@@ -179,16 +179,24 @@ def _load_cached_releases(segment: str) -> List[dict]:
     seg = config.SEGMENTS.get(segment) or config.SEGMENTS[config.DEFAULT_SEGMENT]
     tickers, _, _, _ = load_sweden_universe(min_market_cap=seg["market_cap"])
     cache_dir = Path(config.MFN_CACHE_DIR)
-    out = []
+    floor = str(getattr(config, "SENTIMENT_SCORE_FROM", "2015-09-01"))
+    out, skipped = [], 0
     for t in tickers:
         p = cache_dir / f"{t}.json"
         if not p.exists():
             continue
         blob = json.loads(p.read_text())
         for it in blob.get("items", []):
+            # Datumgolv: poängsätt bara PM vi faktiskt backtestar (OOS-fönstret) –
+            # ISO-datum jämförs lexikografiskt, så strängjämförelsen räcker.
+            if str(it.get("published", "")) < floor:
+                skipped += 1
+                continue
             it = dict(it)
             it["ticker"] = t
             out.append(it)
+    if skipped:
+        print(f"[score] hoppar över {skipped} PM före {floor} (utanför OOS – spar kostnad)")
     return out
 
 
