@@ -10,7 +10,7 @@ import { SignalBadge } from '../components/SignalBadge'
 import { StatCard } from '../components/StatCard'
 import { InfoButton } from '../components/InfoButton'
 import { EmptyState } from '../components/EmptyState'
-import { fmtPct, fmtNum, fmtDate, cleanName } from '../format'
+import { fmtPct, fmtNum, fmtDate, fmtSek, cleanName } from '../format'
 
 export function StockDetailPage() {
   const { ticker } = useParams()
@@ -105,6 +105,14 @@ export function StockDetailPage() {
           value={fmtPct(latest.position_size)}
           info="Hur stor andel av portföljen modellen föreslår i denna aktie, efter risk-/likviditetshänsyn. 0% = ingen position just nu."
         />
+        {isBuy && latest.limit_price != null && (
+          <StatCard
+            label="Köp upp till (limit)"
+            value={fmtSek(latest.limit_price)}
+            tone="good"
+            info="Lägg en LIMITORDER på max denna kurs. Edgen sitter på kvartalshorisont, så jaga inte en aktie som gapat upp – fyller priset inte ≤ gränsen avstår du (nästa ombalansering fångar den annars)."
+          />
+        )}
         {latest.ta_score != null && latest.ta_score !== 1 && (
           <StatCard
             label="TA-score"

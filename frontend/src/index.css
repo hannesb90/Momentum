@@ -333,6 +333,11 @@ code {
 .page-subtitle__ticker {
   color: var(--muted, #64748b);
 }
+.limit-note {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--muted, #64748b);
+}
 
 .sector-row {
   cursor: pointer;
