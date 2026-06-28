@@ -26,12 +26,14 @@ from models.ensemble import MomentumEnsemble, build_full_output
 from backtest.backtester import MomentumBacktester
 from backtest.benchmark import benchmark_report
 
-# (etikett, grind på?, min-momentum). Baslinjen först.
+# (etikett, grind på?, min-momentum, läge, concentrate-tak). Baslinjen först.
 SETTINGS = [
-    ("av (baslinje)", False, 0.0),
-    ("grind mom>0",   True,  0.0),
-    ("grind mom>5%",  True,  0.05),
-    ("grind mom>10%", True,  0.10),
+    ("av (baslinje)",       False, 0.0,  "cash",        0.0),
+    ("grind+kontant >0",    True,  0.0,  "cash",        0.0),
+    ("grind+kontant >5%",   True,  0.05, "cash",        0.0),
+    ("grind+koncentr >0",   True,  0.0,  "concentrate", 0.34),
+    ("grind+koncentr >5%",  True,  0.05, "concentrate", 0.34),
+    ("grind+koncentr 100/2",True,  0.05, "concentrate", 0.50),
 ]
 
 
@@ -57,9 +59,12 @@ def main():
     preds = {t: lgbm.predict(f.dropna(subset=FEATURE_COLS[:5])) for t, f in feats.items() if len(f) > 0}
     hw = config.HOLDOUT_WEEKS
 
-    def evaluate(enabled, gate_min):
+    def evaluate(enabled, gate_min, mode, cap):
         config.MOMENTUM_GATE_ENABLED = enabled
         config.MOMENTUM_GATE_MIN = gate_min
+        config.MOMENTUM_GATE_MODE = mode
+        if cap:
+            config.MOMENTUM_GATE_CONCENTRATE_CAP = cap
         sig = build_full_output(preds, None, feature_dfs, MomentumEnsemble(), ta_filter="score")
         bt = MomentumBacktester(sig, data, market_filter=True)
         bt.run()
@@ -76,8 +81,8 @@ def main():
     print(f"  {'inställning':>16} {'CAGR':>7} {'Sharpe':>7} {'MaxDD':>8} {'Invest':>7} {'alfa':>7} {'holdout':>8}")
     print("-" * 86)
     base_alpha = None
-    for label, enabled, gate_min in SETTINGS:
-        cagr, sharpe, maxdd, invested, alpha, ho = evaluate(enabled, gate_min)
+    for label, enabled, gate_min, mode, cap in SETTINGS:
+        cagr, sharpe, maxdd, invested, alpha, ho = evaluate(enabled, gate_min, mode, cap)
         note = ""
         if base_alpha is None:
             base_alpha = alpha
