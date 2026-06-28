@@ -19,6 +19,7 @@ Resultat cachas i cache/sentiment/<id>.json och läses av backtest_sentiment.py.
 """
 import sys
 import os
+import re
 import json
 import time
 from pathlib import Path
@@ -33,41 +34,27 @@ except ImportError:
     anthropic = None
 
 
-# Strikt JSON-schema för svaret. Vi tolkar content som JSON själva (funkar
-# identiskt för enstaka anrop och batch, oberoende av SDK-version på Pi:n).
-_SCHEMA = {
-    "type": "json_schema",
-    "schema": {
-        "type": "object",
-        "properties": {
-            "sentiment": {
-                "type": "integer", "minimum": -2, "maximum": 2,
-                "description": "Tonen i meddelandet för aktieägare: -2 mycket "
-                               "negativ, 0 neutral, +2 mycket positiv.",
-            },
-            "materiality": {
-                "type": "integer", "minimum": 0, "maximum": 3,
-                "description": "Hur kurspåverkande nyheten är: 0 rutin/admin, "
-                               "1 mindre, 2 väsentlig, 3 mycket väsentlig.",
-            },
-            "category": {
-                "type": "string",
-                "enum": ["report", "guidance", "order", "ma", "capital",
-                         "personnel", "legal", "product", "other"],
-            },
-            "rationale": {"type": "string", "description": "Max en mening, svenska."},
-        },
-        "required": ["sentiment", "materiality", "category", "rationale"],
-        "additionalProperties": False,
-    },
-}
+# Svaret begärs som ren JSON via INSTRUKTION (inte output_config/structured
+# outputs). Skälet: det exakta output_config-formatet är SDK-/modellversions-
+# känsligt och ett fel ger 400 mitt i en betald bulk-körning. Prompt-instruerad
+# JSON + robust parsning fungerar på vilken Claude-modell/SDK-version som helst –
+# och uppgiften (klassificering) är trivial för Haiku att svara strikt på.
+_CATEGORIES = ["report", "guidance", "order", "ma", "capital",
+               "personnel", "legal", "product", "other"]
 
 _SYSTEM = (
     "Du är en erfaren svensk aktieanalytiker. Du läser ett regulatoriskt "
     "pressmeddelande och bedömer enbart hur en rationell investerare borde tolka "
     "TONEN och MATERIALITETEN för bolagets aktie de närmaste veckorna – inte "
     "vad du redan vet om bolaget i efterhand. Var nykter: rubriker är ofta "
-    "positivt vinklade av bolaget självt. Svara endast enligt schemat."
+    "positivt vinklade av bolaget självt.\n\n"
+    "Svara ENDAST med ett giltigt JSON-objekt – ingen prosa, inga markdown-fences – "
+    "med exakt dessa fält:\n"
+    '  "sentiment": heltal -2..2 (ton för aktieägare; -2 mkt negativ, 0 neutral, +2 mkt positiv)\n'
+    '  "materiality": heltal 0..3 (kurspåverkan; 0 rutin/admin, 1 mindre, 2 väsentlig, 3 mkt väsentlig)\n'
+    f'  "category": en av {_CATEGORIES}\n'
+    '  "rationale": max en mening på svenska\n'
+    'Exempel: {"sentiment": 1, "materiality": 2, "category": "order", "rationale": "Stororder lyfter orderboken."}'
 )
 
 
@@ -92,14 +79,32 @@ def _cache_path(pid: str) -> Path:
     return d / f"{safe}.json"
 
 
+def _valid(d) -> bool:
+    """Grundkontroll så vi inte cachar skräp-parsningar."""
+    return (isinstance(d, dict) and isinstance(d.get("sentiment"), (int, float))
+            and isinstance(d.get("materiality"), (int, float)))
+
+
 def _parse_content(msg) -> Optional[dict]:
     for block in msg.content:
         txt = getattr(block, "text", None)
-        if txt:
+        if not txt:
+            continue
+        try:
+            d = json.loads(txt)
+            if _valid(d):
+                return d
+        except Exception:
+            pass
+        # Fallback: plocka ut första {...}-blocket om modellen lagt till prosa.
+        m = re.search(r"\{.*\}", txt, re.S)
+        if m:
             try:
-                return json.loads(txt)
+                d = json.loads(m.group(0))
+                if _valid(d):
+                    return d
             except Exception:
-                continue
+                pass
     return None
 
 
@@ -113,7 +118,6 @@ def score_item(item: dict, client=None) -> Optional[dict]:
         model=config.SENTIMENT_MODEL,
         max_tokens=config.SENTIMENT_MAX_TOKENS,
         system=_SYSTEM,
-        output_config={"format": _SCHEMA},
         messages=[{"role": "user", "content": _prompt(item)}],
     )
     parsed = _parse_content(msg)
@@ -133,17 +137,18 @@ def score_batch(items: List[dict]) -> Dict[str, dict]:
         return cached
     client = _client()
 
+    # custom_id måste vara unikt + giltigt (≤64 tecken, [a-zA-Z0-9_-]). MFN-id:n
+    # kan innehålla otillåtna tecken/kollidera vid trunkering → använd index-id.
     requests = [{
-        "custom_id": it["id"][:64],
+        "custom_id": f"r{i}",
         "params": {
             "model": config.SENTIMENT_MODEL,
             "max_tokens": config.SENTIMENT_MAX_TOKENS,
             "system": _SYSTEM,
-            "output_config": {"format": _SCHEMA},
             "messages": [{"role": "user", "content": _prompt(it)}],
         },
-    } for it in todo]
-    id_by_custom = {it["id"][:64]: it["id"] for it in todo}
+    } for i, it in enumerate(todo)]
+    id_by_custom = {f"r{i}": it["id"] for i, it in enumerate(todo)}
 
     print(f"[batch] skickar {len(requests)} PM till {config.SENTIMENT_MODEL} (Batch-API, -50%)")
     batch = client.messages.batches.create(requests=requests)

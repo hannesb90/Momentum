@@ -90,12 +90,16 @@ def main():
     px = pd.concat(panels, ignore_index=True)
     week_index = {t: d["Close"].index for t, d in data.items()}
 
-    # Point-in-time: knyt varje PM till FÖRSTA veckostängning >= publicering
+    # Point-in-time: knyt varje PM till FÖRSTA veckostängning STRIKT efter
+    # publicering. side="right" ger idx[pos] > ts, så det close vi "agerar på"
+    # garanterat ligger efter PM:et oavsett om veckoindexet etiketteras med
+    # veckans start eller slut (bulletproof mot date-only-tidsstämplar = ingen
+    # look-ahead; i värsta fall en veckas extra fördröjning, vilket är konservativt).
     def next_week(t, ts):
         idx = week_index.get(t)
         if idx is None:
             return pd.NaT
-        pos = idx.searchsorted(ts)
+        pos = idx.searchsorted(ts, side="right")
         return idx[pos] if pos < len(idx) else pd.NaT
 
     scored["eff_date"] = [next_week(r.ticker, r.published) for r in scored.itertuples()]
@@ -133,8 +137,12 @@ def main():
     print("\n" + "=" * 72)
     print(f"  TVÄRSNITT (OOS {oos}+) – veckovis ton-rank vs {fwd}v framåtavkastning")
     print("=" * 72)
-    lookback = pd.Timedelta(days=config.SENTIMENT_LOOKBACK_DAYS)
-    # för varje (ticker, vecka): summera ton för PM med eff_date i (vecka-lookback, vecka]
+    # Aggregera per (ticker, eff_date): alla PM som mappar till SAMMA veckostängning
+    # summeras (eff_date bucketar redan in PM:en veckovis ≈ SENTIMENT_LOOKBACK_DAYS).
+    # OBS metod: terciler tas på den POOLADE ton-fördelningen (inte rank inom varje
+    # vecka). Ton är dessutom diskret (sentiment×materialitet) → grova terciler. Det
+    # är ett rimligt v1-mått; en striktare per-vecka-tvärsnittsrank kan läggas till
+    # om signalen visar sig bära edge.
     agg = (scored.groupby(["ticker", "eff_date"])["tone"].sum().reset_index()
            .rename(columns={"eff_date": "Date"}))
     m = px.merge(agg, on=["ticker", "Date"], how="left")
