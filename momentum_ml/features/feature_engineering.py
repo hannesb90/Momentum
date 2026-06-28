@@ -363,3 +363,14 @@ FEATURE_COLS = [
     # Klassificering (ordinal-kodad, fast lista i config.py)
     "sector_code", "cap_tier_code",
 ]
+
+# Ablation: släpp namngivna features ur modellens INDATA genom HELA pipelinen
+# (LGBM + LSTM + ensemble + main), så en ablations-vinnare kan re-valideras med
+# fulla pipelinen, inte bara LGBM. Featuresen BERÄKNAS fortfarande (kolumnerna
+# finns) – de matas bara inte till modellen. Default tom = full modell.
+# Exempel (re-validera "utan tidig_entry"): sätt i config.py
+#   DROP_FEATURES = ["donchian_pos", "breakout_nw", "roc_accel_4w", "pullback"]
+# OBS: håll DROP_FEATURES tom när du kör tune_ablation.py (den styr urvalet själv).
+_dropped = set(getattr(config, "DROP_FEATURES", []) or [])
+if _dropped:
+    FEATURE_COLS = [c for c in FEATURE_COLS if c not in _dropped]
