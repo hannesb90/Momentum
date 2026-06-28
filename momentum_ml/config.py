@@ -209,6 +209,17 @@ SIZING_MODE = "inverse_vol"
 # bara om holdout/alfa förbättras utan att kontant-draget äter mer än det räddar.
 MOMENTUM_GATE_ENABLED = False
 MOMENTUM_GATE_MIN     = 0.0   # kräver positiv 12-1-momentum för att hållas
+# Vad gör vi när FÅ namn klarar grinden? Två filosofier (A/B i tune_gate.py):
+#   "cash"        – defensivt: investerad andel = k/N, resten kontant (mindre risk
+#                   när momentum är ont om).
+#   "concentrate" – aggressivt: satsa ~100% i de få som trendar (som kap-viktning
+#                   som låter vinnarna bli stora). Per-namn-taket höjs då till
+#                   MOMENTUM_GATE_CONCENTRATE_CAP. OBS: hög koncentration = hög
+#                   idiosynkratisk risk (en vinstvarning på ett namn slår hårt) –
+#                   för en bred publik är "cash" det ansvarsfulla default-valet;
+#                   låt Sharpe/MaxDD i svepet avgöra.
+MOMENTUM_GATE_MODE            = "cash"
+MOMENTUM_GATE_CONCENTRATE_CAP = 0.34   # per-namn-tak i concentrate (0.5 = tillåt 100% i 2 namn)
 
 # ── Target-vol-overlay (Barroso & Santa-Clara, "Managing the risk of momentum") ─
 # Skalar portföljens BRUTTOEXPONERING kontinuerligt mot en mål-volatilitet i

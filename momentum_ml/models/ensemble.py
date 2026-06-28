@@ -360,11 +360,16 @@ def build_full_output(
         blend = float(getattr(config, "CONVICTION_BLEND", 0.5))
         raw = {t: (1.0 - blend) * eq + blend * float(tw)
                for t, tw in zip(top["ticker"], tilt)}
-        if gate:
-            # Villkorad kontant: investerad andel = k/N (k = antal namn som klarade
-            # grinden). Färre momentumnamn → mindre investerat, resten kontanter.
-            # Ingen omfördelning av kapat överskott upp mot 100% (vi vill INTE
-            # tvinga full investering) – kapat överskott blir kontanter.
+        if gate and str(getattr(config, "MOMENTUM_GATE_MODE", "cash")) == "concentrate":
+            # Aggressivt: satsa ~100% i de FÅ namn som klarade grinden (som
+            # kap-viktning – låt vinnarna bli stora). Högre per-namn-tak; med t.ex.
+            # taket 0.5 och 2 namn blir det 50/50 = 100% investerat.
+            cap = float(getattr(config, "MOMENTUM_GATE_CONCENTRATE_CAP", config.MAX_POSITION))
+            sized = _topn_invested_weights(raw, n=len(raw), max_position=cap)
+        elif gate:
+            # Defensivt (kontant): investerad andel = k/N (k = antal namn som
+            # klarade grinden). Färre momentumnamn → mindre investerat, resten
+            # kontanter. Ingen omfördelning av kapat överskott upp mot 100%.
             N = max(int(config.MAX_POSITIONS), 1)
             total_target = len(top) / float(N)
             s = sum(raw.values()) or 1.0
