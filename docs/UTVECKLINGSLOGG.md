@@ -198,7 +198,13 @@ Anthropic-nyckel i `~/.momentum.env`, (2) bekräftelse att Pi:n når mfn.se
 4. **Survivorship-fri prisdata** – kvarstår som blockare för trovärdiga
    småbolagsresultat (Norgate/Polygon/EODHD). MFN löser bara *text*-sidans
    look-ahead, inte pris-sidans survivorship.
-5. **Produktpositionering** – landa som ärligt analys-/utbildningsverktyg
+5. **Ablation nedåt (gyllene medelvägen)** – `tune_ablation.py`. Vi vet att
+   *addera* features överanpassar (#7, #8) men har aldrig mätt om en ENKLARE
+   modell har lika/bättre edge. Kör `logo` (leave-one-group-out) först, sedan
+   ev. `backward` (girig eliminering). Positiv Δcapture vid borttagen grupp =
+   gruppen är brus → skär bort. Vinnande minimal uppsättning re-valideras med
+   fulla pipelinen på holdouten innan adoption.
+6. **Produktpositionering** – landa som ärligt analys-/utbildningsverktyg
    (OMXS30 = den ärliga, oslagna ribban) vs jaga alt-data-edge. + regulatorisk
    (MiFID) bedömning före publik lansering (se MODELLANALYS.md §6.4).
 
@@ -226,6 +232,7 @@ momentum_ml/
   tune_sizing.py             # svep CONVICTION_BLEND × MAX_POSITIONS × SIZING_MODE
   tune_voltarget.py          # svep target-vol-overlay (av/10/15/20 %)
   tune_horizon.py            # svep FORWARD_WEEKS
+  tune_ablation.py           # ABLATION nedåt: skär feature-grupper, hitta gyllene medelvägen
   era_analysis.py            # alfa per startår vs likavikt & OMXS30 (algo-era-testet)
   deploy/                    # systemd-units + sync.sh (kopieras manuellt)
 frontend/                    # PWA (segment-toggle, signaler, backtest, OMXS30-linje)
