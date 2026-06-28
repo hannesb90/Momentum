@@ -273,6 +273,12 @@ def build_full_output(
             except Exception:
                 vol = 0.20
 
+            # Absolut momentum (12-1) för momentum-kvalitetsgrinden (se _size_date).
+            try:
+                mom = feat_df.loc[:date, "mom_12_1"].iloc[-1]
+            except Exception:
+                mom = None
+
             raw_kelly = kelly_position_size(row["prob_up"], row["pred_return"], vol)
             # Behörig kandidat = modellen förväntar inte en nedgång (förv.avk över
             # selektivitetsgolvet, default 0.0). INGEN absolut prob_up-tröskel –
@@ -308,6 +314,7 @@ def build_full_output(
                 "ta_score":      ta_score,
                 "raw_kelly":     raw_kelly,
                 "vol":           float(vol) if vol and vol > 0 else 0.20,
+                "mom":           float(mom) if mom is not None and not pd.isna(mom) else 0.0,
                 "eligible":      int(eligible),
             })
 
@@ -321,6 +328,15 @@ def build_full_output(
     # i backtestern drar ner exponeringen i kris.
     def _size_date(group: pd.DataFrame) -> pd.Series:
         cand = group[group["eligible"] == 1]
+        # Momentum-kvalitetsgrind (experiment, default AV): håll bara namn med
+        # GENUINT momentum (abs. 12-1 > MOMENTUM_GATE_MIN). Annars tvingar
+        # alltid-investerad topp-N in ~100% i N namn även när få trendar → de få
+        # vinnarna späds ut av "minst dåliga" namn. Med grinden får portföljen
+        # hålla FÄRRE än N och bygga kontanter när momentum är ont om (jfr
+        # kap-viktning som låter vinnaren bli stor och struntar i resten).
+        gate = bool(getattr(config, "MOMENTUM_GATE_ENABLED", False))
+        if gate and "mom" in cand.columns:
+            cand = cand[cand["mom"] > float(getattr(config, "MOMENTUM_GATE_MIN", 0.0))]
         if cand.empty:
             return pd.Series(0.0, index=group.index)
         top = cand.sort_values("prob_up", ascending=False).head(config.MAX_POSITIONS)
@@ -344,14 +360,24 @@ def build_full_output(
         blend = float(getattr(config, "CONVICTION_BLEND", 0.5))
         raw = {t: (1.0 - blend) * eq + blend * float(tw)
                for t, tw in zip(top["ticker"], tilt)}
-        # n=len(raw): raw är redan begränsad till topp-MAX_POSITIONS ovan. Skicka
-        # explicit (default-argumentet fryses vid import → MAX_POSITIONS-ändringar
-        # i en svepning skulle annars kapas till det gamla värdet).
-        sized = _topn_invested_weights(raw, n=len(raw))
+        if gate:
+            # Villkorad kontant: investerad andel = k/N (k = antal namn som klarade
+            # grinden). Färre momentumnamn → mindre investerat, resten kontanter.
+            # Ingen omfördelning av kapat överskott upp mot 100% (vi vill INTE
+            # tvinga full investering) – kapat överskott blir kontanter.
+            N = max(int(config.MAX_POSITIONS), 1)
+            total_target = len(top) / float(N)
+            s = sum(raw.values()) or 1.0
+            sized = {t: min((v / s) * total_target, config.MAX_POSITION)
+                     for t, v in raw.items()}
+        else:
+            # Alltid-investerad baslinje: normalisera topp-N till ~100% (kapat
+            # överskott omfördelas). n=len(raw): explicit (default fryses vid import).
+            sized = _topn_invested_weights(raw, n=len(raw))
         return group["ticker"].map(sized).fillna(0.0)
 
     df["position_size"] = df.groupby(level="Date", group_keys=False).apply(_size_date)
     # pred_signal = "hålls i portföljen nu" (topp-N), inte en absolut tröskel.
     df["pred_signal"] = (df["position_size"] > 0).astype(int)
-    df = df.drop(columns=["raw_kelly", "vol", "eligible"])
+    df = df.drop(columns=["raw_kelly", "vol", "mom", "eligible"])
     return df
