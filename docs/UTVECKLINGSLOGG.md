@@ -233,6 +233,9 @@ momentum_ml/
   main.py                    # CLI: --segment, träning/prediktion, signals.csv (namn, limit-priser)
   api/main.py                # FastAPI, segment-param, /api/segments, OMXS30-serie
   altdata/                   # A-spåret: MFN-sentiment (fetch/sentiment/backtest + README)
+    quality_screener.py      # C-spåret: kvalitativ fundamental sållning (LLM läser rapporter
+                             #   mot din checklista + extraherar nyckeltal → värderingsdiagram).
+                             #   DISKRETIONÄRT, ej backtestbart.
   # Analysverktyg (efter-bearbetning, ingen omträning):
   baseline_compare.py        # ML vs ren regel-momentum
   capture_analysis.py        # capture-spread / fångar stora rörelser
