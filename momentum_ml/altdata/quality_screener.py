@@ -175,18 +175,16 @@ def plot_positioning() -> None:
     from data.data_loader import fetch_weekly_data
 
     scored = [json.loads(p.read_text()) for p in Path(config.QUALITY_CACHE_DIR).glob("*.json")]
+    usable = [s for s in scored if s.get("ebitda_msek") is not None and s.get("shares_million")]
+    # Ladda priser EN gång för alla tickers (annars cache-miss per ticker → 100+ Yahoo-anrop).
+    data = fetch_weekly_data([s["ticker"] for s in usable], use_cache=True) if usable else {}
     pts = []
-    for s in scored:
-        ev, rev, sh = s.get("ebitda_msek"), s.get("revenue_msek"), s.get("shares_million")
-        if ev is None or sh is None:
+    for s in usable:
+        d = data.get(s["ticker"])
+        if d is None or d.empty:
             continue
-        try:
-            data = fetch_weekly_data([s["ticker"]], use_cache=True)
-            px = data[s["ticker"]]["Close"].iloc[-1]
-        except Exception:
-            continue
-        mcap = px * sh   # MSEK (kurs × milj. aktier)
-        pts.append((float(ev), float(mcap), float(rev or 0), s["ticker"]))
+        mcap = float(d["Close"].iloc[-1]) * float(s["shares_million"])   # MSEK (kurs × milj. aktier)
+        pts.append((float(s["ebitda_msek"]), mcap, float(s.get("revenue_msek") or 0), s["ticker"]))
     if not pts:
         print("[chart] inga bolag med både EBITDA + antal aktier extraherade – kör 'score' först.")
         return

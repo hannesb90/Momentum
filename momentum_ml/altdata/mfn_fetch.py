@@ -192,15 +192,21 @@ def _clean_name(name: str) -> str:
     return re.sub(r"\s+", " ", n).strip(" ,.-")
 
 
-def fetch_universe(segment: str) -> None:
+def fetch_universe(target: str) -> None:
+    """target = segmentnamn (large/small) ELLER 'quality' (Small/Micro/Nano för
+    fundamental-screenern). Inkrementellt – cachade bolag hoppas över."""
     from data.data_loader import load_sweden_universe
-    seg = config.SEGMENTS.get(segment) or config.SEGMENTS[config.DEFAULT_SEGMENT]
-    tickers, sector_map, cap_tier_map, name_map = load_sweden_universe(min_market_cap=seg["market_cap"])
+    if target == "quality":
+        market_cap, label = config.QUALITY_MARKET_CAP, "quality (Small/Micro/Nano)"
+    else:
+        seg = config.SEGMENTS.get(target) or config.SEGMENTS[config.DEFAULT_SEGMENT]
+        market_cap, label = seg["market_cap"], seg["label"]
+    tickers, sector_map, cap_tier_map, name_map = load_sweden_universe(min_market_cap=market_cap)
     qmap = _load_map()
     cache_dir = Path(config.MFN_CACHE_DIR)
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"[fetch] segment={segment} ({seg['label']}) – {len(tickers)} bolag")
+    print(f"[fetch] {target} ({label}) – {len(tickers)} bolag")
     total = 0
     for i, t in enumerate(tickers, 1):
         # Hoppa fonder/ETF:er – de har inga egna MFN-pressmeddelanden.
