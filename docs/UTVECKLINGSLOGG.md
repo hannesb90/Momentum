@@ -212,8 +212,17 @@ Anthropic-nyckel i `~/.momentum.env`, (2) bekräftelse att Pi:n når mfn.se
    gruppen är brus → skär bort. Vinnande minimal uppsättning re-valideras med
    fulla pipelinen på holdouten innan adoption.
 6. **Produktpositionering** – landa som ärligt analys-/utbildningsverktyg
-   (OMXS30 = den ärliga, oslagna ribban) vs jaga alt-data-edge. + regulatorisk
-   (MiFID) bedömning före publik lansering (se MODELLANALYS.md §6.4).
+   (cap-viktat index = den ärliga, oslagna ribban) vs jaga alt-data-edge. +
+   regulatorisk (MiFID) bedömning före publik lansering (se MODELLANALYS.md §6.4).
+7. **C-spår: fundamental microcap-screener** (`altdata/quality_screener.py`) –
+   AKTIVT. Diskretionär tratt (LLM mot checklistan + nyckeltals-extraktion →
+   OT-style värderingsdiagram). Kör: `mfn_fetch.py fetch quality` → `quality_screener.py
+   score` → `chart`. Ej backtestbart; urval, inte bevis.
+8. **D-spår: sektor-/ETF-trendrotation (PARKERAD, designad)** – dual momentum:
+   rida topp-K sektorer (relativ styrka, ej "fånga tidigt") + defensivt ben
+   (ränte-/guld-ETF) när inget trendar (Antonacci-anda). Passar ETF-ägande, låg
+   kostnad, BACKTESTBART. Appen har redan en sektor-momentum-ranking (main STEG 4.5)
+   + sektor-ETF:er i universumet att bygga på. Bygg när C-spår + småbolag är klara.
 
 ---
 
