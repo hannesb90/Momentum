@@ -324,6 +324,13 @@ def main():
             lgbm_preds_by_ticker[ticker] = lgbm.predict(feat_df_clean)
 
     lstm_preds_by_ticker = {}
+    _lstm_path = Path(f"{config.RESULTS_DIR}/lstm_model.pt")
+    if not args.skip_lstm and not _lstm_path.exists():
+        # Ingen tränad LSTM → krascha inte, fortsätt LGBM-only (vad hela
+        # valideringen ändå byggt på). Träna LSTM eller kör --skip-lstm medvetet.
+        print(f"\nSTEG 4: [VARNING] {_lstm_path} saknas – kör LGBM-only "
+              "(ensemblen blir bara LGBM denna körning).")
+        args.skip_lstm = True
     if not args.skip_lstm:
         print("\nSTEG 4: Laddar LSTM...")
         lstm = MomentumLSTM().load(f"{config.RESULTS_DIR}/lstm_model.pt")
