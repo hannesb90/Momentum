@@ -416,6 +416,18 @@ SENTIMENT_MAX_TOKENS = 400
 
 # Backtest av sentiment-signalen: aggregera ett innehavs PM-ton i ett bakåtfönster
 # och mät framåtavkastning (capture-spread, mirror av capture_analysis.py).
+# Kvalitativ fundamental sållning (quality_screener.py) – diskretionär tratt, EJ
+# backtestbar. Läser bolagens MFN-rapporter/PM och låter Claude poängsätta en
+# kvalitativ checklista (10-årings-test, global ambition, moat, ledning/skin-in-
+# the-game, säljkultur, adresserbar marknad, IR). Sonnet för djupare omdöme än
+# Haiku (klassificering vs bedömning). ~$0.02/bolag → hela microcap-universumet
+# några dollar. Hård regel i prompten: bedöm ENBART det som står i texten.
+QUALITY_MODEL          = "claude-sonnet-4-6"
+QUALITY_CACHE_DIR      = "cache/quality"
+QUALITY_MAX_CHARS      = 16000      # underlag/bolag (senaste rapport + några PM)
+QUALITY_EXCLUDE_SECTORS = ["Health Care"]   # undvik medtech/pharma (binärt lotteri)
+QUALITY_MARKET_CAP     = ["Small Cap", "Micro Cap", "Nano Cap"]   # tidiga, oupptäckta bolag
+
 SENTIMENT_LOOKBACK_DAYS = 7         # PM publicerade senaste veckan räknas in i veckans signal
 SENTIMENT_OOS_START     = "2016"    # rent OOS-fönster (samma som era_analysis.py)
 # Poängsätt bara PM från detta datum (en buffert före OOS-start). Vi backtestar
