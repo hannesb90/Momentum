@@ -463,6 +463,37 @@ ETF_ROT_FLOW_LOOKBACK = 4          # veckor för rank-change (flödesproxy)
 ETF_ROT_BENCHMARK   = "IUSQ.DE"           # iShares MSCI ACWI (global)
 ETF_ROT_BENCHMARKS_EXTRA = ["SXR8.DE", "SXRV.DE"]   # S&P 500 + Nasdaq 100 som US-referens
 
+# ── Makro-/bakgrundsdata (räntor, obligationer, index, VIX, FX, råvaror) ──────
+# Fria Yahoo-serier att räkna på (regim, ränte-/kreditstress, flight-to-safety).
+# Rate-tickers (^IRX/^TNX/^TYX) är RÄNTOR i procent; övriga är priser. Cachas.
+MACRO_CACHE_DIR = "cache/macro"
+MACRO_SERIES = {
+    # Räntor / statspappersyield (%)
+    "UST3M":  "^IRX",        # 13v T-bill
+    "UST10Y": "^TNX",        # 10-årig
+    "UST30Y": "^TYX",        # 30-årig
+    # Obligations-ETF:er (pris)
+    "TLT":    "TLT",         # US 20y+ statsobligationer
+    "IEF":    "IEF",         # US 7-10y statsobligationer
+    "LQD":    "LQD",         # US investment grade-företag
+    "HYG":    "HYG",         # US high yield (kreditrisk-proxy)
+    "TIP":    "TIP",         # US inflationsskyddat
+    # Aktieindex
+    "SP500":  "^GSPC",
+    "NASDAQ": "^IXIC",
+    "OMXS30": "^OMX",
+    "STOXX50": "^STOXX50E",
+    "VIX":    "^VIX",        # volatilitet / rädsloindex
+    # Valutor
+    "DXY":    "DX-Y.NYB",    # dollarindex
+    "EURUSD": "EURUSD=X",
+    "USDSEK": "SEK=X",
+    # Råvaror
+    "GOLD":   "GC=F",
+    "OIL":    "CL=F",
+    "COPPER": "HG=F",
+}
+
 # ── Nasdaq Nordic (gratis, auktoritativt börsvärde – kompletterar Yahoo) ──────
 # Yahoo saknar aktieantal/börsvärde för många microcaps → screenerns "okänd"-hink.
 # Nasdaqs egen datafeed har det gratis. Vi hämtar hela Stockholmsbörsen i några
