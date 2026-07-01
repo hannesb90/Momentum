@@ -393,10 +393,37 @@ export function QualityPage() {
             <thead>
               <tr>
                 <th>Bolag</th>
-                <th>Kvalitet</th>
-                <th>Zon</th>
-                <th>Börsvärde</th>
-                <th>Multipel</th>
+                <th>
+                  Kvalitet
+                  <InfoButton title="Kvalitet (composite 1–5)">
+                    Snittet av 9 kvalitativa kriterier som Claude poängsatt ur bolagets rapport
+                    (förstå, moat, ledning, marknad, väg till vinst m.m.). Mäter hur bra caset
+                    <b> låter</b> – inte värderingen. Klicka en rad för delbetygen.
+                  </InfoButton>
+                </th>
+                <th>
+                  Zon
+                  <InfoButton title="Värderingszon">
+                    Lönsamma bolag zonas på vinstmultipel: billig ≤12×, rimlig ≤18×, dyr &gt;18×.
+                    Förlustbolag zonas på P/S (börsvärde/omsättning) och får en <b>förlust</b>-tagg.
+                    Din kärnregel: hög kvalitet <b>och</b> billig.
+                  </InfoButton>
+                </th>
+                <th>
+                  Börsvärde
+                  <InfoButton title="Börsvärde">
+                    Från EODHD/Yahoo (marketCap) i första hand, annars kurs × aktieantal som Claude
+                    extraherat ur rapporten. Kan sakna/vara föråldrat – verifiera topparna.
+                  </InfoButton>
+                </th>
+                <th>
+                  Multipel
+                  <InfoButton title="Multipel">
+                    Börsvärde delat på vinsten (EBITDA → EBIT → årets resultat) för lönsamma bolag,
+                    eller på omsättningen (P/S) för förlustbolag. Vilken bas som använts visas i
+                    detaljvyn (t.ex. "P/S" eller "EBITDA").
+                  </InfoButton>
+                </th>
               </tr>
             </thead>
             <tbody>

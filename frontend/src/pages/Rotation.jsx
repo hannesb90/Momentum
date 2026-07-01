@@ -75,7 +75,20 @@ export function RotationPage() {
         </div>
       )}
 
-      <h3 className="section-title">Heta sektorer & flöde</h3>
+      <h3 className="section-title">
+        Heta sektorer & flöde
+        <InfoButton title="Varför skiljer sig detta från Sektorer-vyn?">
+          <p>
+            Den här vyn rankar <b>ETF:ens egen kurs</b> (europeisk/global) på 6–12 mån (26/52v),
+            och sektorerna konkurrerar mot hela poolen inkl. teman och regioner.
+          </p>
+          <p>
+            <b>Sektorer</b>-vyn mäter i stället <b>svenska aktiers</b> momentum per sektor, även
+            kortsiktigt (4–13v). Därför kan en sektor ligga högt där men lågt här – de svarar på
+            olika frågor: "hur går svenska sektor-aktier" vs "vilken ETF ska jag hålla".
+          </p>
+        </InfoButton>
+      </h3>
       <div className="table-wrap">
         <table>
           <thead>
@@ -83,10 +96,33 @@ export function RotationPage() {
               <th>#</th>
               <th>Sektor / tema</th>
               <th>ETF</th>
-              <th>Rel. mom</th>
-              <th>Abs 52v</th>
-              <th>Flöde</th>
-              <th>Håll</th>
+              <th>
+                Rel. mom
+                <InfoButton title="Relativ momentum">
+                  Sammanvägd 6–12 mån (26/52v) prisavkastning för ETF:en själv. Den relativa
+                  styrkan som avgör rankningen – de starkaste hålls.
+                </InfoButton>
+              </th>
+              <th>
+                Abs 52v
+                <InfoButton title="Absolut momentum (52v)">
+                  ETF:ens egen 52-veckorsavkastning. Absolut-filtret: är den under tröskeln (≈0)
+                  hålls sektorn inte även om den rankas högt – slotten går defensivt.
+                </InfoButton>
+              </th>
+              <th>
+                Flöde
+                <InfoButton title="Flöde (kapital in/ut)">
+                  Hur många placeringar sektorn klättrat/fallit i rank de senaste 4 veckorna.
+                  ↑ in = relativ styrka ökar, ↓ ut = tappar. En rank-proxy, inte faktiska fondflöden.
+                </InfoButton>
+              </th>
+              <th>
+                Håll
+                <InfoButton title="Håll">
+                  ★ = ingår i portföljen nu (topp-K med positiv absolut trend, i bull-regim).
+                </InfoButton>
+              </th>
             </tr>
           </thead>
           <tbody>
