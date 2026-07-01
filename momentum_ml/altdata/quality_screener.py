@@ -223,20 +223,31 @@ def _market_caps(tickers) -> dict:
     return caps
 
 
-def _zone(mult, earnings):
-    """OT-zon på vald vinst-bas: billig <=12x, rimlig 12-18x, dyr >18x, förlust om
-    vinsten <0, okänd om ingen vinstsiffra finns ELLER börsvärde ej går att räkna."""
-    if earnings is None:
-        return "okänd"                 # ingen vinstsiffra alls – INTE samma sak som förlust
-    if earnings <= 0:
-        return "förlust/hype"
+def _zone_by_multiple(mult, cheap, fair):
+    """billig <= cheap, rimlig <= fair, annars dyr. okänd om multipeln saknas."""
     if mult is None:
         return "okänd"
-    if mult <= 12:
+    if mult <= cheap:
         return "billig"
-    if mult <= 18:
+    if mult <= fair:
         return "rimlig"
     return "dyr"
+
+
+def _valuation(mcap, earnings, revenue):
+    """Ger (multipel, bas, zon) för ett bolag – som OT/EV-S gör:
+      • lönsamt (vinst > 0) → vinstmultipel (börsvärde/vinst), trösklar 12/18.
+      • förlust (vinst <= 0) men har omsättning → P/S (börsvärde/omsättning), så
+        ÄVEN förlustbolag får billig/dyr-stämpel (EBITDA-multipel är meningslös vid
+        negativ vinst).
+      • annars → okänd."""
+    if mcap is not None and earnings is not None and earnings > 0:
+        mult = round(mcap / earnings, 1)
+        return mult, "vinst", _zone_by_multiple(mult, config.QUALITY_MULT_CHEAP, config.QUALITY_MULT_FAIR)
+    if mcap is not None and isinstance(revenue, (int, float)) and revenue > 0:
+        mult = round(mcap / revenue, 1)
+        return mult, "P/S", _zone_by_multiple(mult, config.QUALITY_PS_CHEAP, config.QUALITY_PS_FAIR)
+    return None, "", "okänd"
 
 
 def _earnings(s: dict):
@@ -284,17 +295,18 @@ def report() -> None:
                 mcap = round(float(d["Close"].iloc[-1]) * float(s["shares_million"]), 1)
         # Vinst: EODHD:s EBITDA först, annars Claude-stegen (EBITDA → EBIT → resultat).
         if ex_sek and isinstance(ex.get("ebitda_msek"), (int, float)):
-            earnings, basis = ex["ebitda_msek"], "EBITDA·EODHD"
+            earnings, src = ex["ebitda_msek"], "EBITDA·EODHD"
         else:
-            earnings, basis = _earnings(s)
-        if mcap is not None and earnings is not None and earnings > 0:
-            mult = round(mcap / earnings, 1)
+            earnings, src = _earnings(s)
+        # Zon: vinstmultipel om lönsamt, annars P/S (även förlustbolag får stämpel).
+        mult, vbasis, zone = _valuation(mcap, earnings, s.get("revenue_msek"))
         r = dict(s)
         r["mcap_msek"] = mcap
         r["earnings_msek"] = earnings
-        r["earnings_basis"] = basis or ""
-        r["ebitda_multiple"] = mult                    # multipel på vald vinst-bas
-        r["zone"] = _zone(mult, earnings)
+        r["earnings_basis"] = (src if vbasis == "vinst" else vbasis) or ""
+        r["ebitda_multiple"] = mult                    # multipel på vald bas (vinst el. P/S)
+        r["zone"] = zone
+        r["loss"] = 1 if (earnings is not None and earnings <= 0) else 0
         # Platta ut listfälten till strängar så CSV/frontend slipper Python-repr.
         r["red_flags"] = "; ".join(map(str, s.get("red_flags") or []))
         r["mentioned_investors"] = "; ".join(map(str, s.get("mentioned_investors") or []))
@@ -303,7 +315,7 @@ def report() -> None:
     rows.sort(key=lambda r: r.get("composite", 0), reverse=True)
     out = Path("results/quality_shortlist.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
-    cols = ["ticker", "name", "composite", "zone", "mcap_msek", "ebitda_multiple",
+    cols = ["ticker", "name", "composite", "zone", "loss", "mcap_msek", "ebitda_multiple",
             "earnings_basis", *_SCORE_KEYS, "revenue_msek", "ebitda_msek", "ebit_msek",
             "net_result_msek", "shares_million", "pitch", "memo", "red_flags",
             "mentioned_investors"]
@@ -317,45 +329,49 @@ def report() -> None:
     # Kärn-listan: hög kvalitet OCH billig/rimlig värdering (positiv EBITDA).
     sweet = [r for r in rows
              if r.get("composite", 0) >= 4.0 and r.get("zone") in ("billig", "rimlig")]
-    print(f"\n  🎯 HÖG KVALITET (composite ≥ 4.0) **OCH** BILLIG/RIMLIG (≤18× EBITDA) – {len(sweet)} st:")
+    print(f"\n  🎯 HÖG KVALITET (composite ≥ 4.0) **OCH** BILLIG/RIMLIG (vinst- el. P/S-multipel) – {len(sweet)} st:")
     if not sweet:
-        print("     (inga träffar – de flesta högkvalitativa case saknar ännu positiv EBITDA. "
-              "Se hela CSV:n för zon-fördelningen.)")
+        print("     (inga träffar – vidga filtren eller se hela CSV:n för zon-fördelningen.)")
     for r in sweet:
         mc = f"{r['mcap_msek']:>7.0f}" if r.get("mcap_msek") is not None else "      ?"
         mu = f"{r['ebitda_multiple']:>4.1f}x" if r.get("ebitda_multiple") is not None else "   ?"
+        tag = f"[{r['zone']}·{r.get('earnings_basis') or '?'}]" + (" ⚠förlust" if r.get("loss") else "")
         print(f"   {r['composite']:>4}  {r['ticker']:<12} {str(r['name'])[:22]:<22} "
-              f"börsv {mc} MSEK  {mu}  [{r['zone']}]  {str(r.get('pitch',''))[:40]}")
+              f"börsv {mc} MSEK  {mu}  {tag}  {str(r.get('pitch',''))[:36]}")
 
     def _fmt(r):
         mc = f"{r['mcap_msek']:>7.0f}" if r.get("mcap_msek") is not None else "      ?"
         mu = f"{r['ebitda_multiple']:>4.1f}x" if r.get("ebitda_multiple") is not None else "   ?"
+        tag = f"[{r['zone']}·{r.get('earnings_basis') or '?'}]" + (" ⚠förlust" if r.get("loss") else "")
         return (f"   {r['composite']:>4}  {r['ticker']:<12} {str(r['name'])[:22]:<22} "
-                f"börsv {mc} MSEK  {mu}  [{r['zone']}]  {str(r.get('pitch',''))[:40]}")
+                f"börsv {mc} MSEK  {mu}  {tag}  {str(r.get('pitch',''))[:36]}")
 
     # Bästa KVALITET bland de faktiskt BILLIGA/RIMLIGA (även under 4.0) – kärn-tratten.
     value = sorted([r for r in rows if r.get("zone") in ("billig", "rimlig")],
                    key=lambda r: r.get("composite", 0), reverse=True)
-    print(f"\n  💰 BÄSTA KVALITET BLAND DE BILLIGA/RIMLIGA (≤18× EBITDA) – topp {min(12, len(value))} av {len(value)}:")
+    print(f"\n  💰 BÄSTA KVALITET BLAND DE BILLIGA/RIMLIGA (vinst- el. P/S-multipel) – topp {min(12, len(value))} av {len(value)}:")
     for r in value[:12]:
         print(_fmt(r))
 
-    # Förvinst-case: går ännu back men hög kvalitet OCH tydlig väg till vinst (profit_path≥4).
-    turn = sorted([r for r in rows if r.get("zone") == "förlust/hype"
+    # Förvinst-case: går ännu back men hög kvalitet, billig/rimlig PÅ P/S OCH tydlig väg till vinst.
+    turn = sorted([r for r in rows if r.get("loss")
+                   and r.get("zone") in ("billig", "rimlig")
                    and r.get("composite", 0) >= 4.0
                    and isinstance(r.get("profit_path"), (int, float)) and r["profit_path"] >= 4],
                   key=lambda r: r.get("composite", 0), reverse=True)
-    print(f"\n  🚀 FÖRVINST-CASE ATT BEVAKA (hög kvalitet + väg till vinst, ännu ej lönsamt) – {len(turn)} st:")
+    print(f"\n  🚀 FÖRVINST-CASE ATT BEVAKA (förlust men billig på P/S + väg till vinst) – {len(turn)} st:")
     for r in turn[:12]:
         print(_fmt(r))
 
     # Zon-fördelning så du ser var kvaliteten sitter.
     from collections import Counter
     z = Counter(r["zone"] for r in rows)
+    losscnt = sum(1 for r in rows if r.get("loss"))
     print("\n  Zon-fördelning (alla poängsatta):")
-    for zone in ("billig", "rimlig", "dyr", "förlust/hype", "okänd"):
+    for zone in ("billig", "rimlig", "dyr", "okänd"):
         if z.get(zone):
             print(f"     {zone:<14} {z[zone]:>3}")
+    print(f"     (varav förlustbolag, zonade på P/S: {losscnt})")
     print("\n  OBS: värdering bygger på nyckeltal Claude extraherat UR RAPPORTTEXTEN "
           "(kan sakna/vara föråldrade) × senaste kurs. Verifiera topparna manuellt.")
 
