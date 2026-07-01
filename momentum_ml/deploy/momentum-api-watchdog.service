@@ -1,0 +1,8 @@
+[Unit]
+Description=Momentum API health watchdog (restart if /api/health is unhealthy)
+After=momentum-api.service
+
+[Service]
+Type=oneshot
+# Körs som root (ingen User=) så att systemctl restart får behörighet.
+ExecStart=/opt/momentum/momentum_ml/deploy/api_watchdog.sh

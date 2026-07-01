@@ -29,6 +29,39 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now momentum-api.service
 ```
 
+Tjänsten har `Restart=always` + `StartLimitIntervalSec=0` – dör processen
+startar systemd den direkt, hur ofta som helst. **Men** systemd fångar bara när
+själva processen dör. Ett 500/hängt uvicorn-tillstånd (t.ex. en läsning som
+träffar en halvskriven CSV under natt-träningen) håller processen vid liv men
+servar fel – då startar inget om av sig självt. Två skydd mot det:
+
+1. **Robust läsning i API:t** – alla CSV-läsningar försöker om några gånger med
+   kort paus (`_read_csv` i `api/main.py`), och ett oväntat fel returnerar ett
+   vänligt `503 "Resultat uppdateras..."` som frontend kan försöka om, i stället
+   för en ogenomskinlig 500. Detta ensamt tar bort det återkommande felet.
+2. **Hälso-vakthund** (steg 2b) – mäter faktisk hälsa och startar om vid behov.
+
+### 2b. Hälso-vakthund (startar om vid ohälsa, inte bara vid krasch)
+
+`momentum-api-watchdog.timer` kör var 30:e sekund, gör en `curl` mot
+`/api/health` och startar om `momentum-api` om den är ohälsosam två gånger i rad
+(en enstaka miss ignoreras så den inte flaxar). Vakthunden körs som root för att
+få `systemctl restart`-behörighet.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-api-watchdog.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-api-watchdog.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-api-watchdog.timer
+
+# Se vakthundens beslut i journalen:
+journalctl -t momentum-api-watchdog -f
+```
+
+> Efter en uppdatering av `momentum-api.service` (t.ex. till `Restart=always`):
+> `sudo cp` filen på nytt, `sudo systemctl daemon-reload`, sedan
+> `sudo systemctl restart momentum-api`.
+
 ## 3. Nattlig träning (lågprioriterad)
 
 `momentum-train.service` körs som `Type=oneshot` med:
