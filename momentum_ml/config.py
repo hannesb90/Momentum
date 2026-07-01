@@ -548,6 +548,19 @@ EODHD_BASE_URL        = "https://eodhd.com/api"
 EODHD_CACHE_DIR       = "cache/eodhd"
 EODHD_REQUEST_PAUSE_S = 0.2
 
+# ── TradingView (gratis, inofficiell scanner: börsvärde + EBITDA + omsättning) ─
+# Kompletterande fundamenta-källa UTAN nyckel/token: TradingViews publika scanner-
+# endpoint tar en batch tickers och svarar med JSON. Fyller luckor där Yahoo saknar
+# data för svenska små-/First North-bolag. Prioritet i report(): EODHD → TradingView
+# → Yahoo → Claude-textutvinning. Inofficiellt API → kan ändras utan förvarning;
+# behandla som "best effort", inte en garanterad källa. Körs på Pi:n (molnet saknar nät).
+# Ticker-mappning: 'VOLV-B.ST' → 'OMXSTO:VOLV_B' (strip .ST, '-'→'_', prefixa börs).
+TRADINGVIEW_SCAN_URL     = "https://scanner.tradingview.com/sweden/scan"
+TRADINGVIEW_EXCHANGE     = "OMXSTO"     # Nasdaq Stockholm (även First North i TV:s sverige-scan)
+TRADINGVIEW_BATCH        = 100          # tickers per POST
+TRADINGVIEW_REQUEST_PAUSE_S = 1.0       # var snäll mot en gratis, inofficiell endpoint
+TRADINGVIEW_SYMBOL_BASE  = "https://www.tradingview.com/symbols"   # {BÖRS}-{SYMBOL} chart/översikt
+
 SENTIMENT_LOOKBACK_DAYS = 7         # PM publicerade senaste veckan räknas in i veckans signal
 SENTIMENT_OOS_START     = "2016"    # rent OOS-fönster (samma som era_analysis.py)
 # Poängsätt bara PM från detta datum (en buffert före OOS-start). Vi backtestar

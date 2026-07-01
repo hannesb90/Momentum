@@ -1,0 +1,170 @@
+"""
+altdata/tradingview.py – Fundamentals från TradingViews publika scanner (GRATIS, utan
+nyckel): börsvärde + EBITDA + omsättning + aktieantal per bolag, i BATCH (en POST för
+~100 tickers). Kompletterande källa som fyller luckor där Yahoo saknar data för svenska
+små-/First North-bolag. Skriver samma cache-format som EODHD → report() kan väga in den.
+
+Prioritet i quality_screener.report():  EODHD → TradingView → Yahoo → Claude-textutvinning.
+
+Endpoint (inofficiell, JSON):
+    POST https://scanner.tradingview.com/sweden/scan
+    body: {"symbols":{"tickers":["OMXSTO:VOLV_B", ...],"query":{"types":[]}},
+           "columns":["market_cap_basic","ebitda","total_revenue",
+                      "total_shares_outstanding_fundamental","fundamental_currency_code"]}
+    svar: {"data":[{"s":"OMXSTO:VOLV_B","d":[mcap, ebitda, rev, shares, "SEK"]}, ...]}
+
+Ticker-mappning: våra tickers har '.ST' (Yahoo/EODHD-format). TradingView vill ha
+'BÖRS:SYMBOL' med '_' istället för '-':  VOLV-B.ST → OMXSTO:VOLV_B,  SDS.ST → OMXSTO:SDS.
+Bolag som inte hittas utelämnas tyst av scannern → vi rapporterar antalet missar; EODHD/
+Yahoo täcker resten.
+
+VIKTIGT – körs på Pi:n (molncontainern saknar nät till TradingView). Inget token behövs.
+Inofficiellt API → kan sluta funka utan förvarning; behandla som best effort.
+
+    python altdata/tradingview.py probe VOLV-B.ST SAAB-B.ST   # några bolag – verifiera fält
+    python altdata/tradingview.py fill                        # alla poängsatta → _tradingview.json
+"""
+import sys
+import json
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+import config
+
+try:
+    import requests
+except ImportError:
+    requests = None
+
+# Kolumner i svarets 'd'-lista, i ordning (måste matcha _COLUMNS nedan).
+_COLUMNS = ["market_cap_basic", "ebitda", "total_revenue",
+            "total_shares_outstanding_fundamental", "fundamental_currency_code"]
+_UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
+
+
+def tv_symbol(ticker: str) -> str:
+    """'VOLV-B.ST' → 'OMXSTO:VOLV_B'. Endast Stockholm-tickers (.ST) mappas."""
+    base = ticker.strip().upper()
+    if base.endswith(".ST"):
+        base = base[:-3]
+    base = base.replace("-", "_").replace(".", "_")
+    return f"{config.TRADINGVIEW_EXCHANGE}:{base}"
+
+
+def _to_msek(v):
+    return round(float(v) / 1e6, 1) if isinstance(v, (int, float)) else None
+
+
+def _fetch_batch(symbols) -> dict:
+    """POST:ar en batch TV-symboler och returnerar {tv_symbol: [d-värden]}."""
+    if requests is None:
+        raise RuntimeError("paketet 'requests' saknas – pip install requests")
+    body = {"symbols": {"tickers": list(symbols), "query": {"types": []}},
+            "columns": _COLUMNS}
+    r = requests.post(config.TRADINGVIEW_SCAN_URL, json=body,
+                      headers={"User-Agent": _UA, "Content-Type": "application/json"},
+                      timeout=30)
+    r.raise_for_status()
+    data = r.json().get("data") or []
+    return {row.get("s"): (row.get("d") or []) for row in data if row.get("s")}
+
+
+def _extract(vals) -> dict:
+    """d-lista → samma struktur som EODHD-cachen (currency/mcap_msek/ebitda_msek/shares)."""
+    def at(i):
+        return vals[i] if i < len(vals) else None
+    cur = at(4)
+    return {
+        "currency": (str(cur).upper() if cur else "SEK"),   # OMXSTO noterar i SEK
+        "mcap_msek": _to_msek(at(0)),
+        "ebitda_msek": _to_msek(at(1)),
+        "revenue_msek": _to_msek(at(2)),
+        "shares_million": (lambda s: round(float(s) / 1e6, 2)
+                           if isinstance(s, (int, float)) else None)(at(3)),
+    }
+
+
+def _fetch_many(tickers) -> dict:
+    """Hämtar fundamentals för en lista av VÅRA tickers (.ST) i batchar. Returnerar
+    {vår_ticker: extrakt}. Missar (ej hittade i TV) utelämnas."""
+    rev = {tv_symbol(t): t for t in tickers}          # TV-symbol → vår ticker
+    syms = list(rev.keys())
+    out = {}
+    n = config.TRADINGVIEW_BATCH
+    for i in range(0, len(syms), n):
+        chunk = syms[i:i + n]
+        try:
+            got = _fetch_batch(chunk)
+        except Exception as e:  # noqa: BLE001
+            print(f"  [batch {i // n + 1}] FEL: {e}")
+            continue
+        for tvs, vals in got.items():
+            out[rev.get(tvs, tvs)] = _extract(vals)
+        if i + n < len(syms):
+            time.sleep(config.TRADINGVIEW_REQUEST_PAUSE_S)
+    return out
+
+
+def probe(tickers) -> None:
+    """Hämtar några bolag och visar de extraherade fälten – verifierar att den
+    inofficiella endpointen svarar och att svenska bolag faktiskt har data."""
+    res = _fetch_many(tickers)
+    if not res:
+        print("[probe] inga träffar – endpointen kan ha ändrats, eller fel symboler.")
+        print(f"  (testade: {', '.join(tv_symbol(t) for t in tickers)})")
+        return
+    for t in tickers:
+        ex = res.get(t)
+        if not ex:
+            print(f"  {t:<12} ({tv_symbol(t)})  – ingen träff i TradingView")
+            continue
+        print(f"  {t:<12} ({tv_symbol(t)})  valuta={ex['currency']}  "
+              f"börsvärde={ex['mcap_msek']} MSEK  EBITDA={ex['ebitda_msek']} MSEK  "
+              f"omsättning={ex['revenue_msek']} MSEK  aktier={ex['shares_million']} milj")
+    print("  Ser rätt ut? Kör 'fill' för hela urvalet.")
+
+
+def _scored_tickers():
+    d = Path(config.QUALITY_CACHE_DIR)
+    return [p.stem for p in d.glob("*.json") if not p.stem.startswith("_")]
+
+
+def fill() -> None:
+    """Hämtar fundamentals för alla poängsatta bolag → cache/quality/_tradingview.json.
+    Inkrementellt: redan cachade tickers hoppas över (billigt/snällt mot endpointen)."""
+    cache = Path(config.QUALITY_CACHE_DIR) / "_tradingview.json"
+    out = json.loads(cache.read_text()) if cache.exists() else {}
+    todo = [t for t in _scored_tickers() if t not in out]
+    print(f"[fill] {len(out)} redan cachade, {len(todo)} kvar att hämta")
+    if not todo:
+        print("[fill] inget nytt att hämta.")
+        return
+    got = _fetch_many(todo)
+    out.update(got)
+    misses = [t for t in todo if t not in got]
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(json.dumps(out))
+    mc = sum(1 for v in out.values() if v.get("mcap_msek") is not None)
+    eb = sum(1 for v in out.values() if v.get("ebitda_msek") is not None)
+    print(f"[fill] klart – {len(out)} bolag: {mc} med börsvärde, {eb} med EBITDA.")
+    if misses:
+        print(f"[fill] {len(misses)} bolag saknades i TradingView (EODHD/Yahoo täcker dem): "
+              f"{', '.join(misses[:12])}{' …' if len(misses) > 12 else ''}")
+    print("Kör nu 'quality_screener.py report' – TradingView vägs in efter EODHD, före Yahoo.")
+
+
+def main():
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "probe"
+    if cmd == "probe":
+        args = sys.argv[2:] or ["VOLV-B.ST", "SAAB-B.ST", "SDS.ST"]
+        probe(args)
+    elif cmd == "fill":
+        fill()
+    else:
+        print(__doc__)
+
+
+if __name__ == "__main__":
+    main()
