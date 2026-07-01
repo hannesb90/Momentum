@@ -47,6 +47,7 @@ export const api = {
   quality: () => getJson('/quality'),
   rotation: () => getJson('/rotation'),
   thesis: () => getJson('/thesis'),
-  portfolio: (amount) => getJson(`/portfolio${amount ? `?amount=${amount}` : ''}`),
-  savePortfolio: (holdings, amount) => postJson('/portfolio', { holdings, amount }),
+  // Egen väg för manuella innehav – /portfolio är backtest-equity-kurvan.
+  holdings: (amount) => getJson(`/holdings${amount ? `?amount=${amount}` : ''}`),
+  saveHoldings: (holdings, amount) => postJson('/holdings', { holdings, amount }),
 }

@@ -23,7 +23,7 @@ export function HoldingsPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    api.portfolio(amount)
+    api.holdings(amount)
       .then((d) => {
         setAnalysis(d)
         setHoldings((d.holdings ?? []).map((h) => ({ ...h })))
@@ -35,7 +35,7 @@ export function HoldingsPage() {
 
   function refreshAmount(a) {
     setAmount(a)
-    if (!dirty) api.portfolio(a).then(setAnalysis).catch(() => {})
+    if (!dirty) api.holdings(a).then(setAnalysis).catch(() => {})
   }
   function edit(i, field, val) {
     setHoldings((hs) => hs.map((h, j) => (j === i ? { ...h, [field]: val } : h)))
@@ -55,7 +55,7 @@ export function HoldingsPage() {
       const clean = holdings
         .map((h) => ({ name: (h.name || '').trim(), value: Number(h.value) || 0, bucket: h.bucket }))
         .filter((h) => h.name && h.value > 0)
-      const d = await api.savePortfolio(clean, amount)
+      const d = await api.saveHoldings(clean, amount)
       setAnalysis(d)
       setHoldings((d.holdings ?? []).map((h) => ({ ...h })))
       setDirty(false)
