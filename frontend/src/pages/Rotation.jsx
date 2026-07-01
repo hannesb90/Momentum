@@ -5,9 +5,22 @@ import { EmptyState } from '../components/EmptyState'
 import { InfoButton } from '../components/InfoButton'
 import { fmtPct } from '../format'
 
-function flowLabel(rc) {
-  if (rc >= 2) return { text: `↑ in (+${rc})`, cls: 'flow-in' }
-  if (rc <= -2) return { text: `↓ ut (${rc})`, cls: 'flow-out' }
+// Volymbaserat flöde (Chaikin Money Flow + relativ volym), token-fritt.
+// Faller tillbaka på rank-förändring om volymdata saknas.
+function flowLabel(r) {
+  const cmf = r.cmf
+  const rc = Number(r.rank_change) || 0
+  if (cmf == null || Number.isNaN(Number(cmf))) {
+    if (rc >= 2) return { text: '↑ in (rank)', cls: 'flow-in' }
+    if (rc <= -2) return { text: '↓ ut (rank)', cls: 'flow-out' }
+    return { text: '→ stabil', cls: 'flow-flat' }
+  }
+  const c = Number(cmf)
+  const surge = Number(r.relvol) >= 1.3 ? ' ⚡' : ''
+  if (c >= 0.1) return { text: `↑↑ inflöde${surge}`, cls: 'flow-in' }
+  if (c >= 0.03) return { text: `↑ inflöde${surge}`, cls: 'flow-in' }
+  if (c <= -0.1) return { text: '↓↓ utflöde', cls: 'flow-out' }
+  if (c <= -0.03) return { text: '↓ utflöde', cls: 'flow-out' }
   return { text: '→ stabil', cls: 'flow-flat' }
 }
 
@@ -111,10 +124,17 @@ export function RotationPage() {
                 </InfoButton>
               </th>
               <th>
-                Flöde
-                <InfoButton title="Flöde (kapital in/ut)">
-                  Hur många placeringar sektorn klättrat/fallit i rank de senaste 4 veckorna.
-                  ↑ in = relativ styrka ökar, ↓ ut = tappar. En rank-proxy, inte faktiska fondflöden.
+                Flöde (volym)
+                <InfoButton title="Kapitalflöde ur pris + volym (token-fritt)">
+                  <p>
+                    Chaikin Money Flow (13v): väger var i veckans spann stängningen sker gånger
+                    volymen → <b>ackumulation (kapital in)</b> vs distribution (ut). ⚡ = relativ
+                    volym-spik (senaste 4v mot 26v-snitt) – kapitalet rusar in.
+                  </p>
+                  <p>
+                    Byggt enbart på dagsfärsk EOD-data, inga tokens/NLP. Faller tillbaka på
+                    rank-förändring om volymdata saknas för ETF:en.
+                  </p>
                 </InfoButton>
               </th>
               <th>
@@ -136,7 +156,7 @@ export function RotationPage() {
           </thead>
           <tbody>
             {rows.map((r) => {
-              const f = flowLabel(Number(r.rank_change) || 0)
+              const f = flowLabel(r)
               return (
                 <tr key={r.etf} className={r.hold ? 'row-held' : ''}>
                   <td>{r.rank}</td>
