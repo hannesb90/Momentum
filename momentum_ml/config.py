@@ -118,6 +118,22 @@ import os as _os
 _env_threads = _os.environ.get("MOMENTUM_TRAINING_THREADS")
 NUM_TRAINING_THREADS = int(_env_threads) if _env_threads else None
 
+# ── Datarot: förankra cache/ och results/ under $MOMENTUM_HOME (om satt) ──────
+# Löser klon/deploy-splittringen: appen (API) körs från deploy-kopian, CLI-verktygen
+# från git-klonen – och relativa sökvägar pekar då på olika filer. Sätt
+# MOMENTUM_HOME=/opt/momentum/momentum_ml i systemd-uniten OCH i skalet
+# (~/.momentum.env) så BÅDA läser/skriver samma filer oavsett arbetskatalog.
+# Osatt → relativt CWD (oförändrat beteende, inget kan gå sönder).
+MOMENTUM_HOME = _os.environ.get("MOMENTUM_HOME", "").strip()
+
+
+def anchor(rel):
+    """Absolut sökväg under $MOMENTUM_HOME om satt (och rel är relativ), annars rel."""
+    rel = str(rel)
+    if MOMENTUM_HOME and not _os.path.isabs(rel):
+        return _os.path.join(MOMENTUM_HOME, rel)
+    return rel
+
 # ── LightGBM ─────────────────────────────────────────────────────────────────
 LGBM_PARAMS = {
     "objective":        "binary",
