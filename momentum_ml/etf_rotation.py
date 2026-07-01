@@ -99,6 +99,51 @@ def _sector_breadth():
     return out
 
 
+def _volume_flow(tickers):
+    """Token-fri kapitalflödes-signal ur dagsfärsk OHLCV (ingen NLP/GPR-index).
+    Chaikin Money Flow (13v) = ackumulation (kapital in) vs distribution (ut);
+    relativ volym (4v vs 26v) = flaggar när kapitalet RUSAR in (volymspik)."""
+    from data.data_loader import fetch_weekly_data
+    data = fetch_weekly_data(tickers, use_cache=True)
+    out = {}
+    need = {"High", "Low", "Close", "Volume"}
+    for t, d in data.items():
+        if d is None or d.empty or not need.issubset(d.columns):
+            continue
+        df = d.dropna(subset=list(need)).tail(26)
+        if len(df) < 13:
+            continue
+        hl = (df["High"] - df["Low"]).replace(0, float("nan"))
+        mfm = ((df["Close"] - df["Low"]) - (df["High"] - df["Close"])) / hl  # -1..+1
+        mfv = mfm.fillna(0.0) * df["Volume"]
+        vol13 = float(df["Volume"].tail(13).sum()) or 1.0
+        cmf = float(mfv.tail(13).sum()) / vol13
+        base = float(df["Volume"].mean()) or 1.0
+        relvol = float(df["Volume"].tail(4).mean()) / base
+        out[t] = {"cmf": round(cmf, 3), "relvol": round(relvol, 2)}
+    return out
+
+
+def _flow_label(cmf, relvol, rc):
+    """Flödesetikett från volym (CMF/relvol); faller tillbaka på rank-förändring."""
+    if cmf is None:
+        if rc >= 2:
+            return "↑ in (rank)"
+        if rc <= -2:
+            return "↓ ut (rank)"
+        return "→ stabil"
+    surge = " ⚡" if (relvol and relvol >= 1.3) else ""
+    if cmf >= 0.10:
+        return f"↑↑ inflöde{surge}"
+    if cmf >= 0.03:
+        return f"↑ inflöde{surge}"
+    if cmf <= -0.10:
+        return "↓↓ utflöde"
+    if cmf <= -0.03:
+        return "↓ utflöde"
+    return "→ stabil"
+
+
 def _regime(panel):
     """Bull/björn per datum: bred marknad över sin långa glidande medel = risk-on.
     None om regim-filtret är av eller regim-tickern saknar data."""
@@ -241,29 +286,30 @@ def signal():
     held = {t for t, hold, _ in picks if hold}
 
     breadth = _sector_breadth()   # global bekräftelse (EU+US per GICS-sektor)
+    vflow = _volume_flow(list(ranked_now.index))   # token-fritt kapitalflöde (CMF/volym)
 
     reg = ("🟢 BULL (risk-on)" if risk_on else "🔴 BJÖRN (risk-off → defensivt)")
     print(f"\n  ETF-ROTATION – aktuell signal ({panel.index[-1].date()}), globalt universum")
     print(f"  Marknadsregim: {reg}  [{config.ETF_ROT_REGIME_TICKER} vs {config.ETF_ROT_REGIME_MA}v MA]\n")
-    print(f"  {'#':>2} {'sektor':<24} {'ETF':<9} {'rel.mom':>8} {'abs52v':>8} {'flöde':>10} {'glob.bredd':>11}  håll")
+    print(f"  {'#':>2} {'sektor':<24} {'ETF':<9} {'rel.mom':>8} {'abs52v':>8} {'flöde (volym)':>16} {'glob.bredd':>11}  håll")
     rows = []
     for t in ranked_now.index:
         rc = (rank_prev.get(t, 99) - rank_now[t]) if rank_prev else 0
-        flow = "→ stabil"
-        if rc >= 2:
-            flow = f"↑ in (+{rc})"
-        elif rc <= -2:
-            flow = f"↓ ut ({rc})"
+        vf = vflow.get(t)
+        cmf = vf["cmf"] if vf else None
+        relvol = vf["relvol"] if vf else None
+        flow = _flow_label(cmf, relvol, rc)
         a = absm.iloc[last].get(t)
         hold = "★" if t in held else ""
         b = breadth.get(sec_map.get(t))
         bstr = f"{b['up']}/{b['total']} {b['mom']:+.0%}" if b else "—"
         print(f"  {rank_now[t]:>2} {sec_map.get(t, '?')[:24]:<24} {t:<9} "
-              f"{rel_now[t]:>+7.1%} {(a if pd.notna(a) else float('nan')):>+7.1%} {flow:>10} {bstr:>11}  {hold}")
+              f"{rel_now[t]:>+7.1%} {(a if pd.notna(a) else float('nan')):>+7.1%} {flow:>16} {bstr:>11}  {hold}")
         row = {"rank": rank_now[t], "sector": sec_map.get(t), "etf": t,
                "name": name_map.get(t), "rel_mom": round(float(rel_now[t]), 4),
                "abs_mom": round(float(a), 4) if pd.notna(a) else None,
-               "rank_change": int(rc), "hold": int(t in held)}
+               "rank_change": int(rc), "cmf": cmf, "relvol": relvol,
+               "hold": int(t in held)}
         if b:
             row.update(breadth_mom=round(b["mom"], 4), breadth_up=b["up"], breadth_total=b["total"])
         rows.append(row)
