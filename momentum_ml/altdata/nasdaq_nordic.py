@@ -62,6 +62,30 @@ def _get_market(market: str) -> List[dict]:
     return [dict(el.attrib) for el in root.iter() if el.tag.lower().endswith("inst")]
 
 
+def _raw_response(market: str) -> "tuple[str, bytes]":
+    params = {
+        "Exchange": config.NASDAQ_EXCHANGE,
+        "SubSystem": "Prices",
+        "Action": "GetMarket",
+        "Market": market,
+        "instrumentType": "S",
+        "inst__a": config.NASDAQ_INST_FIELDS,
+    }
+    r = requests.get(config.NASDAQ_ENDPOINT, params=params,
+                     headers={"User-Agent": _UA}, timeout=30)
+    r.raise_for_status()
+    return r.headers.get("Content-Type", "?"), r.content
+
+
+def raw(market: Optional[str] = None) -> None:
+    """Skriver ut content-type + råsvarets första rader – för att bygga rätt parser."""
+    m = market or config.NASDAQ_MARKETS[0]
+    ctype, body = _raw_response(m)
+    print(f"[raw] {m}  content-type={ctype}  {len(body)} bytes")
+    txt = body.decode("utf-8", errors="replace")
+    print(txt[:1800])
+
+
 def _fetch_all() -> List[dict]:
     out: List[dict] = []
     for m in config.NASDAQ_MARKETS:
@@ -173,7 +197,9 @@ def fill() -> None:
 
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "probe"
-    if cmd == "probe":
+    if cmd == "raw":
+        raw(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif cmd == "probe":
         probe(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "fill":
         fill()
