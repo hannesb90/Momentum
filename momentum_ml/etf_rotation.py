@@ -573,6 +573,46 @@ def flowstudy():
           "Edge ≈ 0 på alla horisonter → signalen är brus (falsklarm dominerar).")
 
 
+def leverage(ticker=None):
+    """Simulerar daglig-ombalanserad hävstång (1x/2x/3x) på ett index – visar
+    volatilitetsdecay + förstärkt drawdown. Svarar 'är Bull 2x bäst?' (nästan aldrig
+    på lång sikt). Kostnad ~2%/år för hävstången (TER + finansiering)."""
+    import yfinance as yf
+    ticker = ticker or config.ETF_ROT_BENCHMARK
+    raw = yf.download(ticker, start=config.START_DATE, interval="1d",
+                      auto_adjust=True, progress=False)
+    close = raw["Close"]
+    if isinstance(close, pd.DataFrame):
+        close = close[ticker] if ticker in close.columns else close.iloc[:, 0]
+    close = close.dropna()
+    r = close.pct_change().dropna()
+    yrs = len(r) / 252.0
+    ann_cost = 0.02        # TER + finansieringskostnad för hävstången
+    start = 100000
+
+    def sim(L):
+        dr = L * r - (ann_cost / 252.0 if L > 1 else 0.0)   # daglig ombalansering
+        eq = (1 + dr).cumprod()
+        total = float(eq.iloc[-1] - 1)
+        cagr = float(eq.iloc[-1] ** (1 / yrs) - 1)
+        dd = float((eq / eq.cummax() - 1).min())
+        worst_1y = float((eq / eq.shift(252) - 1).min())     # värsta rullande år
+        return start * float(eq.iloc[-1]), cagr, dd, worst_1y
+
+    print(f"\n  HÄVSTÅNGS-SIMULERING på {ticker}  ({close.index[0].date()} → {close.index[-1].date()}, "
+          f"{yrs:.0f} år)")
+    print(f"  Daglig ombalansering, hävstångskostnad ~{ann_cost:.0%}/år.\n")
+    print(f"  {'':<10}{'100 000 kr →':>16}{'CAGR':>9}{'maxDD':>9}{'värsta år':>11}")
+    for L in (1, 2, 3):
+        fin, cagr, dd, w1 = sim(L)
+        lbl = "1x (index)" if L == 1 else f"{L}x (Bull {L})"
+        print(f"  {lbl:<10}{fin:>14,.0f} kr{cagr:>+8.1%}{dd:>+9.1%}{w1:>+11.1%}".replace(",", " "))
+    print("\n  Läs: 2x/3x ser ofta bra ut i slutvärde EFTER en lång tjurmarknad – men titta på "
+          "maxDD och 'värsta år'. Där ligger ruinrisken: ett −75% år kräver +300% för att "
+          "återhämtas. Daglig ombalansering = decay i skakiga perioder. Bra för dagar, "
+          "livsfarligt för besparingar.")
+
+
 def flow():
     """Ren flödesvy: vilka sektorer klättrar/faller i rank (kapital in/ut)."""
     signal()   # signalen innehåller redan flödeskolumnen; separat kommando för bekvämlighet
@@ -590,6 +630,8 @@ def main():
         detect(sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else 156)
     elif cmd == "flowstudy":
         flowstudy()
+    elif cmd == "leverage":
+        leverage(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "flow":
         flow()
     else:
