@@ -388,7 +388,11 @@ REGIME_SMA_WEEKS = 26       # trend-proxy för bull/bear/sidledes-klassificering
 # björnmarknads-drawdowns utan blankning. Faktorn multipliceras på målvikterna;
 # resten hamnar i kontanter automatiskt. Använder samma bull/bear/sidledes-
 # klassificering som regim-fliken (backtest/regime.py).
-MARKET_FILTER_EXPOSURE = {"bull": 1.0, "sideways": 0.6, "bear": 0.25}
+# ALLTID 100% INVESTERAT (medvetet val): ingen regim-nedskalning. Tar bort både
+# sidledes-dämpningen (var 0.6) OCH björn-skyddet (var 0.25) → högre drawdowns i
+# svaga marknader, men inget kontant-drag. Vill du ha kvar björn-skydd, sätt
+# t.ex. {"bull": 1.0, "sideways": 1.0, "bear": 0.5}.
+MARKET_FILTER_EXPOSURE = {"bull": 1.0, "sideways": 1.0, "bear": 1.0}
 
 # ── Frusen holdout ────────────────────────────────────────────────────────────
 HOLDOUT_WEEKS = 104         # ~2 år som modellen aldrig tränas på
