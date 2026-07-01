@@ -90,17 +90,22 @@ def _universe():
     return _UNIVERSE
 
 
+# Utländska ETF-issuers finns INTE i svenska universumet → försök aldrig matcha dem
+# (annars falska träffar, t.ex. 'Global X ...' → 'Enad Global 7 AB'). Fyll manuellt.
+_ETF_ISSUERS = ("vaneck", "van eck", "wisdomtree", "wisdom tree", "global x", "globalx",
+                "hanetf", "han etf", "xact", "ishares", "xtrackers", "amundi", "spdr",
+                "invesco", "lyxor", "first trust", "ark ", "ucits")
+
+
 def _resolve_ticker(name) -> str:
-    """Best-effort namn → ticker mot svenska universumet (substring/prefix)."""
+    """Best-effort namn → ticker mot svenska universumet. ENDAST säkra träffar: hela
+    namnet som delsträng i ett universum-namn. Lös ord-matchning är borttagen – den
+    gav falska träffar (Global X → EG7). ETF:er hoppas helt; fyll deras ticker manuellt."""
     nl = (name or "").lower().strip()
-    if not nl:
+    if not nl or any(k in nl for k in _ETF_ISSUERS):
         return ""
     for tk, nm, _ in _universe():
         if nl in nm.lower():
-            return tk
-    key = nl.split()[0]
-    for tk, nm, _ in _universe():
-        if key and key in nm.lower():
             return tk
     return ""
 
