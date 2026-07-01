@@ -31,6 +31,12 @@ const ICONS = {
       <path d="M3 9h18M9 3 6 9l6 12M15 3l3 6-6 12" />
     </>
   ),
+  rotation: (
+    <>
+      <path d="M21 12a9 9 0 1 1-3-6.7" />
+      <path d="M21 4v4h-4" />
+    </>
+  ),
 }
 
 const links = [
@@ -39,6 +45,7 @@ const links = [
   { to: '/portfolj', label: 'Portfölj', icon: 'portfolio' },
   { to: '/bevakning', label: 'Bevakning', icon: 'watchlist' },
   { to: '/kvalitet', label: 'Kvalitet', icon: 'quality' },
+  { to: '/rotation', label: 'Rotation', icon: 'rotation' },
   { to: '/sektorer', label: 'Sektorer', icon: 'sectors' },
   { to: '/analys', label: 'Analys', icon: 'analysis' },
 ]

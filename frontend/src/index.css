@@ -1076,6 +1076,114 @@ h2 {
   vertical-align: middle;
 }
 
+/* ── Rotation & Trend (D-spåret) ─────────────────────────────────────── */
+
+.regime-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 18px;
+}
+.regime-bull {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+.regime-bear {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+.regime-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.regime-bull .regime-dot {
+  background: var(--good);
+}
+.regime-bear .regime-dot {
+  background: var(--bad);
+}
+.regime-title {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.regime-bull .regime-title {
+  color: var(--good);
+}
+.regime-bear .regime-title {
+  color: var(--bad);
+}
+.regime-sub {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.section-title {
+  margin: 22px 0 10px;
+  font-size: 1rem;
+}
+.mono {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.86em;
+}
+.row-held {
+  background: rgba(34, 197, 94, 0.07);
+}
+.flow-in {
+  color: var(--good);
+  font-weight: 600;
+}
+.flow-out {
+  color: var(--bad);
+}
+.flow-flat {
+  color: var(--text-muted);
+}
+
+.idea-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.idea {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+}
+.idea-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.idea-node {
+  font-weight: 700;
+}
+.idea-etf {
+  color: var(--accent);
+}
+.idea-hw {
+  font-size: 0.7rem;
+  color: var(--bad);
+}
+.idea-score {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.idea-chain {
+  margin-top: 5px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
 .qrow {
   cursor: pointer;
 }

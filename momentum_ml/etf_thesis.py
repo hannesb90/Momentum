@@ -113,6 +113,19 @@ def next_trends(seeds=None):
         walk(s, 1, 1.0, [label])
 
     ranked = sorted(score.items(), key=lambda kv: kv[1], reverse=True)
+    # Spara för frontend (Rotation-fliken).
+    outrows = [{"rank": i + 1, "node": node, "etf": g2etf.get(node, ""),
+                "score": round(sc, 3),
+                "chain": "".join(best_chain[node]).replace("  ", " ").strip(),
+                "headwind": int(node in headwind and headwind[node] > sc)}
+               for i, (node, sc) in enumerate(ranked[:12])]
+    outp = Path("results/etf_thesis.csv")
+    outp.parent.mkdir(parents=True, exist_ok=True)
+    import csv as _csv
+    with open(outp, "w", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=["rank", "node", "etf", "score", "chain", "headwind"])
+        w.writeheader()
+        w.writerows(outrows)
     print(f"\n  NÄSTA-TREND-IDÉER  (från {src})")
     print("  ⚠ hypoteser, inte signaler – LLM-look-ahead, ej backtestbart. Bedöm själv.\n")
     if not ranked:
