@@ -256,14 +256,10 @@ code {
 }
 
 .info-popover {
-  position: absolute;
-  z-index: 50;
-  top: 22px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 290px;
-  max-width: calc(100vw - 32px);
-  max-height: min(360px, 70vh);
+  /* Viewport-relativ (position: fixed) + inline left/top/width/maxHeight från JS,
+     så popovern klamras in i skärmen och aldrig klipps av en scroll-container. */
+  position: fixed;
+  z-index: 100;
   display: flex;
   flex-direction: column;
   background: var(--bg-elevated);

@@ -119,7 +119,14 @@ def health():
 def get_stats(segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "stats.json")
     with open(path) as f:
-        return _clean(json.load(f))
+        data = json.load(f)
+    # Rekommenderad exponering räknas om LIVE ur nuvarande config.MARKET_FILTER_EXPOSURE
+    # (regimen är fastställd i stats.json men faktorn ska följa config utan att hela
+    # pipelinen körs om). Så ändrad exponerings-config slår igenom direkt i appen.
+    mkt = data.get("market")
+    if isinstance(mkt, dict) and mkt.get("state"):
+        mkt["exposure"] = float(config.MARKET_FILTER_EXPOSURE.get(mkt["state"], 1.0))
+    return _clean(data)
 
 
 @app.get("/api/signals/latest")
