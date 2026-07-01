@@ -446,7 +446,13 @@ QUALITY_PS_FAIR        = 4.0       # P/S <= rimlig, över = dyr
 ETF_ROT_UNIVERSE_FILE = "data/rotation_universe.csv"
 ETF_ROT_REGION      = "EU"         # (används bara om UNIVERSE_FILE saknas)
 ETF_ROT_TOP_K       = 3            # antal heta teman/sektorer att hålla samtidigt
-ETF_ROT_MOM_WINDOWS = [13, 26, 52] # veckor – sammanvägd RELATIV momentum-rank
+# ETF:er är trögare än aktier → LÅNGSAM momentum (6–12 mån), inte 13v-whipsaw.
+ETF_ROT_MOM_WINDOWS = [26, 52]     # veckor – sammanvägd RELATIV momentum-rank
+# Bull/björn-regim: gå risk-off (defensivt) när breda marknaden bryter sin långa
+# trend. Fångar björnmarknader/kriser mekaniskt utan att läsa nyheter.
+ETF_ROT_REGIME_ENABLED = True
+ETF_ROT_REGIME_TICKER  = "EUNL.DE"  # bred marknad (MSCI World) för trend-regimen
+ETF_ROT_REGIME_MA      = 40         # veckor (~200 dagar / 10 mån) glidande medel
 ETF_ROT_ABS_WINDOW  = 52           # veckor – ABSOLUT momentum-filter (trend på/av)
 ETF_ROT_ABS_MIN     = 0.0          # håll bara om ETF:ens egen 52v-avk > detta, annars defensivt
 ETF_ROT_DEFENSIVE   = ""           # defensivt ben när trend saknas ("" = kontanter/risk-fritt)
