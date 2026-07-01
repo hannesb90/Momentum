@@ -202,7 +202,7 @@ def _fetch_all_swedish() -> list:
     if requests is None:
         raise RuntimeError("paketet 'requests' saknas – pip install requests")
     body = {"filter": [{"left": "type", "operation": "equal", "right": "stock"}],
-            "columns": ["description", "market_cap_basic", "sector", "type", "subtype"],
+            "columns": ["description", "market_cap_basic", "sector", "type", "subtype", "currency"],
             "sort": {"sortBy": "market_cap_basic", "sortOrder": "desc"},
             "range": [0, 4000], "options": {"lang": "en"}}
     r = requests.post(config.TRADINGVIEW_SCAN_URL, json=body,
@@ -227,7 +227,11 @@ def universe(write=False) -> None:
         return
     exch = Counter(row.get("s", "").split(":")[0] for row in data if row.get("s"))
     print(f"[universe] TradingView: {len(data)} aktier · börser: {dict(exch)}")
-    new, skipped = [], Counter()
+    # Instrument-suffix (efter sista '-') som INTE är riktiga aktieslag: pref, BTA/
+    # interim, teckningsrätter/optioner. '-A'/'-B'/'-C'/'-D' är däremot aktieslag.
+    _BAD_SUFFIX = {"PREF", "BTA", "BT", "BTU", "TR", "TO", "RTS", "TECKN", "IL", "NPV", "TA"}
+    _BAD_NAME = ("pref", "temp", "bta", "rights", "teckningsr", "interim", "warrant")
+    new, skipped, skip_cur, skip_class = [], Counter(), 0, 0
     for row in data:
         s, d = row.get("s", ""), (row.get("d") or [])
         if ":" not in s:
@@ -237,12 +241,22 @@ def universe(write=False) -> None:
             skipped[ex] += 1
             continue
         subtype = (str(d[4]).lower() if len(d) > 4 else "")
-        if subtype and subtype not in ("common", "preferred"):   # skippa etf/fond/dr
+        if subtype and subtype not in ("common",):     # skippa etf/fond/dr/preferred
+            skip_class += 1
+            continue
+        cur = (str(d[5]).upper() if len(d) > 5 else "")
+        if cur and cur != "SEK":                        # utländska sekundärnoteringar (NOK/EUR/USD)
+            skip_cur += 1
             continue
         ticker = base.replace("_", "-") + ".ST"
+        stub = ticker[:-3]                               # utan '.ST'
+        suffix = stub.rsplit("-", 1)[-1].upper() if "-" in stub else ""
+        name = str(d[0]) if d else base
+        if suffix in _BAD_SUFFIX or any(x in name.lower() for x in _BAD_NAME):
+            skip_class += 1
+            continue
         if ticker in existing:
             continue
-        name = str(d[0]) if d else base
         sector = _gics(d[2] if len(d) > 2 else "")
         tier = _cap_tier(d[1] if len(d) > 1 else None)
         new.append((ticker, name, sector, tier))
@@ -253,6 +267,7 @@ def universe(write=False) -> None:
         print(f"    + {t[0]:<13}{str(t[1])[:30]:<31}{t[2]:<24}{t[3]}")
     if len(new) > 50:
         print(f"    … och {len(new) - 50} till")
+    print(f"  (hoppade: {skip_cur} icke-SEK sekundärnoteringar, {skip_class} pref/BTA/rätter/fonder)")
     if skipped:
         print(f"  (hoppade börser som ej mappar till .ST: {dict(skipped)})")
     unknown = sum(1 for t in new if t[2] == "Unknown")
