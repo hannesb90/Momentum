@@ -693,6 +693,31 @@ h2 {
   font-weight: 600;
 }
 
+/* Sub-flikar (sekundär meny inuti en flik, t.ex. Marknad: Sektorer/Rotation) */
+.subtabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 4px;
+}
+.subtab {
+  flex: 1;
+  max-width: 180px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.subtab--active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: #fff;
+}
+
 /* ── Tiles ───────────────────────────────────────────────────────────── */
 
 .tile-grid {

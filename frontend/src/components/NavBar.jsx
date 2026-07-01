@@ -48,11 +48,9 @@ const ICONS = {
 const links = [
   { to: '/', label: 'Hem', icon: 'home' },
   { to: '/signaler', label: 'Signaler', icon: 'signals' },
-  { to: '/bevakning', label: 'Bevakning', icon: 'watchlist' },
-  { to: '/kvalitet', label: 'Kvalitet', icon: 'quality' },
-  { to: '/rotation', label: 'Rotation', icon: 'rotation' },
   { to: '/innehav', label: 'Innehav', icon: 'holdings' },
-  { to: '/sektorer', label: 'Sektorer', icon: 'sectors' },
+  { to: '/kvalitet', label: 'Kvalitet', icon: 'quality' },
+  { to: '/marknad', label: 'Marknad', icon: 'sectors' },
   { to: '/analys', label: 'Analys', icon: 'analysis' },
 ]
 
