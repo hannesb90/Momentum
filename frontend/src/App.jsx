@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { NavBar } from './components/NavBar'
 import { OverviewPage } from './pages/Overview'
-import { SignalsPage } from './pages/Signals'
+import { SignalsHubPage } from './pages/SignalsHub'
 import { SectorsPage } from './pages/Sectors'
 import { AnalysisPage } from './pages/Analysis'
 import { WatchlistPage } from './pages/Watchlist'
 import { QualityPage } from './pages/Quality'
 import { RotationPage } from './pages/Rotation'
+import { MarketPage } from './pages/Market'
 import { HoldingsPage } from './pages/Holdings'
 import { StockDetailPage } from './pages/StockDetail'
 import { setApiSegment } from './api'
@@ -50,13 +51,15 @@ export default function App() {
       <main className="app__content" key={segment}>
         <Routes>
           <Route path="/" element={<OverviewPage />} />
-          <Route path="/signaler" element={<SignalsPage />} />
-          <Route path="/sektorer" element={<SectorsPage />} />
-          <Route path="/analys" element={<AnalysisPage />} />
-          <Route path="/bevakning" element={<WatchlistPage />} />
+          <Route path="/signaler" element={<SignalsHubPage />} />
+          <Route path="/marknad" element={<MarketPage />} />
           <Route path="/kvalitet" element={<QualityPage />} />
-          <Route path="/rotation" element={<RotationPage />} />
           <Route path="/innehav" element={<HoldingsPage />} />
+          <Route path="/analys" element={<AnalysisPage />} />
+          {/* Deep-link-vägar (nås via sub-flikar men behåller egna URL:er) */}
+          <Route path="/sektorer" element={<SectorsPage />} />
+          <Route path="/rotation" element={<RotationPage />} />
+          <Route path="/bevakning" element={<WatchlistPage />} />
           <Route path="/aktie/:ticker" element={<StockDetailPage />} />
         </Routes>
       </main>
