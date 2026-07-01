@@ -192,6 +192,33 @@ def screen() -> None:
           "Gör din egen djupanalys på topparna.")
 
 
+def _market_caps(tickers) -> dict:
+    """Auktoritativt börsvärde (MSEK) per ticker från Yahoo, cachat på disk.
+    Slår 'kurs × Claude-extraherat aktieantal' som ofta saknas → många 'okänd'.
+    Cachar bara träffar, så en ny körning kan fylla luckor (t.ex. efter rate-limit)."""
+    import yfinance as yf
+    cache = Path(config.QUALITY_CACHE_DIR) / "_marketcaps.json"
+    caps = json.loads(cache.read_text()) if cache.exists() else {}
+    todo = [t for t in tickers if t not in caps]
+    if todo:
+        print(f"[report] hämtar börsvärde från Yahoo för {len(todo)} bolag (cachas)...")
+        for i, t in enumerate(todo, 1):
+            mc = None
+            try:
+                fi = yf.Ticker(t).fast_info
+                mc = fi.get("market_cap") if hasattr(fi, "get") else getattr(fi, "market_cap", None)
+                if not mc:
+                    mc = yf.Ticker(t).info.get("marketCap")
+            except Exception:
+                mc = None
+            if mc:
+                caps[t] = round(float(mc) / 1e6, 1)   # SEK → MSEK
+            if i % 25 == 0:
+                cache.write_text(json.dumps(caps))     # delcheckpoint mot avbrott
+        cache.write_text(json.dumps(caps))
+    return caps
+
+
 def _zone(mult, ebitda):
     """OT-zon: billig <=12x, rimlig 12-18x, dyr >18x, förlust/hype om EBITDA<0,
     okänd om EBITDA saknas ur texten ELLER börsvärde ej går att räkna."""
@@ -219,14 +246,18 @@ def report() -> None:
     if not scored:
         print("[report] inga poängsatta bolag – kör 'score' först.")
         return
+    # Auktoritativt börsvärde från Yahoo för ALLA poängsatta (löser 'okänd' pga saknat aktieantal).
+    caps = _market_caps([s["ticker"] for s in scored])
     priced = [s for s in scored if s.get("shares_million")]
     data = fetch_weekly_data([s["ticker"] for s in priced], use_cache=True) if priced else {}
     rows = []
     for s in scored:
-        d = data.get(s["ticker"]) if s.get("shares_million") else None
         mcap = ebitda = mult = None
-        if d is not None and not d.empty and s.get("shares_million"):
-            mcap = round(float(d["Close"].iloc[-1]) * float(s["shares_million"]), 1)
+        mcap = caps.get(s["ticker"])                                   # 1:a hand: Yahoo marketCap
+        if mcap is None and s.get("shares_million"):                   # fallback: kurs × aktieantal
+            d = data.get(s["ticker"])
+            if d is not None and not d.empty:
+                mcap = round(float(d["Close"].iloc[-1]) * float(s["shares_million"]), 1)
         ebitda = s.get("ebitda_msek")
         if mcap is not None and isinstance(ebitda, (int, float)) and ebitda > 0:
             mult = round(mcap / ebitda, 1)
