@@ -170,7 +170,7 @@ function DetailPanel({ row }) {
       {flags.length > 0 && (
         <div className="qdetail__flags">
           {flags.map((f, i) => (
-            <span className="qflag" key={i}>⚠ {f}</span>
+            <span className="qflag" key={i}>{f}</span>
           ))}
         </div>
       )}

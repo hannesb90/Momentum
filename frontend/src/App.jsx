@@ -3,7 +3,6 @@ import { Routes, Route } from 'react-router-dom'
 import { NavBar } from './components/NavBar'
 import { OverviewPage } from './pages/Overview'
 import { SignalsPage } from './pages/Signals'
-import { PortfolioPage } from './pages/Portfolio'
 import { SectorsPage } from './pages/Sectors'
 import { AnalysisPage } from './pages/Analysis'
 import { WatchlistPage } from './pages/Watchlist'
@@ -52,7 +51,6 @@ export default function App() {
         <Routes>
           <Route path="/" element={<OverviewPage />} />
           <Route path="/signaler" element={<SignalsPage />} />
-          <Route path="/portfolj" element={<PortfolioPage />} />
           <Route path="/sektorer" element={<SectorsPage />} />
           <Route path="/analys" element={<AnalysisPage />} />
           <Route path="/bevakning" element={<WatchlistPage />} />

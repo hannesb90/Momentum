@@ -17,7 +17,7 @@ function flowLabel(r) {
     return { text: '→ stabil', cls: 'flow-flat' }
   }
   const c = Number(cmf)
-  const surge = Number(r.relvol) >= 1.3 ? ' ⚡' : ''
+  const surge = Number(r.relvol) >= 1.3 ? ' +vol' : ''
   if (c >= 0.1) return { text: `↑↑ inflöde${surge}`, cls: 'flow-in' }
   if (c >= 0.03) return { text: `↑ inflöde${surge}`, cls: 'flow-in' }
   if (c <= -0.1) return { text: '↓↓ utflöde', cls: 'flow-out' }
@@ -253,7 +253,7 @@ export function RotationPage() {
                 <InfoButton title="Kapitalflöde ur pris + volym (token-fritt)">
                   <p>
                     Chaikin Money Flow (13v): väger var i veckans spann stängningen sker gånger
-                    volymen → <b>ackumulation (kapital in)</b> vs distribution (ut). ⚡ = relativ
+                    volymen → <b>ackumulation (kapital in)</b> vs distribution (ut). "+vol" = relativ
                     volym-spik (senaste 4v mot 26v-snitt) – kapitalet rusar in.
                   </p>
                   <p>
@@ -323,7 +323,7 @@ export function RotationPage() {
               <div className="idea-head">
                 <span className="idea-node">{i.node}</span>
                 {i.etf && <span className="idea-etf mono">{i.etf}</span>}
-                {Number(i.headwind) ? <span className="idea-hw">⚠ motvind</span> : null}
+                {Number(i.headwind) ? <span className="idea-hw">motvind</span> : null}
                 <span className="idea-score">{Number(i.score).toFixed(2)}</span>
               </div>
               <div className="idea-chain">{i.chain}</div>

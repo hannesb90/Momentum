@@ -48,7 +48,6 @@ const ICONS = {
 const links = [
   { to: '/', label: 'Hem', icon: 'home' },
   { to: '/signaler', label: 'Signaler', icon: 'signals' },
-  { to: '/portfolj', label: 'Portfölj', icon: 'portfolio' },
   { to: '/bevakning', label: 'Bevakning', icon: 'watchlist' },
   { to: '/kvalitet', label: 'Kvalitet', icon: 'quality' },
   { to: '/rotation', label: 'Rotation', icon: 'rotation' },

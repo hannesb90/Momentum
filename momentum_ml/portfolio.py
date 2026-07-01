@@ -544,7 +544,8 @@ def _sector_table():
 
 
 def _sector_weak(sector, table, total):
-    """Svag sektor = fallande (13v-mom < 0) eller i nedre tredjedelen av rankingen."""
+    """Svag sektor = LÅGT RANKAD (nedre ~40%) OCH icke-positiv 13v-trend. Kräver båda:
+    en sektor som ligger lågt men fortfarande STIGER (positiv 13v) räknas inte som svag."""
     if not sector or not table:
         return None, ""
     sl = sector.lower()
@@ -556,7 +557,8 @@ def _sector_weak(sector, table, total):
                 break
     if hit is None:
         return None, ""
-    weak = (hit["mom13"] < 0) or (total and hit["rank"] > 0.6 * total)
+    low_rank = bool(total and hit["rank"] > 0.6 * total)
+    weak = low_rank and hit["mom13"] <= 0
     note = f"sektor {sector}: rank {hit['rank']}/{total}, 13v {hit['mom13']:+.1%}"
     return weak, note
 
