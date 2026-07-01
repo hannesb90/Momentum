@@ -11,77 +11,672 @@
     "weak_usd": "Svag dollar",
     "china_stimulus": "Kinesiska stimulanser",
     "recession": "Konjunkturavmattning / recession",
-    "energy_security": "Energisäkerhet prioriteras politiskt"
+    "energy_security": "Energisäkerhet prioriteras politiskt",
+    "supply_semis_gas": "Exportstopp ädelgaser (neon/palladium) för halvledartillverkning",
+    "supply_pgm": "Störning platinagruppmetaller (katalysatorer, t.ex. gruvstrejk Sydafrika)",
+    "supply_rare_earth": "Restriktioner sällsynta jordartsmetaller (permanentmagneter)",
+    "supply_optical": "Störning specialpolymerer/fiberoptik-insatser"
   },
   "edges": [
-    {"from": "ai_capex", "to": "Semiconductors", "sign": "+", "lag_m": 0, "conf": 0.85, "why": "AI-modeller kräver GPU:er/acceleratorer → halvledarefterfrågan"},
-    {"from": "ai_capex", "to": "US Tech/Growth", "sign": "+", "lag_m": 0, "conf": 0.7, "why": "Hyperscalers och mjukvara driver AI-capex"},
-    {"from": "Semiconductors", "to": "Utilities", "sign": "+", "lag_m": 6, "conf": 0.6, "why": "Datacenter → kraftig ökning i elförbrukning"},
-    {"from": "Semiconductors", "to": "Uranium & Nuclear", "sign": "+", "lag_m": 9, "conf": 0.6, "why": "Datacenter behöver stabil baskraft dygnet runt → kärnkraft/uran"},
-    {"from": "ai_capex", "to": "Infrastructure", "sign": "+", "lag_m": 9, "conf": 0.5, "why": "Datacenter, elnät och kylning är fysisk infrastruktur"},
-    {"from": "Utilities", "to": "Industrials", "sign": "+", "lag_m": 6, "conf": 0.45, "why": "Elnätsutbyggnad → transformatorer, kablar, kapitalvaror"},
-    {"from": "Uranium & Nuclear", "to": "Broad Commodities", "sign": "+", "lag_m": 6, "conf": 0.4, "why": "Kärnkraftsbygge drar koppar/stål/uran"},
-    {"from": "rates_down", "to": "US Tech/Growth", "sign": "+", "lag_m": 1, "conf": 0.65, "why": "Långduration-tillgångar värderas upp när diskonteringsräntan faller"},
-    {"from": "rates_down", "to": "Real Estate", "sign": "+", "lag_m": 3, "conf": 0.6, "why": "Lägre finansieringskostnad + högre fastighetsvärden"},
-    {"from": "rates_down", "to": "Clean Energy", "sign": "+", "lag_m": 3, "conf": 0.5, "why": "Kapitalintensiva projekt känsliga för räntan"},
-    {"from": "rates_up", "to": "Financials", "sign": "+", "lag_m": 1, "conf": 0.6, "why": "Bankernas räntenetto ökar"},
-    {"from": "rates_up", "to": "US Tech/Growth", "sign": "-", "lag_m": 1, "conf": 0.55, "why": "Långduration pressas av högre diskonteringsränta"},
-    {"from": "inflation_up", "to": "Energy", "sign": "+", "lag_m": 0, "conf": 0.6, "why": "Energipriser är både orsak och hedge mot inflation"},
-    {"from": "inflation_up", "to": "Broad Commodities", "sign": "+", "lag_m": 0, "conf": 0.6, "why": "Råvaror är klassisk inflationshedge"},
-    {"from": "inflation_up", "to": "Gold Bullion", "sign": "+", "lag_m": 0, "conf": 0.5, "why": "Guld som realvärdes-skydd"},
-    {"from": "inflation_up", "to": "Materials", "sign": "+", "lag_m": 3, "conf": 0.45, "why": "Insatsvarupriser och prissättningsmakt"},
-    {"from": "geopolitics_war", "to": "Defense", "sign": "+", "lag_m": 0, "conf": 0.8, "why": "Upprustning → försvarsorderböcker"},
-    {"from": "geopolitics_war", "to": "Cybersecurity", "sign": "+", "lag_m": 3, "conf": 0.55, "why": "Cyberkrigföring följer kinetisk konflikt"},
-    {"from": "geopolitics_war", "to": "Energy", "sign": "+", "lag_m": 0, "conf": 0.5, "why": "Utbudschocker och energisäkerhet"},
-    {"from": "geopolitics_war", "to": "Gold Bullion", "sign": "+", "lag_m": 0, "conf": 0.5, "why": "Säker-hamn-flöde i oro"},
-    {"from": "Defense", "to": "Industrials", "sign": "+", "lag_m": 6, "conf": 0.4, "why": "Försvarsproduktion drar underleverantörer/kapitalvaror"},
-    {"from": "Defense", "to": "Materials", "sign": "+", "lag_m": 6, "conf": 0.35, "why": "Metaller/specialmaterial till system"},
-    {"from": "fiscal_green", "to": "Clean Energy", "sign": "+", "lag_m": 3, "conf": 0.6, "why": "Subventioner direkt till sol/vind/väte"},
-    {"from": "fiscal_green", "to": "EV & Battery", "sign": "+", "lag_m": 3, "conf": 0.55, "why": "Elbilsstöd och laddinfrastruktur"},
-    {"from": "fiscal_green", "to": "Infrastructure", "sign": "+", "lag_m": 6, "conf": 0.5, "why": "Elnät och grön infrastruktur"},
-    {"from": "Clean Energy", "to": "Broad Commodities", "sign": "+", "lag_m": 6, "conf": 0.45, "why": "Koppar/litium/silver till elektrifiering"},
-    {"from": "EV & Battery", "to": "Broad Commodities", "sign": "+", "lag_m": 6, "conf": 0.5, "why": "Batterimetaller: litium, nickel, kobolt"},
-    {"from": "EV & Battery", "to": "Materials", "sign": "+", "lag_m": 6, "conf": 0.4, "why": "Metall- och kemibehov"},
-    {"from": "reshoring", "to": "Industrials", "sign": "+", "lag_m": 6, "conf": 0.55, "why": "Nya fabriker i väst → kapitalvaror"},
-    {"from": "reshoring", "to": "Robotics & AI", "sign": "+", "lag_m": 6, "conf": 0.5, "why": "Höga västlöner → automation"},
-    {"from": "reshoring", "to": "Infrastructure", "sign": "+", "lag_m": 9, "conf": 0.4, "why": "Logistik och industriell infrastruktur"},
-    {"from": "weak_usd", "to": "Emerging Markets", "sign": "+", "lag_m": 1, "conf": 0.55, "why": "Svag dollar lättar EM-skuld och lockar flöden"},
-    {"from": "weak_usd", "to": "Gold Bullion", "sign": "+", "lag_m": 0, "conf": 0.5, "why": "Guld prissatt i dollar"},
-    {"from": "weak_usd", "to": "Broad Commodities", "sign": "+", "lag_m": 1, "conf": 0.45, "why": "Råvaror prissatta i dollar"},
-    {"from": "china_stimulus", "to": "China Tech", "sign": "+", "lag_m": 1, "conf": 0.55, "why": "Direkt stöd till kinesiska bolag"},
-    {"from": "china_stimulus", "to": "Materials", "sign": "+", "lag_m": 3, "conf": 0.5, "why": "Kinesisk bygg-/industriefterfrågan drar metaller"},
-    {"from": "china_stimulus", "to": "Emerging Markets", "sign": "+", "lag_m": 2, "conf": 0.45, "why": "Kina är EM-tungvikt"},
-    {"from": "recession", "to": "Consumer Staples", "sign": "+", "lag_m": 0, "conf": 0.55, "why": "Defensiv efterfrågan håller i nedgång"},
-    {"from": "recession", "to": "Health Care", "sign": "+", "lag_m": 0, "conf": 0.5, "why": "Icke-cyklisk efterfrågan"},
-    {"from": "recession", "to": "Long Treasuries", "sign": "+", "lag_m": 0, "conf": 0.55, "why": "Flykt till kvalitet + räntesänkningsförväntan"},
-    {"from": "recession", "to": "Consumer Discretionary", "sign": "-", "lag_m": 0, "conf": 0.5, "why": "Sällanköp faller när plånboken krymper"},
-    {"from": "energy_security", "to": "Uranium & Nuclear", "sign": "+", "lag_m": 6, "conf": 0.55, "why": "Kärnkraft som inhemsk baskraft"},
-    {"from": "energy_security", "to": "Energy", "sign": "+", "lag_m": 0, "conf": 0.45, "why": "Inhemsk olja/gas prioriteras"},
-    {"from": "US Tech/Growth", "to": "Robotics & AI", "sign": "+", "lag_m": 3, "conf": 0.45, "why": "AI-mjukvara sprids till robotik/automation"},
-    {"from": "Robotics & AI", "to": "Semiconductors", "sign": "+", "lag_m": 3, "conf": 0.45, "why": "Robotik/automation drar chips/sensorer"},
-    {"from": "Consumer Discretionary", "to": "Industrials", "sign": "+", "lag_m": 4, "conf": 0.5, "why": "Kund-efterfrågan → maskiner/kapitalvaror (bullwhip)"},
-    {"from": "Consumer Discretionary", "to": "Materials", "sign": "+", "lag_m": 4, "conf": 0.45, "why": "Kund-efterfrågan → förpackningar/råmaterial uppströms"},
-    {"from": "Financials", "to": "Infrastructure", "sign": "+", "lag_m": 6, "conf": 0.45, "why": "Utlåningsvilja leder kapitalintensiv infrastruktur"},
-    {"from": "Financials", "to": "Real Estate", "sign": "+", "lag_m": 5, "conf": 0.5, "why": "Kreditcykeln leder ränte-/kapitaltörstiga fastigheter"},
-    {"from": "Financials", "to": "Utilities", "sign": "+", "lag_m": 5, "conf": 0.4, "why": "Ränte-proxy: kraft följer när räntan diskonteras ned"},
-    {"from": "Financials", "to": "Technology", "sign": "+", "lag_m": 6, "conf": 0.4, "why": "God kapitaltillgång → tillväxt-/small-cap-teknik nästa fas"},
-    {"from": "Technology", "to": "Broad Commodities", "sign": "+", "lag_m": 5, "conf": 0.4, "why": "Capex-cykelns andraderivat: spjutspetsteknik kräver metaller"},
-    {"from": "Defense", "to": "Broad Commodities", "sign": "+", "lag_m": 5, "conf": 0.45, "why": "Ammunition/drönare/fordon drar titan/koppar/stål"},
-    {"from": "Energy", "to": "Consumer Discretionary", "sign": "-", "lag_m": 3, "conf": 0.5, "why": "Energipris = skatt på köpkraft → marginaler pressas"},
-    {"from": "Energy", "to": "Materials", "sign": "-", "lag_m": 3, "conf": 0.45, "why": "Energiintensiv basindustri (cement/papper/stål) tappar marginal"},
-    {"from": "Technology", "to": "Utilities", "sign": "+", "lag_m": 6, "conf": 0.5, "why": "Datacenter → elbehov prisas in i kraft med fördröjning"},
-    {"from": "Technology", "to": "Real Estate", "sign": "+", "lag_m": 6, "conf": 0.4, "why": "AI → datacenter-fastigheter (specialiserade hallar)"},
-    {"from": "Technology", "to": "Semiconductors", "sign": "+", "lag_m": 4, "conf": 0.45, "why": "Konsumentteknik-cykel leder halvledar-/utrustningsorder"},
-    {"from": "Infrastructure", "to": "Materials", "sign": "+", "lag_m": 4, "conf": 0.45, "why": "Frakt/logistik (BDI) leder järnmalm/stål/koppar"},
-    {"from": "Infrastructure", "to": "Broad Commodities", "sign": "+", "lag_m": 4, "conf": 0.45, "why": "Stigande fraktrater → fabriker köper insatsvaror"},
-    {"from": "Infrastructure", "to": "Industrials", "sign": "+", "lag_m": 4, "conf": 0.4, "why": "Logistik-uppgång → industriell insatsvaru-efterfrågan"},
-    {"from": "Uranium & Nuclear", "to": "Infrastructure", "sign": "+", "lag_m": 12, "conf": 0.4, "why": "Kärnkraftsbeslut → decennium av anläggningsarbete"},
-    {"from": "Health Care", "to": "Communication Services", "sign": "+", "lag_m": 3, "conf": 0.35, "why": "Defensiv sekventiell rotation (låg-beta, industrimomentum)"},
-    {"from": "Health Care", "to": "Consumer Staples", "sign": "+", "lag_m": 3, "conf": 0.35, "why": "Kapital rullar vidare till trögaste defensiva ledet"},
-    {"from": "Gold Bullion", "to": "Health Care", "sign": "+", "lag_m": 3, "conf": 0.35, "why": "Efter panik: guldets nollavkastning → defensiv utdelning"},
-    {"from": "Broad Commodities", "to": "Materials", "sign": "-", "lag_m": 4, "conf": 0.35, "why": "Höga metallpriser urholkar förädlares marginaler"},
-    {"from": "Broad Commodities", "to": "Technology", "sign": "-", "lag_m": 4, "conf": 0.3, "why": "Insatskostnad (koppar/kisel) → vinstvarningar i hårdvara"},
-    {"from": "rates_down", "to": "Communication Services", "sign": "+", "lag_m": 3, "conf": 0.4, "why": "Yield-sökande → oligopol-utdelare (telekom)"},
-    {"from": "reshoring", "to": "Real Estate", "sign": "+", "lag_m": 9, "conf": 0.35, "why": "Lokal lagerhållning → logistik-/industrifastigheter"}
+    {
+      "from": "ai_capex",
+      "to": "Semiconductors",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.85,
+      "why": "AI-modeller kräver GPU:er/acceleratorer → halvledarefterfrågan"
+    },
+    {
+      "from": "ai_capex",
+      "to": "US Tech/Growth",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.7,
+      "why": "Hyperscalers och mjukvara driver AI-capex"
+    },
+    {
+      "from": "Semiconductors",
+      "to": "Utilities",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.6,
+      "why": "Datacenter → kraftig ökning i elförbrukning"
+    },
+    {
+      "from": "Semiconductors",
+      "to": "Uranium & Nuclear",
+      "sign": "+",
+      "lag_m": 9,
+      "conf": 0.6,
+      "why": "Datacenter behöver stabil baskraft dygnet runt → kärnkraft/uran"
+    },
+    {
+      "from": "ai_capex",
+      "to": "Infrastructure",
+      "sign": "+",
+      "lag_m": 9,
+      "conf": 0.5,
+      "why": "Datacenter, elnät och kylning är fysisk infrastruktur"
+    },
+    {
+      "from": "Utilities",
+      "to": "Industrials",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.45,
+      "why": "Elnätsutbyggnad → transformatorer, kablar, kapitalvaror"
+    },
+    {
+      "from": "Uranium & Nuclear",
+      "to": "Broad Commodities",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.4,
+      "why": "Kärnkraftsbygge drar koppar/stål/uran"
+    },
+    {
+      "from": "rates_down",
+      "to": "US Tech/Growth",
+      "sign": "+",
+      "lag_m": 1,
+      "conf": 0.65,
+      "why": "Långduration-tillgångar värderas upp när diskonteringsräntan faller"
+    },
+    {
+      "from": "rates_down",
+      "to": "Real Estate",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.6,
+      "why": "Lägre finansieringskostnad + högre fastighetsvärden"
+    },
+    {
+      "from": "rates_down",
+      "to": "Clean Energy",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.5,
+      "why": "Kapitalintensiva projekt känsliga för räntan"
+    },
+    {
+      "from": "rates_up",
+      "to": "Financials",
+      "sign": "+",
+      "lag_m": 1,
+      "conf": 0.6,
+      "why": "Bankernas räntenetto ökar"
+    },
+    {
+      "from": "rates_up",
+      "to": "US Tech/Growth",
+      "sign": "-",
+      "lag_m": 1,
+      "conf": 0.55,
+      "why": "Långduration pressas av högre diskonteringsränta"
+    },
+    {
+      "from": "inflation_up",
+      "to": "Energy",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.6,
+      "why": "Energipriser är både orsak och hedge mot inflation"
+    },
+    {
+      "from": "inflation_up",
+      "to": "Broad Commodities",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.6,
+      "why": "Råvaror är klassisk inflationshedge"
+    },
+    {
+      "from": "inflation_up",
+      "to": "Gold Bullion",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.5,
+      "why": "Guld som realvärdes-skydd"
+    },
+    {
+      "from": "inflation_up",
+      "to": "Materials",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.45,
+      "why": "Insatsvarupriser och prissättningsmakt"
+    },
+    {
+      "from": "geopolitics_war",
+      "to": "Defense",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.8,
+      "why": "Upprustning → försvarsorderböcker"
+    },
+    {
+      "from": "geopolitics_war",
+      "to": "Cybersecurity",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.55,
+      "why": "Cyberkrigföring följer kinetisk konflikt"
+    },
+    {
+      "from": "geopolitics_war",
+      "to": "Energy",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.5,
+      "why": "Utbudschocker och energisäkerhet"
+    },
+    {
+      "from": "geopolitics_war",
+      "to": "Gold Bullion",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.5,
+      "why": "Säker-hamn-flöde i oro"
+    },
+    {
+      "from": "Defense",
+      "to": "Industrials",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.4,
+      "why": "Försvarsproduktion drar underleverantörer/kapitalvaror"
+    },
+    {
+      "from": "Defense",
+      "to": "Materials",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.35,
+      "why": "Metaller/specialmaterial till system"
+    },
+    {
+      "from": "fiscal_green",
+      "to": "Clean Energy",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.6,
+      "why": "Subventioner direkt till sol/vind/väte"
+    },
+    {
+      "from": "fiscal_green",
+      "to": "EV & Battery",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.55,
+      "why": "Elbilsstöd och laddinfrastruktur"
+    },
+    {
+      "from": "fiscal_green",
+      "to": "Infrastructure",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.5,
+      "why": "Elnät och grön infrastruktur"
+    },
+    {
+      "from": "Clean Energy",
+      "to": "Broad Commodities",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.45,
+      "why": "Koppar/litium/silver till elektrifiering"
+    },
+    {
+      "from": "EV & Battery",
+      "to": "Broad Commodities",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.5,
+      "why": "Batterimetaller: litium, nickel, kobolt"
+    },
+    {
+      "from": "EV & Battery",
+      "to": "Materials",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.4,
+      "why": "Metall- och kemibehov"
+    },
+    {
+      "from": "reshoring",
+      "to": "Industrials",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.55,
+      "why": "Nya fabriker i väst → kapitalvaror"
+    },
+    {
+      "from": "reshoring",
+      "to": "Robotics & AI",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.5,
+      "why": "Höga västlöner → automation"
+    },
+    {
+      "from": "reshoring",
+      "to": "Infrastructure",
+      "sign": "+",
+      "lag_m": 9,
+      "conf": 0.4,
+      "why": "Logistik och industriell infrastruktur"
+    },
+    {
+      "from": "weak_usd",
+      "to": "Emerging Markets",
+      "sign": "+",
+      "lag_m": 1,
+      "conf": 0.55,
+      "why": "Svag dollar lättar EM-skuld och lockar flöden"
+    },
+    {
+      "from": "weak_usd",
+      "to": "Gold Bullion",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.5,
+      "why": "Guld prissatt i dollar"
+    },
+    {
+      "from": "weak_usd",
+      "to": "Broad Commodities",
+      "sign": "+",
+      "lag_m": 1,
+      "conf": 0.45,
+      "why": "Råvaror prissatta i dollar"
+    },
+    {
+      "from": "china_stimulus",
+      "to": "China Tech",
+      "sign": "+",
+      "lag_m": 1,
+      "conf": 0.55,
+      "why": "Direkt stöd till kinesiska bolag"
+    },
+    {
+      "from": "china_stimulus",
+      "to": "Materials",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.5,
+      "why": "Kinesisk bygg-/industriefterfrågan drar metaller"
+    },
+    {
+      "from": "china_stimulus",
+      "to": "Emerging Markets",
+      "sign": "+",
+      "lag_m": 2,
+      "conf": 0.45,
+      "why": "Kina är EM-tungvikt"
+    },
+    {
+      "from": "recession",
+      "to": "Consumer Staples",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.55,
+      "why": "Defensiv efterfrågan håller i nedgång"
+    },
+    {
+      "from": "recession",
+      "to": "Health Care",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.5,
+      "why": "Icke-cyklisk efterfrågan"
+    },
+    {
+      "from": "recession",
+      "to": "Long Treasuries",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.55,
+      "why": "Flykt till kvalitet + räntesänkningsförväntan"
+    },
+    {
+      "from": "recession",
+      "to": "Consumer Discretionary",
+      "sign": "-",
+      "lag_m": 0,
+      "conf": 0.5,
+      "why": "Sällanköp faller när plånboken krymper"
+    },
+    {
+      "from": "energy_security",
+      "to": "Uranium & Nuclear",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.55,
+      "why": "Kärnkraft som inhemsk baskraft"
+    },
+    {
+      "from": "energy_security",
+      "to": "Energy",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.45,
+      "why": "Inhemsk olja/gas prioriteras"
+    },
+    {
+      "from": "US Tech/Growth",
+      "to": "Robotics & AI",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.45,
+      "why": "AI-mjukvara sprids till robotik/automation"
+    },
+    {
+      "from": "Robotics & AI",
+      "to": "Semiconductors",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.45,
+      "why": "Robotik/automation drar chips/sensorer"
+    },
+    {
+      "from": "Consumer Discretionary",
+      "to": "Industrials",
+      "sign": "+",
+      "lag_m": 4,
+      "conf": 0.5,
+      "why": "Kund-efterfrågan → maskiner/kapitalvaror (bullwhip)"
+    },
+    {
+      "from": "Consumer Discretionary",
+      "to": "Materials",
+      "sign": "+",
+      "lag_m": 4,
+      "conf": 0.45,
+      "why": "Kund-efterfrågan → förpackningar/råmaterial uppströms"
+    },
+    {
+      "from": "Financials",
+      "to": "Infrastructure",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.45,
+      "why": "Utlåningsvilja leder kapitalintensiv infrastruktur"
+    },
+    {
+      "from": "Financials",
+      "to": "Real Estate",
+      "sign": "+",
+      "lag_m": 5,
+      "conf": 0.5,
+      "why": "Kreditcykeln leder ränte-/kapitaltörstiga fastigheter"
+    },
+    {
+      "from": "Financials",
+      "to": "Utilities",
+      "sign": "+",
+      "lag_m": 5,
+      "conf": 0.4,
+      "why": "Ränte-proxy: kraft följer när räntan diskonteras ned"
+    },
+    {
+      "from": "Financials",
+      "to": "Technology",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.4,
+      "why": "God kapitaltillgång → tillväxt-/small-cap-teknik nästa fas"
+    },
+    {
+      "from": "Technology",
+      "to": "Broad Commodities",
+      "sign": "+",
+      "lag_m": 5,
+      "conf": 0.4,
+      "why": "Capex-cykelns andraderivat: spjutspetsteknik kräver metaller"
+    },
+    {
+      "from": "Defense",
+      "to": "Broad Commodities",
+      "sign": "+",
+      "lag_m": 5,
+      "conf": 0.45,
+      "why": "Ammunition/drönare/fordon drar titan/koppar/stål"
+    },
+    {
+      "from": "Energy",
+      "to": "Consumer Discretionary",
+      "sign": "-",
+      "lag_m": 3,
+      "conf": 0.5,
+      "why": "Energipris = skatt på köpkraft → marginaler pressas"
+    },
+    {
+      "from": "Energy",
+      "to": "Materials",
+      "sign": "-",
+      "lag_m": 3,
+      "conf": 0.45,
+      "why": "Energiintensiv basindustri (cement/papper/stål) tappar marginal"
+    },
+    {
+      "from": "Technology",
+      "to": "Utilities",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.5,
+      "why": "Datacenter → elbehov prisas in i kraft med fördröjning"
+    },
+    {
+      "from": "Technology",
+      "to": "Real Estate",
+      "sign": "+",
+      "lag_m": 6,
+      "conf": 0.4,
+      "why": "AI → datacenter-fastigheter (specialiserade hallar)"
+    },
+    {
+      "from": "Technology",
+      "to": "Semiconductors",
+      "sign": "+",
+      "lag_m": 4,
+      "conf": 0.45,
+      "why": "Konsumentteknik-cykel leder halvledar-/utrustningsorder"
+    },
+    {
+      "from": "Infrastructure",
+      "to": "Materials",
+      "sign": "+",
+      "lag_m": 4,
+      "conf": 0.45,
+      "why": "Frakt/logistik (BDI) leder järnmalm/stål/koppar"
+    },
+    {
+      "from": "Infrastructure",
+      "to": "Broad Commodities",
+      "sign": "+",
+      "lag_m": 4,
+      "conf": 0.45,
+      "why": "Stigande fraktrater → fabriker köper insatsvaror"
+    },
+    {
+      "from": "Infrastructure",
+      "to": "Industrials",
+      "sign": "+",
+      "lag_m": 4,
+      "conf": 0.4,
+      "why": "Logistik-uppgång → industriell insatsvaru-efterfrågan"
+    },
+    {
+      "from": "Uranium & Nuclear",
+      "to": "Infrastructure",
+      "sign": "+",
+      "lag_m": 12,
+      "conf": 0.4,
+      "why": "Kärnkraftsbeslut → decennium av anläggningsarbete"
+    },
+    {
+      "from": "Health Care",
+      "to": "Communication Services",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.35,
+      "why": "Defensiv sekventiell rotation (låg-beta, industrimomentum)"
+    },
+    {
+      "from": "Health Care",
+      "to": "Consumer Staples",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.35,
+      "why": "Kapital rullar vidare till trögaste defensiva ledet"
+    },
+    {
+      "from": "Gold Bullion",
+      "to": "Health Care",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.35,
+      "why": "Efter panik: guldets nollavkastning → defensiv utdelning"
+    },
+    {
+      "from": "Broad Commodities",
+      "to": "Materials",
+      "sign": "-",
+      "lag_m": 4,
+      "conf": 0.35,
+      "why": "Höga metallpriser urholkar förädlares marginaler"
+    },
+    {
+      "from": "Broad Commodities",
+      "to": "Technology",
+      "sign": "-",
+      "lag_m": 4,
+      "conf": 0.3,
+      "why": "Insatskostnad (koppar/kisel) → vinstvarningar i hårdvara"
+    },
+    {
+      "from": "rates_down",
+      "to": "Communication Services",
+      "sign": "+",
+      "lag_m": 3,
+      "conf": 0.4,
+      "why": "Yield-sökande → oligopol-utdelare (telekom)"
+    },
+    {
+      "from": "reshoring",
+      "to": "Real Estate",
+      "sign": "+",
+      "lag_m": 9,
+      "conf": 0.35,
+      "why": "Lokal lagerhållning → logistik-/industrifastigheter"
+    },
+    {
+      "from": "supply_semis_gas",
+      "to": "Semiconductors",
+      "sign": "-",
+      "lag_m": 0,
+      "conf": 0.6,
+      "why": "exportstopp ädelgaser → litografi-kostnad/utbudsbrist",
+      "source": "supply-chain"
+    },
+    {
+      "from": "supply_semis_gas",
+      "to": "Consumer Discretionary",
+      "sign": "-",
+      "lag_m": 2,
+      "conf": 0.45,
+      "why": "chip-brist → fordonschipp-fördröjning (bilsektorn)",
+      "source": "supply-chain"
+    },
+    {
+      "from": "supply_pgm",
+      "to": "Consumer Discretionary",
+      "sign": "-",
+      "lag_m": 2,
+      "conf": 0.45,
+      "why": "katalysatorbrist → lägre förbränningsmotor-produktion",
+      "source": "supply-chain"
+    },
+    {
+      "from": "supply_pgm",
+      "to": "Materials",
+      "sign": "-",
+      "lag_m": 1,
+      "conf": 0.4,
+      "why": "marginalpress för katalysatortillverkare",
+      "source": "supply-chain"
+    },
+    {
+      "from": "supply_pgm",
+      "to": "Gold Bullion",
+      "sign": "+",
+      "lag_m": 0,
+      "conf": 0.35,
+      "why": "ädelmetall-oro → säker-hamn-flöde",
+      "source": "supply-chain"
+    },
+    {
+      "from": "supply_rare_earth",
+      "to": "Clean Energy",
+      "sign": "-",
+      "lag_m": 2,
+      "conf": 0.5,
+      "why": "dyrare vindkraftverk (permanentmagneter)",
+      "source": "supply-chain"
+    },
+    {
+      "from": "supply_rare_earth",
+      "to": "Utilities",
+      "sign": "-",
+      "lag_m": 4,
+      "conf": 0.4,
+      "why": "uppskjutna förnybar-projekt",
+      "source": "supply-chain"
+    },
+    {
+      "from": "supply_rare_earth",
+      "to": "EV & Battery",
+      "sign": "-",
+      "lag_m": 2,
+      "conf": 0.45,
+      "why": "dyrare motormagneter",
+      "source": "supply-chain"
+    },
+    {
+      "from": "supply_rare_earth",
+      "to": "Defense",
+      "sign": "-",
+      "lag_m": 3,
+      "conf": 0.4,
+      "why": "magneter i försvarssystem",
+      "source": "supply-chain"
+    },
+    {
+      "from": "supply_rare_earth",
+      "to": "Broad Commodities",
+      "sign": "+",
+      "lag_m": 1,
+      "conf": 0.4,
+      "why": "substitutions-/prisdriv på metaller",
+      "source": "supply-chain"
+    },
+    {
+      "from": "supply_optical",
+      "to": "Communication Services",
+      "sign": "-",
+      "lag_m": 2,
+      "conf": 0.45,
+      "why": "flaskhals fiberoptik → 5G-utbyggnad fördröjs",
+      "source": "supply-chain"
+    },
+    {
+      "from": "supply_optical",
+      "to": "Infrastructure",
+      "sign": "-",
+      "lag_m": 2,
+      "conf": 0.4,
+      "why": "fiberinfrastruktur-flaskhals",
+      "source": "supply-chain"
+    }
   ]
 }
