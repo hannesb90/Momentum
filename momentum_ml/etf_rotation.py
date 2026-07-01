@@ -29,7 +29,16 @@ import config
 
 # ── Universum ─────────────────────────────────────────────────────────────────
 def _load_universe():
-    """Läser data/sector_etfs.csv och filtrerar på region → [(ticker, sektor, namn)]."""
+    """Kurerat globalt tema/region/sektor-universum (data/rotation_universe.csv) om
+    det finns, annars fallback till sector_etfs.csv filtrerat på region.
+    Returnerar [(ticker, grupp-etikett, namn)]."""
+    uf = Path(__file__).parent / getattr(config, "ETF_ROT_UNIVERSE_FILE", "")
+    if getattr(config, "ETF_ROT_UNIVERSE_FILE", "") and uf.exists():
+        out = []
+        with open(uf, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                out.append((row["ticker"], row.get("group") or row.get("kind") or "?", row["name"]))
+        return out
     region = config.ETF_ROT_REGION
     want = {"EU": {"EU"}, "US": {"US-UCITS"}, "ALL": {"EU", "US-UCITS"}}.get(region, {"EU"})
     out = []
@@ -47,7 +56,7 @@ def _panel(tickers):
     cols = {t: d["Close"] for t, d in data.items() if d is not None and not d["Close"].dropna().empty}
     panel = pd.DataFrame(cols).sort_index()
     panel.index = pd.to_datetime(panel.index)
-    return panel
+    return panel.ffill(limit=1)   # olika börskalendrar (.DE/.L) → jämna ut enstaka glapp
 
 
 def _scores(panel, etfs):
@@ -101,7 +110,8 @@ def backtest():
     etfs = [t for t, _, _ in uni]
     defensive = config.ETF_ROT_DEFENSIVE
     bench = config.ETF_ROT_BENCHMARK
-    extra = [x for x in (defensive, bench) if x]
+    bmarks = [b for b in ([bench] + list(getattr(config, "ETF_ROT_BENCHMARKS_EXTRA", []))) if b]
+    extra = [x for x in ([defensive] + bmarks) if x]
     panel = _panel(etfs + extra)
     have = [t for t in etfs if t in panel.columns]
     if len(have) < config.ETF_ROT_TOP_K:
@@ -130,21 +140,25 @@ def backtest():
             weights, _ = _decide(rel.iloc[i], absm.iloc[i], k, defensive, abs_min)
 
     port = pd.Series(port, index=idx)
-    bench_rets = rets[bench].reindex(idx) if bench in rets.columns else None
-    eqw = rets[have].reindex(idx).mean(axis=1)        # köp-och-behåll, likaviktad alla sektorer
+    eqw = rets[have].reindex(idx).mean(axis=1)        # köp-och-behåll, likaviktad hela poolen
 
-    print(f"\n  ETF-ROTATION (dual momentum) – region {config.ETF_ROT_REGION}, "
+    print(f"\n  ETF-ROTATION (dual momentum) – globalt tema/region-universum, "
           f"top-{k}, ombal var {rebal}v, {len(have)} ETF:er")
-    print(f"  Period: {idx[0].date()} – {idx[-1].date()}  ({len(idx)} veckor)\n")
+    print(f"  Period: {idx[0].date()} – {idx[-1].date()}  ({len(idx)} veckor)")
+    print("  (Tematiska ETF:er har kortare historik – de blir valbara först när de fått 52v data.)\n")
     print(_fmt_stats("Rotation (strategi)", _stats(port)))
-    print(_fmt_stats("Likaviktad alla (B&H)", _stats(eqw)))
-    if bench_rets is not None:
-        print(_fmt_stats(f"Index {bench}", _stats(bench_rets)))
-    # Hur ofta slår strategin index (rullande 13v)?
-    if bench_rets is not None:
+    print(_fmt_stats("Likaviktad pool (B&H)", _stats(eqw)))
+    prim = None
+    for b in bmarks:
+        if b in rets.columns:
+            bs = rets[b].reindex(idx)
+            print(_fmt_stats(f"Index {b}", _stats(bs)))
+            if prim is None:
+                prim = bs
+    if prim is not None:   # slå-index-frekvens mot primär benchmark (ACWI)
         roll = (port.rolling(13).apply(lambda x: (1 + x).prod() - 1)
-                > bench_rets.rolling(13).apply(lambda x: (1 + x).prod() - 1))
-        print(f"\n  Slår index på rullande 13v-fönster: {roll.mean():.0%} av tiden")
+                > prim.rolling(13).apply(lambda x: (1 + x).prod() - 1))
+        print(f"\n  Slår {bench} (global) på rullande 13v-fönster: {roll.mean():.0%} av tiden")
     print("\n  (Ombalansering utan transaktionskostnad. Absolut-filtret = skydd i "
           "björnmarknad; sätt ETF_ROT_ABS_MIN högre för mer försiktighet.)")
 
@@ -169,7 +183,7 @@ def signal():
                              config.ETF_ROT_DEFENSIVE, config.ETF_ROT_ABS_MIN)
     held = {t for t, hold, _ in picks if hold}
 
-    print(f"\n  ETF-ROTATION – aktuell signal ({panel.index[-1].date()}), region {config.ETF_ROT_REGION}\n")
+    print(f"\n  ETF-ROTATION – aktuell signal ({panel.index[-1].date()}), globalt tema/region-universum\n")
     print(f"  {'#':>2} {'sektor':<24} {'ETF':<9} {'rel.mom':>8} {'abs52v':>8} {'flöde':>10}  håll")
     rows = []
     for t in ranked_now.index:
