@@ -259,6 +259,28 @@ def report() -> None:
         print(f"   {r['composite']:>4}  {r['ticker']:<12} {str(r['name'])[:22]:<22} "
               f"börsv {mc} MSEK  {mu}  [{r['zone']}]  {str(r.get('pitch',''))[:40]}")
 
+    def _fmt(r):
+        mc = f"{r['mcap_msek']:>7.0f}" if r.get("mcap_msek") is not None else "      ?"
+        mu = f"{r['ebitda_multiple']:>4.1f}x" if r.get("ebitda_multiple") is not None else "   ?"
+        return (f"   {r['composite']:>4}  {r['ticker']:<12} {str(r['name'])[:22]:<22} "
+                f"börsv {mc} MSEK  {mu}  [{r['zone']}]  {str(r.get('pitch',''))[:40]}")
+
+    # Bästa KVALITET bland de faktiskt BILLIGA/RIMLIGA (även under 4.0) – kärn-tratten.
+    value = sorted([r for r in rows if r.get("zone") in ("billig", "rimlig")],
+                   key=lambda r: r.get("composite", 0), reverse=True)
+    print(f"\n  💰 BÄSTA KVALITET BLAND DE BILLIGA/RIMLIGA (≤18× EBITDA) – topp {min(12, len(value))} av {len(value)}:")
+    for r in value[:12]:
+        print(_fmt(r))
+
+    # Förvinst-case: går ännu back men hög kvalitet OCH tydlig väg till vinst (profit_path≥4).
+    turn = sorted([r for r in rows if r.get("zone") == "förlust/hype"
+                   and r.get("composite", 0) >= 4.0
+                   and isinstance(r.get("profit_path"), (int, float)) and r["profit_path"] >= 4],
+                  key=lambda r: r.get("composite", 0), reverse=True)
+    print(f"\n  🚀 FÖRVINST-CASE ATT BEVAKA (hög kvalitet + väg till vinst, ännu ej lönsamt) – {len(turn)} st:")
+    for r in turn[:12]:
+        print(_fmt(r))
+
     # Zon-fördelning så du ser var kvaliteten sitter.
     from collections import Counter
     z = Counter(r["zone"] for r in rows)
