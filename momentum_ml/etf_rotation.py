@@ -289,6 +289,76 @@ def backtest(always_invested=False):
           "skydd i björnmarknad; jämför särskilt maxDD, inte bara slutvärdet.)")
 
 
+# ── Parametersvep med in-sample/OOS-split (mot curve-fitting) ─────────────────
+def _sim(panel, rel, absm, rets, have, k, rebal, defensive):
+    """Alltid-investerad top-K (ingen regim, inget absolut-filter) → port-avk-serie."""
+    start = max(config.ETF_ROT_ABS_WINDOW, config.ETF_ROT_REGIME_MA) + 1
+    weights, port = {}, []
+    idx = panel.index[start:]
+    for j, i in enumerate(range(start, len(panel))):
+        wr = 0.0
+        for t, w in weights.items():
+            r = rets.iloc[i].get(t) if t in rets.columns else None
+            if r is not None and pd.notna(r):
+                wr += w * r
+        port.append(wr)
+        if j % rebal == 0:
+            weights, _ = _decide(rel.iloc[i], absm.iloc[i], k, defensive, -1e9)
+    return pd.Series(port, index=idx)
+
+
+def sweep():
+    uni = _load_universe()
+    etfs = [t for t, _, _ in uni]
+    defensive = config.ETF_ROT_DEFENSIVE
+    bench = config.ETF_ROT_BENCHMARK
+    panel = _panel(etfs + [x for x in (defensive, bench) if x])
+    have = [t for t in etfs if t in panel.columns]
+    rel, absm = _scores(panel, have)
+    rets = panel.pct_change()
+    start = max(config.ETF_ROT_ABS_WINDOW, config.ETF_ROT_REGIME_MA) + 1
+    idx = panel.index[start:]
+    split = int(len(idx) * 0.6)
+    is_sl, oos_sl = slice(0, split), slice(split, None)
+    bench_r = rets[bench].reindex(idx) if bench in rets.columns else None
+
+    grid_k, grid_r = [1, 3, 5, 8, 12], [4, 13, 26]
+    res = []
+    for K in grid_k:
+        for R in grid_r:
+            port = _sim(panel, rel, absm, rets, have, K, R, defensive)
+            res.append((K, R, _stats(port.iloc[is_sl]), _stats(port.iloc[oos_sl])))
+    res.sort(key=lambda x: x[2].get("sharpe", -9), reverse=True)   # ranka på IN-SAMPLE Sharpe
+
+    b_is = _stats(bench_r.iloc[is_sl]) if bench_r is not None else {}
+    b_oos = _stats(bench_r.iloc[oos_sl]) if bench_r is not None else {}
+    isd, ood = idx[is_sl], idx[oos_sl]
+    print(f"\n  ROTATIONS-SVEP (alltid-investerad top-K) – {len(have)} ETF:er")
+    print(f"  IN-SAMPLE {isd[0].date()}–{isd[-1].date()}  |  OOS {ood[0].date()}–{ood[-1].date()}")
+    print(f"  Rankat på IN-SAMPLE Sharpe. OOS = osedd data (det enda som räknas).\n")
+    print(f"  {'K':>2} {'ombal':>6} | {'IS Sharpe':>9} {'IS CAGR':>8} | {'OOS Sharpe':>10} "
+          f"{'OOS CAGR':>8} {'OOS maxDD':>9}  slår index OOS?")
+    beats = 0
+    for K, R, IS, OO in res:
+        win = OO.get("cagr", -9) > b_oos.get("cagr", 9)
+        beats += int(win)
+        print(f"  {K:>2} {R:>5}v | {IS.get('sharpe',0):>9.2f} {IS.get('cagr',0):>+7.1%} | "
+              f"{OO.get('sharpe',0):>10.2f} {OO.get('cagr',0):>+7.1%} {OO.get('maxdd',0):>+8.1%}"
+              f"   {'JA' if win else 'nej'}")
+    if bench_r is not None:
+        print(f"\n  INDEX {bench} (baslinje): IS Sharpe {b_is.get('sharpe',0):.2f} "
+              f"CAGR {b_is.get('cagr',0):+.1%}  |  OOS Sharpe {b_oos.get('sharpe',0):.2f} "
+              f"CAGR {b_oos.get('cagr',0):+.1%} maxDD {b_oos.get('maxdd',0):+.1%}")
+        best = res[0]
+        print(f"\n  → Bästa IN-SAMPLE (K={best[0]}, ombal {best[1]}v): "
+              f"OOS CAGR {best[3].get('cagr',0):+.1%} vs index {b_oos.get('cagr',0):+.1%} "
+              f"→ {'SLÅR index OOS' if best[3].get('cagr',-9) > b_oos.get('cagr',9) else 'FÖRLORAR mot index OOS'}")
+        print(f"  → {beats}/{len(res)} configs slår index på OOS "
+              f"({'≈ slump/ingen edge' if beats <= len(res) * 0.5 else 'värt en närmare titt'}).")
+    print("\n  Om den bästa in-sample-configen förlorar OOS finns ingen robust rotation "
+          "– parametrarna var bara efterhands-tur.")
+
+
 # ── Aktuell signal + flöde ────────────────────────────────────────────────────
 def signal():
     uni = _load_universe()
@@ -387,6 +457,8 @@ def main():
         signal()
     elif cmd == "backtest":
         backtest(always_invested=("--always-invested" in sys.argv or "--always" in sys.argv))
+    elif cmd == "sweep":
+        sweep()
     elif cmd == "flow":
         flow()
     else:
