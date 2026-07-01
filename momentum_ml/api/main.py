@@ -11,6 +11,7 @@ Användning:
 """
 
 import json
+import math
 import time
 from pathlib import Path
 from typing import Optional
@@ -43,6 +44,25 @@ async def _unhandled(request: Request, exc: Exception):
         status_code=503,
         content={"detail": f"Resultat uppdateras just nu ({type(exc).__name__}). Försök igen strax."},
     )
+
+
+def _clean(obj):
+    """Ersätter NaN/±Inf med None rekursivt. FastAPI:s JSON-kodare kastar annars
+    'ValueError: Out of range float values are not JSON compliant: nan' – vilket är
+    den egentliga orsaken till de återkommande 500/503 (results/*.csv innehåller NaN,
+    t.ex. limit_price på icke-köp-rader eller tomma feature-kolumner)."""
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: _clean(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_clean(v) for v in obj]
+    return obj
+
+
+def _records(df: pd.DataFrame) -> list:
+    """DataFrame → JSON-säkra records (NaN/Inf → null)."""
+    return _clean(df.to_dict(orient="records"))
 
 
 def _read_csv(path: Path, **kwargs) -> pd.DataFrame:
@@ -99,7 +119,7 @@ def health():
 def get_stats(segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "stats.json")
     with open(path) as f:
-        return json.load(f)
+        return _clean(json.load(f))
 
 
 @app.get("/api/signals/latest")
@@ -108,7 +128,7 @@ def get_latest_signals(segment: Optional[str] = None):
     df = _read_csv(path, index_col=0, parse_dates=True)
     latest = df.groupby("ticker").last().reset_index()
     latest = latest.sort_values("prob_up", ascending=False)
-    return latest.to_dict(orient="records")
+    return _records(latest)
 
 
 @app.get("/api/signals/history")
@@ -121,7 +141,7 @@ def get_signal_history(ticker: Optional[str] = None, limit: int = 260, segment: 
             raise HTTPException(status_code=404, detail=f"Ingen data för ticker '{ticker}'.")
     df = df.sort_index().tail(limit).reset_index()
     df = df.rename(columns={df.columns[0]: "date"})
-    return df.to_dict(orient="records")
+    return _records(df)
 
 
 @app.get("/api/portfolio")
@@ -132,7 +152,7 @@ def get_portfolio(limit: int = 1000, segment: Optional[str] = None):
     df["drawdown"] = pv / pv.cummax() - 1
     df = df.sort_index().tail(limit).reset_index()
     df = df.rename(columns={df.columns[0]: "date"})
-    return df.to_dict(orient="records")
+    return _records(df)
 
 
 @app.get("/api/drift")
@@ -141,21 +161,21 @@ def get_drift(limit: int = 260, segment: Optional[str] = None):
     df = _read_csv(path, index_col=0, parse_dates=True)
     df = df.sort_index().tail(limit).reset_index()
     df = df.rename(columns={df.columns[0]: "date"})
-    return df.to_dict(orient="records")
+    return _records(df)
 
 
 @app.get("/api/regime")
 def get_regime_breakdown(segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "regime_breakdown.csv")
     df = _read_csv(path, index_col=0).reset_index()
-    return df.to_dict(orient="records")
+    return _records(df)
 
 
 @app.get("/api/sector-momentum")
 def get_sector_momentum(segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "sector_momentum.csv")
     df = _read_csv(path)
-    return df.to_dict(orient="records")
+    return _records(df)
 
 
 @app.get("/api/prices")
@@ -166,7 +186,7 @@ def get_prices(ticker: str, limit: int = 260, segment: Optional[str] = None):
         return []
     df = _read_csv(path)
     df = df[df["ticker"] == ticker].sort_values("date").tail(limit)
-    return df[["date", "close"]].to_dict(orient="records")
+    return _records(df[["date", "close"]])
 
 
 @app.get("/api/quality")
@@ -176,9 +196,7 @@ def get_quality():
     path = RESULTS_DIR / "quality_shortlist.csv"
     if not path.exists():
         return []
-    df = _read_csv(path)
-    df = df.where(pd.notnull(df), None)   # NaN → null så JSON blir giltig
-    return df.to_dict(orient="records")
+    return _records(_read_csv(path))
 
 
 @app.get("/api/paper-ledger")
@@ -191,5 +209,4 @@ def get_paper_ledger(limit: int = 520, segment: Optional[str] = None):
     path = _seg_dir(segment) / "paper_ledger.csv"
     if not path.exists():
         return []
-    df = _read_csv(path).tail(limit)
-    return df.to_dict(orient="records")
+    return _records(_read_csv(path).tail(limit))
