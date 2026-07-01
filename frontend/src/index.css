@@ -1275,6 +1275,28 @@ h2 {
   font-style: italic;
 }
 
+.tv-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  color: var(--accent);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  vertical-align: middle;
+}
+.tv-link:hover {
+  background: rgba(59, 130, 246, 0.12);
+}
+.tv-link svg {
+  display: block;
+}
+
 .newcap__input input {
   width: 130px;
   padding: 8px 10px;

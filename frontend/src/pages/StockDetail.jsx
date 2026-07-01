@@ -10,6 +10,7 @@ import { SignalBadge } from '../components/SignalBadge'
 import { StatCard } from '../components/StatCard'
 import { InfoButton } from '../components/InfoButton'
 import { EmptyState } from '../components/EmptyState'
+import { TvLink } from '../components/TvLink'
 import { fmtPct, fmtNum, fmtDate, fmtSek, cleanName } from '../format'
 
 export function StockDetailPage() {
@@ -75,6 +76,7 @@ export function StockDetailPage() {
           {displayName !== ticker && <span className="page-subtitle__ticker">{ticker} · </span>}
           {latest.sector ?? 'Okänd sektor'}
           {stats.data?.last_signal_date && ` · senaste signal ${stats.data.last_signal_date}`}
+          {' · '}<TvLink ticker={ticker} />
         </p>
       </div>
 

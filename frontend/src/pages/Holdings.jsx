@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { InfoButton } from '../components/InfoButton'
+import { TvLink } from '../components/TvLink'
 
 const BUCKETS = [
   { value: 'broad', label: 'Bred kärna (World/US/EM)' },
@@ -226,7 +227,7 @@ export function HoldingsPage() {
                             </div>
                           )}
                         </td>
-                        <td className="mono">{c.ticker}</td>
+                        <td className="mono">{c.ticker} <TvLink ticker={c.ticker} /></td>
                         <td className="flow-flat">{c.note}</td>
                       </tr>
                     ))}
@@ -244,7 +245,7 @@ export function HoldingsPage() {
                     {analysis.candidates.theme.map((c) => (
                       <tr key={c.ticker}>
                         <td>{c.name}</td>
-                        <td className="mono">{c.ticker}</td>
+                        <td className="mono">{c.ticker} <TvLink ticker={c.ticker} /></td>
                         <td className="flow-flat">{c.note}</td>
                       </tr>
                     ))}

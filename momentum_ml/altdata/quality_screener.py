@@ -277,6 +277,9 @@ def report() -> None:
     # börsvärde och EBITDA. Faller tillbaka på Yahoo, sen Claude-extraheringen.
     ep = Path(config.QUALITY_CACHE_DIR) / "_eodhd.json"
     eodhd = json.loads(ep.read_text()) if ep.exists() else {}
+    # TradingView (gratis, inofficiell) fyller luckor efter EODHD, före Yahoo.
+    tp = Path(config.QUALITY_CACHE_DIR) / "_tradingview.json"
+    tvdata = json.loads(tp.read_text()) if tp.exists() else {}
     # Auktoritativt börsvärde från Yahoo för ALLA poängsatta (löser 'okänd' pga saknat aktieantal).
     caps = _market_caps([s["ticker"] for s in scored])
     priced = [s for s in scored if s.get("shares_million")]
@@ -286,20 +289,29 @@ def report() -> None:
         mcap = mult = None
         ex = eodhd.get(s["ticker"]) or {}
         ex_sek = ex.get("currency") in (None, "SEK")   # icke-SEK → använd inte EODHD-siffrorna
+        tv = tvdata.get(s["ticker"]) or {}
+        tv_sek = tv.get("currency") in (None, "SEK")   # OMXSTO noterar i SEK; annat → hoppa
         mcap = ex.get("mcap_msek") if ex_sek else None                 # 1:a hand: EODHD
+        if mcap is None and tv_sek:
+            mcap = tv.get("mcap_msek")                                 # 2:a hand: TradingView
         if mcap is None:
-            mcap = caps.get(s["ticker"])                               # 2:a hand: Yahoo marketCap
-        if mcap is None and s.get("shares_million"):                   # 3:e hand: kurs × aktieantal
+            mcap = caps.get(s["ticker"])                               # 3:e hand: Yahoo marketCap
+        if mcap is None and s.get("shares_million"):                   # 4:e hand: kurs × aktieantal
             d = data.get(s["ticker"])
             if d is not None and not d.empty:
                 mcap = round(float(d["Close"].iloc[-1]) * float(s["shares_million"]), 1)
-        # Vinst: EODHD:s EBITDA först, annars Claude-stegen (EBITDA → EBIT → resultat).
+        # Vinst: EODHD:s EBITDA först, sen TradingViews, annars Claude-stegen (EBITDA→EBIT→resultat).
         if ex_sek and isinstance(ex.get("ebitda_msek"), (int, float)):
             earnings, src = ex["ebitda_msek"], "EBITDA·EODHD"
+        elif tv_sek and isinstance(tv.get("ebitda_msek"), (int, float)):
+            earnings, src = tv["ebitda_msek"], "EBITDA·TV"
         else:
             earnings, src = _earnings(s)
         # Zon: vinstmultipel om lönsamt, annars P/S (även förlustbolag får stämpel).
-        mult, vbasis, zone = _valuation(mcap, earnings, s.get("revenue_msek"))
+        revenue = s.get("revenue_msek")
+        if revenue is None and tv_sek and isinstance(tv.get("revenue_msek"), (int, float)):
+            revenue = tv["revenue_msek"]
+        mult, vbasis, zone = _valuation(mcap, earnings, revenue)
         r = dict(s)
         r["mcap_msek"] = mcap
         r["earnings_msek"] = earnings

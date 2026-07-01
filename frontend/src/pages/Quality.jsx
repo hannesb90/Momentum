@@ -10,6 +10,7 @@ import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { EmptyState } from '../components/EmptyState'
 import { InfoButton } from '../components/InfoButton'
+import { TvLink } from '../components/TvLink'
 import { fmtNum, cleanName } from '../format'
 
 // Zon-klassificeringen (OT-style värdering) → filter + badge-färg.
@@ -437,7 +438,7 @@ export function QualityPage() {
                     >
                       <td className="ticker-cell">
                         <span className="ticker-link__name">{cleanName(row.name, row.ticker)}</span>
-                        <span className="ticker-link__ticker">{row.ticker}</span>
+                        <span className="ticker-link__ticker">{row.ticker} <TvLink ticker={row.ticker} /></span>
                       </td>
                       <td className="qcomposite">{fmtNum(row.composite, 2)}</td>
                       <td>
