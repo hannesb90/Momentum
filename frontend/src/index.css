@@ -1299,10 +1299,32 @@ h2 {
 
 /* ── Innehav: extra edge-verktyg ─────────────────────────────────────────── */
 .pf-tk {
-  width: 84px;
+  width: 52px;
   text-transform: uppercase;
   font-family: var(--mono);
-  font-size: 0.8rem;
+  font-size: 0.68rem;
+  padding-left: 5px;
+  padding-right: 3px;
+}
+
+/* Kompakt innehavstabell så alla 6 kolumner får plats på mobil utan sido-scroll. */
+.pf-holdings td,
+.pf-holdings th {
+  padding: 7px 5px;
+}
+.pf-holdings .pf-num {
+  width: 58px;
+}
+.pf-holdings select.pf-in {
+  padding: 6px 4px;
+  min-width: 60px;
+}
+/* Exit-status som vänster-accent på raden (stjäl ingen bredd, döljs inte bakom fält). */
+.exit-row-red td:first-child {
+  box-shadow: inset 3px 0 0 #ef4444;
+}
+.exit-row-amber td:first-child {
+  box-shadow: inset 3px 0 0 #f59e0b;
 }
 
 .riskon-toggle {

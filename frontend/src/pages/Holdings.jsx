@@ -167,7 +167,7 @@ export function HoldingsPage() {
         </p>
       )}
 
-      <div className="table-wrap">
+      <div className="table-wrap pf-holdings">
         <table>
           <thead>
             <tr><th>Innehav</th><th>Ticker</th><th>Värde</th><th>Insatt</th><th>Hink</th><th></th></tr>
@@ -175,14 +175,12 @@ export function HoldingsPage() {
           <tbody>
             {holdings.map((h, i) => {
               const t = tierOf(h)
+              const rowCls = t && (t.tier === 'red' || t.tier === 'amber') ? `exit-row-${t.tier}` : ''
               return (
-                <tr key={i}>
+                <tr key={i} className={rowCls} title={t ? `${TIER[t.tier]?.label} · ${t.tech_note}` : undefined}>
                   <td>
                     <input className="pf-in" value={h.name}
                       onChange={(e) => edit(i, 'name', e.target.value)} placeholder="Namn" />
-                    {t && (t.tier === 'red' || t.tier === 'amber') && (
-                      <span className={`exit-chip ${TIER[t.tier]?.cls}`}>{t.tier === 'red' ? 'SÄLJ' : 'obs'}</span>
-                    )}
                   </td>
                   <td>
                     <input className="pf-in pf-tk" value={h.ticker || ''}
