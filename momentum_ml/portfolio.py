@@ -91,18 +91,40 @@ def _universe():
 
 
 # Utländska ETF-issuers finns INTE i svenska universumet → försök aldrig matcha dem
-# (annars falska träffar, t.ex. 'Global X ...' → 'Enad Global 7 AB'). Fyll manuellt.
+# mot universumet (annars falska träffar, t.ex. 'Global X ...' → 'Enad Global 7 AB').
 _ETF_ISSUERS = ("vaneck", "van eck", "wisdomtree", "wisdom tree", "global x", "globalx",
                 "hanetf", "han etf", "xact", "ishares", "xtrackers", "amundi", "spdr",
                 "invesco", "lyxor", "first trust", "ark ", "ucits")
 
+# Kurerad namn→ticker-karta (delsträng i gemener → ticker med börs-suffix). Täcker
+# ETF:er + svenska bolag som saknas i universumet. Suffix styr priskällan (.ST Sthlm,
+# .DE Xetra, .L London); fel suffix → "ingen prisdata" (felsäkert), byt då i appen.
+_CURATED = {
+    "vaneck semiconductor": "VVSM.DE",
+    "global x blockchain": "BLCH.L",
+    "global x data center": "V9N.DE",
+    "wisdomtree uranium": "WNUC.L",
+    "wisdomtree ai": "PAIW.L",
+    "vaneck space": "JEDI.L",
+    "future of defence": "ASWC.L",
+    "xact bull 2": "XACTBULL2.ST",
+    "acconeer": "ACCON.ST",
+    "plejd": "PLEJD.ST",
+    "physitrack": "PTRK.ST",
+}
+
 
 def _resolve_ticker(name) -> str:
-    """Best-effort namn → ticker mot svenska universumet. ENDAST säkra träffar: hela
-    namnet som delsträng i ett universum-namn. Lös ord-matchning är borttagen – den
-    gav falska träffar (Global X → EG7). ETF:er hoppas helt; fyll deras ticker manuellt."""
+    """Namn → ticker: (1) kurerad karta, (2) hoppa utländska ETF-issuers, (3) säker
+    delsträngs-träff i svenska universumet. Lös ord-matchning är borttagen – den gav
+    falska träffar (Global X → EG7)."""
     nl = (name or "").lower().strip()
-    if not nl or any(k in nl for k in _ETF_ISSUERS):
+    if not nl:
+        return ""
+    for key, tk in _CURATED.items():
+        if key in nl:
+            return tk
+    if any(k in nl for k in _ETF_ISSUERS):
         return ""
     for tk, nm, _ in _universe():
         if nl in nm.lower():
