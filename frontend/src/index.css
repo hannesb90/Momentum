@@ -1297,6 +1297,117 @@ h2 {
   display: block;
 }
 
+/* ── Innehav: extra edge-verktyg ─────────────────────────────────────────── */
+.pf-tk {
+  width: 84px;
+  text-transform: uppercase;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.riskon-toggle {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 10px;
+  vertical-align: middle;
+}
+.riskon-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.riskon-btn--active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: #fff;
+}
+.riskon-btn--fire.riskon-btn--active {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+}
+.riskon-warn {
+  margin: 8px 0 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.exit-panel {
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.exit-item {
+  padding: 8px 10px;
+  border-radius: 9px;
+  margin-top: 8px;
+  border-left: 3px solid var(--border);
+  background: var(--bg-elevated);
+}
+.exit-item.exit-red {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+.exit-item.exit-amber {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.07);
+}
+.exit-item__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.exit-item__tier {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.exit-red .exit-item__tier {
+  color: #f87171;
+}
+.exit-amber .exit-item__tier {
+  color: #fbbf24;
+}
+.exit-item__notes {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+.exit-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 5px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+.exit-chip.exit-red {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+.exit-chip.exit-amber {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+}
+
 .newcap__input input {
   width: 130px;
   padding: 8px 10px;

@@ -10,6 +10,8 @@ timing. Innehav läggs in manuellt (CLI eller i appen, som skriver samma fil).
     python portfolio.py analyze
     python portfolio.py newcapital 10000
     python portfolio.py backtest 5000 36    # "nästa köp" mot index: 5000 kr/mån, 36 mån
+    python portfolio.py exitscan            # "end this now": sektor+teknik → exit_signals.json
+    python portfolio.py sizein 10000 4      # dela ett köp i 4 trancher (lika + dip-viktat)
 """
 import sys
 import csv
@@ -29,6 +31,14 @@ def holdings_path() -> Path:
     return Path(config.PORTFOLIO_HOLDINGS_FILE)
 
 
+def _num(v):
+    try:
+        f = float(v)
+        return f if f > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
 def load_holdings() -> list:
     p = holdings_path()
     if not p.exists():
@@ -38,7 +48,9 @@ def load_holdings() -> list:
         for r in csv.DictReader(f):
             try:
                 rows.append({"name": r["name"].strip(), "value": float(r["value_sek"]),
-                             "bucket": (r.get("bucket") or "theme").strip()})
+                             "bucket": (r.get("bucket") or "theme").strip(),
+                             "ticker": (r.get("ticker") or "").strip().upper(),
+                             "cost": _num(r.get("cost_sek"))})
             except (ValueError, KeyError):
                 continue
     return rows
@@ -48,13 +60,57 @@ def save_holdings(rows) -> None:
     p = holdings_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     with open(p, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=["name", "value_sek", "bucket"])
+        w = csv.DictWriter(f, fieldnames=["name", "value_sek", "bucket", "ticker", "cost_sek"])
         w.writeheader()
         for r in rows:
             b = r.get("bucket", "theme")
-            w.writerow({"name": r.get("name", ""),
+            name = r.get("name", "")
+            tk = (r.get("ticker") or "").strip().upper() or _resolve_ticker(name)  # auto-fyll ticker
+            cost = _num(r.get("cost") if r.get("cost") is not None else r.get("cost_sek"))
+            w.writerow({"name": name,
                         "value_sek": float(r.get("value", r.get("value_sek", 0)) or 0),
-                        "bucket": b if b in BUCKETS else "theme"})
+                        "bucket": b if b in BUCKETS else "theme",
+                        "ticker": tk,
+                        "cost_sek": (round(cost) if cost else "")})
+
+
+# ── Namn → ticker/sektor (svenska universumet) ────────────────────────────────
+_UNIVERSE = None
+
+
+def _universe():
+    global _UNIVERSE
+    if _UNIVERSE is None:
+        _UNIVERSE = []
+        p = Path(__file__).parent / "data" / "sweden_universe.csv"
+        if p.exists():
+            for r in csv.DictReader(open(p, encoding="utf-8")):
+                _UNIVERSE.append((r["ticker"].strip().upper(), r["name"].strip(),
+                                  (r.get("sector") or "").strip()))
+    return _UNIVERSE
+
+
+def _resolve_ticker(name) -> str:
+    """Best-effort namn → ticker mot svenska universumet (substring/prefix)."""
+    nl = (name or "").lower().strip()
+    if not nl:
+        return ""
+    for tk, nm, _ in _universe():
+        if nl in nm.lower():
+            return tk
+    key = nl.split()[0]
+    for tk, nm, _ in _universe():
+        if key and key in nm.lower():
+            return tk
+    return ""
+
+
+def _sector_of(ticker) -> str:
+    tk = (ticker or "").upper()
+    for t, _, sec in _universe():
+        if t == tk:
+            return sec
+    return ""
 
 
 def _kinds():
@@ -200,7 +256,10 @@ def compute(rows, amount=None) -> dict:
            "target": config.PORTFOLIO_TARGET,
            "warnings": warnings,
            "candidates": _candidates(),
-           "holdings": [{"name": r["name"], "value": round(r["value"], 0), "bucket": r["bucket"]} for r in rows]}
+           "housemoney": _house_money(rows),
+           "holdings": [{"name": r["name"], "value": round(r["value"], 0), "bucket": r["bucket"],
+                         "ticker": r.get("ticker") or _resolve_ticker(r["name"]),
+                         "cost": (round(r["cost"]) if r.get("cost") else None)} for r in rows]}
 
     if amount:
         after = total + amount
@@ -213,7 +272,48 @@ def compute(rows, amount=None) -> dict:
             broad_etfs = {lbl: {"ticker": tk, "kr": round(plan["broad"] / n)}
                           for lbl, tk in config.PORTFOLIO_BROAD_ETFS.items()}
         out["newcapital"] = {"amount": amount, "plan": plan, "broad_etfs": broad_etfs}
+        out["riskon"] = _riskon_plan(amount)          # aggressiv motpol (ingen riskberäkning)
     return out
+
+
+def _house_money(rows) -> list:
+    """Per innehav med KÄND insats: sälj vinsten, behåll ursprungskapitalet. Kräver
+    cost (insatt) < value. sell_frac = vinst/(1+vinst) → frigör exakt insatsen som cash."""
+    out = []
+    for r in rows:
+        cost, val = r.get("cost"), r.get("value")
+        if not cost or not val or val <= cost:
+            continue
+        gain = val / cost - 1.0
+        reclaim = val - cost                          # vinsten = det du säljer för att låsa insatsen
+        out.append({"name": r["name"], "ticker": r.get("ticker") or _resolve_ticker(r["name"]),
+                    "cost": round(cost), "value": round(val), "gain": round(gain, 4),
+                    "sell_sek": round(reclaim), "sell_frac": round(reclaim / val, 4),
+                    "keep_sek": round(cost)})
+    out.sort(key=lambda x: x["gain"], reverse=True)
+    return out
+
+
+def _riskon_plan(amount) -> dict:
+    """RISK ON: strunta i mål-mixen, koncentrera nytt kapital i kandidatlistornas
+    toppnamn (momentum + starkaste tema). Ingen riskberäkning – medveten edge-jakt."""
+    cand = _candidates()
+    picks = list(cand.get("sweden", []))[:4] + list(cand.get("theme", []))[:2]
+    if not picks:
+        return {"amount": amount, "picks": [],
+                "warning": "Inga kandidater tillgängliga – kör screener/rotation först."}
+    n = len(picks)
+    # Konvex vikt: topnamnen får mest (n, n-1, …), normaliserat.
+    weights = list(range(n, 0, -1))
+    wsum = sum(weights)
+    plan = []
+    for w, c in zip(weights, picks):
+        plan.append({"name": c.get("name"), "ticker": c.get("ticker"),
+                     "source": c.get("source"), "note": c.get("note"),
+                     "kr": round(amount * w / wsum)})
+    return {"amount": amount, "picks": plan,
+            "warning": ("RISK ON: koncentrerat, ingen riskberäkning, ingen bred kärna. "
+                        "Kan gå väldigt fel – detta är edge-jakt, inte sparande.")}
 
 
 # ── Backtest: "nästa köp" (fyll-mot-mål) mot index ────────────────────────────
@@ -373,6 +473,141 @@ def backtest(monthly=5000, months=None):
                  "monthly": monthly, "months": res["months"], "years": res["years"]})
 
 
+# ── Size in/out (trancher) ────────────────────────────────────────────────────
+def size_in(amount, tranches=4, dip_step=0.05):
+    """Dela ett köp i trancher istället för allt på en gång. Två scheman:
+    LIKA (tidsbaserat) och DIP-VIKTAT (köp mer ju djupare fallet)."""
+    tranches = max(1, int(tranches))
+    equal = [{"steg": i + 1, "kr": round(amount / tranches),
+              "trigger": ("nu" if i == 0 else f"om {i} perioder / vid −{i * dip_step:.0%}")}
+             for i in range(tranches)]
+    # Dip-viktat: vikter 1,2,3,… (mer kapital längre ned), triggat av allt djupare fall.
+    w = list(range(1, tranches + 1))
+    wsum = sum(w)
+    dip = [{"steg": i + 1, "kr": round(amount * w[i] / wsum),
+            "trigger": ("nu" if i == 0 else f"vid −{i * dip_step:.0%} från nu")}
+           for i in range(tranches)]
+    return {"amount": amount, "tranches": tranches, "equal": equal, "dip": dip}
+
+
+# ── Exit-alarm: "END THIS NOW" (sektor svag OCH tekniskt brutet) ──────────────
+def _sector_table():
+    """results/sector_momentum.csv → {sektor_lower: {rank, total, mom13, mom26}}."""
+    p = Path("results/sector_momentum.csv")
+    if not p.exists():
+        return {}, 0
+    rows = list(csv.DictReader(open(p, encoding="utf-8")))
+    total = len(rows)
+    out = {}
+    for r in rows:
+        def f(k):
+            try:
+                return float(r.get(k) or 0)
+            except ValueError:
+                return 0.0
+        out[(r.get("sector") or "").lower()] = {
+            "rank": int(float(r.get("rank") or 0)), "total": total,
+            "mom13": f("momentum_13w"), "mom26": f("momentum_26w")}
+    return out, total
+
+
+def _sector_weak(sector, table, total):
+    """Svag sektor = fallande (13v-mom < 0) eller i nedre tredjedelen av rankingen."""
+    if not sector or not table:
+        return None, ""
+    sl = sector.lower()
+    hit = table.get(sl)
+    if hit is None:                                   # fuzzy: dela ord (GICS-namn ≠ modellens)
+        for k, v in table.items():
+            if k and (k in sl or sl in k or k.split()[0] == sl.split()[0]):
+                hit = v
+                break
+    if hit is None:
+        return None, ""
+    weak = (hit["mom13"] < 0) or (total and hit["rank"] > 0.6 * total)
+    note = f"sektor {sector}: rank {hit['rank']}/{total}, 13v {hit['mom13']:+.1%}"
+    return weak, note
+
+
+def _tech_signal(close):
+    """Tekniskt brutet = under 40v-MA och fallande momentum. 'strong' = djupt under MA."""
+    import pandas as pd
+    c = close.dropna()
+    if len(c) < 45:
+        return None
+    ma40 = c.rolling(40).mean().iloc[-1]
+    price = c.iloc[-1]
+    mom13 = price / c.iloc[-14] - 1 if len(c) > 14 else 0.0
+    mom26 = price / c.iloc[-27] - 1 if len(c) > 27 else 0.0
+    below = bool(price < ma40)
+    broken = below and mom13 < 0
+    strong = below and price < 0.90 * ma40 and mom13 < 0 and mom26 < 0
+    return {"price": round(float(price), 2), "ma40": round(float(ma40), 2),
+            "below_ma": below, "mom13": round(float(mom13), 4), "mom26": round(float(mom26), 4),
+            "broken": broken, "strong": strong,
+            "note": f"{'under' if below else 'över'} 40v-MA · 13v {mom13:+.1%} · 26v {mom26:+.1%}"}
+
+
+def exitscan():
+    """Skannar innehaven: flaggar RÖTT ('end this now') när sektorn är svag OCH kursen
+    tekniskt brutet, GULT när en av dem slår till. Skriver results/exit_signals.json.
+    Kräver prisdata (körs på Pi:n)."""
+    import json as _json
+    from datetime import datetime, timezone
+    rows = load_holdings()
+    if not rows:
+        print("[exitscan] inga innehav.")
+        return
+    resolved = []
+    for r in rows:
+        tk = (r.get("ticker") or _resolve_ticker(r["name"])).upper()
+        resolved.append((r, tk))
+    tickers = sorted({tk for _, tk in resolved if tk})
+    prices = {}
+    if tickers:
+        try:
+            from data.data_loader import fetch_weekly_data
+            data = fetch_weekly_data(tickers, use_cache=True)
+            prices = {t: d["Close"] for t, d in data.items()
+                      if d is not None and not d["Close"].dropna().empty}
+        except Exception as e:  # noqa: BLE001
+            print(f"[exitscan] kunde inte hämta priser: {e} (kör på Pi:n)")
+    table, total = _sector_table()
+    out = []
+    for r, tk in resolved:
+        sec = _sector_of(tk) if tk else ""
+        weak, snote = _sector_weak(sec, table, total)
+        tech = _tech_signal(prices[tk]) if tk in prices else None
+        broken = bool(tech and tech["broken"])
+        strong = bool(tech and tech["strong"])
+        if broken and weak:
+            tier = "red"
+        elif (broken and sec == "") and strong:       # ETF utan sektor: djupt tekniskt brott
+            tier = "red"
+        elif broken or weak:
+            tier = "amber"
+        elif tk and tech is None:
+            tier = "unknown"
+        else:
+            tier = "ok"
+        out.append({"name": r["name"], "ticker": tk, "bucket": r.get("bucket"),
+                    "sector": sec, "tier": tier,
+                    "sector_note": snote, "tech_note": (tech["note"] if tech else "ingen prisdata")})
+    order = {"red": 0, "amber": 1, "unknown": 2, "ok": 3}
+    out.sort(key=lambda x: order.get(x["tier"], 9))
+    res = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "holdings": out}
+    p = Path("results/exit_signals.json")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(_json.dumps(res, ensure_ascii=False))
+    reds = [o for o in out if o["tier"] == "red"]
+    ambers = [o for o in out if o["tier"] == "amber"]
+    print(f"[exitscan] {len(out)} innehav · {len(reds)} RÖDA (end this now) · {len(ambers)} gula → {p}")
+    for o in reds:
+        print(f"   🔴 {o['name']:<24} {o['ticker']:<12} {o['tech_note']} | {o['sector_note']}")
+    for o in ambers:
+        print(f"   🟡 {o['name']:<24} {o['ticker']:<12} {o['tech_note']} | {o['sector_note']}")
+
+
 def _write_json(data):
     out = Path("results/portfolio_analysis.json")
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -420,6 +655,19 @@ def main():
         monthly = float(sys.argv[2]) if len(sys.argv) > 2 else 5000
         months = int(sys.argv[3]) if len(sys.argv) > 3 else None
         backtest(monthly, months)
+    elif cmd == "exitscan":
+        exitscan()
+    elif cmd == "sizein":
+        amt = float(sys.argv[2]) if len(sys.argv) > 2 else 10000
+        n = int(sys.argv[3]) if len(sys.argv) > 3 else 4
+        d = size_in(amt, n)
+        print(f"\n  SIZE IN: {amt:,.0f} kr i {n} trancher\n".replace(",", " "))
+        print("  Lika (tidsbaserat):")
+        for t in d["equal"]:
+            print(f"   {t['steg']}. {t['kr']:>8,.0f} kr   {t['trigger']}".replace(",", " "))
+        print("  Dip-viktat (mer ju djupare fall):")
+        for t in d["dip"]:
+            print(f"   {t['steg']}. {t['kr']:>8,.0f} kr   {t['trigger']}".replace(",", " "))
     else:
         print(__doc__)
 

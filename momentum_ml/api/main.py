@@ -249,9 +249,25 @@ async def save_portfolio_holdings(request: Request):
         if not name or v <= 0:
             continue
         b = str(h.get("bucket", "theme"))
-        rows.append({"name": name, "value": v, "bucket": b if b in pf.BUCKETS else "theme"})
+        try:
+            cost = float(h.get("cost")) if h.get("cost") not in (None, "", 0) else None
+        except (TypeError, ValueError):
+            cost = None
+        rows.append({"name": name, "value": v, "bucket": b if b in pf.BUCKETS else "theme",
+                     "ticker": str(h.get("ticker", "")).strip().upper(), "cost": cost})
     pf.save_holdings(rows)
     return _clean(pf.compute(rows, amount=body.get("amount")))
+
+
+@app.get("/api/exit-signals")
+def get_exit_signals():
+    """Exit-alarm ('end this now'): senaste skanningen (sektor+teknik) per innehav.
+    Tom struktur om skanningen ännu inte körts (portfolio.py exitscan på Pi:n)."""
+    path = RESULTS_DIR / "exit_signals.json"
+    if not path.exists():
+        return {"generated": None, "holdings": []}
+    with open(path, encoding="utf-8") as f:
+        return _clean(json.load(f))
 
 
 @app.get("/api/paper-ledger")
