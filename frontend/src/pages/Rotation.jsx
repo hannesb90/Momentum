@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
@@ -29,6 +30,55 @@ function Stat({ label, value, tone }) {
     <div className={`macro-stat${tone ? ` macro-${tone}` : ''}`}>
       <div className="macro-stat__val">{value}</div>
       <div className="macro-stat__label">{label}</div>
+    </div>
+  )
+}
+
+function NewCapital({ alloc, riskOn, macro }) {
+  const [amount, setAmount] = useState(10000)
+  const kr = (w) => Math.round(w * amount)
+  const fmtKr = (v) => v.toLocaleString('sv-SE')
+  const vixStress = macro && macro.vix != null && macro.vix >= 28
+  return (
+    <div className="newcap">
+      <div className="newcap__input">
+        <label>Månadsbelopp</label>
+        <input
+          type="number"
+          min="0"
+          step="500"
+          value={amount}
+          onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))}
+        />
+        <span>kr</span>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Bred byggsten</th><th>ETF</th><th>Andel</th><th>Belopp</th></tr>
+          </thead>
+          <tbody>
+            {alloc.map((a) => (
+              <tr key={a.etf}>
+                <td>{a.sleeve}</td>
+                <td className="mono">{a.etf}</td>
+                <td>{(a.weight * 100).toFixed(0)}%</td>
+                <td>{fmtKr(kr(a.weight))} kr</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="footnote">
+        Bred fördelning över regioner med en <b>mild</b> lutning mot det som trendar (50%
+        likavikt + 50% momentum) – <b>alltid fullinvesterat, ingen koncentration, inga
+        teman, ingen hävstång</b>. Det är den enda ansats som överlevt din egen data.
+        {' '}För månadssparande: investera oavsett regim (tid i marknaden slår timing).
+        {!riskOn || vixStress ? (
+          <> <b>Nu är regimen svag</b> – för en STOR engångssumma kan du fasa in den över
+          några månader, men fortsätt månadsspara som vanligt.</>
+        ) : null}
+      </p>
     </div>
   )
 }
@@ -127,6 +177,26 @@ export function RotationPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {meta?.allocation?.length > 0 && (
+        <>
+          <h3 className="section-title">
+            Nytt kapital – vart det ska in
+            <InfoButton title="Var ska månadssparandet in?">
+              <p>
+                Datan visar att koncentrerad rotation, timing och hävstång alla förlorar mot
+                att bara vara bred och alltid investerad. Så för nytt kapital föreslås en
+                <b> bred fördelning över regioner</b> med en mild lutning mot styrka.
+              </p>
+              <p>
+                <b>Detta är beslutsstöd, inte en signal med bevisad edge.</b> En global/US
+                indexfond är fortfarande det ärliga standardvalet.
+              </p>
+            </InfoButton>
+          </h3>
+          <NewCapital alloc={meta.allocation} riskOn={riskOn} macro={meta.macro} />
+        </>
       )}
 
       {meta?.macro && (
