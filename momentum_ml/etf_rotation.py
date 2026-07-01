@@ -203,7 +203,7 @@ def _fmt_stats(name, s):
 
 
 # ── Backtest ──────────────────────────────────────────────────────────────────
-def backtest():
+def backtest(always_invested=False):
     uni = _load_universe()
     etfs = [t for t, _, _ in uni]
     defensive = config.ETF_ROT_DEFENSIVE
@@ -216,9 +216,11 @@ def backtest():
         print(f"[backtest] för få ETF:er med data ({len(have)}) – kolla nätet/tickers.")
         return
     rel, absm = _scores(panel, have)
-    regime = _regime(panel)
+    regime = None if always_invested else _regime(panel)   # alltid-investerad → ingen kontant
     rets = panel.pct_change()
     k, rebal, abs_min = config.ETF_ROT_TOP_K, config.ETF_ROT_REBAL_WEEKS, config.ETF_ROT_ABS_MIN
+    if always_invested:
+        abs_min = -1e9    # slå av absolut-filtret → top-3 hålls ALLTID, 100% investerat
     start = max(config.ETF_ROT_ABS_WINDOW, config.ETF_ROT_REGIME_MA) + 1
     if len(panel) <= start + rebal:
         print("[backtest] för kort historik för ETF-universumet.")
@@ -246,9 +248,11 @@ def backtest():
     port = pd.Series(port, index=idx)
     eqw = rets[have].reindex(idx).mean(axis=1)        # köp-och-behåll, likaviktad hela poolen
 
-    reg_txt = (f"regim PÅ ({config.ETF_ROT_REGIME_TICKER} vs {config.ETF_ROT_REGIME_MA}v MA)"
-               if regime is not None else "regim AV")
-    print(f"\n  ETF-ROTATION (regim-medveten dual momentum) – globalt universum, "
+    reg_txt = ("ALLTID 100% INVESTERAD (ingen kontant, inget absolut-filter)" if always_invested
+               else (f"regim PÅ ({config.ETF_ROT_REGIME_TICKER} vs {config.ETF_ROT_REGIME_MA}v MA)"
+                     if regime is not None else "regim AV"))
+    mode = "alltid-investerad top-K" if always_invested else "regim-medveten dual momentum"
+    print(f"\n  ETF-ROTATION ({mode}) – globalt universum, "
           f"top-{k}, mom {config.ETF_ROT_MOM_WINDOWS}v, ombal var {rebal}v, {len(have)} ETF:er")
     print(f"  Period: {idx[0].date()} – {idx[-1].date()}  ({len(idx)} veckor) · {reg_txt}")
     if regime is not None:
@@ -382,7 +386,7 @@ def main():
     if cmd == "signal":
         signal()
     elif cmd == "backtest":
-        backtest()
+        backtest(always_invested=("--always-invested" in sys.argv or "--always" in sys.argv))
     elif cmd == "flow":
         flow()
     else:
