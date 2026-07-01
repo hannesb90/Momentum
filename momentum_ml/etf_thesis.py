@@ -143,6 +143,61 @@ def next_trends(seeds=None):
           "– en idé som ÄN INTE är het men börjar klättra är den intressanta.")
 
 
+def leadlag():
+    """MEKANISK, TOKEN-FRI lead-lag: för varje sektor Y, kolla om dess LEDANDE sektorer X
+    hade stark momentum för `lag` veckor sedan (Hong-Torous-Valkanov gradvis
+    informationsspridning). Ger en 'inkommande rotation'-signal ur PRIS – backtestbar,
+    ingen LLM/look-ahead. Använder grafens kausalkanter enbart för STRUKTUR (vem leder
+    vem, med vilken fördröjning); själva signalen är ren kursdata."""
+    from etf_rotation import _panel
+    g = _load_graph()
+    g2etf = _group_to_etf()
+    edges = [e for e in g["edges"]
+             if e.get("sign") == "+" and g2etf.get(e["from"]) and g2etf.get(e["to"])]
+    if not edges:
+        print("[leadlag] inga sektor→sektor-kanter med ETF på båda sidor.")
+        return
+    etfs = sorted({g2etf[e["from"]] for e in edges} | {g2etf[e["to"]] for e in edges})
+    panel = _panel(etfs)
+    W = 26   # momentum-fönster för ledaren (veckor)
+    score, leaders = {}, {}
+    for e in edges:
+        xe = g2etf[e["from"]]
+        if xe not in panel.columns:
+            continue
+        s = panel[xe].dropna()
+        lagw = max(1, round(float(e["lag_m"]) * 4.33))
+        if len(s) <= lagw + W:
+            continue
+        xmom = float(s.iloc[-1 - lagw] / s.iloc[-1 - lagw - W] - 1)   # ledarens mom DÅ
+        if xmom <= 0:
+            continue
+        y = e["to"]
+        score[y] = score.get(y, 0.0) + float(e["conf"]) * xmom
+        leaders.setdefault(y, []).append((e["from"], e["lag_m"], xmom))
+
+    ranked = sorted(score.items(), key=lambda kv: kv[1], reverse=True)
+    print("\n  INKOMMANDE ROTATION – mekanisk lead-lag (token-fri, ur pris)")
+    print("  Ledande sektorer som redan gått → följare som historiskt släpar efter.\n")
+    outrows = []
+    for i, (y, sc) in enumerate(ranked[:12], 1):
+        lead = sorted(leaders[y], key=lambda x: -x[2])[:3]
+        leadstr = "  ←  " + " | ".join(f"{n} ({m}m sen, {mm:+.0%})" for n, m, mm in lead)
+        print(f"   {sc:>4.2f}  {y:<22} {g2etf.get(y, '—'):<9}{leadstr}")
+        outrows.append({"rank": i, "node": y, "etf": g2etf.get(y, ""),
+                        "score": round(sc, 3),
+                        "leaders": " | ".join(f"{n}({m}m,{mm:+.0%})" for n, m, mm in lead)})
+    if not ranked:
+        print("  (inga ledande sektorer med positiv momentum just nu)")
+    import csv as _csv
+    outp = Path("results/etf_leadlag.csv")
+    outp.parent.mkdir(parents=True, exist_ok=True)
+    with open(outp, "w", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=["rank", "node", "etf", "score", "leaders"])
+        w.writeheader(); w.writerows(outrows)
+    print(f"\n  Sparad: {outp}. (Mekanisk & backtestbar – till skillnad från 'next'.)")
+
+
 def show_graph():
     g = _load_graph()
     print("\n  DRIVKRAFTER (makro/geopolitik/ränta):")
@@ -208,6 +263,8 @@ def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "next"
     if cmd == "next":
         next_trends(sys.argv[2:] or None)
+    elif cmd == "leadlag":
+        leadlag()
     elif cmd == "graph":
         show_graph()
     elif cmd == "expand":

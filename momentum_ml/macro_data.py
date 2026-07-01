@@ -75,6 +75,23 @@ def _chg(s: pd.Series, weeks: int):
     return float(s.iloc[-1] / s.iloc[-1 - weeks] - 1)
 
 
+def stress_series(index):
+    """Boolean-serie (True = makro-stress) alignad till `index`: VIX i stress OCH
+    kreditspread vidgas (13v HYG−IEF < tröskel). Två bekräftande signaler → få
+    falsklarm. Returnerar None om cache/serier saknas (då körs trend-only)."""
+    try:
+        df = load()
+    except Exception:  # noqa: BLE001
+        return None
+    if not {"VIX", "HYG", "IEF"}.issubset(df.columns):
+        return None
+    m = df.reindex(index, method="ffill")
+    vix = m["VIX"]
+    credit = (m["HYG"] / m["HYG"].shift(13) - 1) - (m["IEF"] / m["IEF"].shift(13) - 1)
+    stress = (vix > config.MACRO_VIX_STRESS) & (credit < config.MACRO_CREDIT_STRESS)
+    return stress.fillna(False)
+
+
 def indicators(df: pd.DataFrame = None) -> dict:
     """Härledda, token-fria makro-indikatorer för regim/stress-beräkningar."""
     df = df if df is not None else load()

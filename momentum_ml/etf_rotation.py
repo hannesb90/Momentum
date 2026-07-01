@@ -145,15 +145,24 @@ def _flow_label(cmf, relvol, rc):
 
 
 def _regime(panel):
-    """Bull/björn per datum: bred marknad över sin långa glidande medel = risk-on.
-    None om regim-filtret är av eller regim-tickern saknar data."""
+    """Bull/björn per datum = risk-on. Trend (bred marknad över sin långa MA) OCH,
+    om makro-overlay är på, INTE i makro-stress (VIX + kreditspread). None om av."""
     if not getattr(config, "ETF_ROT_REGIME_ENABLED", False):
         return None
     t = config.ETF_ROT_REGIME_TICKER
     if t not in panel.columns:
         return None
     ma = panel[t].rolling(config.ETF_ROT_REGIME_MA).mean()
-    return panel[t] > ma
+    risk_on = panel[t] > ma
+    if getattr(config, "ETF_ROT_MACRO_REGIME", False):
+        try:
+            from macro_data import stress_series
+            stress = stress_series(panel.index)
+            if stress is not None:
+                risk_on = risk_on & (~stress.astype(bool))   # stress → tvinga risk-off
+        except Exception:  # noqa: BLE001 – makro valfritt; trend-only om det fallerar
+            pass
+    return risk_on
 
 
 # ── Rotationsbeslut ───────────────────────────────────────────────────────────
@@ -341,6 +350,11 @@ def signal():
         "defensive_slots": defslots,
         "defensive": config.ETF_ROT_DEFENSIVE or "kontanter",
     }
+    try:   # bifoga makroläget (valfritt – kräver macro_data-cache)
+        from macro_data import indicators as _macro_ind
+        meta["macro"] = _macro_ind()
+    except Exception:  # noqa: BLE001
+        meta["macro"] = None
     (out.parent / "etf_rotation_meta.json").write_text(_json.dumps(meta, ensure_ascii=False))
     print(f"\n  Signal sparad: {out}")
 
