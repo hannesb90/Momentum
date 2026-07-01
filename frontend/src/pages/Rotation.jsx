@@ -118,6 +118,15 @@ export function RotationPage() {
                 </InfoButton>
               </th>
               <th>
+                Global bredd
+                <InfoButton title="Global sektor-bredd (bekräftelse)">
+                  Hur står sig sektorn i BÅDE Europa och USA (EU- + US-sektor-ETF). "2/2 ↑" =
+                  trenden bekräftas globalt (starkare case); "1/2" = splittrat, en region bär.
+                  Rankningen styrs av ETF:ens egen kurs – detta är ett bekräftelse-lager. Gäller
+                  bara GICS-sektorer, inte teman/regioner.
+                </InfoButton>
+              </th>
+              <th>
                 Håll
                 <InfoButton title="Håll">
                   ★ = ingår i portföljen nu (topp-K med positiv absolut trend, i bull-regim).
@@ -136,6 +145,15 @@ export function RotationPage() {
                   <td>{fmtPct(r.rel_mom)}</td>
                   <td>{fmtPct(r.abs_mom)}</td>
                   <td className={f.cls}>{f.text}</td>
+                  <td>{
+                    r.breadth_total
+                      ? (() => {
+                          const up = Number(r.breadth_up), tot = Number(r.breadth_total)
+                          const cls = up === tot ? 'flow-in' : up === 0 ? 'flow-out' : 'flow-flat'
+                          return <span className={cls}>{up}/{tot} {fmtPct(r.breadth_mom, 0)}</span>
+                        })()
+                      : <span className="flow-flat">—</span>
+                  }</td>
                   <td>{r.hold ? '★' : ''}</td>
                 </tr>
               )
