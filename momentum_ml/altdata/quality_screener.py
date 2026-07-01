@@ -193,8 +193,11 @@ def screen() -> None:
 
 
 def _zone(mult, ebitda):
-    """OT-zon: billig <=12x, rimlig 12-18x, dyr >18x, förlust/hype om EBITDA<=0."""
-    if ebitda is None or ebitda <= 0:
+    """OT-zon: billig <=12x, rimlig 12-18x, dyr >18x, förlust/hype om EBITDA<0,
+    okänd om EBITDA saknas ur texten ELLER börsvärde ej går att räkna."""
+    if ebitda is None:
+        return "okänd"                 # data saknas – INTE samma sak som förlust
+    if ebitda <= 0:
         return "förlust/hype"
     if mult is None:
         return "okänd"
