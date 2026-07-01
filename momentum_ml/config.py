@@ -424,7 +424,7 @@ SENTIMENT_MAX_TOKENS = 400
 # några dollar. Hård regel i prompten: bedöm ENBART det som står i texten.
 QUALITY_MODEL          = "claude-sonnet-4-6"
 QUALITY_CACHE_DIR      = "cache/quality"
-QUALITY_MAX_CHARS      = 16000      # underlag/bolag (senaste rapport + några PM)
+QUALITY_MAX_CHARS      = 24000      # underlag/bolag (senaste rapport + några PM) – rymmer resultaträkningen
 QUALITY_EXCLUDE_SECTORS = ["Health Care"]   # undvik medtech/pharma (binärt lotteri)
 QUALITY_MARKET_CAP     = ["Small Cap", "Micro Cap", "Nano Cap"]   # tidiga, oupptäckta bolag
 

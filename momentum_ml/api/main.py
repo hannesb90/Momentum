@@ -11,12 +11,14 @@ Användning:
 """
 
 import json
+import time
 from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -30,6 +32,33 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def _unhandled(request: Request, exc: Exception):
+    """Skyddsnät: en oväntad läs-/parsefel (t.ex. en CSV mitt i en omskrivning från
+    tränings-/sync-jobbet) ska ge ett vänligt 503 som frontend kan försöka om, inte
+    en ogenomskinlig 500 som ser ut som att API:t är nere."""
+    return JSONResponse(
+        status_code=503,
+        content={"detail": f"Resultat uppdateras just nu ({type(exc).__name__}). Försök igen strax."},
+    )
+
+
+def _read_csv(path: Path, **kwargs) -> pd.DataFrame:
+    """Läser en CSV robust. Tränings-/sync-jobbet kan skriva om filen samtidigt →
+    en läsning kan då träffa en halvskriven fil. Försök några gånger med kort paus
+    (skrivningen är klar på millisekunder) innan vi ger upp."""
+    last = None
+    for i in range(4):
+        try:
+            return pd.read_csv(path, **kwargs)
+        except Exception as e:  # noqa: BLE001 – pandas kastar olika fel på trasig fil
+            last = e
+            time.sleep(0.2 * (i + 1))
+    raise HTTPException(status_code=503,
+                        detail=f"Kunde inte läsa {path.name} (uppdateras?). Försök igen strax.") from last
+
 
 RESULTS_DIR = Path(config.RESULTS_DIR)
 
@@ -76,7 +105,7 @@ def get_stats(segment: Optional[str] = None):
 @app.get("/api/signals/latest")
 def get_latest_signals(segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "signals.csv")
-    df = pd.read_csv(path, index_col=0, parse_dates=True)
+    df = _read_csv(path, index_col=0, parse_dates=True)
     latest = df.groupby("ticker").last().reset_index()
     latest = latest.sort_values("prob_up", ascending=False)
     return latest.to_dict(orient="records")
@@ -85,7 +114,7 @@ def get_latest_signals(segment: Optional[str] = None):
 @app.get("/api/signals/history")
 def get_signal_history(ticker: Optional[str] = None, limit: int = 260, segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "signals.csv")
-    df = pd.read_csv(path, index_col=0, parse_dates=True)
+    df = _read_csv(path, index_col=0, parse_dates=True)
     if ticker:
         df = df[df["ticker"] == ticker]
         if df.empty:
@@ -98,7 +127,7 @@ def get_signal_history(ticker: Optional[str] = None, limit: int = 260, segment: 
 @app.get("/api/portfolio")
 def get_portfolio(limit: int = 1000, segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "portfolio.csv")
-    df = pd.read_csv(path, index_col=0, parse_dates=True)
+    df = _read_csv(path, index_col=0, parse_dates=True)
     pv = df["portfolio_value"]
     df["drawdown"] = pv / pv.cummax() - 1
     df = df.sort_index().tail(limit).reset_index()
@@ -109,7 +138,7 @@ def get_portfolio(limit: int = 1000, segment: Optional[str] = None):
 @app.get("/api/drift")
 def get_drift(limit: int = 260, segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "drift_report.csv")
-    df = pd.read_csv(path, index_col=0, parse_dates=True)
+    df = _read_csv(path, index_col=0, parse_dates=True)
     df = df.sort_index().tail(limit).reset_index()
     df = df.rename(columns={df.columns[0]: "date"})
     return df.to_dict(orient="records")
@@ -118,14 +147,14 @@ def get_drift(limit: int = 260, segment: Optional[str] = None):
 @app.get("/api/regime")
 def get_regime_breakdown(segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "regime_breakdown.csv")
-    df = pd.read_csv(path, index_col=0).reset_index()
+    df = _read_csv(path, index_col=0).reset_index()
     return df.to_dict(orient="records")
 
 
 @app.get("/api/sector-momentum")
 def get_sector_momentum(segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "sector_momentum.csv")
-    df = pd.read_csv(path)
+    df = _read_csv(path)
     return df.to_dict(orient="records")
 
 
@@ -135,7 +164,7 @@ def get_prices(ticker: str, limit: int = 260, segment: Optional[str] = None):
     path = _seg_dir(segment) / "prices.csv"
     if not path.exists():
         return []
-    df = pd.read_csv(path)
+    df = _read_csv(path)
     df = df[df["ticker"] == ticker].sort_values("date").tail(limit)
     return df[["date", "close"]].to_dict(orient="records")
 
@@ -147,7 +176,7 @@ def get_quality():
     path = RESULTS_DIR / "quality_shortlist.csv"
     if not path.exists():
         return []
-    df = pd.read_csv(path)
+    df = _read_csv(path)
     df = df.where(pd.notnull(df), None)   # NaN → null så JSON blir giltig
     return df.to_dict(orient="records")
 
@@ -162,5 +191,5 @@ def get_paper_ledger(limit: int = 520, segment: Optional[str] = None):
     path = _seg_dir(segment) / "paper_ledger.csv"
     if not path.exists():
         return []
-    df = pd.read_csv(path).tail(limit)
+    df = _read_csv(path).tail(limit)
     return df.to_dict(orient="records")

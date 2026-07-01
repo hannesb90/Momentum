@@ -107,9 +107,15 @@ function DetailPanel({ row }) {
         <div className="qdetail__facts">
           <div className="qdetail__fact"><span>Omsättning</span><b>{fmtMcap(row.revenue_msek)}</b></div>
           <div className="qdetail__fact"><span>EBITDA</span><b>{fmtMcap(row.ebitda_msek)}</b></div>
-          <div className="qdetail__fact"><span>Resultat</span><b>{fmtMcap(row.net_result_msek)}</b></div>
+          {row.ebit_msek != null && (
+            <div className="qdetail__fact"><span>Rörelseresultat (EBIT)</span><b>{fmtMcap(row.ebit_msek)}</b></div>
+          )}
+          <div className="qdetail__fact"><span>Årets resultat</span><b>{fmtMcap(row.net_result_msek)}</b></div>
           <div className="qdetail__fact"><span>Börsvärde</span><b>{fmtMcap(row.mcap_msek)}</b></div>
-          <div className="qdetail__fact"><span>EBITDA-multipel</span><b>{fmtMult(row.ebitda_multiple)}</b></div>
+          <div className="qdetail__fact">
+            <span>Multipel{row.earnings_basis ? ` (${row.earnings_basis})` : ''}</span>
+            <b>{fmtMult(row.ebitda_multiple)}</b>
+          </div>
           {investors.length > 0 && (
             <div className="qdetail__fact"><span>Ägare (nämnda)</span><b>{investors.join(', ')}</b></div>
           )}
@@ -244,7 +250,7 @@ export function QualityPage() {
                 <th>Kvalitet</th>
                 <th>Zon</th>
                 <th>Börsvärde</th>
-                <th>EBITDA×</th>
+                <th>Multipel</th>
               </tr>
             </thead>
             <tbody>

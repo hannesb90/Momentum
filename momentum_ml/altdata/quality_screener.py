@@ -70,16 +70,20 @@ _SYSTEM = (
     '  "sales" (säljkultur/förmåga att ta betalt), "mgmt" (ledning/styrelse + skin in '
     'the game om nämnt), "market" (tydlig & stor adresserbar marknad), '
     '"profit_path" (lönsam eller tydlig väg dit), "under_radar" (fortf. oupptäckt)\n'
-    '  Nyckeltal UR TEXTEN (MSEK resp. miljoner aktier), null om ej angivet:\n'
-    '  "revenue_msek" (omsättning senaste 12m/år), "ebitda_msek" (EBITDA/rörelseresultat '
-    'senaste 12m/år), "net_result_msek", "shares_million" (antal aktier)\n'
+    '  Nyckeltal UR TEXTEN (MSEK resp. miljoner aktier), null om ej angivet. Leta NOGA '
+    'i resultaträkningen/finansiella sammandraget – dessa siffror STÅR nästan alltid där:\n'
+    '  "revenue_msek" (omsättning/nettoomsättning senaste 12m/år),\n'
+    '  "ebitda_msek" (EBITDA om det anges explicit), '
+    '"ebit_msek" (rörelseresultat/EBIT – ange ALLTID om resultaträkningen finns), '
+    '"net_result_msek" (årets/periodens resultat), "shares_million" (antal aktier)\n'
     '  "mentioned_investors": lista på namngivna fonder/kända investerare i texten (annars [])\n'
     '  "red_flags": lista (t.ex. emissionsberoende, många aktier, förlust utan väg till vinst)\n'
     '  "pitch": caset i EN mening en 10-åring förstår\n'
     '  "memo": 2-3 meningar om varför det kan vara undervärderat och vad som krävs för omvärdering\n'
     'Exempel: {"understand":4,"global":5,"scalable":4,"moat":3,"sales":null,"mgmt":4,'
     '"market":4,"profit_path":2,"under_radar":4,"revenue_msek":120,"ebitda_msek":-15,'
-    '"net_result_msek":-22,"shares_million":18,"mentioned_investors":["Carnegie Fonder"],'
+    '"ebit_msek":-19,"net_result_msek":-22,"shares_million":18,'
+    '"mentioned_investors":["Carnegie Fonder"],'
     '"red_flags":["ännu ej lönsamt"],"pitch":"...","memo":"..."}'
 )
 
@@ -219,12 +223,12 @@ def _market_caps(tickers) -> dict:
     return caps
 
 
-def _zone(mult, ebitda):
-    """OT-zon: billig <=12x, rimlig 12-18x, dyr >18x, förlust/hype om EBITDA<0,
-    okänd om EBITDA saknas ur texten ELLER börsvärde ej går att räkna."""
-    if ebitda is None:
-        return "okänd"                 # data saknas – INTE samma sak som förlust
-    if ebitda <= 0:
+def _zone(mult, earnings):
+    """OT-zon på vald vinst-bas: billig <=12x, rimlig 12-18x, dyr >18x, förlust om
+    vinsten <0, okänd om ingen vinstsiffra finns ELLER börsvärde ej går att räkna."""
+    if earnings is None:
+        return "okänd"                 # ingen vinstsiffra alls – INTE samma sak som förlust
+    if earnings <= 0:
         return "förlust/hype"
     if mult is None:
         return "okänd"
@@ -233,6 +237,18 @@ def _zone(mult, ebitda):
     if mult <= 18:
         return "rimlig"
     return "dyr"
+
+
+def _earnings(s: dict):
+    """Vinst-stege: EBITDA → EBIT/rörelseresultat → årets resultat. Returnerar
+    (vinst_msek, bas) med första tillgängliga, annars (None, None). Låter oss ge en
+    zon åt bolag där EBITDA saknas men ett annat resultatmått finns (gratis, ur cache)."""
+    for key, basis in (("ebitda_msek", "EBITDA"), ("ebit_msek", "EBIT"),
+                       ("net_result_msek", "resultat")):
+        v = s.get(key)
+        if isinstance(v, (int, float)):
+            return float(v), basis
+    return None, None
 
 
 def report() -> None:
@@ -258,13 +274,15 @@ def report() -> None:
             d = data.get(s["ticker"])
             if d is not None and not d.empty:
                 mcap = round(float(d["Close"].iloc[-1]) * float(s["shares_million"]), 1)
-        ebitda = s.get("ebitda_msek")
-        if mcap is not None and isinstance(ebitda, (int, float)) and ebitda > 0:
-            mult = round(mcap / ebitda, 1)
+        earnings, basis = _earnings(s)                 # EBITDA → EBIT → resultat
+        if mcap is not None and earnings is not None and earnings > 0:
+            mult = round(mcap / earnings, 1)
         r = dict(s)
         r["mcap_msek"] = mcap
-        r["ebitda_multiple"] = mult
-        r["zone"] = _zone(mult, ebitda if isinstance(ebitda, (int, float)) else None)
+        r["earnings_msek"] = earnings
+        r["earnings_basis"] = basis or ""
+        r["ebitda_multiple"] = mult                    # multipel på vald vinst-bas
+        r["zone"] = _zone(mult, earnings)
         # Platta ut listfälten till strängar så CSV/frontend slipper Python-repr.
         r["red_flags"] = "; ".join(map(str, s.get("red_flags") or []))
         r["mentioned_investors"] = "; ".join(map(str, s.get("mentioned_investors") or []))
@@ -274,8 +292,9 @@ def report() -> None:
     out = Path("results/quality_shortlist.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
     cols = ["ticker", "name", "composite", "zone", "mcap_msek", "ebitda_multiple",
-            *_SCORE_KEYS, "revenue_msek", "ebitda_msek", "net_result_msek",
-            "shares_million", "pitch", "memo", "red_flags", "mentioned_investors"]
+            "earnings_basis", *_SCORE_KEYS, "revenue_msek", "ebitda_msek", "ebit_msek",
+            "net_result_msek", "shares_million", "pitch", "memo", "red_flags",
+            "mentioned_investors"]
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
