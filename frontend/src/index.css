@@ -669,6 +669,34 @@ h2 {
   border-top-style: dashed;
 }
 
+.myportf {
+  margin: 4px 0 20px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+.myportf__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.myportf__val {
+  margin-left: auto;
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.myportf__head .pos {
+  color: var(--good);
+  font-weight: 600;
+}
+.myportf__head .neg {
+  color: var(--bad);
+  font-weight: 600;
+}
+
 /* ── Tiles ───────────────────────────────────────────────────────────── */
 
 .tile-grid {

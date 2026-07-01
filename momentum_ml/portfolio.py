@@ -36,6 +36,44 @@ def _results_dir() -> Path:
     return Path(config.anchor(config.RESULTS_DIR))
 
 
+def value_log_path() -> Path:
+    return Path(config.anchor(config.PORTFOLIO_VALUE_LOG))
+
+
+def log_value(total) -> None:
+    """Upsert:ar dagens totala portföljvärde i framåt-loggen (en punkt per dag).
+    Bygger en äkta personlig utvecklingskurva från och med nu."""
+    from datetime import date
+    if not total or float(total) <= 0:
+        return
+    p = value_log_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    rows = {}
+    if p.exists():
+        for r in csv.DictReader(open(p, encoding="utf-8")):
+            if r.get("date"):
+                rows[r["date"]] = r.get("value_sek", "")
+    rows[date.today().isoformat()] = str(round(float(total)))   # dagens = senaste spar
+    with open(p, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["date", "value_sek"])
+        for d in sorted(rows):
+            w.writerow([d, rows[d]])
+
+
+def load_value_log() -> list:
+    p = value_log_path()
+    if not p.exists():
+        return []
+    out = []
+    for r in csv.DictReader(open(p, encoding="utf-8")):
+        try:
+            out.append({"date": r["date"], "value": float(r["value_sek"])})
+        except (ValueError, KeyError):
+            continue
+    return out
+
+
 def _num(v):
     try:
         f = float(v)
@@ -77,6 +115,8 @@ def save_holdings(rows) -> None:
                         "bucket": b if b in BUCKETS else "theme",
                         "ticker": tk,
                         "cost_sek": (round(cost) if cost else "")})
+    total = sum(float(r.get("value", r.get("value_sek", 0)) or 0) for r in rows)
+    log_value(total)                                   # framåt-logg: dagens totalvärde
 
 
 # ── Namn → ticker/sektor (svenska universumet) ────────────────────────────────

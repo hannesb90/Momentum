@@ -51,4 +51,5 @@ export const api = {
   holdings: (amount) => getJson(`/holdings${amount ? `?amount=${amount}` : ''}`),
   saveHoldings: (holdings, amount) => postJson('/holdings', { holdings, amount }),
   exitSignals: () => getJson('/exit-signals'),
+  portfolioLog: () => getJson('/portfolio-log'),
 }
