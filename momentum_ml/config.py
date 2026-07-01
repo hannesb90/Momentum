@@ -427,6 +427,14 @@ QUALITY_CACHE_DIR      = "cache/quality"
 QUALITY_MAX_CHARS      = 24000      # underlag/bolag (senaste rapport + några PM) – rymmer resultaträkningen
 QUALITY_EXCLUDE_SECTORS = ["Health Care"]   # undvik medtech/pharma (binärt lotteri)
 QUALITY_MARKET_CAP     = ["Small Cap", "Micro Cap", "Nano Cap"]   # tidiga, oupptäckta bolag
+# Värderingströsklar. Lönsamma bolag zonas på vinstmultipel (börsvärde/vinst):
+QUALITY_MULT_CHEAP     = 12        # <= billig, <= FAIR rimlig, över = dyr (EV/EBITDA-stil)
+QUALITY_MULT_FAIR      = 18
+# Förlustbolag (negativ vinst) kan inte zonas på vinst → använd P/S (börsvärde/
+# omsättning), precis som OT/EV-S gör för bolag i utvecklingsfas. Trösklar för
+# svenska småbolag (mjukvara tål högre P/S; justera vid behov):
+QUALITY_PS_CHEAP       = 1.5       # P/S <= billig
+QUALITY_PS_FAIR        = 4.0       # P/S <= rimlig, över = dyr
 
 # ── Nasdaq Nordic (gratis, auktoritativt börsvärde – kompletterar Yahoo) ──────
 # Yahoo saknar aktieantal/börsvärde för många microcaps → screenerns "okänd"-hink.

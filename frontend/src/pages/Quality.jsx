@@ -18,7 +18,6 @@ const ZONES = [
   { value: 'billig', label: 'Billig' },
   { value: 'rimlig', label: 'Rimlig' },
   { value: 'dyr', label: 'Dyr' },
-  { value: 'förlust/hype', label: 'Förlust' },
   { value: 'okänd', label: 'Okänd' },
 ]
 
@@ -275,8 +274,9 @@ export function QualityPage() {
             </p>
             <p>
               <b>Kvalitet</b> (composite 1–5) mäter hur bra caset låter. <b>Zon</b> mäter
-              värderingen: billig ≤12× EBITDA, rimlig ≤18×, dyr &gt;18×, förlust (går back),
-              okänd (saknar underlag). Din kärnregel: hög kvalitet <b>och</b> billig.
+              värderingen: lönsamma bolag på vinstmultipel (billig ≤12×, rimlig ≤18×, dyr &gt;18×),
+              förlustbolag på P/S (börsvärde/omsättning) precis som OT gör – så även de får
+              billig/dyr-stämpel, med en <b>förlust</b>-tagg. Din kärnregel: hög kvalitet <b>och</b> billig.
             </p>
           </InfoButton>
         </h1>
@@ -417,6 +417,7 @@ export function QualityPage() {
                         <span className={`zonebadge zonebadge--${zoneClass(row.zone)}`}>
                           {ZONE_LABEL[row.zone] ?? String(row.zone).toUpperCase()}
                         </span>
+                        {row.loss ? <span className="losschip" title="Går med förlust – zonad på P/S">förlust</span> : null}
                       </td>
                       <td>{fmtMcap(row.mcap_msek)}</td>
                       <td>{fmtMult(row.ebitda_multiple)}</td>

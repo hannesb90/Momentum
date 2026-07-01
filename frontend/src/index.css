@@ -1063,6 +1063,19 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
+.losschip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--bad);
+  vertical-align: middle;
+}
+
 .qrow {
   cursor: pointer;
 }
