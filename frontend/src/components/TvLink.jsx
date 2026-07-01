@@ -12,12 +12,28 @@ const EXCHANGE = {
   US: '',         // USA – bar symbol
 }
 
+// Kurerade TradingView-symboler för de faktiska innehaven, nyckel = bar ticker (utan
+// suffix). Ger ett DEFINIERAT börs:symbol oavsett om man skriver 'BLCH' eller 'BLCH.L'.
+// London-UCITS kan ligga under LSE eller LSIN (USD-linjen) på TradingView – klicka och
+// säg till om någon inte löser, så rättar jag exakt börskod här på ett ställe.
+const TV_OVERRIDE = {
+  VVSM: 'XETR:VVSM',
+  V9N: 'XETR:V9N',
+  BLCH: 'LSE:BLCH',
+  ASWC: 'LSE:ASWC',
+  PAIW: 'LSE:PAIW',
+  JEDI: 'LSE:JEDI',
+  WNUC: 'LSE:WNUC',
+  XACTBULL2: 'OMXSTO:XACTBULL2',
+}
+
 export function tvSymbol(ticker) {
   if (!ticker) return ''
   const t = ticker.trim().toUpperCase()
   const dot = t.lastIndexOf('.')
   const suffix = dot > -1 ? t.slice(dot + 1) : ''
   const base = (dot > -1 ? t.slice(0, dot) : t).replace(/-/g, '_')
+  if (TV_OVERRIDE[base]) return TV_OVERRIDE[base]
   const exch = EXCHANGE[suffix]
   return exch ? `${exch}:${base}` : base
 }
