@@ -446,6 +446,69 @@ def signal():
     print(f"\n  Signal sparad: {out}")
 
 
+def detect(ticker, weeks=156):
+    """Facit: för en ETF, hur många veckor EFTER botten tände varje signal, och hur
+    mycket priset redan hade rört sig då? Visar latensen ⚡volym → CMF → momentum-rank."""
+    from data.data_loader import fetch_weekly_data
+    uni = _load_universe()
+    etfs = [t for t, _, _ in uni]
+    data = fetch_weekly_data(etfs, use_cache=True)
+    closes = {t: d["Close"] for t, d in data.items() if d is not None and not d["Close"].dropna().empty}
+    panel = pd.DataFrame(closes).sort_index()
+    panel.index = pd.to_datetime(panel.index)
+    have = [t for t in etfs if t in panel.columns]
+    if ticker not in panel.columns or data.get(ticker) is None:
+        print(f"[detect] ingen data för {ticker}. Universum: {', '.join(have)}")
+        return
+    rel, _ = _scores(panel, have)
+    ranks = rel.rank(axis=1, ascending=False)   # 1 = starkast
+
+    d = data[ticker].dropna(subset=["High", "Low", "Close", "Volume"]).copy()
+    d.index = pd.to_datetime(d.index)
+    hl = (d["High"] - d["Low"]).replace(0, np.nan)
+    mfm = ((d["Close"] - d["Low"]) - (d["High"] - d["Close"])) / hl
+    mfv = mfm.fillna(0.0) * d["Volume"]
+    cmf = mfv.rolling(13).sum() / d["Volume"].rolling(13).sum()
+    relvol = d["Volume"].rolling(4).mean() / d["Volume"].rolling(26).mean()
+
+    px = d["Close"].tail(weeks)
+    trough_date = px.idxmin()
+    peak_date = px.loc[trough_date:].idxmax()
+    run = float(px.loc[peak_date] / px.loc[trough_date] - 1)
+    K = config.ETF_ROT_TOP_K
+
+    def first_true(mask):
+        m = mask.loc[trough_date:].dropna()
+        m = m[m]
+        return m.index[0] if len(m) else None
+
+    fv = first_true(relvol >= 1.3)
+    fc = first_true(cmf >= 0.05)
+    tkrank = ranks[ticker] if ticker in ranks.columns else None
+    fm = first_true(tkrank <= K) if tkrank is not None else None
+
+    def wk(dt):
+        return None if dt is None else int((dt - trough_date).days / 7)
+
+    def gain(dt):
+        return None if dt is None else float(px.loc[:dt].iloc[-1] / px.loc[trough_date] - 1)
+
+    print(f"\n  DETEKTIONS-FACIT: {ticker} ({uni and dict((t,g) for t,g,_ in uni).get(ticker,'')})")
+    print(f"  Största rörelsen i fönstret: botten {trough_date.date()} → topp {peak_date.date()}  "
+          f"(+{run:.0%})\n")
+    print(f"  {'Signal':<26}{'först vid':>12}{'v efter botten':>15}{'pris rört då':>14}")
+    for lbl, dt in (("⚡ Volymspik (relvol≥1.3)", fv),
+                    ("CMF+ (ackumulation)", fc),
+                    (f"Momentum topp-{K}", fm)):
+        w = wk(dt); g = gain(dt)
+        ws = f"{w}v" if w is not None else "—"
+        gs = f"+{g:.0%}" if g is not None else "—"
+        ds = dt.date().isoformat() if dt is not None else "aldrig"
+        print(f"  {lbl:<26}{ds:>12}{ws:>15}{gs:>14}")
+    print("\n  Läs: ⚡ tänder tidigast men brusigt; momentum-rank sist – ofta efter att en stor "
+          "del av uppgången redan skett. Det är exakt 'går in sent'-problemet.")
+
+
 def flow():
     """Ren flödesvy: vilka sektorer klättrar/faller i rank (kapital in/ut)."""
     signal()   # signalen innehåller redan flödeskolumnen; separat kommando för bekvämlighet
@@ -459,6 +522,8 @@ def main():
         backtest(always_invested=("--always-invested" in sys.argv or "--always" in sys.argv))
     elif cmd == "sweep":
         sweep()
+    elif cmd == "detect":
+        detect(sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else 156)
     elif cmd == "flow":
         flow()
     else:
