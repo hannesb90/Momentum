@@ -509,6 +509,70 @@ def detect(ticker, weeks=156):
           "del av uppgången redan skett. Det är exakt 'går in sent'-problemet.")
 
 
+def flowstudy():
+    """Event-studie: när varje signal TÄNDER (volymspik ⚡ / CMF+ / momentum topp-K),
+    vad blir framåtavkastningen på 1–26v – över ALLA ETF:er och hela historiken?
+    Avgör (a) falsklarms-nivån (edge vs baslinje) och (b) 'tidigt ut vs rid vidare'
+    (är vinsten front-laddad eller ackumuleras den?)."""
+    from data.data_loader import fetch_weekly_data
+    uni = _load_universe()
+    etfs = [t for t, _, _ in uni]
+    data = fetch_weekly_data(etfs, use_cache=True)
+    closes = {t: d["Close"] for t, d in data.items() if d is not None and not d["Close"].dropna().empty}
+    panel = pd.DataFrame(closes).sort_index()
+    panel.index = pd.to_datetime(panel.index)
+    have = [t for t in etfs if t in panel.columns]
+    rel, _ = _scores(panel, have)
+    ranks = rel.rank(axis=1, ascending=False)
+    K = config.ETF_ROT_TOP_K
+    horizons = [1, 2, 4, 8, 13, 26]
+    acc = {s: {h: [] for h in horizons} for s in ("baseline", "volspike", "cmf_pos", "mom_top")}
+
+    def firings(mask):
+        m = mask.fillna(False).astype(bool)
+        return m & (~m.shift(1).fillna(False))     # övergång Falskt→Sant = ny signal
+
+    for t in have:
+        d = data[t].dropna(subset=["High", "Low", "Close", "Volume"])
+        if len(d) < 60:
+            continue
+        d.index = pd.to_datetime(d.index)
+        close = d["Close"]
+        hl = (d["High"] - d["Low"]).replace(0, np.nan)
+        mfm = ((close - d["Low"]) - (d["High"] - close)) / hl
+        cmf = (mfm.fillna(0.0) * d["Volume"]).rolling(13).sum() / d["Volume"].rolling(13).sum()
+        relvol = d["Volume"].rolling(4).mean() / d["Volume"].rolling(26).mean()
+        rk = ranks[t].reindex(close.index) if t in ranks.columns else pd.Series(np.nan, index=close.index)
+        fires = {"volspike": firings(relvol >= 1.3),
+                 "cmf_pos": firings(cmf >= 0.05),
+                 "mom_top": firings(rk <= K)}
+        for h in horizons:
+            fwd = close.shift(-h) / close - 1
+            acc["baseline"][h].extend(fwd.dropna().tolist())
+            for s, mask in fires.items():
+                acc[s][h].extend(fwd[mask.reindex(close.index, fill_value=False)].dropna().tolist())
+
+    def stat(lst):
+        a = np.array(lst, dtype=float)
+        return (float(a.mean()), float((a > 0).mean()), len(a)) if len(a) else (float("nan"), float("nan"), 0)
+
+    base = {h: stat(acc["baseline"][h]) for h in horizons}
+    print("\n  FLÖDES-SIGNAL EVENT-STUDIE – snitt framåtavkastning EFTER att signalen tänt")
+    print("  (över alla ETF:er/historik; 'edge' = snitt minus baslinje för samma horisont)\n")
+    print(f"  {'baslinje (alla v)':<22}" + "".join(f"{f'{h}v':>9}" for h in horizons))
+    print(f"  {'  snitt':<22}" + "".join(f"{base[h][0]:>+8.1%} " for h in horizons))
+    for s, lbl in (("volspike", "⚡ Volymspik"), ("cmf_pos", "CMF+ (ackum.)"),
+                   ("mom_top", f"Momentum topp-{K}")):
+        print(f"\n  {lbl}  (n={stat(acc[s][horizons[0]])[2]} event)")
+        print(f"  {'  edge vs baslinje':<22}" +
+              "".join(f"{stat(acc[s][h])[0] - base[h][0]:>+8.1%} " for h in horizons))
+        print(f"  {'  träffsäkerhet':<22}" +
+              "".join(f"{stat(acc[s][h])[1]:>8.0%} " for h in horizons))
+    print("\n  Tolkning: positiv 'edge' som är STÖRST tidigt (1–4v) och sedan krymper → "
+          "TIDIGT IN, TIDIGT UT lönar sig. Edge som växer mot 13–26v → rid vidare. "
+          "Edge ≈ 0 på alla horisonter → signalen är brus (falsklarm dominerar).")
+
+
 def flow():
     """Ren flödesvy: vilka sektorer klättrar/faller i rank (kapital in/ut)."""
     signal()   # signalen innehåller redan flödeskolumnen; separat kommando för bekvämlighet
@@ -524,6 +588,8 @@ def main():
         sweep()
     elif cmd == "detect":
         detect(sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else 156)
+    elif cmd == "flowstudy":
+        flowstudy()
     elif cmd == "flow":
         flow()
     else:
