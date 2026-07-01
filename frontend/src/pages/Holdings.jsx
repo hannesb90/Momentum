@@ -29,8 +29,8 @@ function sizeIn(amount, n) {
 }
 
 const TIER = {
-  red: { cls: 'exit-red', label: '🔴 END THIS NOW' },
-  amber: { cls: 'exit-amber', label: '🟡 Varning' },
+  red: { cls: 'exit-red', label: 'END THIS NOW' },
+  amber: { cls: 'exit-amber', label: 'Varning' },
 }
 
 export function HoldingsPage() {
@@ -153,8 +153,8 @@ export function HoldingsPage() {
                 {e.ticker && <TvLink ticker={e.ticker} />}
               </div>
               <div className="exit-item__notes">
-                <span>📉 {e.tech_note}</span>
-                {e.sector_note && <span>🏭 {e.sector_note}</span>}
+                <span>Teknik: {e.tech_note}</span>
+                {e.sector_note && <span>{e.sector_note}</span>}
               </div>
             </div>
           ))}
@@ -241,7 +241,7 @@ export function HoldingsPage() {
       </div>
       {analysis?.warnings?.length > 0 && (
         <div className="qdetail__flags" style={{ marginTop: 10 }}>
-          {analysis.warnings.map((w, i) => <span className="qflag" key={i}>⚠ {w}</span>)}
+          {analysis.warnings.map((w, i) => <span className="qflag" key={i}>{w}</span>)}
         </div>
       )}
 
@@ -252,7 +252,7 @@ export function HoldingsPage() {
             Fyll mot mål
           </button>
           <button className={`riskon-btn riskon-btn--fire${riskOn ? ' riskon-btn--active' : ''}`} onClick={() => setRiskOn(true)}>
-            🔥 Risk on
+            Risk on
           </button>
         </span>
       </h3>
