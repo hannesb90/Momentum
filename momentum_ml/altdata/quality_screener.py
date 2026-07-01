@@ -17,6 +17,7 @@ hitta inte på (null när det inte går att belägga).
 Körs på Pi:n EFTER mfn_fetch (för microcap-universumet):
     python altdata/mfn_fetch.py fetch small        # (+ ev. micro/nano-fetch)
     python altdata/quality_screener.py score       # poängsätt universumet (cachas per bolag)
+    python altdata/quality_screener.py report      # berika med värdering → 'hög kvalitet OCH billig'
     python altdata/quality_screener.py chart        # rita värderingsdiagram av de poängsatta
     python altdata/quality_screener.py one SAAB-B.ST   # ett bolag (test)
 """
@@ -191,6 +192,84 @@ def screen() -> None:
           "Gör din egen djupanalys på topparna.")
 
 
+def _zone(mult, ebitda):
+    """OT-zon: billig <=12x, rimlig 12-18x, dyr >18x, förlust/hype om EBITDA<=0."""
+    if ebitda is None or ebitda <= 0:
+        return "förlust/hype"
+    if mult is None:
+        return "okänd"
+    if mult <= 12:
+        return "billig"
+    if mult <= 18:
+        return "rimlig"
+    return "dyr"
+
+
+def report() -> None:
+    """Berikar de poängsatta bolagen med VÄRDERING (börsvärde, EBITDA-multipel, zon) och
+    ger kärn-listan: HÖG KVALITET **och** BILLIG. `composite` mäter bara kvalitet – först
+    när vi väger in värderingen hittar vi 'bra bolag till lågt pris' (din kärnregel)."""
+    import csv
+    from data.data_loader import fetch_weekly_data
+
+    scored = [json.loads(p.read_text()) for p in Path(config.QUALITY_CACHE_DIR).glob("*.json")]
+    if not scored:
+        print("[report] inga poängsatta bolag – kör 'score' först.")
+        return
+    priced = [s for s in scored if s.get("shares_million")]
+    data = fetch_weekly_data([s["ticker"] for s in priced], use_cache=True) if priced else {}
+    rows = []
+    for s in scored:
+        d = data.get(s["ticker"]) if s.get("shares_million") else None
+        mcap = ebitda = mult = None
+        if d is not None and not d.empty and s.get("shares_million"):
+            mcap = round(float(d["Close"].iloc[-1]) * float(s["shares_million"]), 1)
+        ebitda = s.get("ebitda_msek")
+        if mcap is not None and isinstance(ebitda, (int, float)) and ebitda > 0:
+            mult = round(mcap / ebitda, 1)
+        r = dict(s)
+        r["mcap_msek"] = mcap
+        r["ebitda_multiple"] = mult
+        r["zone"] = _zone(mult, ebitda if isinstance(ebitda, (int, float)) else None)
+        rows.append(r)
+
+    rows.sort(key=lambda r: r.get("composite", 0), reverse=True)
+    out = Path("results/quality_shortlist.csv")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    cols = ["ticker", "name", "composite", "zone", "mcap_msek", "ebitda_multiple",
+            *_SCORE_KEYS, "revenue_msek", "ebitda_msek", "net_result_msek",
+            "shares_million", "pitch"]
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        for r in rows:
+            w.writerow(r)
+    print(f"[report] berikad kortlista sparad: {out}  ({len(rows)} bolag)")
+
+    # Kärn-listan: hög kvalitet OCH billig/rimlig värdering (positiv EBITDA).
+    sweet = [r for r in rows
+             if r.get("composite", 0) >= 4.0 and r.get("zone") in ("billig", "rimlig")]
+    print(f"\n  🎯 HÖG KVALITET (composite ≥ 4.0) **OCH** BILLIG/RIMLIG (≤18× EBITDA) – {len(sweet)} st:")
+    if not sweet:
+        print("     (inga träffar – de flesta högkvalitativa case saknar ännu positiv EBITDA. "
+              "Se hela CSV:n för zon-fördelningen.)")
+    for r in sweet:
+        mc = f"{r['mcap_msek']:>7.0f}" if r.get("mcap_msek") is not None else "      ?"
+        mu = f"{r['ebitda_multiple']:>4.1f}x" if r.get("ebitda_multiple") is not None else "   ?"
+        print(f"   {r['composite']:>4}  {r['ticker']:<12} {str(r['name'])[:22]:<22} "
+              f"börsv {mc} MSEK  {mu}  [{r['zone']}]  {str(r.get('pitch',''))[:40]}")
+
+    # Zon-fördelning så du ser var kvaliteten sitter.
+    from collections import Counter
+    z = Counter(r["zone"] for r in rows)
+    print("\n  Zon-fördelning (alla poängsatta):")
+    for zone in ("billig", "rimlig", "dyr", "förlust/hype", "okänd"):
+        if z.get(zone):
+            print(f"     {zone:<14} {z[zone]:>3}")
+    print("\n  OBS: värdering bygger på nyckeltal Claude extraherat UR RAPPORTTEXTEN "
+          "(kan sakna/vara föråldrade) × senaste kurs. Verifiera topparna manuellt.")
+
+
 def plot_positioning() -> None:
     """OT Analytics-style: börsvärde (y) vs EBITDA (x), bubbla=omsättning, x12/x18."""
     import matplotlib
@@ -237,6 +316,8 @@ def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "score"
     if cmd == "score":
         screen()
+    elif cmd == "report":
+        report()
     elif cmd == "chart":
         plot_positioning()
     elif cmd == "one":
