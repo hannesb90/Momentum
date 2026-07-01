@@ -449,6 +449,16 @@ NASDAQ_ATTR_SYMBOL  = "nm"         # kortnamn/symbol att matcha mot vår ticker
 NASDAQ_ATTR_ISIN    = "isin"
 NASDAQ_REQUEST_PAUSE_S = 0.5
 
+# ── EODHD (fundamentals-API: börsvärde + EBITDA + aktier i ETT anrop) ─────────
+# Bättre än Yahoo/textutvinning: en pålitlig källa ger både börsvärde OCH EBITDA
+# per bolag. Prioriteras över Yahoo och Claude-extraheringen i report().
+# Kräver en betald fundamentals-plan. Nyckeln läses från miljövariabeln
+# EODHD_API_TOKEN (lägg i ~/.momentum.env, chmod 600 – ALDRIG i repot/commits).
+# Våra tickers har redan '.ST'-suffix (EODHD:s Stockholm-format) → 1:1-mappning.
+EODHD_BASE_URL        = "https://eodhd.com/api"
+EODHD_CACHE_DIR       = "cache/eodhd"
+EODHD_REQUEST_PAUSE_S = 0.2
+
 SENTIMENT_LOOKBACK_DAYS = 7         # PM publicerade senaste veckan räknas in i veckans signal
 SENTIMENT_OOS_START     = "2016"    # rent OOS-fönster (samma som era_analysis.py)
 # Poängsätt bara PM från detta datum (en buffert före OOS-start). Vi backtestar
