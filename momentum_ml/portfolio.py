@@ -9,6 +9,7 @@ timing. Innehav läggs in manuellt (CLI eller i appen, som skriver samma fil).
 
     python portfolio.py analyze
     python portfolio.py newcapital 10000
+    python portfolio.py backtest 5000 36    # "nästa köp" mot index: 5000 kr/mån, 36 mån
 """
 import sys
 import csv
@@ -215,6 +216,162 @@ def compute(rows, amount=None) -> dict:
     return out
 
 
+# ── Backtest: "nästa köp" (fyll-mot-mål) mot index ────────────────────────────
+# Ärlig fråga: "nästa köp" styr BARA vart nytt kapital går (säljer aldrig). Rätt
+# jämförelse är därför SAMMA gamla bok, men varje ny krona i index istället. Vi visar
+# också "allt om till index nu" som aggressiv referens (säljer allt → index idag).
+# Buckets proxas av ETF:er: broad = korg av PORTFOLIO_BROAD_ETFS, sweden = småbolags-
+# index, theme = likaviktad korg av tema-ETF:erna, index = ETF_ROT_BENCHMARK (ACWI).
+# Hävstångs-sleeven proxas av broad-korgen; den får ändå aldrig nytt kapital (mål 0)
+# och är identisk i båda strategierna → påverkar inte A-vs-index-domen.
+
+def _fill_split(bucket_vals, amount, targets) -> dict:
+    """Fördela `amount` mot målvikterna: allt till de underviktade hinkarna (gap),
+    proportionellt. Om alla ligger på/över mål → fördela efter målvikt."""
+    after = sum(bucket_vals.values()) + amount
+    gaps = {b: max(0.0, targets.get(b, 0.0) * after - bucket_vals.get(b, 0.0)) for b in bucket_vals}
+    gsum = sum(gaps.values())
+    if gsum <= 0:
+        tsum = sum(targets.get(b, 0.0) for b in bucket_vals) or 1.0
+        return {b: amount * targets.get(b, 0.0) / tsum for b in bucket_vals}
+    return {b: amount * g / gsum for b, g in gaps.items()}
+
+
+def _irr_monthly(cfs):
+    """Månads-IRR via bisektion (cfs = kassaflöden per månad, sista inkl. slutvärde)."""
+    def npv(r):
+        return sum(c / (1 + r) ** k for k, c in enumerate(cfs))
+    lo, hi = -0.9, 1.0
+    if npv(lo) * npv(hi) > 0:
+        return None
+    for _ in range(200):
+        mid = (lo + hi) / 2
+        if npv(lo) * npv(mid) <= 0:
+            hi = mid
+        else:
+            lo = mid
+    return (lo + hi) / 2
+
+
+def _proxy_prices(months=None):
+    """Prispanel (vecka × proxy) för hinkarna + index. Nät → körs på Pi:n."""
+    import pandas as pd
+    from data.data_loader import fetch_weekly_data
+    broad = list(config.PORTFOLIO_BROAD_ETFS.values())
+    theme = [t for t, k in _kinds().items() if k == "theme"]
+    sweden = [config.SEGMENTS.get("small", {}).get("index_ticker", "XACT-SMABOLAG.ST")]
+    index = [config.ETF_ROT_BENCHMARK]
+    allt = sorted(set(broad + theme + sweden + index))
+    data = fetch_weekly_data(allt, use_cache=True)
+    close = {t: d["Close"] for t, d in data.items()
+             if d is not None and not d["Close"].dropna().empty}
+    px = pd.DataFrame(close).sort_index().ffill(limit=1)
+    px.index = pd.to_datetime(px.index)
+
+    def basket(tickers):
+        cols = [t for t in tickers if t in px.columns]
+        if not cols:
+            return None
+        sub = px[cols]
+        norm = sub / sub.apply(lambda c: c[c.first_valid_index()] if c.first_valid_index() is not None else float("nan"))
+        return norm.mean(axis=1)
+
+    proxies = {"broad": basket(broad), "sweden": basket(sweden),
+               "theme": basket(theme), "index": basket(index)}
+    proxies["leverage"] = proxies["broad"]
+    out = pd.DataFrame({k: v for k, v in proxies.items() if v is not None}).dropna()
+    if months:
+        out = out[out.index >= out.index[-1] - pd.DateOffset(months=months)]
+    return out
+
+
+def _dca_backtest(px, targets, start_book, monthly):
+    """Simulerar månatliga insättningar på en prispanel. Returnerar värde-serier +
+    sammanfattning för tre strategier med IDENTISK startbok (utom 'allt-in-index')."""
+    idx = list(px.index)
+    p0 = px.iloc[0]
+    cols = [b for b in BUCKETS if b in px.columns]
+    uA = {b: (start_book.get(b, 0.0) / p0[b] if p0.get(b, 0) else 0.0) for b in cols}
+    uB_legacy = dict(uA)                      # index-för-nytt: samma gamla bok
+    uB_index = 0.0
+    V0 = float(sum(start_book.values()))
+    uC_index = V0 / p0["index"] if p0.get("index", 0) else 0.0   # allt om till index nu
+    valsA, valsB, valsC, contrib_months = [], [], [], 0
+    prev_m = None
+    for ts in idx:
+        p = px.loc[ts]
+        if prev_m is not None and (ts.year, ts.month) != prev_m:
+            c = monthly
+            contrib_months += 1
+            split = _fill_split({b: uA[b] * p[b] for b in cols}, c, targets)
+            for b, amt in split.items():
+                if p.get(b, 0):
+                    uA[b] += amt / p[b]
+            if p.get("index", 0):
+                uB_index += c / p["index"]
+                uC_index += c / p["index"]
+        prev_m = (ts.year, ts.month)
+        valsA.append(sum(uA[b] * p[b] for b in cols))
+        valsB.append(sum(uB_legacy[b] * p[b] for b in cols) + uB_index * p.get("index", 0))
+        valsC.append(uC_index * p.get("index", 0))
+    invested = V0 + monthly * contrib_months
+    cfs = [-V0] + [-monthly] * contrib_months
+    def summarize(vals):
+        import pandas as pd
+        s = pd.Series(vals, index=idx)
+        final = float(s.iloc[-1])
+        cf = list(cfs); cf[-1] = cf[-1] + final
+        r = _irr_monthly(cf)
+        maxdd = float((s / s.cummax() - 1).min())
+        return {"final": final, "invested": invested,
+                "irr_year": ((1 + r) ** 12 - 1) if r is not None else None,
+                "maxdd": maxdd, "series": s}
+    return {"A": summarize(valsA), "B": summarize(valsB), "C": summarize(valsC),
+            "months": contrib_months, "years": len(idx) / 52.0}
+
+
+def backtest(monthly=5000, months=None):
+    rows = load_holdings()
+    start_book = {b: 0.0 for b in BUCKETS}
+    for r in rows:
+        start_book[r["bucket"] if r["bucket"] in start_book else "theme"] += r["value"]
+    V0 = sum(start_book.values())
+    try:
+        px = _proxy_prices(months=months)
+    except Exception as e:  # noqa: BLE001
+        print(f"[backtest] kunde inte bygga prispanel: {e}\n  (kör på Pi:n – molnet saknar nät)")
+        return
+    if px.empty or "index" not in px.columns or len(px) < 30:
+        print("[backtest] för lite prisdata för proxyserierna – cachea ETF:erna först.")
+        return
+    res = _dca_backtest(px, config.PORTFOLIO_TARGET, start_book, monthly)
+    a, b, c = res["A"], res["B"], res["C"]
+    print(f"\n  \"NÄSTA KÖP\" (fyll-mot-mål) MOT INDEX")
+    print(f"  Startbok {V0:,.0f} kr · {monthly:,.0f} kr/mån · {res['months']} insättningar "
+          f"· {res['years']:.1f} år".replace(",", " "))
+    print(f"  Totalt insatt: {a['invested']:,.0f} kr\n".replace(",", " "))
+    def line(name, s):
+        irr = f"{s['irr_year']:+.1%}" if s["irr_year"] is not None else "  n/a"
+        print(f"   {name:<34}slutvärde {s['final']:>10,.0f} kr   IRR/år {irr:>7}   maxDD {s['maxdd']:>6.1%}"
+              .replace(",", " "))
+    line("A) Nästa köp → fyll mot mål", a)
+    line("B) Nästa köp → allt i index", b)
+    line("C) Sälj allt → index idag", c)
+    print()
+    da = a["final"] - b["final"]
+    print(f"  A − B (allokeringens effekt på NYTT kapital): {da:>+10,.0f} kr "
+          f"({da / b['final']:+.1%})".replace(",", " "))
+    print("  A vs B isolerar det enda 'nästa köp' styr: vart nya pengar går (ingen försäljning).")
+    print("  C är referens om du säljer om HELA boken till index idag (skatt/spread ej medräknat).")
+    if da < 0:
+        print("  → Att styra nytt kapital mot mål-mixen SLÅR INTE ren index-insättning här.")
+    else:
+        print("  → Fyll-mot-mål gav ett litet övertag mot ren index-insättning i perioden.")
+    _write_json({"backtest": {k: {kk: vv for kk, vv in res[k].items() if kk != "series"}
+                              for k in ("A", "B", "C")},
+                 "monthly": monthly, "months": res["months"], "years": res["years"]})
+
+
 def _write_json(data):
     out = Path("results/portfolio_analysis.json")
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -258,6 +415,10 @@ def main():
         analyze()
     elif cmd == "newcapital":
         newcapital(float(sys.argv[2]) if len(sys.argv) > 2 else 10000)
+    elif cmd == "backtest":
+        monthly = float(sys.argv[2]) if len(sys.argv) > 2 else 5000
+        months = int(sys.argv[3]) if len(sys.argv) > 3 else None
+        backtest(monthly, months)
     else:
         print(__doc__)
 
