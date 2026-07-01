@@ -1185,3 +1185,55 @@ h2 {
 .qdetail__link:hover {
   text-decoration: underline;
 }
+
+.filter-bar__spacer {
+  flex: 1 1 auto;
+}
+
+.qchart {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 8px 10px;
+}
+.qchart .recharts-surface {
+  cursor: pointer;
+}
+.qchart__hint {
+  margin: 6px 12px 4px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.qtooltip {
+  background: #0f172a;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 11px;
+  min-width: 168px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.qtooltip__name {
+  font-weight: 700;
+  font-size: 0.84rem;
+  margin-bottom: 6px;
+}
+.qtooltip__name span {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.76rem;
+}
+.qtooltip__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.8rem;
+  padding: 1px 0;
+}
+.qtooltip__row span {
+  color: var(--text-muted);
+}
+.qtooltip .zonebadge {
+  margin-top: 7px;
+}
