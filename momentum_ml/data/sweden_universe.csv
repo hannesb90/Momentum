@@ -1,34 +1,67 @@
 ticker,name,sector,market_cap_category
+2020O.ST,2020 Bulkers Ltd.,Industrials,Nano Cap
+2CUREX.ST,2cureX AB,Health Care,Nano Cap
 3KR.ST,Tre Kronor Property Investment AB (publ),Real Estate,Micro Cap
+4C.ST,4C Group AB,Industrials,Micro Cap
+8TRA.ST,TRATON SE,Consumer Discretionary,Large Cap
 AAA.ST,ArcAroma AB (publ),Industrials,Nano Cap
 AAC.ST,AAC Clyde Space AB (publ),Information Technology,Micro Cap
 AAK.ST,AAK AB (publ.),Consumer Staples,Mid Cap
+ABB.ST,ABB Ltd.,Industrials,Large Cap
+ABGO.ST,ABG Sundal Collier Holding ASA,Financials,Mid Cap
 ABSO.ST,Absolent Air Care Group AB (publ),Industrials,Small Cap
 ACAD.ST,AcadeMedia AB (publ),Consumer Staples,Small Cap
 ACARIX.ST,Acarix AB (publ),Health Care,Nano Cap
+ACAST.ST,Acast AB,Information Technology,Mid Cap
 ACCON.ST,Acconeer AB,Information Technology,Micro Cap
 ACE.ST,Ascelia Pharma AB (publ),Health Care,Micro Cap
 ACOU.ST,AcouSort AB (publ),Health Care,Nano Cap
 ACRI-A.ST,Acrinova AB (publ),Real Estate,Micro Cap
+ACRI-B.ST,Acrinova AB Class B,Financials,Micro Cap
+ACRO.ST,Axactor ASA,Industrials,Mid Cap
+ACROUD.ST,Acroud AB,Information Technology,Micro Cap
 ACTI.ST,Active Biotech AB (publ),Health Care,Nano Cap
+ACUVI.ST,Acuvi AB,Industrials,Micro Cap
 ADDERA.ST,AdderaCare AB,Health Care,Nano Cap
 ADDT-B.ST,Addtech AB (publ.),Industrials,Mid Cap
 ADDV-A.ST,ADDvise Group AB (publ),Health Care,Micro Cap
 ADDV-B.ST,ADDvise Group AB (publ),Health Care,Micro Cap
+ADTR.ST,Adtraction Group AB,Information Technology,Small Cap
 ADVBOX.ST,Adventure Box Technology AB (publ),Communication Services,Nano Cap
 ADVE.ST,Advenica AB (publ),Information Technology,Nano Cap
+AEC.ST,Africa Energy Corp.,Energy,Small Cap
 AERO.ST,Svenska Aerogel Holding AB (publ),Materials,Nano Cap
+AFGO.ST,AF Gruppen ASA Class A,Industrials,Large Cap
+AFKO.ST,Arendals Fossekompani ASA,Utilities,Mid Cap
+AFRY.ST,AFRY AB Class B,Industrials,Large Cap
+AGES-B.ST,AGES Industri AB,Industrials,Micro Cap
+AGROUP.ST,Arlandastad Group AB,Financials,Mid Cap
+AGTIRA-B.ST,Agtira AB Class B,Materials,Micro Cap
 AINO.ST,Aino Health AB (publ),Health Care,Nano Cap
+AIRA.ST,AI Revenue Assistant Software Stockholm AB,Unknown,Nano Cap
 AJA-B.ST,Byggmastare Anders J Ahlstrom Holding AB (publ),Industrials,Micro Cap
+AKASTO.ST,Akastor ASA,Industrials,Mid Cap
+AKBMO.ST,Aker BioMarine ASA,Materials,Mid Cap
 AKEL-D.ST,Akelius Residential Property AB (publ),Real Estate,Small Cap
+AKERO.ST,Aker ASA Class A,Financials,Large Cap
+AKRBPO.ST,Aker BP ASA,Energy,Large Cap
+AKSOO.ST,Aker Solutions ASA,Utilities,Large Cap
+ALBERT.ST,eEducation Albert AB,Information Technology,Micro Cap
 ALCA.ST,Alcadon Group AB (publ),Information Technology,Micro Cap
 ALELIO.ST,Alelion Energy Systems AB,Industrials,Nano Cap
 ALFA.ST,Alfa Laval AB (publ),Industrials,Large Cap
 ALIF-B.ST,AddLife AB (publ),Health Care,Mid Cap
 ALIG.ST,Alimak Group AB (publ),Industrials,Small Cap
 ALIV-SDB.ST,Autoliv Inc.,Consumer Discretionary,Mid Cap
+ALLEI.ST,Alleima AB,Materials,Large Cap
+ALLIGO-B.ST,Alligo AB Class B,Industrials,Mid Cap
+ALM-PREF.ST,ALM Equity AB Pref.shs,Financials,Small Cap
 ALM.ST,ALM Equity AB (publ),Real Estate,Small Cap
+ALNGO.ST,ALNG ASA,Energy,Small Cap
+ALPCOT-B.ST,Alpcot Holding AB Class B,Financials,Micro Cap
+ALTRA.ST,Altra Fastigheter AB,Financials,Large Cap
 ALZ.ST,Alzinova AB,Health Care,Nano Cap
+ALZCUR-BTA.ST,AlzeCure Pharma AB TEMP,Health Care,Small Cap
 ALZCUR.ST,AlzeCure Pharma AB (publ),Health Care,Nano Cap
 AMAST-PREF.ST,Amasten Fastighets AB (publ),Real Estate,Micro Cap
 AMAST.ST,Amasten Fastighets AB (publ),Real Estate,Small Cap
@@ -37,23 +70,38 @@ ANNE-B.ST,Annehem Fastigheter AB,Real Estate,Micro Cap
 ANNX.ST,Annexin Pharmaceuticals AB (publ),Health Care,Nano Cap
 ANOD-B.ST,Addnode Group AB (publ),Information Technology,Small Cap
 ANOT.ST,Anoto Group AB (publ),Information Technology,Nano Cap
+APOTEA.ST,Apotea AB,Consumer Discretionary,Mid Cap
 AQ.ST,AQ Group AB (publ),Industrials,Small Cap
+AQUAO.ST,Aqualis ASA,Industrials,Small Cap
 ARCANE.ST,Arcane Crypto AB,Financials,Micro Cap
+ARCHO.ST,Archer Limited,Industrials,Mid Cap
 ARCOMA.ST,Arcoma AB,Health Care,Nano Cap
 ARCT.ST,Arctic Minerals AB (publ),Materials,Nano Cap
+ARCTIC.ST,Arctic Blue Beverages AB,Consumer Staples,Nano Cap
+ARFA.ST,Arctic Falls AB,Consumer Discretionary,Small Cap
 ARISE.ST,Arise AB (publ),Utilities,Micro Cap
 ARJO-B.ST,Arjo AB (publ),Health Care,Mid Cap
+ARP.ST,Arctic Paper S.A.,Materials,Small Cap
+ARPL.ST,Arla Plast AB,Industrials,Small Cap
+ARRO.ST,Arribatec Group ASA,Information Technology,Micro Cap
 ASAP.ST,Asarina Pharma AB (publ),Health Care,Nano Cap
+ASKER.ST,Asker Healthcare Group AB,Industrials,Large Cap
+ASMDEE-B.ST,Asmodee Group AB Class B,Consumer Discretionary,Large Cap
 ASSA-B.ST,ASSA ABLOY AB (publ),Industrials,Large Cap
 ATC1L-535NDS.ST,Atlas Copco AB,Industrials,Large Cap
 ATCO-A.ST,Atlas Copco AB,Industrials,Large Cap
 ATCO-B.ST,Atlas Copco AB,Industrials,Large Cap
+ATEAO.ST,Atea ASA,Information Technology,Large Cap
 ATIC.ST,Actic Group AB (publ),Consumer Discretionary,Nano Cap
+ATIN.ST,Athanase Innovation AB,Consumer Staples,Micro Cap
 ATORX.ST,Alligator Bioscience AB (publ),Health Care,Micro Cap
 ATRLJ-B.ST,Atrium Ljungberg AB (publ),Real Estate,Mid Cap
 ATT.ST,Attendo AB (publ),Health Care,Small Cap
 ATVEXA-B.ST,Atvexa AB (publ),Consumer Staples,Micro Cap
 AUR.ST,Auriant Mining AB (publ),Materials,Micro Cap
+AUSSO.ST,Austevoll Seafood ASA,Consumer Staples,Large Cap
+AUTOOO.ST,AutoStore Holdings Ltd.,Information Technology,Large Cap
+AVARDA.ST,Avarda Bank AB,Financials,Large Cap
 AVEN.ST,Avensia AB (publ),Information Technology,Micro Cap
 AVT-B.ST,AVTECH Sweden AB (publ),Industrials,Nano Cap
 AWRD.ST,Awardit AB (publ),Communication Services,Micro Cap
@@ -62,67 +110,117 @@ AXIC-A.ST,aXichem AB,Health Care,Micro Cap
 AXOLOT.ST,Axolot Solutions Holding AB (publ),Industrials,Nano Cap
 AZA.ST,Avanza Bank Holding AB,Financials,Mid Cap
 AZELIO.ST,Azelio AB (publ),Utilities,Small Cap
+AZN.ST,AstraZeneca PLC,Health Care,Large Cap
+B2IO.ST,B2 Impact ASA,Industrials,Mid Cap
 B3.ST,B3 Consulting Group AB (publ),Information Technology,Micro Cap
 BACTI-B.ST,Bactiguard Holding AB (publ),Health Care,Small Cap
+BAHN-B.ST,Bahnhof AB Class B,Communication Services,Mid Cap
+BAKKAO.ST,Bakkafrost P/F,Consumer Staples,Large Cap
 BALCO.ST,Balco Group AB,Industrials,Micro Cap
 BALD-B.ST,Fastighets AB Balder (publ),Real Estate,Large Cap
+BAWAT.ST,Bawat Water Technologies AB,Industrials,Nano Cap
+BBROOM.ST,New Bubbleroom Sweden AB,Consumer Discretionary,Micro Cap
+BEAMMW-B.ST,BeammWave AB Class B,Industrials,Small Cap
 BEGR.ST,BE Group AB (publ),Materials,Micro Cap
 BEIA-B.ST,Beijer Alma AB (publ),Industrials,Small Cap
 BEIJ-B.ST,Beijer Ref AB (publ),Industrials,Mid Cap
 BELE.ST,Beijer Electronics Group AB (publ),Information Technology,Micro Cap
 BERG-B.ST,Bergman & Beving AB (publ),Industrials,Small Cap
+BERNER-B.ST,Berner Industrier AB Class B,Industrials,Small Cap
 BESQ.ST,Besqab AB (publ),Real Estate,Micro Cap
+BESQAB.ST,Besqab AB,Financials,Mid Cap
+BETCO.ST,Better Collective A/S,Industrials,Mid Cap
 BETS-B.ST,Betsson AB,Consumer Discretionary,Small Cap
+BEWIO.ST,Bewi ASA,Materials,Mid Cap
 BHG.ST,BHG Group AB (publ),Consumer Discretionary,Mid Cap
+BICO.ST,BICO Group AB Class B,Health Care,Small Cap
 BILI-A.ST,Bilia AB (publ),Consumer Discretionary,Small Cap
 BILL.ST,BillerudKorsnas AB (publ),Materials,Mid Cap
 BIM.ST,BIMobject AB,Information Technology,Micro Cap
 BINERO.ST,Binero Group AB (publ),Information Technology,Nano Cap
 BINV.ST,BioInvent International AB,Health Care,Small Cap
 BIOA-B.ST,BioArctic AB (publ),Health Care,Small Cap
+BIOEX.ST,Bioextrax AB,Health Care,Micro Cap
 BIOG-B.ST,BioGaia AB (publ),Health Care,Small Cap
 BIOGAS.ST,Scandinavian Biogas Fuels International AB (publ),Materials,Micro Cap
 BIOS.ST,Bioservo Technologies AB (publ),Health Care,Nano Cap
+BIOSGN.ST,Biosergen AB,Health Care,Nano Cap
 BIOT.ST,Biotage AB,Health Care,Small Cap
 BIOVIC-B.ST,Biovica International AB (publ),Health Care,Micro Cap
 BIOWKS.ST,Bio-Works Technologies AB (publ),Health Care,Micro Cap
 BMAX.ST,Byggmax Group AB (publ),Industrials,Small Cap
+BMC.ST,Brock Milton Capital AB,Financials,Micro Cap
+BNORO.ST,BlueNord ASA,Energy,Large Cap
 BOAT.ST,Nimbus Group AB (Publ),Consumer Discretionary,Micro Cap
+BOHO-PREF.ST,Boho Group AB (publ) SEK 0.96 Cum Pref Registered Shs,Financials,Micro Cap
+BOHO.ST,Boho Group AB (publ),Financials,Micro Cap
+BOKUS.ST,Bokusgruppen AB,Consumer Discretionary,Small Cap
 BOL.ST,Boliden AB (publ),Materials,Large Cap
 BOMILL.ST,BoMill AB (publ),Industrials,Nano Cap
 BONAS.ST,Bonasudden Holding AB (publ),Real Estate,Nano Cap
 BONAV-A.ST,Bonava AB (publ),Industrials,Small Cap
 BONAV-B.ST,Bonava AB (publ),Industrials,Small Cap
+BONEX.ST,BONESUPPORT HOLDING AB,Health Care,Large Cap
 BONG.ST,Bong AB (publ),Consumer Discretionary,Nano Cap
+BONHRO.ST,Bonheur ASA,Industrials,Mid Cap
 BOOZT.ST,Boozt AB (publ),Consumer Discretionary,Small Cap
 BORG.ST,Bjorn Borg AB (publ),Consumer Discretionary,Micro Cap
+BORRO.ST,Borr Drilling Limited,Industrials,Large Cap
 BOTX.ST,Botnia Exploration Holding AB (publ),Materials,Nano Cap
 BOUL.ST,Boule Diagnostics AB (publ),Health Care,Micro Cap
+BOUVO.ST,Bouvet ASA,Information Technology,Mid Cap
+BRAIN.ST,BrainCool AB,Health Care,Micro Cap
 BRAV.ST,Bravida Holding AB (publ),Industrials,Mid Cap
+BRAVE.ST,Kinda Brave Entertainment Group AB,Information Technology,Micro Cap
 BRE2.ST,Bredband2 i Skandinavien AB (publ),Communication Services,Micro Cap
+BRGO.ST,Borregaard ASA,Materials,Large Cap
 BRIG.ST,Brighter AB (publ),Health Care,Nano Cap
+BRIGHT.ST,BrightBid Group AB,Information Technology,Nano Cap
+BRILL.ST,Brilliant Future AB,Information Technology,Nano Cap
 BRIN-B.ST,Brinova Fastigheter AB (publ),Real Estate,Small Cap
+BTS-B.ST,BTS Group AB Class B,Industrials,Mid Cap
 BUFAB.ST,Bufab AB (publ),Industrials,Small Cap
 BULTEN.ST,Bulten AB (publ),Consumer Discretionary,Micro Cap
 BURE.ST,Bure Equity AB,Financials,Mid Cap
 BUSER.ST,Bambuser AB (publ),Information Technology,Small Cap
+BUY.ST,Sweden BuyersClub AB,Consumer Discretionary,Nano Cap
+BWEO.ST,BW Energy Ltd.,Industrials,Large Cap
+BWLPGO.ST,BW LPG Limited,Industrials,Large Cap
+BWOO.ST,BW Offshore Limited,Energy,Mid Cap
 BYGGP.ST,ByggPartner i Dalarna Holding AB (publ),Industrials,Micro Cap
+CADLRO.ST,Cadeler A/S,Industrials,Large Cap
 CAG.ST,CAG Group AB (publ),Information Technology,Micro Cap
+CALVIK.ST,Calviks AB (publ),Industrials,Micro Cap
 CAMX.ST,Camurus AB (publ),Health Care,Small Cap
+CANDLE-B.ST,Candles Scandinavia AB Class B,Industrials,Micro Cap
 CANTA.ST,Cantargia AB (publ),Health Care,Micro Cap
 CAPAC.ST,Capacent Holding AB (publ),Industrials,Nano Cap
+CARA.ST,Carasent AB,Information Technology,Small Cap
+CARE.ST,Careium AB,Information Technology,Small Cap
+CASE.ST,Case Group AB,Financials,Small Cap
 CAST.ST,Castellum AB (publ),Real Estate,Mid Cap
+CAT-A.ST,Catella AB Class A,Financials,Small Cap
 CAT-B.ST,Catella AB (publ),Financials,Micro Cap
 CATE.ST,Catena AB (publ),Real Estate,Small Cap
+CAVENO.ST,Cavendish Hydrogen ASA,Industrials,Micro Cap
 CBTT-B.ST,Christian Berner Tech Trade AB (publ),Industrials,Micro Cap
+CCC.ST,Cavotec Group AB,Industrials,Small Cap
 CCOR-B.ST,Concordia Maritime AB (publ),Industrials,Nano Cap
+CDMIL.ST,Codemill AB,Information Technology,Micro Cap
 CDON.ST,CDON AB,Consumer Discretionary,Micro Cap
 CE.ST,Cortus Energy AB (publ),Utilities,Micro Cap
+CEDER.ST,Cedergrenska AB,Industrials,Small Cap
 CEVI.ST,CellaVision AB (publ),Health Care,Small Cap
 CFISH.ST,Crunchfish AB (publ),Information Technology,Micro Cap
+CHARGE.ST,ChargePanel AB,Consumer Discretionary,Nano Cap
+CHECK.ST,Checkin.com Group AB,Information Technology,Nano Cap
+CHEF.ST,Cheffelo AB,Consumer Discretionary,Small Cap
 CHRO.ST,ChromoGenics AB,Industrials,Nano Cap
+CI.ST,Cell Impact AB,Industrials,Nano Cap
 CIBUS.ST,Cibus Real Estate AB (publ),Real Estate,Small Cap
+CINPHA.ST,Cinclus Pharma Holding AB,Health Care,Small Cap
 CINT.ST,Cint Group AB (publ),Information Technology,Small Cap
+CIRCHE-BTA.ST,CirChem AB TEMP,Materials,Nano Cap
 CIRCHE.ST,CirChem AB (publ),Industrials,Nano Cap
 CLA-B.ST,Cloetta AB (publ),Consumer Staples,Small Cap
 CLAS-B.ST,Clas Ohlson AB (publ),Consumer Discretionary,Small Cap
@@ -135,68 +233,112 @@ CLNK-B.ST,Cellink AB (publ),Health Care,Mid Cap
 CLS-B.ST,Clinical Laserthermia Systems AB (publ),Health Care,Nano Cap
 CMOTEC-B.ST,Scandinavian ChemoTech AB (publ),Health Care,Nano Cap
 CNCJO-B.ST,Concejo AB (publ),Industrials,Micro Cap
+COFFEE-B.ST,Coffee Stain Group AB Class B,Information Technology,Mid Cap
 COIC.ST,Concentric AB (publ),Industrials,Small Cap
 COLL.ST,Collector AB (publ),Financials,Small Cap
+COLLAX.ST,Collaxio AB (publ) Class B,Financials,Nano Cap
+COMPDM.ST,Compodium International AB,Information Technology,Nano Cap
 CONF.ST,Confidence International AB (publ.),Industrials,Nano Cap
+CONTXO.ST,ContextVision AB,Information Technology,Micro Cap
 COOR.ST,Coor Service Management Holding AB,Industrials,Small Cap
 CORE-A.ST,Corem Property Group AB (publ),Real Estate,Small Cap
 CORE-B.ST,Corem Property Group AB (publ),Real Estate,Small Cap
+CORE-D.ST,Corem Property Group AB Class D,Financials,Mid Cap
 CORE-PREF.ST,Corem Property Group AB (publ),Real Estate,Small Cap
 CRAD-B.ST,C-Rad AB (publ),Health Care,Micro Cap
 CRED-A.ST,Creades AB,Financials,Small Cap
+CRNAO.ST,Circio Holding ASA,Health Care,Small Cap
+CRNO-B.ST,Cereno Scientific AB Class B,Health Care,Small Cap
+CTEK.ST,CTEK AB,Industrials,Small Cap
+CTM.ST,Catena Media plc,Consumer Discretionary,Micro Cap
 CTT.ST,CTT Systems AB,Industrials,Micro Cap
 CUR.ST,Curando Nordic AB (publ),Health Care,Nano Cap
+CX.ST,CombinedX AB,Industrials,Small Cap
 DEDI.ST,Dedicare AB (publ),Industrials,Micro Cap
 DEVP-B.ST,DevPort AB (publ),Information Technology,Nano Cap
+DFENSO.ST,Fjord Defence Group ASA,Information Technology,Small Cap
+DICOT.ST,Dicot Pharma AB,Health Care,Small Cap
 DIGN.ST,Dignitana AB (publ.),Health Care,Micro Cap
 DIOS.ST,Dios Fastigheter AB (publ),Real Estate,Small Cap
 DIST.ST,DistIT AB (publ),Information Technology,Micro Cap
 DIVIO-B.ST,Divio Technologies AB (publ),Information Technology,Nano Cap
 DLAB.ST,Dlaboratory Sweden AB (publ),Utilities,Nano Cap
 DMYD-B.ST,Diamyd Medical AB (publ),Health Care,Micro Cap
+DNBO.ST,DNB Bank ASA,Financials,Large Cap
+DNOO.ST,DNO ASA Class A,Energy,Large Cap
+DOFGO.ST,DOF Group ASA,Energy,Large Cap
 DOM.ST,Dometic Group AB,Information Technology,Mid Cap
+DONE.ST,Done.ai Group AB,Information Technology,Small Cap
 DOXA.ST,Doxa AB (publ),Health Care,Nano Cap
 DRIL.ST,Drillcon AB (publ),Industrials,Micro Cap
 DSNO.ST,Desenio Group AB (publ),Consumer Discretionary,Small Cap
 DUNI.ST,Duni AB (publ),Consumer Staples,Small Cap
 DURC-B.ST,Duroc AB (publ),Industrials,Micro Cap
 DUST.ST,Dustin Group AB (publ),Information Technology,Small Cap
+DVYSR.ST,Devyser Diagnostics AB,Health Care,Small Cap
+DYVOX.ST,Dynavox Group AB,Information Technology,Mid Cap
 EAST.ST,Eastnine AB (publ),Financials,Small Cap
 ECC-B.ST,Ecoclime Group AB (publ),Industrials,Micro Cap
 ECOWVE.ST,EWPG Holding AB (publ),Utilities,Nano Cap
+EFFH.ST,Effnetplattformen Holding AB,Information Technology,Micro Cap
 EFFP.ST,Effnetplattformen AB (publ),Financials,Nano Cap
 EG7.ST,Enad Global 7 AB,Communication Services,Small Cap
 EGTX.ST,Egetis Therapeutics AB (publ),Health Care,Micro Cap
+EIOFO.ST,Eidesvik Offshore ASA,Industrials,Small Cap
 EKOBOT.ST,Ekobot AB (publ),Industrials,Nano Cap
 EKTA-B.ST,Elekta AB (publ),Health Care,Mid Cap
+ELABSO.ST,Elliptic Laboratories ASA,Information Technology,Micro Cap
 ELAN-B.ST,Elanders AB (publ),Industrials,Small Cap
 ELEC.ST,Electra Gruppen AB (publ),Consumer Discretionary,Nano Cap
+ELIC.ST,Elicera Therapeutics AB,Health Care,Micro Cap
+ELKO.ST,Elkem ASA,Materials,Large Cap
+ELMRAO.ST,Elmera Group ASA,Utilities,Mid Cap
+ELON.ST,Elon AB,Consumer Discretionary,Micro Cap
+ELOO.ST,Elopak ASA,Materials,Mid Cap
 ELOS-B.ST,Elos Medtech AB (publ),Health Care,Micro Cap
 ELTEL.ST,Eltel AB (publ),Industrials,Small Cap
 ELUX-A.ST,AB Electrolux (publ),Information Technology,Mid Cap
 ELUX-B.ST,AB Electrolux (publ),Information Technology,Mid Cap
+EMB.ST,EMB Mission Bound AB (publ),Information Technology,Micro Cap
 EMBELL.ST,Embellence Group AB (publ),Consumer Discretionary,Micro Cap
 EMBRAC-B.ST,Embracer Group AB (publ),Communication Services,Large Cap
+EMIL-B.ST,Fastighetsbolaget Emilshus AB Class B,Financials,Mid Cap
+ENDURO.ST,Endur ASA,Industrials,Mid Cap
 ENEA.ST,Enea AB (publ),Information Technology,Small Cap
+ENERS.ST,Enersize Plc,Information Technology,Nano Cap
+ENGCON-B.ST,engcon AB Class B,Industrials,Mid Cap
+ENHO.ST,Sed Energy Holdings PLC,Industrials,Mid Cap
+ENITY.ST,Enity Holding AB,Financials,Mid Cap
 ENRO.ST,Eniro AB (publ),Communication Services,Nano Cap
+ENSUO.ST,Ensurge Micropower ASA,Industrials,Small Cap
+ENTRAO.ST,Entra ASA,Financials,Large Cap
+ENVAR.ST,Envar Holding AB,Information Technology,Small Cap
 ENZY.ST,Enzymatica AB,Health Care,Micro Cap
 EOLU-B.ST,Eolus Vind AB (publ),Industrials,Small Cap
 EOS.ST,EOS Russia,Financials,Nano Cap
+EPEN.ST,Ependion AB,Information Technology,Mid Cap
 EPI-A.ST,Epiroc AB (publ),Industrials,Large Cap
 EPI-B.ST,Epiroc AB (publ),Industrials,Large Cap
 EPIS-B.ST,Episurf Medical AB (publ),Health Care,Micro Cap
 EPRO-B.ST,Electrolux Professional AB (publ),Consumer Discretionary,Small Cap
+EPRO.ST,Europris ASA,Consumer Discretionary,Large Cap
+EQL.ST,EQL Pharma AB,Health Care,Small Cap
+EQNRO.ST,Equinor ASA,Energy,Large Cap
 EQT.ST,EQT AB,Financials,Large Cap
+EQVAO.ST,Eqva ASA,Industrials,Micro Cap
 ERIC-A.ST,Telefonaktiebolaget LM Ericsson (publ),Information Technology,Large Cap
 ERIC-B.ST,Telefonaktiebolaget LM Ericsson (publ),Information Technology,Large Cap
 ERMA.ST,Enorama Pharma AB (publ),Health Care,Nano Cap
+ESGR-B.ST,ES Group AB (publ) Class B,Industrials,Micro Cap
 ESSITY-A.ST,Essity AB Class B,Consumer Staples,Large Cap
 ESSITY-B.ST,Essity AB Class B,Consumer Staples,Large Cap
 EURA.ST,Euroafrica Digital Ventures AB (publ),Information Technology,Nano Cap
 EVO.ST,Evolution Gaming Group AB (publ),Consumer Discretionary,Large Cap
 EWRK.ST,Ework Group AB (publ),Information Technology,Micro Cap
+EXPRS2.ST,ExpreS2ion Biotech Holding AB,Health Care,Nano Cap
 EXS.ST,Exsitec Holding AB,Information Technology,Micro Cap
 FABG.ST,Fabege AB (publ),Real Estate,Mid Cap
+FAG.ST,Fagerhult Group AB,Industrials,Mid Cap
 FAGA.ST,Fantasma Games AB (publ),Communication Services,Nano Cap
 FASTAT.ST,Aktiebolaget Fastator (publ),Real Estate,Micro Cap
 FEEL.ST,Feelgood Svenska AB (publ),Health Care,Micro Cap
@@ -204,11 +346,18 @@ FERRO.ST,Ferroamp Elektronik AB (publ),Industrials,Micro Cap
 FG.ST,Fasadgruppen Group AB,Industrials,Small Cap
 FING-B.ST,Fingerprint Cards AB,Information Technology,Small Cap
 FIRE.ST,Firefly AB (publ),Industrials,Nano Cap
+FIRST-B.ST,First Venture Sweden AB Class B,Financials,Nano Cap
+FLAT-B.ST,Flat Capital AB Class B,Financials,Mid Cap
+FLERIE.ST,Flerie AB,Health Care,Small Cap
+FLEXM.ST,Flexion Mobile Plc,Consumer Discretionary,Micro Cap
 FLEXQ.ST,FlexQube AB (publ),Industrials,Nano Cap
+FLOWS.ST,Flowscape Technology AB,Information Technology,Nano Cap
 FLUI.ST,Fluicell AB,Health Care,Nano Cap
+FLUO.ST,FluoGuide A/S,Health Care,Small Cap
 FMM-B.ST,FM Mattsson Mora Group AB (publ),Industrials,Micro Cap
 FNM.ST,Ferronordic AB (publ),Industrials,Small Cap
 FNOVA-B.ST,Fortinova Fastigheter AB (Publ),Real Estate,Micro Cap
+FOI-B.ST,Fenix Outdoor International AG Series B,Consumer Discretionary,Mid Cap
 FOOT-B.ST,Footway Group AB (publ),Consumer Discretionary,Small Cap
 FOOT-PREF.ST,Footway Group AB (publ),Consumer Discretionary,Small Cap
 FPAR-A.ST,FastPartner AB (publ),Real Estate,Mid Cap
@@ -216,10 +365,15 @@ FPAR-D.ST,FastPartner AB (publ),Real Estate,Small Cap
 FPAR-PREF.ST,FastPartner AB (publ),Real Estate,Small Cap
 FPIP.ST,Formpipe Software AB (publ),Information Technology,Micro Cap
 FRACTL.ST,Fractal Gaming Group AB (publ),Information Technology,Micro Cap
+FRAG.ST,Fragbite Group AB,Information Technology,Nano Cap
 FRAM-B.ST,Fram Skandinavien AB,Information Technology,Nano Cap
+FREEM.ST,Freemelt Holding AB,Industrials,Micro Cap
 FREJA.ST,Freja eID Group AB (publ),Information Technology,Nano Cap
 FRILL-B.ST,Frill Holding AB (publ),Consumer Staples,Nano Cap
 FRISQ.ST,FRISQ Holding AB (publ),Health Care,Nano Cap
+FROO.ST,Frontline Plc,Industrials,Large Cap
+FSPORT.ST,FSport AB,Information Technology,Nano Cap
+G2M.ST,Gentoo Media Inc,Consumer Discretionary,Small Cap
 G5EN.ST,G5 Entertainment AB,Communication Services,Small Cap
 GABA.ST,Gabather AB,Health Care,Nano Cap
 GAPW-B.ST,Gapwaves AB (publ),Information Technology,Micro Cap
@@ -228,29 +382,51 @@ GBK.ST,Goodbye Kansas Group AB (publ),Communication Services,Nano Cap
 GCOR.ST,Gaming Corps AB (publ),Communication Services,Nano Cap
 GENI.ST,Generic Sweden AB,Information Technology,Micro Cap
 GENO.ST,Genovis AB (publ.),Health Care,Small Cap
+GENOO.ST,General Oceans ASA,Information Technology,Mid Cap
 GETI-B.ST,Getinge AB,Health Care,Mid Cap
 GGEO.ST,Guideline Geo AB (publ),Energy,Nano Cap
 GHP.ST,GHP Specialty Care AB (publ),Health Care,Micro Cap
 GHUS-B.ST,Gotenehus Group AB (publ),Industrials,Micro Cap
+GIGA.ST,Gigasun AB,Utilities,Micro Cap
+GJFO.ST,Gjensidige Forsikring ASA,Financials,Large Cap
 GOMX.ST,GomSpace Group AB,Information Technology,Micro Cap
+GOTL-A.ST,Rederiaktiebolaget Gotland Class A,Industrials,Mid Cap
+GOTL-B.ST,Rederiaktiebolaget Gotland Class B,Industrials,Mid Cap
 GPG-PREF.ST,Genova Property Group AB (publ),Real Estate,Small Cap
 GPG.ST,Genova Property Group AB (publ),Real Estate,Small Cap
 GPX.ST,Gasporox AB (publ),Information Technology,Nano Cap
 GPXMED.ST,GPX Medical AB (publ),Health Care,Nano Cap
+GRANGX.ST,Grangex AB,Materials,Small Cap
 GREAT.ST,Greater Than AB,Information Technology,Micro Cap
 GREEN.ST,Green Landscaping Group AB (publ),Industrials,Small Cap
 GRNG.ST,Granges AB (publ),Materials,Small Cap
+GSFO.ST,Grieg Seafood ASA,Materials,Mid Cap
 GUARD.ST,Guard Therapeutics International AB (publ),Health Care,Nano Cap
+GULD.ST,Guldbrev Holding AB,Industrials,Micro Cap
+HACK.ST,Hacksaw AB,Information Technology,Large Cap
+HAFNIO.ST,Hafnia Limited,Industrials,Large Cap
+HAKI-A.ST,HAKI Safety AB Class A,Consumer Discretionary,Small Cap
+HAKI-B.ST,HAKI Safety AB Class B,Consumer Discretionary,Small Cap
 HANZA.ST,Hanza Holding AB (publ),Information Technology,Micro Cap
+HAUTOO.ST,Hoegh Autoliners ASA,Industrials,Large Cap
 HAV-B.ST,Havsfrun Investment AB (publ),Financials,Nano Cap
+HAVIO.ST,Havila Shipping ASA,Industrials,Micro Cap
+HAYPP.ST,Haypp Group AB,Industrials,Mid Cap
+HBCO.ST,Hofseth Biocare ASA,Consumer Staples,Small Cap
 HDW-B.ST,Hitech & Development Wireless Sweden Holding AB (publ),Information Technology,Nano Cap
+HEART.ST,Scandinavian Real Heart AB,Health Care,Micro Cap
 HEBA-B.ST,HEBA Fastighets AB (publ),Real Estate,Small Cap
 HEGR.ST,Hedera Group AB (publ),Industrials,Nano Cap
 HEIM-PREF.ST,Heimstaden AB (publ),Real Estate,Micro Cap
 HELIO.ST,Heliospectra AB (publ),Industrials,Nano Cap
 HEM.ST,Hemnet Group AB (publ),Communication Services,Mid Cap
 HEMC.ST,Hemcheck Sweden AB (publ),Health Care,Nano Cap
+HERNO-B.ST,Herno Gin AB Class B,Consumer Discretionary,Nano Cap
 HEXA-B.ST,Hexagon AB,Information Technology,Mid Cap
+HEXI.ST,Hexicon AB,Industrials,Nano Cap
+HEXO.ST,Hexagon Composites ASA,Materials,Mid Cap
+HIGHCO-B.ST,High Coast Distillery AB Class B,Consumer Staples,Micro Cap
+HILB-B.ST,Hilbert Group AB Class B,Information Technology,Micro Cap
 HLDX.ST,Haldex AB (publ),Consumer Discretionary,Small Cap
 HM-B.ST,H & M Hennes & Mauritz AB (publ),Consumer Discretionary,Large Cap
 HMS.ST,HMS Networks AB (publ),Financials,Micro Cap
@@ -261,16 +437,22 @@ HOLM-B.ST,Holmen AB (publ),Materials,Mid Cap
 HOVD.ST,Hovding Sverige AB (publ),Consumer Discretionary,Micro Cap
 HOYLU.ST,Hoylu AB (publ),Information Technology,Nano Cap
 HPOL-B.ST,Hexpol AB Class B,Materials,Mid Cap
+HPURO.ST,Hexagon Purus ASA,Industrials,Small Cap
+HSHPO.ST,Himalaya Shipping Ltd.,Industrials,Mid Cap
 HTRO.ST,HEXATRONIC GROUP AB,Information Technology,Small Cap
 HUFV-A.ST,Hufvudstaden AB (publ),Real Estate,Mid Cap
+HULT-B.ST,Hultstrom Group AB(publ) Class B,Industrials,Micro Cap
 HUM.ST,Humana AB (publ),Health Care,Small Cap
 HUMBLE.ST,Humble Group AB,Consumer Staples,Small Cap
+HUNTO.ST,Hunter Group ASA,Energy,Small Cap
 HUSQ-A.ST,Husqvarna AB Class B,Industrials,Mid Cap
 HUSQ-B.ST,Husqvarna AB Class B,Industrials,Mid Cap
+HYPROO.ST,HydrogenPro ASA,Industrials,Micro Cap
 IAR-B.ST,IAR Systems Group AB (publ),Information Technology,Micro Cap
 IBT-B.ST,Infant Bacterial Therapeutics AB (publ),Health Care,Micro Cap
 ICA.ST,ICA Gruppen AB (publ),Consumer Staples,Large Cap
 ICO.ST,Iconovo AB (publ),Health Care,Micro Cap
+IDLDX.ST,IDL Diagnostics AB,Health Care,Nano Cap
 IDOGEN.ST,Idogen AB (publ),Health Care,Nano Cap
 IDUN-B.ST,Idun Industrier AB (publ),Financials,Small Cap
 IMMNOV.ST,Immunovia AB,Health Care,Micro Cap
@@ -283,73 +465,115 @@ INDU-A.ST,AB Industrivarden (publ),Financials,Large Cap
 INDU-C.ST,AB Industrivarden (publ),Financials,Large Cap
 INFREA.ST,Infrea AB,Financials,Micro Cap
 INISS-B.ST,Inission AB (publ),Industrials,Micro Cap
+INIT.ST,Initiator Pharma A/S,Health Care,Micro Cap
 INSP.ST,Insplorion AB (publ),Information Technology,Nano Cap
 INSTAL.ST,Instalco AB,Industrials,Small Cap
+INTEA-B.ST,Intea Fastigheter AB Class B,Financials,Large Cap
+INTEA-D.ST,Intea Fastigheter AB Class D,Financials,Large Cap
 INTEG-B.ST,Integrum AB (publ),Health Care,Micro Cap
+INTRUM-BTA.ST,Intrum AB TEMP,Industrials,Mid Cap
 INTRUM.ST,Intrum AB (publ),Financials,Mid Cap
 INVAJO.ST,Invajo Technologies AB (publ),Information Technology,Nano Cap
+INVE-A.ST,Investor AB Class A,Financials,Large Cap
+INVE-B.ST,Investor AB Class B,Financials,Large Cap
 INWI.ST,Inwido AB,Industrials,Small Cap
 INZILE.ST,Inzile AB (publ),Consumer Discretionary,Micro Cap
+IOXO.ST,InterOil Exploration and Production ASA,Energy,Nano Cap
+IPCO.ST,International Petroleum Corp. (British Columbia),Energy,Large Cap
 IRIS.ST,Irisity AB (publ),Industrials,Micro Cap
 IRLAB-A.ST,IRLAB Therapeutics AB (publ),Health Care,Micro Cap
+IRLAB-BTA-A.ST,IRLAB Therapeutics AB TEMP Class A,Health Care,Micro Cap
 IRRAS.ST,IRRAS AB (publ),Health Care,Nano Cap
 IS.ST,Image Systems AB,Information Technology,Nano Cap
 ISOFOL.ST,Isofol Medical AB,Health Care,Micro Cap
 ISR.ST,ISR Immune System Regulation Holding AB (publ),Health Care,Nano Cap
 ITAB-B.ST,ITAB Shop Concept AB (publ),Industrials,Small Cap
+ITAB.ST,ITAB Group AB (publ),Industrials,Mid Cap
 ITECH.ST,I-Tech AB,Health Care,Micro Cap
+ITERAO.ST,Itera ASA,Industrials,Micro Cap
 IVACC.ST,Intervacc AB (publ),Health Care,Small Cap
 IVISYS.ST,Ivisys AB (publ),Industrials,Nano Cap
 IVSO.ST,INVISIO AB,Information Technology,Small Cap
 IZAFE-B.ST,iZafe Group AB (publ),Health Care,Nano Cap
 JDT.ST,JonDeTech Sensors AB (publ),Information Technology,Nano Cap
 JETPAK.ST,Jetpak Top Holding AB (publ),Industrials,Micro Cap
+JINO.ST,Jinhui Shipping & Transportation Ltd.,Industrials,Small Cap
 JLT.ST,JLT Mobile Computers AB (publ),Information Technology,Nano Cap
 JM.ST,JM AB,Industrials,Mid Cap
 JOMA.ST,John Mattson Fastighetsforetagen AB (publ),Real Estate,Small Cap
 K2A-B.ST,K2A Knaust & Andersson Fastigheter AB (publ),Real Estate,Small Cap
 K2A-PREF.ST,K2A Knaust & Andersson Fastigheter AB (publ),Real Estate,Nano Cap
+K33.ST,K33 AB,Information Technology,Micro Cap
 KABE-B.ST,KABE Group AB (publ.),Consumer Discretionary,Micro Cap
 KAKEL.ST,Kakel Max AB (publ),Materials,Nano Cap
+KAMBI.ST,Kambi Group plc Class B,Information Technology,Mid Cap
 KAPIAB.ST,Kalleback Property Invest AB (publ),Real Estate,Micro Cap
 KAR.ST,Karnov Group AB (publ),Consumer Discretionary,Small Cap
+KARNEL-B.ST,Karnell Group AB Class B,Industrials,Mid Cap
 KARO.ST,Karo Pharma AB (publ),Health Care,Small Cap
+KBC.ST,KB Components AB,Industrials,Mid Cap
+KCCO.ST,Klaveness Combination Carriers ASA,Industrials,Mid Cap
 KDEV.ST,Karolinska Development AB (publ),Health Care,Micro Cap
+KDV-B.ST,KDventures AB Class B,Financials,Micro Cap
 KEBNI-B.ST,KebNi AB (publ),Information Technology,Nano Cap
 KENH.ST,Kentima Holding AB (publ),Information Technology,Nano Cap
+KEOC.ST,Keo Capital AB Class A,Energy,Mid Cap
 KFAST-B.ST,K-Fast Holding AB (publ),Real Estate,Micro Cap
 KINV-A.ST,Kinnevik AB,Financials,Large Cap
 KINV-B.ST,Kinnevik AB,Financials,Large Cap
+KITO.ST,Kitron ASA,Information Technology,Large Cap
+KJELL.ST,Kjell Group AB,Consumer Discretionary,Small Cap
 KLAR.ST,Klaria Pharma Holding AB (publ.),Health Care,Micro Cap
+KLARA-B.ST,KlaraBo Sverige AB Class B,Financials,Mid Cap
 KLED.ST,Kungsleden AB (publ),Real Estate,Mid Cap
+KLIMAT.ST,Klimator AB,Information Technology,Micro Cap
 KLOV-A.ST,Klovern AB (publ),Real Estate,Small Cap
 KLOV-B.ST,Klovern AB (publ),Real Estate,Small Cap
 KLOV-PREF.ST,Klovern AB (publ),Real Estate,Small Cap
+KMARO.ST,Kongsberg Maritime ASA,Industrials,Large Cap
 KNOW.ST,Knowit AB (publ),Information Technology,Small Cap
+KOAO.ST,Kongsberg Automotive ASA,Industrials,Small Cap
+KOGO.ST,Kongsberg Gruppen ASA,Industrials,Large Cap
 KONT.ST,Kontigo Care AB (publ),Health Care,Nano Cap
 KOPY.ST,Kopy Goldfields AB (publ),Materials,Micro Cap
 LAGR-B.ST,Lagercrantz Group AB (publ),Information Technology,Mid Cap
 LAMM-B.ST,Lammhults Design Group AB (publ),Consumer Discretionary,Nano Cap
+LARK.ST,Larkberget AB,Health Care,Nano Cap
+LASER.ST,Lasernet Group AB,Information Technology,Small Cap
 LATO-B.ST,Investment AB Latour (publ),Financials,Large Cap
 LCLEAN.ST,LifeClean International AB (publ),Consumer Staples,Nano Cap
+LEA.ST,Lea Bank AB,Financials,Small Cap
+LEMSE.ST,Leading Edge Materials Corp.,Industrials,Small Cap
 LEO.ST,LeoVegas AB (publ),Communication Services,Small Cap
+LEVEL.ST,Nordic LEVEL Group AB Class B,Consumer Discretionary,Micro Cap
 LEX.ST,The Lexington Company AB (publ),Consumer Discretionary,Nano Cap
 LIAB.ST,Lindab International AB,Industrials,Small Cap
 LIDDS.ST,LIDDS AB (publ),Health Care,Nano Cap
 LIFCO-B.ST,Lifco AB (publ),Industrials,Small Cap
 LIME.ST,Lime Technologies AB,Information Technology,Small Cap
+LINC.ST,Linc AB,Financials,Mid Cap
+LINKO.ST,LINK Mobility Group Holding ASA,Information Technology,Mid Cap
 LIPI.ST,Lipidor AB,Health Care,Nano Cap
 LIPUM.ST,Lipum AB (publ),Health Care,Nano Cap
 LITI.ST,Litium AB (publ),Information Technology,Nano Cap
 LIVI.ST,Liv ihop AB (publ),Industrials,Nano Cap
 LMKG.ST,LMK Group AB (publ),Consumer Staples,Micro Cap
 LOG.ST,Logistea AB (publ),Real Estate,Nano Cap
+LOGI-B.ST,Logistea AB Class B,Consumer Staples,Mid Cap
 LOHILO.ST,Lohilo Foods Ab (Publ),Consumer Staples,Micro Cap
 LOOMIS.ST,Loomis AB,Industrials,Mid Cap
+LOYAL.ST,Loyal Solutions A/S,Information Technology,Nano Cap
 LPGO.ST,Lipigon Pharmaceuticals AB,Health Care,Nano Cap
+LSGO.ST,Leroy Seafood Group ASA,Consumer Staples,Large Cap
+LUC.ST,Lucara Diamond Corp.,Materials,Small Cap
+LUG.ST,Lundin Gold Inc.,Materials,Large Cap
+LUMEN.ST,LumenRadio AB,Industrials,Small Cap
+LUMI.ST,Lundin Mining Corporation,Materials,Large Cap
 LUND-B.ST,L E Lundbergforetagen AB (publ),Financials,Large Cap
 LUNE.ST,Lundin Energy AB (publ),Energy,Mid Cap
+LXB-BTU.ST,Luxbright AB TEMP,Health Care,Nano Cap
 LXB.ST,Luxbright AB (publ),Health Care,Nano Cap
+LYGRD.ST,Lyckegard Group AB,Industrials,Micro Cap
 LYKO-A.ST,Lyko Group AB (publ),Consumer Staples,Small Cap
 MACK-B.ST,Mackmyra Svensk Whisky AB (publ),Consumer Staples,Nano Cap
 MAG.ST,Magnolia Bostad AB (publ),Real Estate,Micro Cap
@@ -359,15 +583,23 @@ MAHA-A.ST,Maha Energy AB (publ),Energy,Micro Cap
 MANG.ST,Mangold Fondkommission AB,Financials,Micro Cap
 MANTEX.ST,Mantex AB (publ),Industrials,Nano Cap
 MAV.ST,Mavshack AB (publ),Communication Services,Nano Cap
+MAVEN.ST,Maven Wireless Sweden AB,Information Technology,Micro Cap
+MAXENT-B.ST,Maximum Entertainment AB Class B,Information Technology,Nano Cap
 MAXF.ST,MaxFastigheter i Sverige AB (publ),Real Estate,Micro Cap
 MCAP.ST,MedCap AB (publ),Financials,Small Cap
 MCOV-B.ST,Medicover AB (publ),Health Care,Mid Cap
 ME.ST,Modern Ekonomi Sverige Holding AB (publ),Industrials,Nano Cap
 MEAB-B.ST,Malmbergs Elektriska AB (publ),Information Technology,Micro Cap
+MEDIO.ST,Medistim ASA,Health Care,Mid Cap
+MEDS.ST,Meds Apotek AB,Consumer Discretionary,Micro Cap
 MEKO.ST,Mekonomen AB (publ),Industrials,Small Cap
+MER.ST,Meren Energy Inc.,Energy,Mid Cap
+META-BTA.ST,Metacon AB TEMP,Industrials,Micro Cap
+META.ST,Metacon AB,Industrials,Micro Cap
 MIDS.ST,Midsummer AB,Information Technology,Micro Cap
 MIDW-A.ST,Midway Holding AB (publ),Industrials,Micro Cap
 MIDW-B.ST,Midway Holding AB (publ),Industrials,Micro Cap
+MILDEF.ST,MilDef Group AB,Information Technology,Mid Cap
 MINEST.ST,Minesto AB,Utilities,Micro Cap
 MIPS.ST,MIPS AB (publ),Consumer Discretionary,Small Cap
 MISE.ST,Misen Energy AB (publ),Energy,Nano Cap
@@ -375,71 +607,135 @@ MMGR-B.ST,Momentum Group AB (publ),Industrials,Small Cap
 MNTC.ST,Mentice AB (publ),Health Care,Micro Cap
 MOB.ST,Moberg Pharma AB (publ),Health Care,Nano Cap
 MOBA.ST,M.O.B.A. Network AB,Financials,Micro Cap
+MODEL.ST,Modelon AB,Industrials,Micro Cap
+MODTX.ST,Modus Therapeutics Holding AB,Health Care,Nano Cap
 MOMENT.ST,Moment Group AB,Communication Services,Nano Cap
+MORROW-BTA.ST,Morrow Bank AB TEMP,Financials,Mid Cap
+MORROW.ST,Morrow Bank AB,Financials,Mid Cap
+MOWIO.ST,Mowi ASA,Consumer Staples,Large Cap
+MPCCO.ST,MPC Container Ships ASA,Industrials,Large Cap
 MSAB-B.ST,Micro Systemation AB (publ),Information Technology,Micro Cap
 MSON-A.ST,Midsona AB (publ),Consumer Staples,Small Cap
 MSON-B.ST,Midsona AB (publ),Consumer Staples,Small Cap
+MTG-A.ST,Modern Times Group MTG AB Class A,Information Technology,Large Cap
+MTG-B.ST,Modern Times Group MTG AB Class B,Information Technology,Large Cap
+MTI.ST,MTI Investment AB,Financials,Nano Cap
 MTRS.ST,Munters Group AB (publ),Industrials,Small Cap
 MULQ.ST,MultiQ International AB (publ),Information Technology,Nano Cap
 MVIR-B.ST,Medivir AB (publ),Health Care,Micro Cap
+MVIR.ST,Medivir AB,Health Care,Small Cap
 MYCR.ST,Mycronic AB (publ),Information Technology,Mid Cap
 MYFC.ST,myFC Holding AB (publ),Industrials,Nano Cap
+NANECH.ST,NanoEcho AB,Health Care,Nano Cap
 NANEXA.ST,Nanexa AB (publ),Health Care,Nano Cap
+NANOC-B.ST,NanoCap Group AB,Financials,Nano Cap
+NANOFS.ST,Nanoform Finland Oyj,Health Care,Small Cap
+NAPAO.ST,Napatech A/S,Information Technology,Mid Cap
+NASO.ST,Norwegian Air Shuttle ASA,Industrials,Large Cap
+NAVIGO-PREF.ST,Navigo Invest AB SEK 9.50 Cum Pref Registered Shs,Industrials,Micro Cap
+NAVIGO-STAM.ST,Navigo Invest AB,Industrials,Micro Cap
 NAXS.ST,NAXS AB (publ),Financials,Micro Cap
 NCAB.ST,NCAB Group AB (publ),Information Technology,Small Cap
+NCC-A.ST,NCC AB Class A,Industrials,Large Cap
 NCC-B.ST,NCC AB (publ),Industrials,Small Cap
+NDA-SE.ST,Nordea Bank Abp,Financials,Large Cap
 NELLY.ST,Nelly Group AB (publ),Consumer Discretionary,Micro Cap
+NELO.ST,NEL ASA,Industrials,Mid Cap
 NENT-A.ST,Nordic Entertainment Group AB (publ),Communication Services,Mid Cap
 NENT-B.ST,Nordic Entertainment Group AB (publ),Communication Services,Mid Cap
+NEO-B.ST,Neovici Holding AB Class B,Information Technology,Micro Cap
+NEOBO.ST,Neobo Fastigheter AB,Financials,Mid Cap
+NEOLA.ST,Neola Medical AB,Health Care,Nano Cap
 NEPA.ST,Nepa AB (publ),Industrials,Micro Cap
+NETEL.ST,Netel Holding AB,Industrials,Micro Cap
 NETI-B.ST,Net Insight AB (publ),Information Technology,Micro Cap
 NETM-B.ST,Netmore Group AB (publ),Communication Services,Nano Cap
 NEWA-B.ST,New Wave Group AB (publ),Consumer Discretionary,Small Cap
+NEWBRY.ST,Newbury Pharmaceuticals AB,Health Care,Nano Cap
 NEWTON.ST,Newton Nordic AB,Information Technology,Nano Cap
 NEXAM.ST,Nexam Chemical Holding AB (publ),Materials,Micro Cap
 NFGAB.ST,Nordic Flanges Group AB (publ),Industrials,Nano Cap
 NGS.ST,NGS Group AB (publ),Industrials,Nano Cap
+NHYO.ST,Norsk Hydro ASA,Materials,Large Cap
 NIBE-B.ST,NIBE Industrier AB Class B,Industrials,Mid Cap
+NICA.ST,Nanologica AB,Health Care,Micro Cap
 NICO.ST,Nicoccino Holding AB (publ),Consumer Staples,Nano Cap
 NIL-B.ST,Nilorngruppen AB,Consumer Discretionary,Micro Cap
 NILAR.ST,Nilar International AB,Information Technology,Micro Cap
 NILS.ST,Nilsson Special Vehicles AB (publ),Consumer Discretionary,Nano Cap
 NIO.ST,Nordic Iron Ore AB (publ),Materials,Nano Cap
+NITRO.ST,Nitro Games Plc,Information Technology,Nano Cap
+NIVI-B.ST,Nivika Fastigheter AB Class B,Financials,Mid Cap
+NKRO.ST,Nekkar ASA,Industrials,Small Cap
 NMAN.ST,Nederman Holding AB (publ),Industrials,Small Cap
 NNH.ST,New Nordic Healthbrands AB (publ),Consumer Staples,Micro Cap
+NOBA.ST,Noba Bank Group AB,Financials,Large Cap
 NOBI.ST,Nobia AB (publ),Consumer Discretionary,Small Cap
 NOBINA.ST,Nobina AB (publ),Industrials,Small Cap
+NODO.ST,Nordic Semiconductor ASA,Information Technology,Large Cap
+NOKIA-SEK.ST,Nokia Oyj,Information Technology,Large Cap
 NOLA-B.ST,Nolato AB (publ),Industrials,Micro Cap
+NOLO.ST,Northern Ocean Ltd.,Industrials,Mid Cap
+NOMO.ST,Nordic Mining ASA,Materials,Small Cap
+NORB-B.ST,Nordisk Bergteknik AB Class B,Industrials,Small Cap
+NORBTO.ST,Norbit ASA,Industrials,Large Cap
 NORDIG.ST,Nord Insuretech Group AB,Information Technology,Nano Cap
+NORION.ST,Norion Bank AB,Financials,Large Cap
+NORSEO.ST,Norse Atlantic ASA,Industrials,Small Cap
+NOSA.ST,Nosa Plugs AB,Information Technology,Micro Cap
 NOTE.ST,NOTE AB (publ),Information Technology,Small Cap
+NOTEK.ST,Norditek Group AB,Industrials,Micro Cap
 NP3-PREF.ST,NP3 Fastigheter AB (publ),Real Estate,Small Cap
 NP3.ST,NP3 Fastigheter AB (publ),Real Estate,Small Cap
 NPAPER.ST,Nordic Paper Holding AB,Materials,Small Cap
+NREST.ST,Nordrest Holding AB,Consumer Discretionary,Mid Cap
+NSKOGO.ST,Norske Skog ASA,Materials,Mid Cap
+NTECH.ST,Stockholm Nordtech Group AB,Financials,Mid Cap
 NTEK-B.ST,Novotek AB,Information Technology,Micro Cap
 NXTCL.ST,NextCell Pharma AB,Health Care,Micro Cap
+NYAB.ST,NYAB AB,Industrials,Mid Cap
 NYF.ST,Nyfosa AB (publ),Real Estate,Mid Cap
+NYKDO.ST,Nykode Therapeutics ASA,Health Care,Small Cap
+NYOR.ST,Nyorda AB,Industrials,Micro Cap
 NYTTO.ST,Svenska Nyttobostader AB (publ),Real Estate,Small Cap
 OASM.ST,Oasmia Pharmaceutical AB (publ),Health Care,Micro Cap
 OBAB.ST,Online Brands Nordic AB (publ),Consumer Discretionary,Nano Cap
+OBSE.ST,Observit AB,Information Technology,Micro Cap
 ODD.ST,Odd Molly International AB (publ),Consumer Discretionary,Micro Cap
+ODFBO.ST,Odfjell SE Class B,Industrials,Mid Cap
+ODFO.ST,Odfjell SE Class A,Industrials,Mid Cap
+ODLO.ST,Odfjell Drilling Ltd.,Industrials,Large Cap
 OEM-B.ST,OEM International AB (publ),Industrials,Small Cap
+OETO.ST,Okeanis Eco Tankers Corp.,Industrials,Large Cap
 OFFHUS.ST,Offentliga Hus i Norden AB (publ),Real Estate,Small Cap
+OGUN-B.ST,Ogunsen AB Class B,Industrials,Micro Cap
+OKEAO.ST,OKEA ASA,Energy,Mid Cap
 ONCO.ST,Oncopeptides AB,Health Care,Small Cap
 ONCOZ.ST,OncoZenge AB (publ),Health Care,Nano Cap
+ONEF.ST,Oneflow AB,Information Technology,Micro Cap
+OODA.ST,OODA AI AB (publ),Financials,Micro Cap
 OP-PREF.ST,Oscar Properties Holding AB (publ),Industrials,Micro Cap
 OP-PREFB.ST,Oscar Properties Holding AB (publ),Industrials,Nano Cap
 OP.ST,Oscar Properties Holding AB (publ),Industrials,Micro Cap
+OPTER.ST,Opter AB,Information Technology,Micro Cap
 OPTI.ST,OptiFreeze AB (publ),Industrials,Micro Cap
 ORES.ST,Investment AB √ñresund (publ),Financials,Small Cap
 ORGC.ST,OrganoClick AB,Materials,Micro Cap
+ORKO.ST,Orkla ASA,Consumer Staples,Large Cap
+ORRON.ST,Orron Energy AB,Utilities,Mid Cap
+ORT-B.ST,Ortoma AB Class B,Health Care,Micro Cap
 ORTI-A.ST,Ortivus AB (publ),Health Care,Nano Cap
 ORTI-B.ST,Ortivus AB (publ),Health Care,Nano Cap
+ORTIN.ST,Ortelius International AB (publ),Consumer Discretionary,Nano Cap
 ORX.ST,Orexo AB (publ),Health Care,Micro Cap
 OSSD.ST,OssDsign AB,Health Care,Nano Cap
+OTLO.ST,Odfjell Technology Ltd.,Industrials,Mid Cap
 OVZON.ST,Ovzon AB (publ),Communication Services,Small Cap
 OXE.ST,OXE Marine AB (publ),Consumer Discretionary,Micro Cap
 PACT.ST,Proact IT Group AB (publ),Information Technology,Micro Cap
+PADEL.ST,Acenta Group AB,Information Technology,Nano Cap
 PAPI.ST,Papilly AB (publ),Health Care,Nano Cap
+PARBO.ST,Pareto Bank ASA,Financials,Mid Cap
 PAX.ST,Paxman AB (publ),Health Care,Micro Cap
 PCELL.ST,PowerCell Sweden AB,Industrials,Small Cap
 PCOM-B.ST,Precomp Solutions AB (publ),Industrials,Nano Cap
@@ -447,33 +743,56 @@ PDX.ST,Paradox Interactive AB,Communication Services,Small Cap
 PEAB-B.ST,Peab AB (publ),Industrials,Mid Cap
 PEGRO-PREF.ST,Pegroco Invest AB (publ),Financials,Small Cap
 PENG-B.ST,Projektengagemang Sweden AB (publ),Industrials,Micro Cap
+PENO.ST,Panoro Energy ASA,Energy,Mid Cap
+PERP-B.ST,Perpetua Medical AB Class B,Information Technology,Nano Cap
+PEXIPO.ST,Pexip Holding ASA,Information Technology,Mid Cap
 PHARM.ST,Pharmiva AB (publ),Health Care,Nano Cap
 PIERCE.ST,Pierce Group AB (publ),Consumer Discretionary,Small Cap
 PIEZO.ST,PiezoMotor Uppsala AB (publ),Information Technology,Micro Cap
+PILA.ST,PILA PHARMA AB,Health Care,Nano Cap
+PION-B.ST,PION Group AB Class B,Industrials,Micro Cap
 PLAZ-B.ST,Platzer Fastigheter Holding AB (publ),Real Estate,Small Cap
 PLEJD.ST,Plejd AB,Information Technology,Small Cap
 PLEX.ST,Plexian AB (publ),Information Technology,Nano Cap
+PLSVO.ST,Paratus Energy Services Ltd.,Industrials,Mid Cap
 PLUN.ST,ProstaLund AB (publ),Health Care,Nano Cap
 PNDX-B.ST,Pandox AB (publ),Consumer Discretionary,Mid Cap
+PNORO.ST,PetroNor E&P ASA,Energy,Small Cap
 POLY.ST,Polyplank AB (publ),Industrials,Nano Cap
 POLYG.ST,Polygiene AB (publ.),Materials,Micro Cap
+PRCO-B.ST,Precio Fishbone AB Class B,Information Technology,Micro Cap
 PREC.ST,Precise Biometrics AB (publ),Industrials,Micro Cap
 PREV-B.ST,Prevas AB,Information Technology,Micro Cap
+PRFO.ST,Profoto Holding AB,Consumer Discretionary,Micro Cap
 PRIC-B.ST,Pricer AB (publ),Industrials,Small Cap
+PRISMA.ST,Prisma Properties AB,Financials,Mid Cap
+PRO.ST,Promimic AB,Health Care,Micro Cap
 PROF-B.ST,ProfilGruppen AB (publ),Industrials,Micro Cap
 PROGEN.ST,Prostatype Genomics AB (publ),Health Care,Nano Cap
 PROMO.ST,Promore Pharma AB (publ),Health Care,Nano Cap
+PROTO.ST,Protector Forsikring ASA,Financials,Large Cap
+PRSO.ST,Prosafe SE,Industrials,Small Cap
 PTRK.ST,Physitrack PLC,Health Care,Micro Cap
+PUBLI.ST,PPI Public Property Invest AB,Financials,Large Cap
+PUBLIO.ST,PPI Public Property Invest AB,Financials,Large Cap
 QAIR.ST,QleanAir Holding AB (publ),Industrials,Micro Cap
+QBEN.ST,Qben Infra AB,Consumer Discretionary,Small Cap
+QBIM.ST,Qbim Aktiebolag,Information Technology,Nano Cap
+QCORE.ST,Qlucore AB,Information Technology,Nano Cap
+QECO.ST,Questerre Energy Corporation Class A,Energy,Small Cap
 QIIWI.ST,Qiiwi Games AB (publ),Communication Services,Nano Cap
 QLIFE.ST,Qlife Holding AB (publ),Health Care,Micro Cap
 QLINEA.ST,Q-linea AB (publ),Health Care,Small Cap
 QLIRO.ST,Qliro AB (publ),Financials,Micro Cap
+QSYS.ST,Qualisys Holding AB,Consumer Discretionary,Small Cap
 RAIL.ST,Railcare Group AB (publ),Industrials,Micro Cap
+RAKE.ST,Raketech Group Holding Plc,Information Technology,Nano Cap
 RATO-A.ST,Ratos AB (publ),Financials,Mid Cap
 RATO-B.ST,Ratos AB (publ),Financials,Mid Cap
 RAY-B.ST,RaySearch Laboratories AB Class B,Health Care,Small Cap
+REACHO.ST,Reach Subsea ASA,Energy,Small Cap
 READ.ST,Readly International AB (publ),Communication Services,Micro Cap
+REALFI.ST,Realfiction Holding AB,Information Technology,Nano Cap
 REDW.ST,Redwood Pharma AB,Health Care,Nano Cap
 REJL-B.ST,Rejlers AB (publ),Industrials,Small Cap
 RENEW.ST,Re:NewCell AB (publ),Consumer Discretionary,Small Cap
@@ -482,24 +801,37 @@ RIZZO-B.ST,Rizzo Group AB (publ),Consumer Discretionary,Nano Cap
 RLS.ST,RLS Global AB (publ),Health Care,Nano Cap
 RNBS.ST,RNB Retail and Brands AB (publ),Consumer Discretionary,Nano Cap
 RO.ST,Rolling Optics Holding AB (publ),Information Technology,Micro Cap
+ROKO-B.ST,Roko AB Class B,Financials,Large Cap
 RPLAN.ST,Ranplan Group AB,Information Technology,Nano Cap
 RROS.ST,Rottneros AB,Materials,Micro Cap
 RUG.ST,Rugvista Group AB (publ),Consumer Discretionary,Small Cap
+RUSTA.ST,Rusta AB,Consumer Discretionary,Large Cap
+RVRC.ST,RVRC Holding AB,Consumer Discretionary,Mid Cap
 S2M.ST,S2Medical AB (publ),Health Care,Nano Cap
 SAAB-B.ST,Saab AB (publ),Industrials,Mid Cap
+SAFETY-B.ST,mySafety Group AB Class B,Information Technology,Micro Cap
 SAGA-A.ST,AB Sagax (publ),Real Estate,Mid Cap
 SAGA-B.ST,AB Sagax (publ),Real Estate,Mid Cap
 SAGA-D.ST,AB Sagax (publ),Real Estate,Mid Cap
+SALIX.ST,Salix Group AB,Industrials,Mid Cap
+SALMEO.ST,Salmon Evolution ASA,Materials,Mid Cap
+SALMO.ST,SalMar ASA,Materials,Large Cap
 SALT-B.ST,SaltX Technology Holding AB,Industrials,Nano Cap
+SAMPO-SEK.ST,Sampo Oyj,Financials,Large Cap
 SAND.ST,Sandvik AB (publ),Industrials,Large Cap
+SANION.ST,Saniona AB,Health Care,Small Cap
 SAS.ST,SAS AB (publ),Industrials,Small Cap
+SATSO.ST,SATS ASA,Consumer Discretionary,Mid Cap
 SAVE.ST,Nordnet AB,Financials,Mid Cap
 SAXG.ST,Saxlund Group AB,Industrials,Nano Cap
+SB1NOO.ST,SPAREBANK 1 SOR-NORGE ASA,Financials,Large Cap
 SBB-B.ST,Samhallsbyggnadsbolaget i Norden AB (publ),Real Estate,Mid Cap
 SBB-D.ST,Samhallsbyggnadsbolaget i Norden AB (publ),Real Estate,Mid Cap
+SBOK-B.ST,ScandBook Holding AB Class B,Consumer Discretionary,Micro Cap
 SBOK.ST,ScandBook Holding AB (publ),Industrials,Nano Cap
 SCA-A.ST,Svenska Cellulosa AB SCA Class B,Materials,Large Cap
 SCA-B.ST,Svenska Cellulosa AB SCA Class B,Materials,Large Cap
+SCATCO.ST,Scatec ASA,Utilities,Large Cap
 SCIB.ST,SciBase Holding AB,Health Care,Nano Cap
 SCOUT.ST,Scout Gaming Group AB (publ),Communication Services,Micro Cap
 SCST.ST,Scandi Standard AB (publ),Consumer Staples,Small Cap
@@ -524,29 +856,50 @@ SES.ST,Scandinavian Enviro Systems AB,Industrials,Micro Cap
 SEYE.ST,Smart Eye AB,Information Technology,Small Cap
 SEZI.ST,Senzime AB (publ),Health Care,Micro Cap
 SF.ST,Stillfront Group AB,Communication Services,Mid Cap
+SFAB.ST,Solid Forsakringsaktiebolag,Financials,Small Cap
 SFAST.ST,Stenhus Fastigheter i Norden AB (publ),Real Estate,Micro Cap
+SFL.ST,Safello Group AB,Financials,Nano Cap
 SFTR.ST,Safeture AB (publ),Information Technology,Nano Cap
+SGG.ST,Sensys Gatso Group AB,Information Technology,Small Cap
 SHB-A.ST,Svenska Handelsbanken AB (publ),Financials,Large Cap
 SHB-B.ST,Svenska Handelsbanken AB (publ),Financials,Large Cap
 SHOT.ST,Scandic Hotels Group AB,Consumer Discretionary,Small Cap
+SIBEK.ST,Sibek AB,Industrials,Small Cap
 SIGN-B.ST,Signatur Fastigheter AB (publ),Real Estate,Micro Cap
+SILEX.ST,Silex Microsystems AB,Information Technology,Large Cap
 SIMRIS-B.ST,Simris Alg AB (publ),Health Care,Nano Cap
 SINCH.ST,Sinch AB (publ),Communication Services,Large Cap
 SINT.ST,SinterCast AB (publ),Industrials,Micro Cap
 SIVE.ST,Sivers Semiconductors AB,Information Technology,Small Cap
+SIVI.ST,Siljansvik AB,Utilities,Small Cap
 SJR-B.ST,SJR in Scandinavia AB (publ),Industrials,Nano Cap
 SKA-B.ST,Skanska AB (publ),Industrials,Large Cap
+SKF-A.ST,SKF AB Class A,Industrials,Large Cap
 SKF-B.ST,AB SKF (publ),Industrials,Large Cap
 SKIS-B.ST,SkiStar AB (publ),Consumer Discretionary,Small Cap
 SKMO.ST,Sk√•ne-mollan AB (publ),Consumer Staples,Micro Cap
+SKOLON.ST,Skolon AB,Information Technology,Small Cap
+SLEEP.ST,Sleep Cycle AB,Information Technology,Micro Cap
 SLITE.ST,Slitevind AB,Utilities,Micro Cap
+SLP-B.ST,Swedish Logistic Property AB Class B,Industrials,Mid Cap
+SMCRT.ST,SmartCraft Group AB (publ),Information Technology,Mid Cap
+SMOPO.ST,Smartoptics Group ASA,Information Technology,Mid Cap
+SNIO.ST,Stolt-Nielsen Limited,Industrials,Large Cap
+SNX.ST,Premium Snacks Nordic AB,Consumer Staples,Micro Cap
 SOBI.ST,Swedish Orphan Biovitrum AB,Health Care,Mid Cap
+SODER.ST,Soder Sportfiske AB,Consumer Discretionary,Micro Cap
 SOF-B.ST,Softronic AB,Information Technology,Micro Cap
+SOFFO.ST,Solstad Offshore ASA,Industrials,Mid Cap
 SOLNA.ST,Solnaberg Property AB (publ),Real Estate,Micro Cap
 SOLT.ST,SolTech Energy Sweden AB (publ),Information Technology,Micro Cap
+SOMAO.ST,Solstad Maritime ASA,Industrials,Large Cap
+SONE.ST,Sonetel AB,Communication Services,Nano Cap
+SPAGO-BTA.ST,Spago Nanomedical AB TEMP,Health Care,Nano Cap
 SPAGO.ST,Spago Nanomedical AB (publ),Health Care,Nano Cap
 SPEC.ST,SpectraCure AB (publ),Health Care,Micro Cap
+SPEONE.ST,SpectrumOne AB,Information Technology,Nano Cap
 SPIFF.ST,Spiffbet AB,Communication Services,Nano Cap
+SPOTR.ST,Spotr Group AB,Information Technology,Nano Cap
 SPRINT.ST,Sprint Bioscience AB,Health Care,Nano Cap
 SRNKE-B.ST,Serneke Group AB (publ),Industrials,Micro Cap
 SSAB-A.ST,SSAB AB (publ),Materials,Mid Cap
@@ -554,15 +907,22 @@ SSAB-B.ST,SSAB AB (publ),Materials,Mid Cap
 STABL.ST,Stayble Therapeutics AB (publ),Health Care,Nano Cap
 STAR-A.ST,Starbreeze AB,Communication Services,Micro Cap
 STAR-B.ST,Starbreeze AB,Communication Services,Micro Cap
+STBO.ST,Storebrand ASA,Financials,Large Cap
 STEF-B.ST,Stendorren Fastigheter AB (publ),Real Estate,Small Cap
 STIL.ST,Stille AB,Health Care,Micro Cap
+STOR-B.ST,Storskogen Group AB Class B,Financials,Large Cap
 STORY-B.ST,Storytel AB,Communication Services,Small Cap
 STRAX.ST,Strax AB (publ),Information Technology,Micro Cap
 STRLNG.ST,Swedish Stirling AB (publ),Industrials,Micro Cap
+STROO.ST,StrongPoint ASA,Information Technology,Micro Cap
 STUDBO.ST,Studentbostader i Norden AB (publ),Industrials,Micro Cap
 STW.ST,SeaTwirl AB (publ),Industrials,Nano Cap
 STWK.ST,Stockwik Forvaltning AB (publ),Financials,Micro Cap
+SUBCO.ST,Subsea 7 S.A.,Industrials,Large Cap
+SUBGEN.ST,Subgen AI AB,Health Care,Micro Cap
+SUMMAS.ST,Summa Defence Plc Class A,Consumer Discretionary,Micro Cap
 SUS.ST,Surgical Science Sweden AB (publ),Health Care,Small Cap
+SVEAF.ST,Sveafastigheter AB,Financials,Mid Cap
 SVED-B.ST,Svedbergs i Dalstorp AB (publ),Industrials,Micro Cap
 SVIK.ST,Studsvik AB (publ),Industrials,Micro Cap
 SVOL-A.ST,Svolder AB (publ),Financials,Small Cap
@@ -571,63 +931,114 @@ SWEC-A.ST,Sweco AB (publ),Industrials,Mid Cap
 SWEC-B.ST,Sweco AB (publ),Industrials,Mid Cap
 SWED-A.ST,Swedbank AB (publ),Financials,Large Cap
 SWMA.ST,Swedish Match AB (publ),Consumer Staples,Large Cap
+SWONO.ST,SoftwareOne Holding Ltd.,Industrials,Large Cap
+SYNACT.ST,SynAct Pharma AB,Health Care,Small Cap
+SYNSAM.ST,Synsam AB,Consumer Discretionary,Mid Cap
 SYSR.ST,Systemair AB (publ),Industrials,Small Cap
 TAGM-B.ST,TagMaster AB (publ),Information Technology,Small Cap
+TALK.ST,TalkPool AG,Industrials,Micro Cap
+TANGEN-B.ST,Tangen Industrikapital AB Class B,Financials,Mid Cap
 TANGI.ST,Tangiamo Touch Technology AB (publ),Consumer Discretionary,Nano Cap
 TCT.ST,TC TECH Sweden AB (publ),Industrials,Nano Cap
 TEL2-A.ST,Tele2 AB (publ),Communication Services,Mid Cap
 TEL2-B.ST,Tele2 AB (publ),Communication Services,Mid Cap
 TELIA.ST,Telia Company AB (publ),Communication Services,Large Cap
 TELLUS.ST,Tellusgruppen AB (publ),Consumer Staples,Nano Cap
+TELO.ST,Telenor ASA,Communication Services,Large Cap
+TENEO.ST,Teneo AI AB Class B,Information Technology,Nano Cap
 TEQ.ST,Teqnion AB (publ),Industrials,Micro Cap
+TERNOR.ST,Terranor Group AB,Industrials,Small Cap
 TERRNT-B.ST,TerraNet Holding AB (publ),Information Technology,Micro Cap
 TFBANK.ST,TF Bank AB (publ),Financials,Small Cap
+TGSO.ST,TGS ASA,Information Technology,Large Cap
 THULE.ST,Thule Group AB (publ),Consumer Discretionary,Mid Cap
 THUNDR.ST,Thunderful Group AB,Communication Services,Small Cap
+TIETOS.ST,Tieto Corporation,Information Technology,Large Cap
+TINGS-A.ST,Tingsvalvet Fastighets AB Class A,Financials,Micro Cap
+TINGS-B.ST,Tingsvalvet Fastighets AB Class B,Financials,Micro Cap
+TITA-B.ST,Titania Holding AB Class B,Consumer Discretionary,Small Cap
 TOBII.ST,Tobii AB (publ),Information Technology,Small Cap
 TOL.ST,Toleranzia AB,Health Care,Nano Cap
+TOMO.ST,TOMRA Systems ASA,Industrials,Large Cap
 TORSAB.ST,Torslanda Property Investment AB (publ),Real Estate,Micro Cap
 TOURN.ST,Tourn International AB (publ),Communication Services,Nano Cap
 TRAC-B.ST,AB Traction,Financials,Small Cap
 TRAD.ST,TradeDoubler AB (publ),Communication Services,Nano Cap
+TRAIN-B.ST,Train Alliance AB (publ) Class B,Industrials,Small Cap
 TRANS.ST,Transtema Group AB,Communication Services,Micro Cap
 TREL-B.ST,Trelleborg AB Class B,Industrials,Mid Cap
 TRG.ST,Transcendent Group AB (publ),Industrials,Nano Cap
 TRIAN-B.ST,Fastighets AB Trianon (publ),Real Estate,Small Cap
 TRIBO-B.ST,Triboron International AB (publ),Materials,Nano Cap
+TRMEDO.ST,Thor Medical ASA,Industrials,Small Cap
 TROAX.ST,Troax Group AB (publ),Industrials,Small Cap
+TRUE-B.ST,Truecaller AB Class B,Information Technology,Mid Cap
 TSEC.ST,Tempest Security AB (publ),Industrials,Nano Cap
 UNIBAP.ST,Unibap AB (publ),Information Technology,Nano Cap
 UPSALE.ST,Upsales Technology AB (publ),Information Technology,Micro Cap
 URBIT.ST,Urb-it AB (publ),Information Technology,Micro Cap
+USWE.ST,USWE Sports AB,Consumer Discretionary,Nano Cap
 UTG.ST,Unlimited Travel Group UTG AB (publ),Consumer Discretionary,Nano Cap
+VARO.ST,Var Energi ASA,Energy,Large Cap
 VBG-B.ST,VBG Group AB (publ),Consumer Discretionary,Small Cap
+VEFAB.ST,VEF AB,Financials,Small Cap
+VEIO.ST,Veidekke ASA,Industrials,Large Cap
+VENDO.ST,Vend Marketplaces ASA,Information Technology,Large Cap
+VER.ST,Verve Group Media SE Class A,Information Technology,Mid Cap
 VERT-B.ST,Vertiseit AB (publ),Information Technology,Nano Cap
+VESTUM.ST,Vestum AB,Industrials,Mid Cap
+VETT.ST,Vetted Assets AB (publ),Consumer Discretionary,Micro Cap
+VH.ST,Vastra Hamnen Corporate Finance AB,Financials,Nano Cap
 VICO.ST,Vicore Pharma Holding AB (publ),Health Care,Micro Cap
+VIMAB.ST,VIMAB Group AB,Industrials,Micro Cap
+VIMIAN.ST,Vimian Group AB,Health Care,Large Cap
+VISC.ST,Gruvaktiebolaget Viscaria,Materials,Mid Cap
 VIT-B.ST,Vitec Software Group AB (publ),Information Technology,Small Cap
 VITR.ST,Vitrolife AB,Health Care,Mid Cap
+VIVA.ST,Viva Wine Group AB,Consumer Staples,Mid Cap
+VIVE.ST,Vivesto AB,Health Care,Nano Cap
 VNV.ST,VNV Global AB (publ),Financials,Small Cap
+VO2.ST,Vo2 Cap Holding AB,Industrials,Micro Cap
 VOLAB.ST,Veg of Lund AB (publ),Consumer Staples,Nano Cap
+VOLCAR-B.ST,Volvo Car AB Class B,Consumer Discretionary,Large Cap
 VOLO-PREF.ST,Volati AB,Industrials,Small Cap
 VOLO.ST,Volati AB,Industrials,Small Cap
 VOLV-A.ST,AB Volvo (publ),Industrials,Large Cap
 VOLV-B.ST,AB Volvo (publ),Industrials,Large Cap
+VOWO.ST,Vow ASA,Industrials,Small Cap
+VPLAY-A.ST,Viaplay Group AB Class A,Consumer Discretionary,Mid Cap
+VPLAY-B.ST,Viaplay Group AB Class B,Consumer Discretionary,Mid Cap
 VSSAB-B.ST,Viking Supply Ships AB (publ),Industrials,Nano Cap
+VSURE.ST,Verisure Plc,Industrials,Large Cap
+VUXEN.ST,Vuxen Group AB,Consumer Discretionary,Micro Cap
+W5.ST,W5 Solutions AB,Industrials,Small Cap
 WALL-B.ST,Wallenstam AB (publ),Real Estate,Mid Cap
+WAWIO.ST,Wallenius Wilhelmsen ASA,Industrials,Large Cap
 WAYS.ST,Waystream Holding AB (publ),Information Technology,Nano Cap
 WBGR-B.ST,Wastbygg Gruppen AB (publ),Industrials,Small Cap
 WESC.ST,WeSC AB (publ),Consumer Discretionary,Micro Cap
 WIHL.ST,Wihlborgs Fastigheter AB,Real Estate,Mid Cap
 WISE.ST,Wise Group AB (publ),Industrials,Nano Cap
 WPAY.ST,Westpay AB,Information Technology,Nano Cap
+WPTG-B.ST,White Pearl Technology Group AB,Information Technology,Micro Cap
+WRV.ST,Webrock Ventures AB,Financials,Nano Cap
+WSG.ST,WS WeSports Group AB,Consumer Discretionary,Small Cap
+WTW-A.ST,Wall to Wall Group AB Class A,Industrials,Micro Cap
+WWIO.ST,Wilh. Wilhelmsen Holding ASA Class A,Industrials,Large Cap
+WYLD.ST,Wyld Networks AB,Information Technology,Nano Cap
 XANO-B.ST,XANO Industri AB (publ),Industrials,Small Cap
 XBRANE.ST,Xbrane Biopharma AB,Health Care,Small Cap
 XINT.ST,Xintela AB (publ),Health Care,Nano Cap
 XMR.ST,XMReality AB (publ),Information Technology,Nano Cap
+XPC.ST,XP Chemistries AB,Industrials,Nano Cap
 XSPRAY.ST,Xspray Pharma AB (publ),Health Care,Micro Cap
 XVIVO.ST,Xvivo Perfusion AB,Health Care,Small Cap
+YARO.ST,Yara International ASA,Materials,Large Cap
 YAYTRD.ST,Ytrade Group AB (publ),Consumer Discretionary,Nano Cap
+YIELD.ST,SaveLend Group AB,Financials,Nano Cap
+YUBICO.ST,Yubico AB,Industrials,Mid Cap
 ZAPLOX.ST,Zaplox AB,Information Technology,Nano Cap
+ZAPO.ST,Zaptec ASA,Industrials,Mid Cap
 ZETA.ST,ZetaDisplay AB (publ),Communication Services,Micro Cap
 ZICC.ST,Ziccum AB,Health Care,Nano Cap
 ZIGN.ST,ZignSec AB (publ),Industrials,Micro Cap
