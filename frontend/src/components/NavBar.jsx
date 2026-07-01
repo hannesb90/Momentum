@@ -25,6 +25,12 @@ const ICONS = {
       <circle cx="12" cy="12" r="3" />
     </>
   ),
+  quality: (
+    <>
+      <path d="M6 3h12l3 6-9 12L3 9l3-6Z" />
+      <path d="M3 9h18M9 3 6 9l6 12M15 3l3 6-6 12" />
+    </>
+  ),
 }
 
 const links = [
@@ -32,6 +38,7 @@ const links = [
   { to: '/signaler', label: 'Signaler', icon: 'signals' },
   { to: '/portfolj', label: 'Portfölj', icon: 'portfolio' },
   { to: '/bevakning', label: 'Bevakning', icon: 'watchlist' },
+  { to: '/kvalitet', label: 'Kvalitet', icon: 'quality' },
   { to: '/sektorer', label: 'Sektorer', icon: 'sectors' },
   { to: '/analys', label: 'Analys', icon: 'analysis' },
 ]

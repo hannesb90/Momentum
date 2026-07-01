@@ -140,6 +140,18 @@ def get_prices(ticker: str, limit: int = 260, segment: Optional[str] = None):
     return df[["date", "close"]].to_dict(orient="records")
 
 
+@app.get("/api/quality")
+def get_quality():
+    """Fundamental microcap-kortlista (kvalitativ sållning + värdering). Global,
+    inte segment-uppdelad. Tom lista om screenern ännu inte körts (i st. f. 404)."""
+    path = RESULTS_DIR / "quality_shortlist.csv"
+    if not path.exists():
+        return []
+    df = pd.read_csv(path)
+    df = df.where(pd.notnull(df), None)   # NaN → null så JSON blir giltig
+    return df.to_dict(orient="records")
+
+
 @app.get("/api/paper-ledger")
 def get_paper_ledger(limit: int = 520, segment: Optional[str] = None):
     """
