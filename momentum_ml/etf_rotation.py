@@ -67,6 +67,38 @@ def _scores(panel, etfs):
     return rel, absm
 
 
+def _sector_breadth():
+    """Global sektor-bredd (bekräftelse-lager, EJ svenska aktier): för varje GICS-
+    sektor, hur står sig EU- OCH US-versionen av sektor-ETF:en? Båda upp = globalt
+    bekräftad trend; splittrat = varning. Returnerar sector -> {mom, up, total}."""
+    pairs = {}
+    with open(Path(__file__).parent / "data" / "sector_etfs.csv", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            pairs.setdefault(row["sector"], []).append(row["ticker"])
+    tickers = [t for ts in pairs.values() for t in ts]
+    if not tickers:
+        return {}
+    panel = _panel(tickers)
+    win, absw, amin = config.ETF_ROT_MOM_WINDOWS, config.ETF_ROT_ABS_WINDOW, config.ETF_ROT_ABS_MIN
+    out = {}
+    for sector, ts in pairs.items():
+        moms, ups, tot = [], 0, 0
+        for t in ts:
+            if t not in panel.columns:
+                continue
+            s = panel[t].dropna()
+            if len(s) <= absw:
+                continue
+            rel = sum(s.iloc[-1] / s.iloc[-1 - w] - 1 for w in win) / len(win)
+            absm = s.iloc[-1] / s.iloc[-1 - absw] - 1
+            moms.append(rel); tot += 1
+            if absm > amin:
+                ups += 1
+        if moms:
+            out[sector] = {"mom": sum(moms) / len(moms), "up": ups, "total": tot}
+    return out
+
+
 def _regime(panel):
     """Bull/björn per datum: bred marknad över sin långa glidande medel = risk-on.
     None om regim-filtret är av eller regim-tickern saknar data."""
@@ -208,10 +240,12 @@ def signal():
                              config.ETF_ROT_DEFENSIVE, config.ETF_ROT_ABS_MIN)
     held = {t for t, hold, _ in picks if hold}
 
+    breadth = _sector_breadth()   # global bekräftelse (EU+US per GICS-sektor)
+
     reg = ("🟢 BULL (risk-on)" if risk_on else "🔴 BJÖRN (risk-off → defensivt)")
     print(f"\n  ETF-ROTATION – aktuell signal ({panel.index[-1].date()}), globalt universum")
     print(f"  Marknadsregim: {reg}  [{config.ETF_ROT_REGIME_TICKER} vs {config.ETF_ROT_REGIME_MA}v MA]\n")
-    print(f"  {'#':>2} {'sektor':<24} {'ETF':<9} {'rel.mom':>8} {'abs52v':>8} {'flöde':>10}  håll")
+    print(f"  {'#':>2} {'sektor':<24} {'ETF':<9} {'rel.mom':>8} {'abs52v':>8} {'flöde':>10} {'glob.bredd':>11}  håll")
     rows = []
     for t in ranked_now.index:
         rc = (rank_prev.get(t, 99) - rank_now[t]) if rank_prev else 0
@@ -222,12 +256,17 @@ def signal():
             flow = f"↓ ut ({rc})"
         a = absm.iloc[last].get(t)
         hold = "★" if t in held else ""
+        b = breadth.get(sec_map.get(t))
+        bstr = f"{b['up']}/{b['total']} {b['mom']:+.0%}" if b else "—"
         print(f"  {rank_now[t]:>2} {sec_map.get(t, '?')[:24]:<24} {t:<9} "
-              f"{rel_now[t]:>+7.1%} {(a if pd.notna(a) else float('nan')):>+7.1%} {flow:>10}  {hold}")
-        rows.append({"rank": rank_now[t], "sector": sec_map.get(t), "etf": t,
-                     "name": name_map.get(t), "rel_mom": round(float(rel_now[t]), 4),
-                     "abs_mom": round(float(a), 4) if pd.notna(a) else None,
-                     "rank_change": int(rc), "hold": int(t in held)})
+              f"{rel_now[t]:>+7.1%} {(a if pd.notna(a) else float('nan')):>+7.1%} {flow:>10} {bstr:>11}  {hold}")
+        row = {"rank": rank_now[t], "sector": sec_map.get(t), "etf": t,
+               "name": name_map.get(t), "rel_mom": round(float(rel_now[t]), 4),
+               "abs_mom": round(float(a), 4) if pd.notna(a) else None,
+               "rank_change": int(rc), "hold": int(t in held)}
+        if b:
+            row.update(breadth_mom=round(b["mom"], 4), breadth_up=b["up"], breadth_total=b["total"])
+        rows.append(row)
 
     if not risk_on:
         dgt = config.ETF_ROT_DEFENSIVE or "kontanter"
