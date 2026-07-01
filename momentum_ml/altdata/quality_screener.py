@@ -262,19 +262,31 @@ def report() -> None:
     if not scored:
         print("[report] inga poängsatta bolag – kör 'score' först.")
         return
+    # EODHD (pålitlig fundamentals-källa) om den fyllts – prioriteras för BÅDE
+    # börsvärde och EBITDA. Faller tillbaka på Yahoo, sen Claude-extraheringen.
+    ep = Path(config.QUALITY_CACHE_DIR) / "_eodhd.json"
+    eodhd = json.loads(ep.read_text()) if ep.exists() else {}
     # Auktoritativt börsvärde från Yahoo för ALLA poängsatta (löser 'okänd' pga saknat aktieantal).
     caps = _market_caps([s["ticker"] for s in scored])
     priced = [s for s in scored if s.get("shares_million")]
     data = fetch_weekly_data([s["ticker"] for s in priced], use_cache=True) if priced else {}
     rows = []
     for s in scored:
-        mcap = ebitda = mult = None
-        mcap = caps.get(s["ticker"])                                   # 1:a hand: Yahoo marketCap
-        if mcap is None and s.get("shares_million"):                   # fallback: kurs × aktieantal
+        mcap = mult = None
+        ex = eodhd.get(s["ticker"]) or {}
+        ex_sek = ex.get("currency") in (None, "SEK")   # icke-SEK → använd inte EODHD-siffrorna
+        mcap = ex.get("mcap_msek") if ex_sek else None                 # 1:a hand: EODHD
+        if mcap is None:
+            mcap = caps.get(s["ticker"])                               # 2:a hand: Yahoo marketCap
+        if mcap is None and s.get("shares_million"):                   # 3:e hand: kurs × aktieantal
             d = data.get(s["ticker"])
             if d is not None and not d.empty:
                 mcap = round(float(d["Close"].iloc[-1]) * float(s["shares_million"]), 1)
-        earnings, basis = _earnings(s)                 # EBITDA → EBIT → resultat
+        # Vinst: EODHD:s EBITDA först, annars Claude-stegen (EBITDA → EBIT → resultat).
+        if ex_sek and isinstance(ex.get("ebitda_msek"), (int, float)):
+            earnings, basis = ex["ebitda_msek"], "EBITDA·EODHD"
+        else:
+            earnings, basis = _earnings(s)
         if mcap is not None and earnings is not None and earnings > 0:
             mult = round(mcap / earnings, 1)
         r = dict(s)
