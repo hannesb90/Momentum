@@ -258,18 +258,31 @@ def backtest():
     print(_fmt_stats("Rotation (strategi)", _stats(port)))
     print(_fmt_stats("Likaviktad pool (B&H)", _stats(eqw)))
     prim = None
+    bench_series = {}
     for b in bmarks:
         if b in rets.columns:
             bs = rets[b].reindex(idx)
             print(_fmt_stats(f"Index {b}", _stats(bs)))
+            bench_series[b] = bs
             if prim is None:
                 prim = bs
     if prim is not None:   # slå-index-frekvens mot primär benchmark (ACWI)
         roll = (port.rolling(13).apply(lambda x: (1 + x).prod() - 1)
                 > prim.rolling(13).apply(lambda x: (1 + x).prod() - 1))
         print(f"\n  Slår {bench} (global) på rullande 13v-fönster: {roll.mean():.0%} av tiden")
-    print("\n  (Ombalansering utan transaktionskostnad. Absolut-filtret = skydd i "
-          "björnmarknad; sätt ETF_ROT_ABS_MIN högre för mer försiktighet.)")
+
+    # Konkret: så här hade besparingarna vuxit (samma fönster för alla).
+    start = float(getattr(config, "ETF_ROT_START_CAPITAL", 100000))
+    def _final(s):
+        s = s.dropna()
+        return start * float((1 + s).prod()) if len(s) else float("nan")
+    print(f"\n  TILLVÄXT AV {start:,.0f} kr ({idx[0].date()} → {idx[-1].date()}):".replace(",", " "))
+    print(f"    Rotation (top-{k}):     {_final(port):>14,.0f} kr".replace(",", " "))
+    print(f"    Likaviktad pool:       {_final(eqw):>14,.0f} kr".replace(",", " "))
+    for b, bs in bench_series.items():
+        print(f"    Index {b:<12}     {_final(bs):>14,.0f} kr".replace(",", " "))
+    print("\n  (Ombalansering utan transaktionskostnad/skatt. Absolut-filtret + regim = "
+          "skydd i björnmarknad; jämför särskilt maxDD, inte bara slutvärdet.)")
 
 
 # ── Aktuell signal + flöde ────────────────────────────────────────────────────
