@@ -27,7 +27,31 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
-from altdata.sentiment import _client, _parse_content   # återanvänd nyckel + robust JSON-parse
+from altdata.sentiment import _client   # återanvänd nyckel-hanteringen
+
+
+def _parse(msg) -> dict:
+    """Robust JSON-parse för KVALITETS-svaret. (Återanvänd INTE sentiment._parse_content –
+    den kräver fälten sentiment/materiality som detta schema saknar → allt kastades.)"""
+    for block in msg.content:
+        txt = getattr(block, "text", None)
+        if not txt:
+            continue
+        try:
+            d = json.loads(txt)
+            if isinstance(d, dict):
+                return d
+        except Exception:
+            pass
+        m = re.search(r"\{.*\}", txt, re.S)
+        if m:
+            try:
+                d = json.loads(m.group(0))
+                if isinstance(d, dict):
+                    return d
+            except Exception:
+                pass
+    return None
 
 _REPORT_KW = ("delårsrapport", "bokslut", "kvartalsrapport", "halvårsrapport",
               "årsredovisning", "year-end", "interim", "q1", "q2", "q3", "q4")
@@ -104,7 +128,7 @@ def score_company(ticker: str, name: str, client=None) -> dict:
         system=_SYSTEM,
         messages=[{"role": "user", "content": f"BOLAG: {name} ({ticker})\n\nUNDERLAG (MFN):\n{ctx}"}],
     )
-    parsed = _parse_content(msg)
+    parsed = _parse(msg)
     if not parsed:
         return None
     parsed["ticker"] = ticker
