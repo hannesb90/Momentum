@@ -263,7 +263,7 @@ async def save_portfolio_holdings(request: Request):
 def get_exit_signals():
     """Exit-alarm ('end this now'): senaste skanningen (sektor+teknik) per innehav.
     Tom struktur om skanningen ännu inte körts (portfolio.py exitscan på Pi:n)."""
-    path = RESULTS_DIR / "exit_signals.json"
+    path = Path(config.anchor(config.RESULTS_DIR)) / "exit_signals.json"
     if not path.exists():
         return {"generated": None, "holdings": []}
     with open(path, encoding="utf-8") as f:

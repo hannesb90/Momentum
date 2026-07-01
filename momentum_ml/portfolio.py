@@ -28,7 +28,12 @@ BUCKET_LABEL = {"broad": "Bred kärna (World/US/EM)", "sweden": "Sverige",
 
 
 def holdings_path() -> Path:
-    return Path(config.PORTFOLIO_HOLDINGS_FILE)
+    return Path(config.anchor(config.PORTFOLIO_HOLDINGS_FILE))
+
+
+def _results_dir() -> Path:
+    """results/ förankrad under $MOMENTUM_HOME (om satt) → app och CLI delar filer."""
+    return Path(config.anchor(config.RESULTS_DIR))
 
 
 def _num(v):
@@ -220,7 +225,7 @@ def _candidates() -> dict:
         out["sweden"].append(c)
 
     # Kvalitets-screenern → svenska kvalitetsbolag (hög composite + billig/rimlig).
-    qp = Path("results/quality_shortlist.csv")
+    qp = _results_dir() / "quality_shortlist.csv"
     if qp.exists():
         try:
             rows = list(csv.DictReader(open(qp, encoding="utf-8")))
@@ -241,7 +246,7 @@ def _candidates() -> dict:
         add_sweden(m["name"], m["ticker"], m["note"], "momentum")
 
     # Rotationen → starkaste tema-ETF:erna (för temadelen).
-    rp = Path("results/etf_rotation.csv")
+    rp = _results_dir() / "etf_rotation.csv"
     if rp.exists():
         try:
             kinds = _kinds()
@@ -520,7 +525,7 @@ def size_in(amount, tranches=4, dip_step=0.05):
 # ── Exit-alarm: "END THIS NOW" (sektor svag OCH tekniskt brutet) ──────────────
 def _sector_table():
     """results/sector_momentum.csv → {sektor_lower: {rank, total, mom13, mom26}}."""
-    p = Path("results/sector_momentum.csv")
+    p = _results_dir() / "sector_momentum.csv"
     if not p.exists():
         return {}, 0
     rows = list(csv.DictReader(open(p, encoding="utf-8")))
@@ -623,7 +628,7 @@ def exitscan():
     order = {"red": 0, "amber": 1, "unknown": 2, "ok": 3}
     out.sort(key=lambda x: order.get(x["tier"], 9))
     res = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "holdings": out}
-    p = Path("results/exit_signals.json")
+    p = _results_dir() / "exit_signals.json"
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(_json.dumps(res, ensure_ascii=False))
     reds = [o for o in out if o["tier"] == "red"]
@@ -636,7 +641,7 @@ def exitscan():
 
 
 def _write_json(data):
-    out = Path("results/portfolio_analysis.json")
+    out = _results_dir() / "portfolio_analysis.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(data, ensure_ascii=False))
 
