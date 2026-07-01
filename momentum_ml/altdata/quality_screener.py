@@ -418,6 +418,112 @@ def plot_positioning() -> None:
     print(f"[chart] sparad: {out}  ({len(pts)} bolag med EBITDA+aktier)")
 
 
+def _bench_ticker() -> str:
+    return config.SEGMENTS.get("small", {}).get("index_ticker", "XACT-SMABOLAG.ST")
+
+
+def snapshot(label=None) -> None:
+    """Fryser dagens kärn-lista (hög kvalitet + billig/rimlig) med ingångskurs →
+    results/quality_ledger.csv. Detta är ENDA ärliga sättet att mäta om screenern
+    slår index: framåt-spårning. Backtest går inte (diskretionär tratt, survivorship,
+    + LLM:en 'vet' utfallet via träningsdata = look-ahead)."""
+    import csv
+    import datetime
+    import pandas as pd
+    from data.data_loader import fetch_weekly_data
+
+    src = Path("results/quality_shortlist.csv")
+    if not src.exists():
+        print("[snapshot] kör 'report' först (results/quality_shortlist.csv saknas).")
+        return
+    df = pd.read_csv(src)
+    pick = df[(df["composite"] >= 4.0) & (df["zone"].isin(["billig", "rimlig"]))]
+    if pick.empty:   # fall tillbaka: bästa kvalitet bland de billiga/rimliga
+        pick = df[df["zone"].isin(["billig", "rimlig"])].sort_values("composite", ascending=False).head(10)
+    if pick.empty:
+        print("[snapshot] inga billiga/rimliga bolag att frysa – vidga i 'report' först.")
+        return
+    bench = _bench_ticker()
+    tickers = list(dict.fromkeys(list(pick["ticker"]) + [bench]))
+    data = fetch_weekly_data(tickers, use_cache=True)
+
+    def last_close(t):
+        d = data.get(t)
+        if d is None:
+            return None
+        s = d["Close"].dropna()
+        return round(float(s.iloc[-1]), 4) if len(s) else None
+
+    bench_px = last_close(bench)
+    today = datetime.date.today().isoformat()
+    label = label or today
+    rows = []
+    for _, r in pick.iterrows():
+        px = last_close(r["ticker"])
+        if px is None:
+            continue
+        rows.append({"snapshot": label, "date": today, "ticker": r["ticker"],
+                     "name": r.get("name"), "composite": r.get("composite"),
+                     "zone": r.get("zone"), "entry_price": px,
+                     "bench_ticker": bench, "bench_entry": bench_px})
+    if not rows:
+        print("[snapshot] inga ingångskurser (Yahoo?) – avbryter.")
+        return
+    ledger = Path("results/quality_ledger.csv")
+    exists = ledger.exists()
+    with open(ledger, "a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        if not exists:
+            w.writeheader()
+        for row in rows:
+            w.writerow(row)
+    print(f"[snapshot] '{label}': frös {len(rows)} bolag @ {today} (index {bench}) → {ledger}")
+    print("  Kör 'track' om några veckor/månader för att se avkastning vs index.")
+
+
+def track() -> None:
+    """Läser quality_ledger.csv och visar varje snapshots avkastning vs index
+    till dags dato (likaviktad, ingen ombalansering). Screenerns riktiga scorecard."""
+    import pandas as pd
+    from data.data_loader import fetch_weekly_data
+
+    ledger = Path("results/quality_ledger.csv")
+    if not ledger.exists():
+        print("[track] ingen ledger än – kör 'snapshot' först.")
+        return
+    led = pd.read_csv(ledger)
+    tickers = list(dict.fromkeys(list(led["ticker"]) + list(led["bench_ticker"].dropna().unique())))
+    data = fetch_weekly_data(tickers, use_cache=True)
+
+    def cur(t):
+        d = data.get(t)
+        if d is None:
+            return None
+        s = d["Close"].dropna()
+        return float(s.iloc[-1]) if len(s) else None
+
+    print("\n  KVALITETS-SCREENERN vs INDEX (framåt-spårning, likaviktad)\n")
+    for label, g in led.groupby("snapshot"):
+        rets = [cur(r["ticker"]) / r["entry_price"] - 1
+                for _, r in g.iterrows()
+                if cur(r["ticker"]) and r["entry_price"]]
+        if not rets:
+            continue
+        port = sum(rets) / len(rets)
+        be = g["bench_entry"].dropna()
+        bt = g["bench_ticker"].dropna()
+        bench_ret = None
+        if len(be) and len(bt):
+            bc = cur(bt.iloc[0])
+            if bc:
+                bench_ret = bc / float(be.iloc[0]) - 1
+        line = f"  {str(label):<12} {len(rets):>2} bolag   portfölj {port:+.1%}"
+        if bench_ret is not None:
+            line += f"   index {bench_ret:+.1%}   alfa {port - bench_ret:+.1%}"
+        print(line)
+    print("\n  (Enkel framåt-scorecard – ingen ombalansering. Fler snapshots över tid = mer robust.)")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "score"
     if cmd == "score":
@@ -426,6 +532,10 @@ def main():
         report()
     elif cmd == "chart":
         plot_positioning()
+    elif cmd == "snapshot":
+        snapshot(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif cmd == "track":
+        track()
     elif cmd == "one":
         from data.data_loader import load_sweden_universe
         _, _, _, nm = load_sweden_universe(min_market_cap=config.QUALITY_MARKET_CAP)
