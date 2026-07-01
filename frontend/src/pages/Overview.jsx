@@ -17,8 +17,11 @@ export function OverviewPage() {
 
   const series = useMemo(() => {
     if (!portfolio.data) return []
-    return portfolio.data.map((r) => ({ date: r.date, value: r.portfolio_value }))
+    return portfolio.data.map((r) => ({
+      date: r.date, value: r.portfolio_value, index: r.benchmark_value,
+    }))
   }, [portfolio.data])
+  const hasIndex = series.some((r) => r.index != null)
 
   if (stats.loading || portfolio.loading) return <Loading />
   if (stats.error) return <ErrorBlock error={stats.error} />
@@ -99,7 +102,7 @@ export function OverviewPage() {
         )}
         {series.length > 0 && (
           <div className="hero__spark">
-            <ResponsiveContainer width="100%" height={64}>
+            <ResponsiveContainer width="100%" height={72}>
               <AreaChart data={series} margin={{ top: 4, bottom: 0, left: 0, right: 0 }}>
                 <defs>
                   <linearGradient id="heroFill" x1="0" y1="0" x2="0" y2="1">
@@ -110,12 +113,22 @@ export function OverviewPage() {
                 <YAxis domain={['dataMin', 'dataMax']} hide />
                 <Tooltip
                   contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
-                  formatter={(v) => [fmtSek(v), 'Värde']}
+                  formatter={(v, name) => [fmtSek(v), name === 'index' ? 'Index' : 'Strategi']}
                   labelFormatter={() => ''}
                 />
+                {hasIndex && (
+                  <Area type="monotone" dataKey="index" stroke="var(--text-muted)" strokeWidth={1.5}
+                    strokeDasharray="4 3" fill="none" dot={false} />
+                )}
                 <Area type="monotone" dataKey="value" stroke="var(--accent)" strokeWidth={2} fill="url(#heroFill)" />
               </AreaChart>
             </ResponsiveContainer>
+            {hasIndex && (
+              <div className="hero__legend">
+                <span><i className="dot dot--accent" />Strategins portfölj</span>
+                <span><i className="dot dot--muted" />Index (köp-och-behåll)</span>
+              </div>
+            )}
           </div>
         )}
       </div>

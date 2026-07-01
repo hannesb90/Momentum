@@ -643,6 +643,31 @@ h2 {
 .hero__spark {
   margin: 10px -22px 0;
 }
+.hero__legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.hero__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.hero__legend .dot {
+  width: 10px;
+  height: 0;
+  border-top: 2px solid currentColor;
+}
+.hero__legend .dot--accent {
+  color: var(--accent);
+}
+.hero__legend .dot--muted {
+  color: var(--text-muted);
+  border-top-style: dashed;
+}
 
 /* ── Tiles ───────────────────────────────────────────────────────────── */
 
