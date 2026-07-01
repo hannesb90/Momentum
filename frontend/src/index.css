@@ -1246,6 +1246,35 @@ h2 {
   color: var(--text-muted);
 }
 
+.cand-src {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.cand-src--kvalitet {
+  color: #7fd8a0;
+  border-color: rgba(127, 216, 160, 0.4);
+}
+.cand-src--momentum {
+  color: #8ab4ff;
+  border-color: rgba(138, 180, 255, 0.4);
+}
+.cand-analys {
+  margin-top: 3px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .newcap__input input {
   width: 130px;
   padding: 8px 10px;
