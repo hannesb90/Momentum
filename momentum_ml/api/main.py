@@ -30,7 +30,7 @@ app = FastAPI(title="Momentum ML API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -222,6 +222,35 @@ def get_thesis():
     if not path.exists():
         return []
     return _records(_read_csv(path))
+
+
+@app.get("/api/portfolio")
+def get_portfolio_holdings(amount: Optional[float] = None):
+    """Manuellt inmatad portfölj + hink-analys + (om amount) nytt-kapital-plan."""
+    import portfolio as pf
+    return _clean(pf.compute(pf.load_holdings(), amount=amount))
+
+
+@app.post("/api/portfolio")
+async def save_portfolio_holdings(request: Request):
+    """Sparar hela innehavslistan (skriver cache/portfolio_holdings.csv) och
+    returnerar omräknad analys. Body: {holdings:[{name,value,bucket}], amount?}."""
+    import portfolio as pf
+    body = await request.json()
+    holdings = body.get("holdings", [])
+    rows = []
+    for h in holdings:
+        try:
+            v = float(h.get("value") if h.get("value") is not None else h.get("value_sek", 0))
+        except (TypeError, ValueError):
+            continue
+        name = str(h.get("name", "")).strip()
+        if not name or v <= 0:
+            continue
+        b = str(h.get("bucket", "theme"))
+        rows.append({"name": name, "value": v, "bucket": b if b in pf.BUCKETS else "theme"})
+    pf.save_holdings(rows)
+    return _clean(pf.compute(rows, amount=body.get("amount")))
 
 
 @app.get("/api/paper-ledger")

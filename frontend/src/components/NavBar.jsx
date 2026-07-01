@@ -37,6 +37,12 @@ const ICONS = {
       <path d="M21 4v4h-4" />
     </>
   ),
+  holdings: (
+    <>
+      <path d="M3 6h18v12H3z" />
+      <path d="M3 10h18M8 15h3" />
+    </>
+  ),
 }
 
 const links = [
@@ -46,6 +52,7 @@ const links = [
   { to: '/bevakning', label: 'Bevakning', icon: 'watchlist' },
   { to: '/kvalitet', label: 'Kvalitet', icon: 'quality' },
   { to: '/rotation', label: 'Rotation', icon: 'rotation' },
+  { to: '/innehav', label: 'Innehav', icon: 'holdings' },
   { to: '/sektorer', label: 'Sektorer', icon: 'sectors' },
   { to: '/analys', label: 'Analys', icon: 'analysis' },
 ]

@@ -17,6 +17,19 @@ async function getJson(path) {
   return res.json()
 }
 
+async function postJson(path, payload) {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail || `${res.status} ${res.statusText}`)
+  }
+  return res.json()
+}
+
 export const api = {
   segments: () => getJson('/segments'),
   health: () => getJson('/health'),
@@ -34,4 +47,6 @@ export const api = {
   quality: () => getJson('/quality'),
   rotation: () => getJson('/rotation'),
   thesis: () => getJson('/thesis'),
+  portfolio: (amount) => getJson(`/portfolio${amount ? `?amount=${amount}` : ''}`),
+  savePortfolio: (holdings, amount) => postJson('/portfolio', { holdings, amount }),
 }
