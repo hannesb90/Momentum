@@ -67,6 +67,18 @@ def _scores(panel, etfs):
     return rel, absm
 
 
+def _regime(panel):
+    """Bull/björn per datum: bred marknad över sin långa glidande medel = risk-on.
+    None om regim-filtret är av eller regim-tickern saknar data."""
+    if not getattr(config, "ETF_ROT_REGIME_ENABLED", False):
+        return None
+    t = config.ETF_ROT_REGIME_TICKER
+    if t not in panel.columns:
+        return None
+    ma = panel[t].rolling(config.ETF_ROT_REGIME_MA).mean()
+    return panel[t] > ma
+
+
 # ── Rotationsbeslut ───────────────────────────────────────────────────────────
 def _decide(rel_row, abs_row, k, defensive, abs_min):
     """Top-K på relativ momentum; en ETF utan positiv absolut trend → defensivt ben.
@@ -118,14 +130,16 @@ def backtest():
         print(f"[backtest] för få ETF:er med data ({len(have)}) – kolla nätet/tickers.")
         return
     rel, absm = _scores(panel, have)
+    regime = _regime(panel)
     rets = panel.pct_change()
     k, rebal, abs_min = config.ETF_ROT_TOP_K, config.ETF_ROT_REBAL_WEEKS, config.ETF_ROT_ABS_MIN
-    start = config.ETF_ROT_ABS_WINDOW + 1
+    start = max(config.ETF_ROT_ABS_WINDOW, config.ETF_ROT_REGIME_MA) + 1
     if len(panel) <= start + rebal:
         print("[backtest] för kort historik för ETF-universumet.")
         return
+    cash = defensive or "_CASH"
 
-    weights, port = {}, []
+    weights, port, riskoff_wk = {}, [], 0
     idx = panel.index[start:]
     for j, i in enumerate(range(start, len(panel))):
         if weights:                                   # veckans avkastning på FÖRRA beslutets vikter
@@ -137,15 +151,24 @@ def backtest():
         else:
             port.append(0.0)
         if j % rebal == 0:                            # nytt beslut vid stängning i → nästa vecka
-            weights, _ = _decide(rel.iloc[i], absm.iloc[i], k, defensive, abs_min)
+            if regime is not None and not bool(regime.iloc[i]):
+                weights = {cash: 1.0}                  # BJÖRN → allt defensivt/kontanter
+                riskoff_wk += rebal
+            else:
+                weights, _ = _decide(rel.iloc[i], absm.iloc[i], k, defensive, abs_min)
 
     port = pd.Series(port, index=idx)
     eqw = rets[have].reindex(idx).mean(axis=1)        # köp-och-behåll, likaviktad hela poolen
 
-    print(f"\n  ETF-ROTATION (dual momentum) – globalt tema/region-universum, "
-          f"top-{k}, ombal var {rebal}v, {len(have)} ETF:er")
-    print(f"  Period: {idx[0].date()} – {idx[-1].date()}  ({len(idx)} veckor)")
-    print("  (Tematiska ETF:er har kortare historik – de blir valbara först när de fått 52v data.)\n")
+    reg_txt = (f"regim PÅ ({config.ETF_ROT_REGIME_TICKER} vs {config.ETF_ROT_REGIME_MA}v MA)"
+               if regime is not None else "regim AV")
+    print(f"\n  ETF-ROTATION (regim-medveten dual momentum) – globalt universum, "
+          f"top-{k}, mom {config.ETF_ROT_MOM_WINDOWS}v, ombal var {rebal}v, {len(have)} ETF:er")
+    print(f"  Period: {idx[0].date()} – {idx[-1].date()}  ({len(idx)} veckor) · {reg_txt}")
+    if regime is not None:
+        print(f"  Risk-off (björn → defensivt): {riskoff_wk / len(idx):.0%} av tiden "
+              f"(defensivt ben: {defensive or 'kontanter'})")
+    print("  (Tematiska ETF:er har kortare historik – valbara först när de fått data.)\n")
     print(_fmt_stats("Rotation (strategi)", _stats(port)))
     print(_fmt_stats("Likaviktad pool (B&H)", _stats(eqw)))
     prim = None
@@ -179,11 +202,15 @@ def signal():
     rank_prev = {t: i + 1 for i, t in enumerate(rel.iloc[last - look].dropna().sort_values(ascending=False).index)} \
         if len(rel) > look else {}
 
+    regime = _regime(panel)
+    risk_on = True if regime is None else bool(regime.iloc[last])
     weights, picks = _decide(rel_now, absm.iloc[last], config.ETF_ROT_TOP_K,
                              config.ETF_ROT_DEFENSIVE, config.ETF_ROT_ABS_MIN)
     held = {t for t, hold, _ in picks if hold}
 
-    print(f"\n  ETF-ROTATION – aktuell signal ({panel.index[-1].date()}), globalt tema/region-universum\n")
+    reg = ("🟢 BULL (risk-on)" if risk_on else "🔴 BJÖRN (risk-off → defensivt)")
+    print(f"\n  ETF-ROTATION – aktuell signal ({panel.index[-1].date()}), globalt universum")
+    print(f"  Marknadsregim: {reg}  [{config.ETF_ROT_REGIME_TICKER} vs {config.ETF_ROT_REGIME_MA}v MA]\n")
     print(f"  {'#':>2} {'sektor':<24} {'ETF':<9} {'rel.mom':>8} {'abs52v':>8} {'flöde':>10}  håll")
     rows = []
     for t in ranked_now.index:
@@ -202,6 +229,10 @@ def signal():
                      "abs_mom": round(float(a), 4) if pd.notna(a) else None,
                      "rank_change": int(rc), "hold": int(t in held)})
 
+    if not risk_on:
+        dgt = config.ETF_ROT_DEFENSIVE or "kontanter"
+        print(f"\n  → REGIM = BJÖRN: hela portföljen i defensivt ({dgt}). Rotationen nedan "
+              "visas för insyn men aktiveras först när regimen vänder till bull.")
     hold_list = [t for t, h, _ in picks if h]
     defslots = config.ETF_ROT_TOP_K - len(hold_list)
     print(f"\n  → HÅLL NU (top-{config.ETF_ROT_TOP_K}): "
