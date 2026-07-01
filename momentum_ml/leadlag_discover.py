@@ -55,20 +55,33 @@ def _daily_prices(tickers):
     return df
 
 
-def discover(merge=False):
+def _price_panel(tickers, weekly):
+    if weekly:
+        from data.data_loader import fetch_weekly_data
+        data = fetch_weekly_data(tickers, use_cache=True)
+        cols = {t: d["Close"] for t, d in data.items()
+                if d is not None and not d["Close"].dropna().empty}
+        px = pd.DataFrame(cols).sort_index()
+        px.index = pd.to_datetime(px.index)
+        return px
+    return _daily_prices(tickers)
+
+
+def discover(merge=False, weekly=False):
     from etf_rotation import _load_universe
     uni = _load_universe()
     tk2group = {t: g for t, g, _ in uni}
     tickers = list(tk2group)
-    print(f"[leadlag] hämtar dagsdata för {len(tickers)} ETF:er...")
-    px = _daily_prices(tickers)
+    lags = config.LEADLAG_LAGS_WEEKS if weekly else config.LEADLAG_LAGS_DAYS
+    unit = "v" if weekly else "d"
+    print(f"[leadlag] hämtar {'vecko' if weekly else 'dags'}data för {len(tickers)} ETF:er...")
+    px = _price_panel(tickers, weekly)
     have = [t for t in tickers if t in px.columns]
-    print(f"[leadlag] {len(have)} med data – testar {len(have) * (len(have) - 1)} par × "
-          f"{len(config.LEADLAG_LAGS_DAYS)} ledtider")
+    print(f"[leadlag] {len(have)} med data – testar {len(have) * (len(have) - 1)} par × {len(lags)} ledtider")
 
-    rows, tests = [], 0
-    for L in config.LEADLAG_LAGS_DAYS:
-        cum = px[have] / px[have].shift(L) - 1          # överlappande L-dagarsavkastning
+    allr, tests = [], 0
+    for L in lags:
+        cum = px[have] / px[have].shift(L) - 1          # överlappande L-periods avkastning
         samp = cum.iloc[::L]                            # sampla icke-överlappande
         for x in have:
             xa = samp[x]
@@ -84,56 +97,64 @@ def discover(merge=False):
                     continue
                 n = len(d)
                 t = c * np.sqrt(max(n - 2, 1)) / np.sqrt(max(1 - c * c, 1e-9))
-                if t >= config.LEADLAG_MIN_T and c >= config.LEADLAG_MIN_CORR:
-                    rows.append({"leader": tk2group.get(x), "leader_etf": x,
-                                 "follower": tk2group.get(y), "follower_etf": y,
-                                 "lag_days": L, "corr": round(float(c), 3),
-                                 "tstat": round(float(t), 2), "n": n})
-    rows.sort(key=lambda r: r["tstat"], reverse=True)
+                allr.append({"leader": tk2group.get(x), "leader_etf": x,
+                             "follower": tk2group.get(y), "follower_etf": y,
+                             "lag": L, "unit": unit, "corr": round(float(c), 3),
+                             "tstat": round(float(t), 2), "n": n})
+    allr.sort(key=lambda r: r["tstat"], reverse=True)
+    sig = [r for r in allr if r["tstat"] >= config.LEADLAG_MIN_T and r["corr"] >= config.LEADLAG_MIN_CORR]
+    # Förväntat antal FALSKA träffar vid tröskeln (ensidigt t) – kontext för multipeltestning.
+    import math
+    p_one = 0.5 * math.erfc(config.LEADLAG_MIN_T / math.sqrt(2))
+    exp_fp = tests * p_one
+
     out = Path("results/leadlag_matrix.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["leader", "leader_etf", "follower",
-                                          "follower_etf", "lag_days", "corr", "tstat", "n"])
-        w.writeheader(); w.writerows(rows)
+                                          "follower_etf", "lag", "unit", "corr", "tstat", "n"])
+        w.writeheader(); w.writerows(allr)
 
-    print(f"\n  DATADRIVEN LEAD-LAG (top {min(20, len(rows))} av {len(rows)} signifikanta, "
-          f"av {tests} test)")
-    print("  ⚠ in-sample + multipeltestning – validera OOS. Korrelation ≠ kausalitet.\n")
-    for r in rows[:20]:
-        print(f"   t={r['tstat']:>4}  {r['leader'][:20]:<20} →({r['lag_days']:>2}d)  "
-              f"{r['follower'][:20]:<20}  corr {r['corr']:+.2f}  (n={r['n']})")
-    print(f"\n  Sparad: {out}")
+    print(f"\n  DATADRIVEN LEAD-LAG ({'VECKO' if weekly else 'DAGS'}data) – top 20 kandidater "
+          f"({len(sig)} klarar t≥{config.LEADLAG_MIN_T}, av {tests} test)")
+    print(f"  ⚠ förväntat ~{exp_fp:.1f} FALSKA träffar vid tröskeln av ren slump → "
+          f"{len(sig)} signifikanta betyder {'inget utöver brus' if len(sig) <= exp_fp * 1.5 else 'något utöver brus'}.")
+    print("  in-sample + multipeltestning – validera OOS. Korrelation ≠ kausalitet.\n")
+    for r in allr[:20]:
+        mark = "✓" if (r["tstat"] >= config.LEADLAG_MIN_T and r["corr"] >= config.LEADLAG_MIN_CORR) else " "
+        print(f"  {mark} t={r['tstat']:>5}  {str(r['leader'])[:20]:<20} →({r['lag']:>2}{unit})  "
+              f"{str(r['follower'])[:20]:<20}  corr {r['corr']:+.2f}  (n={r['n']})")
+    print(f"\n  Alla par sparade: {out}")
 
     if merge:
-        _merge_into_graph(rows)
+        _merge_into_graph(sig, unit)
 
 
-def _merge_into_graph(rows):
+def _merge_into_graph(rows, unit):
     """Skriv in de funna sambanden i grafen som source='empirical' (dedup mot X→Y)."""
     gp = Path(__file__).parent / "data" / "sector_causal_graph.json"
     g = json.loads(gp.read_text(encoding="utf-8"))
     existing = {(e["from"], e["to"]) for e in g["edges"]}
+    per_month = 4.33 if unit == "v" else 21.0    # veckor→mån resp. dagar→mån
     added = 0
     for r in rows:
         key = (r["leader"], r["follower"])
         if r["leader"] == r["follower"] or key in existing:
             continue
         g["edges"].append({"from": r["leader"], "to": r["follower"], "sign": "+",
-                           "lag_m": round(r["lag_days"] / 21.0, 1),
+                           "lag_m": round(r["lag"] / per_month, 1),
                            "conf": round(min(0.6, r["corr"]), 2),
-                           "why": f"empiriskt (lead-lag t={r['tstat']}, {r['lag_days']}d)",
+                           "why": f"empiriskt (lead-lag t={r['tstat']}, {r['lag']}{unit})",
                            "source": "empirical"})
         existing.add(key); added += 1
     gp.write_text(json.dumps(g, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"  [merge] +{added} empiriska kanter → grafen ({len(g['edges'])} totalt). "
-          "'etf_thesis leadlag' använder dem nu.")
+    print(f"  [merge] +{added} empiriska kanter → grafen ({len(g['edges'])} totalt).")
 
 
 def main():
     args = sys.argv[1:]
     if args and args[0] == "discover":
-        discover(merge=("--merge" in args))
+        discover(merge=("--merge" in args), weekly=("--weekly" in args))
     else:
         print(__doc__)
 

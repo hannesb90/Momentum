@@ -463,7 +463,8 @@ MACRO_CREDIT_STRESS    = -0.01      # HYG−IEF 13v under detta = kreditstress
 # ── Lead-lag-upptäckt (datadriven, token-fri "if-then"-tabell ur pris) ────────
 # Granger-liknande: hittar vilka sektorer/teman som LEDER andra, med vilken lag,
 # ur historiska dagsdata. Empirisk motsvarighet till världsträdet – backtestbar.
-LEADLAG_LAGS_DAYS  = [5, 20, 60]   # ledtider att testa (~1v, 1mån, 1kvartal)
+LEADLAG_LAGS_DAYS  = [5, 20, 60]   # ledtider (dagsdata) ~1v, 1mån, 1kvartal
+LEADLAG_LAGS_WEEKS = [1, 4, 13]    # ledtider (veckodata) ~1v, 1mån, 1kvartal
 LEADLAG_MIN_T      = 3.5           # t-statistik-tröskel (strikt pga multipeltestning)
 LEADLAG_MIN_CORR   = 0.15          # min korrelation för att räknas
 ETF_ROT_ABS_WINDOW  = 52           # veckor – ABSOLUT momentum-filter (trend på/av)
