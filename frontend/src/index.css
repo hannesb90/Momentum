@@ -1194,6 +1194,58 @@ h2 {
   font-size: 0.82rem;
   color: var(--text-muted);
 }
+.pf-in {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+.pf-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.pf-del {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.pf-del:hover {
+  color: var(--bad);
+}
+.pf-actions {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+.pf-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+.pf-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.pf-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.pf-hint {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
 .newcap__input input {
   width: 130px;
   padding: 8px 10px;
