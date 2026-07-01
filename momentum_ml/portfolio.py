@@ -326,8 +326,9 @@ def _dca_backtest(px, targets, start_book, monthly):
         return {"final": final, "invested": invested,
                 "irr_year": ((1 + r) ** 12 - 1) if r is not None else None,
                 "maxdd": maxdd, "series": s}
+    span_years = (idx[-1] - idx[0]).days / 365.25 if len(idx) > 1 else 0.0
     return {"A": summarize(valsA), "B": summarize(valsB), "C": summarize(valsC),
-            "months": contrib_months, "years": len(idx) / 52.0}
+            "months": contrib_months, "years": span_years}
 
 
 def backtest(monthly=5000, months=None):
