@@ -259,6 +259,14 @@ async def save_portfolio_holdings(request: Request):
     return _clean(pf.compute(rows, amount=body.get("amount")))
 
 
+@app.get("/api/portfolio-log")
+def get_portfolio_log():
+    """Framåt-logg av din portföljs totala värde (byggs upp från och med nu, en
+    punkt per dag). Tom lista tills du sparat innehav minst en gång."""
+    import portfolio as pf
+    return _clean(pf.load_value_log())
+
+
 @app.get("/api/exit-signals")
 def get_exit_signals():
     """Exit-alarm ('end this now'): senaste skanningen (sektor+teknik) per innehav.

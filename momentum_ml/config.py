@@ -388,11 +388,9 @@ REGIME_SMA_WEEKS = 26       # trend-proxy för bull/bear/sidledes-klassificering
 # björnmarknads-drawdowns utan blankning. Faktorn multipliceras på målvikterna;
 # resten hamnar i kontanter automatiskt. Använder samma bull/bear/sidledes-
 # klassificering som regim-fliken (backtest/regime.py).
-# ALLTID 100% INVESTERAT (medvetet val): ingen regim-nedskalning. Tar bort både
-# sidledes-dämpningen (var 0.6) OCH björn-skyddet (var 0.25) → högre drawdowns i
-# svaga marknader, men inget kontant-drag. Vill du ha kvar björn-skydd, sätt
-# t.ex. {"bull": 1.0, "sideways": 1.0, "bear": 0.5}.
-MARKET_FILTER_EXPOSURE = {"bull": 1.0, "sideways": 1.0, "bear": 1.0}
+# Sidledes-dämpningen borttagen (var 0.6 → 1.0): inget kontant-drag i sidledes-
+# marknad. Björn-skyddet BEHÅLLS (0.25) → skalar ner i tydliga kraschregimer.
+MARKET_FILTER_EXPOSURE = {"bull": 1.0, "sideways": 1.0, "bear": 0.25}
 
 # ── Frusen holdout ────────────────────────────────────────────────────────────
 HOLDOUT_WEEKS = 104         # ~2 år som modellen aldrig tränas på
@@ -492,6 +490,9 @@ LEADLAG_MIN_CORR   = 0.15          # min korrelation för att räknas
 # Innehav läses från cache/portfolio_holdings.csv (gitignorerad – personlig data).
 # Hink-mål (sensibelt default utifrån evidensen: bred kärna dominerar). Justerbart.
 PORTFOLIO_HOLDINGS_FILE = "cache/portfolio_holdings.csv"
+# Framåt-logg av din portföljs totala värde (en punkt per dag, upsert vid varje
+# spar). Bygger en ÄKTA personlig utvecklingskurva från och med nu (gitignorerad).
+PORTFOLIO_VALUE_LOG = "cache/portfolio_value_log.csv"
 PORTFOLIO_TARGET = {"broad": 0.60, "sweden": 0.15, "theme": 0.20, "leverage": 0.0}
 # Föreslagna breda ETF:er för kärnan (nytt kapital riktas hit när 'broad' är låg):
 PORTFOLIO_BROAD_ETFS = {"World (MSCI)": "EUNL.DE", "USA (S&P 500)": "SXR8.DE",

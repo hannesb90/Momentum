@@ -14,6 +14,14 @@ export function OverviewPage() {
   const portfolio = useApiData(() => api.portfolio(), [])
   const signals = useApiData(() => api.latestSignals(), [])
   const sectors = useApiData(() => api.sectorMomentum(), [])
+  const myLog = useApiData(() => api.portfolioLog(), [])
+
+  const mySeries = useMemo(
+    () => (myLog.data ?? []).map((r) => ({ date: r.date, value: r.value })),
+    [myLog.data],
+  )
+  const myNow = mySeries.length ? mySeries[mySeries.length - 1].value : null
+  const myChange = mySeries.length >= 2 ? mySeries[mySeries.length - 1].value / mySeries[0].value - 1 : null
 
   const series = useMemo(() => {
     if (!portfolio.data) return []
@@ -132,6 +140,53 @@ export function OverviewPage() {
           </div>
         )}
       </div>
+
+      {/* Min egen portfölj – framåt-logg (byggs upp från och med första sparningen) */}
+      {myLog.data && (
+        <section className="myportf">
+          <div className="myportf__head">
+            <h3 className="section-title" style={{ margin: 0 }}>
+              Min portfölj
+              <InfoButton title="Din faktiska portfölj">
+                <p>
+                  Din egen portföljs totalvärde loggas varje gång du sparar innehav (en punkt
+                  per dag). Kurvan byggs upp <b>framåt</b> härifrån – det finns ingen historik
+                  bakåt eftersom värdet matas in manuellt.
+                </p>
+              </InfoButton>
+            </h3>
+            {myNow != null && <span className="myportf__val">{fmtSek(myNow)}</span>}
+            {myChange != null && (
+              <span className={myChange >= 0 ? 'pos' : 'neg'}>{fmtPct(myChange)}</span>
+            )}
+          </div>
+          {mySeries.length >= 2 ? (
+            <ResponsiveContainer width="100%" height={56}>
+              <AreaChart data={mySeries} margin={{ top: 4, bottom: 0, left: 0, right: 0 }}>
+                <defs>
+                  <linearGradient id="myFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--good)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="var(--good)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <YAxis domain={['dataMin', 'dataMax']} hide />
+                <Tooltip
+                  contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
+                  formatter={(v) => [fmtSek(v), 'Min portfölj']}
+                  labelFormatter={(l) => l}
+                />
+                <Area type="monotone" dataKey="value" stroke="var(--good)" strokeWidth={2} fill="url(#myFill)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="footnote" style={{ marginTop: 4 }}>
+              {myNow != null
+                ? 'Kurvan börjar byggas – spara innehav igen framöver så växer historiken.'
+                : 'Spara dina innehav i Innehav-fliken så börjar din portfölj-kurva byggas här.'}
+            </p>
+          )}
+        </section>
+      )}
 
       {/* Snabbstatistik */}
       <div className="tile-grid">
