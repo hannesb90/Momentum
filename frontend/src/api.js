@@ -31,4 +31,5 @@ export const api = {
   paperLedger: (limit = 520) => getJson(`/paper-ledger?limit=${limit}`),
   prices: (ticker, limit = 260) =>
     getJson(`/prices?ticker=${encodeURIComponent(ticker)}&limit=${limit}`),
+  quality: () => getJson('/quality'),
 }

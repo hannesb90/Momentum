@@ -265,6 +265,9 @@ def report() -> None:
         r["mcap_msek"] = mcap
         r["ebitda_multiple"] = mult
         r["zone"] = _zone(mult, ebitda if isinstance(ebitda, (int, float)) else None)
+        # Platta ut listfälten till strängar så CSV/frontend slipper Python-repr.
+        r["red_flags"] = "; ".join(map(str, s.get("red_flags") or []))
+        r["mentioned_investors"] = "; ".join(map(str, s.get("mentioned_investors") or []))
         rows.append(r)
 
     rows.sort(key=lambda r: r.get("composite", 0), reverse=True)
@@ -272,7 +275,7 @@ def report() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     cols = ["ticker", "name", "composite", "zone", "mcap_msek", "ebitda_multiple",
             *_SCORE_KEYS, "revenue_msek", "ebitda_msek", "net_result_msek",
-            "shares_million", "pitch"]
+            "shares_million", "pitch", "memo", "red_flags", "mentioned_investors"]
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
