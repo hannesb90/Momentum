@@ -467,6 +467,15 @@ LEADLAG_LAGS_DAYS  = [5, 20, 60]   # ledtider (dagsdata) ~1v, 1mån, 1kvartal
 LEADLAG_LAGS_WEEKS = [1, 4, 13]    # ledtider (veckodata) ~1v, 1mån, 1kvartal
 LEADLAG_MIN_T      = 3.5           # t-statistik-tröskel (strikt pga multipeltestning)
 LEADLAG_MIN_CORR   = 0.15          # min korrelation för att räknas
+
+# ── Portfölj-medveten allokering (nytt kapital fyller mot en diversifierad mål) ──
+# Innehav läses från cache/portfolio_holdings.csv (gitignorerad – personlig data).
+# Hink-mål (sensibelt default utifrån evidensen: bred kärna dominerar). Justerbart.
+PORTFOLIO_HOLDINGS_FILE = "cache/portfolio_holdings.csv"
+PORTFOLIO_TARGET = {"broad": 0.60, "sweden": 0.15, "theme": 0.20, "leverage": 0.0}
+# Föreslagna breda ETF:er för kärnan (nytt kapital riktas hit när 'broad' är låg):
+PORTFOLIO_BROAD_ETFS = {"World (MSCI)": "EUNL.DE", "USA (S&P 500)": "SXR8.DE",
+                        "Emerging Markets": "IS3N.DE", "Europa": "EXSA.DE"}
 ETF_ROT_ABS_WINDOW  = 52           # veckor – ABSOLUT momentum-filter (trend på/av)
 ETF_ROT_ABS_MIN     = 0.0          # håll bara om ETF:ens egen 52v-avk > detta, annars defensivt
 ETF_ROT_DEFENSIVE   = ""           # defensivt ben när trend saknas ("" = kontanter/risk-fritt)
