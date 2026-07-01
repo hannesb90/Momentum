@@ -1,0 +1,25 @@
+ticker,name,group,kind
+SXR8.DE,iShares Core S&P 500 UCITS,US Large Cap,region
+SXRV.DE,iShares Nasdaq 100 UCITS,US Tech/Growth,region
+EUNL.DE,iShares Core MSCI World UCITS,Global,region
+IS3N.DE,iShares Core MSCI EM IMI UCITS,Emerging Markets,region
+EXSA.DE,iShares STOXX Europe 600 UCITS,Europe Broad,region
+EXV3.DE,iShares STOXX Europe 600 Technology,Technology,sector
+EXH2.DE,iShares STOXX Europe 600 Financial Services,Financials,sector
+EXV4.DE,iShares STOXX Europe 600 Health Care,Health Care,sector
+EXH8.DE,iShares STOXX Europe 600 Retail,Consumer Discretionary,sector
+EXH3.DE,iShares STOXX Europe 600 Food & Beverage,Consumer Staples,sector
+EXH1.DE,iShares STOXX Europe 600 Oil & Gas,Energy,sector
+EXH4.DE,iShares STOXX Europe 600 Industrials,Industrials,sector
+EXV6.DE,iShares STOXX Europe 600 Basic Resources,Materials,sector
+EXH9.DE,iShares STOXX Europe 600 Utilities,Utilities,sector
+EXI5.DE,iShares STOXX Europe 600 Real Estate,Real Estate,sector
+EXV2.DE,iShares STOXX Europe 600 Telecommunications,Communication Services,sector
+INRG.L,iShares Global Clean Energy UCITS,Clean Energy,theme
+RBOT.L,iShares Automation & Robotics UCITS,Robotics & AI,theme
+ISPY.L,L&G Cyber Security UCITS,Cybersecurity,theme
+IH2O.L,iShares Global Water UCITS,Water,theme
+DGTL.L,iShares Digitalisation UCITS,Digitalisation,theme
+HEAL.L,iShares Healthcare Innovation UCITS,Healthcare Innovation,theme
+ECAR.L,iShares Electric Vehicles & Driving Tech UCITS,EV & Battery,theme
+IAUP.L,iShares Gold Producers UCITS,Gold Miners,theme

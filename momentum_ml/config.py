@@ -441,15 +441,21 @@ QUALITY_PS_FAIR        = 4.0       # P/S <= rimlig, över = dyr
 # hetaste K (relativ momentum) MEN bara om de har egen positiv trend (absolut
 # momentum) – annars går den slotten till ett defensivt ben. Backtestbart (rena
 # ETF-kurser, ingen survivorship på sektornivå), till skillnad från screenern.
-ETF_ROT_REGION      = "EU"         # ETF-serie: "EU" (STOXX600), "US" (SPDR UCITS), "ALL"
-ETF_ROT_TOP_K       = 3            # antal heta sektorer att hålla samtidigt
+# Universum: kurerat globalt tema/region/sektor-set (bredare än EU-sektorerna,
+# US med – många trender kommer därifrån). Tom → fall tillbaka på sector_etfs.csv.
+ETF_ROT_UNIVERSE_FILE = "data/rotation_universe.csv"
+ETF_ROT_REGION      = "EU"         # (används bara om UNIVERSE_FILE saknas)
+ETF_ROT_TOP_K       = 3            # antal heta teman/sektorer att hålla samtidigt
 ETF_ROT_MOM_WINDOWS = [13, 26, 52] # veckor – sammanvägd RELATIV momentum-rank
 ETF_ROT_ABS_WINDOW  = 52           # veckor – ABSOLUT momentum-filter (trend på/av)
 ETF_ROT_ABS_MIN     = 0.0          # håll bara om ETF:ens egen 52v-avk > detta, annars defensivt
-ETF_ROT_DEFENSIVE   = "XACTHDIV.ST"  # defensivt ben när trend saknas (lågvol/hög utd); "" = kontanter
+ETF_ROT_DEFENSIVE   = ""           # defensivt ben när trend saknas ("" = kontanter/risk-fritt)
 ETF_ROT_REBAL_WEEKS = 4            # ombalanseringsintervall (veckor)
 ETF_ROT_FLOW_LOOKBACK = 4          # veckor för rank-change (flödesproxy)
-ETF_ROT_BENCHMARK   = "XACT-SVERIGE.ST"   # jämförelse i backtest
+# Rätt neutral måttstock för ett globalt universum = hela världen (MSCI ACWI).
+# US-referenser visas också. OMX var fel (svenskt index mot global rotation).
+ETF_ROT_BENCHMARK   = "IUSQ.DE"           # iShares MSCI ACWI (global)
+ETF_ROT_BENCHMARKS_EXTRA = ["SXR8.DE", "SXRV.DE"]   # S&P 500 + Nasdaq 100 som US-referens
 
 # ── Nasdaq Nordic (gratis, auktoritativt börsvärde – kompletterar Yahoo) ──────
 # Yahoo saknar aktieantal/börsvärde för många microcaps → screenerns "okänd"-hink.
