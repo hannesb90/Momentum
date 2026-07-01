@@ -1184,6 +1184,27 @@ h2 {
   line-height: 1.5;
 }
 
+.newcap__input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.newcap__input label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.newcap__input input {
+  width: 130px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .macro-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));

@@ -28,6 +28,17 @@ import config
 
 
 # ── Universum ─────────────────────────────────────────────────────────────────
+def _kinds():
+    """ticker → kind (region/sector/theme) ur rotation_universe.csv."""
+    out = {}
+    uf = Path(__file__).parent / getattr(config, "ETF_ROT_UNIVERSE_FILE", "")
+    if getattr(config, "ETF_ROT_UNIVERSE_FILE", "") and uf.exists():
+        with open(uf, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                out[row["ticker"]] = row.get("kind", "")
+    return out
+
+
 def _load_universe():
     """Kurerat globalt tema/region/sektor-universum (data/rotation_universe.csv) om
     det finns, annars fallback till sector_etfs.csv filtrerat på region.
@@ -442,6 +453,22 @@ def signal():
         meta["macro"] = _macro_ind()
     except Exception:  # noqa: BLE001
         meta["macro"] = None
+
+    # NYTT KAPITAL: bred fördelning över regions-sleeves, mild momentum-tilt (50%
+    # likavikt + 50% positiv relativ momentum), alltid fullinvesterat. Ingen
+    # koncentration/teman – det är den enda "strategi" som överlevt datan.
+    kinds = _kinds()
+    regions = [t for t in ranked_now.index if kinds.get(t) == "region"]
+    alloc = []
+    if regions:
+        mom = rel_now.reindex(regions).clip(lower=0).fillna(0.0)
+        eqw = 1.0 / len(regions)
+        msum = float(mom.sum())
+        raw = {t: 0.5 * eqw + 0.5 * (float(mom[t]) / msum if msum > 0 else eqw) for t in regions}
+        tot = sum(raw.values()) or 1.0
+        for t in sorted(regions, key=lambda x: -raw[x]):
+            alloc.append({"etf": t, "sleeve": sec_map.get(t), "weight": round(raw[t] / tot, 4)})
+    meta["allocation"] = alloc
     (out.parent / "etf_rotation_meta.json").write_text(_json.dumps(meta, ensure_ascii=False))
     print(f"\n  Signal sparad: {out}")
 
