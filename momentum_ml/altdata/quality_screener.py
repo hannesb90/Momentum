@@ -524,6 +524,74 @@ def track() -> None:
     print("\n  (Enkel framåt-scorecard – ingen ombalansering. Fler snapshots över tid = mer robust.)")
 
 
+def lookback(months=6, n=5) -> None:
+    """ILLUSTRATIV bakåtblick (EJ giltig backtest): ta dagens n bolag med 'billig'-
+    stämpel + högst kvalitet, och visa hur en likaviktad portfölj utvecklats de
+    senaste `months` månaderna vs index. VARNING: look-ahead + survivorship – vi
+    väljer dagens billiga överlevare och tittar bakåt. Underhållande, inte bevis."""
+    import pandas as pd
+    import datetime
+    from data.data_loader import fetch_weekly_data
+
+    src = Path("results/quality_shortlist.csv")
+    if not src.exists():
+        print("[lookback] kör 'report' först (results/quality_shortlist.csv saknas).")
+        return
+    df = pd.read_csv(src)
+    pick = df[df["zone"] == "billig"].sort_values("composite", ascending=False).head(n)
+    if len(pick) < n:   # för få billiga → fyll på med rimliga (högsta composite)
+        extra = df[(df["zone"] == "rimlig") & (~df["ticker"].isin(pick["ticker"]))] \
+            .sort_values("composite", ascending=False)
+        pick = pd.concat([pick, extra]).head(n)
+    if pick.empty:
+        print("[lookback] inga billiga/rimliga bolag – kör 'report' först.")
+        return
+    bench = _bench_ticker()
+    tickers = list(dict.fromkeys(list(pick["ticker"]) + [bench]))
+    data = fetch_weekly_data(tickers, use_cache=True)
+    cutoff = pd.Timestamp(datetime.date.today()) - pd.Timedelta(days=int(months * 30.4))
+
+    def window(t):
+        d = data.get(t)
+        if d is None:
+            return None
+        s = d["Close"].dropna()
+        if s.empty:
+            return None
+        s.index = pd.to_datetime(s.index)
+        past = s[s.index <= cutoff]
+        full = len(past) > 0
+        p0 = float(past.iloc[-1]) if full else float(s.iloc[0])   # fallback: äldsta kurs
+        p1 = float(s.iloc[-1])
+        return p0, p1, (p1 / p0 - 1), full
+
+    print(f"\n  BAKÅTBLICK {months}m – dagens {len(pick)} 'billig'+kvalitet, likaviktad")
+    print("  ⚠ EJ giltig backtest: look-ahead + survivorship (dagens billiga överlevare)\n")
+    rets = []
+    for _, r in pick.iterrows():
+        w = window(r["ticker"])
+        if not w:
+            print(f"   {r['ticker']:<12} {str(r['name'])[:24]:<24} ingen kursdata")
+            continue
+        p0, p1, ret, full = w
+        rets.append(ret)
+        flag = "" if full else "  (kortare historik än fönstret)"
+        print(f"   {r['ticker']:<12} {str(r['name'])[:24]:<24} comp {r['composite']:>4}  "
+              f"{p0:>8.2f} → {p1:>8.2f}   {ret:+.1%}{flag}")
+    if not rets:
+        print("  (ingen kursdata för urvalet)")
+        return
+    port = sum(rets) / len(rets)
+    bw = window(bench)
+    print("  " + "-" * 62)
+    line = f"   PORTFÖLJ (likaviktad, {len(rets)} bolag):  {port:+.1%}"
+    if bw:
+        line += f"     INDEX {bench}: {bw[2]:+.1%}     skillnad {port - bw[2]:+.1%}"
+    print(line)
+    print("\n  Kom ihåg: detta säger inget om framtida edge – kör 'snapshot' idag "
+          "för det ärliga framåt-testet.")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "score"
     if cmd == "score":
@@ -536,6 +604,10 @@ def main():
         snapshot(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "track":
         track()
+    elif cmd == "lookback":
+        months = int(sys.argv[2]) if len(sys.argv) > 2 else 6
+        n = int(sys.argv[3]) if len(sys.argv) > 3 else 5
+        lookback(months, n)
     elif cmd == "one":
         from data.data_loader import load_sweden_universe
         _, _, _, nm = load_sweden_universe(min_market_cap=config.QUALITY_MARKET_CAP)
