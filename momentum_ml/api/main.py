@@ -224,14 +224,15 @@ def get_thesis():
     return _records(_read_csv(path))
 
 
-@app.get("/api/portfolio")
+@app.get("/api/holdings")
 def get_portfolio_holdings(amount: Optional[float] = None):
-    """Manuellt inmatad portfölj + hink-analys + (om amount) nytt-kapital-plan."""
+    """Manuellt inmatad portfölj + hink-analys + (om amount) nytt-kapital-plan.
+    Egen väg (/api/holdings) – krockar annars med backtest-endpointen /api/portfolio."""
     import portfolio as pf
     return _clean(pf.compute(pf.load_holdings(), amount=amount))
 
 
-@app.post("/api/portfolio")
+@app.post("/api/holdings")
 async def save_portfolio_holdings(request: Request):
     """Sparar hela innehavslistan (skriver cache/portfolio_holdings.csv) och
     returnerar omräknad analys. Body: {holdings:[{name,value,bucket}], amount?}."""
