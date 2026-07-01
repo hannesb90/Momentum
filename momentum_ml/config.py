@@ -428,6 +428,27 @@ QUALITY_MAX_CHARS      = 16000      # underlag/bolag (senaste rapport + några P
 QUALITY_EXCLUDE_SECTORS = ["Health Care"]   # undvik medtech/pharma (binärt lotteri)
 QUALITY_MARKET_CAP     = ["Small Cap", "Micro Cap", "Nano Cap"]   # tidiga, oupptäckta bolag
 
+# ── Nasdaq Nordic (gratis, auktoritativt börsvärde – kompletterar Yahoo) ──────
+# Yahoo saknar aktieantal/börsvärde för många microcaps → screenerns "okänd"-hink.
+# Nasdaqs egen datafeed har det gratis. Vi hämtar hela Stockholmsbörsen i några
+# anrop och fyller BARA de börsvärden Yahoo missade (Yahoo har företräde).
+# XML-datafeed (reverse-engineerad, körs på Pi:n – molncontainern når den ej).
+NASDAQ_ENDPOINT     = "http://www.nasdaqomxnordic.com/webproxy/DataFeedProxy.aspx"
+NASDAQ_EXCHANGE     = "NMF"
+# Stockholmsmarknader att svepa (Large/Mid/Small/First North). Verifiera/utöka
+# via `probe` – varje id ger en delmängd. Kända start-id:n från publika klienter.
+NASDAQ_MARKETS      = ["L:3303", "L:10214"]
+# Vilka instrument-attribut som begärs (numeriska koder → namngivna XML-attribut).
+NASDAQ_INST_FIELDS  = "0,87,1,2,5,37,4,20,21,23,24,33,34,97,129,98,72"
+# Attributnamn i <inst>-svaret. SÄTTS KORREKT EFTER `probe` (då ser vi de riktiga
+# namnen/värdena). Tomt mcap → räkna börsvärde som aktieantal × senaste kurs.
+NASDAQ_ATTR_MCAP    = ""            # direkt börsvärde om feeden ger det
+NASDAQ_ATTR_SHARES  = ""            # antal aktier
+NASDAQ_ATTR_PRICE   = ""            # senaste kurs
+NASDAQ_ATTR_SYMBOL  = "nm"         # kortnamn/symbol att matcha mot vår ticker
+NASDAQ_ATTR_ISIN    = "isin"
+NASDAQ_REQUEST_PAUSE_S = 0.5
+
 SENTIMENT_LOOKBACK_DAYS = 7         # PM publicerade senaste veckan räknas in i veckans signal
 SENTIMENT_OOS_START     = "2016"    # rent OOS-fönster (samma som era_analysis.py)
 # Poängsätt bara PM från detta datum (en buffert före OOS-start). Vi backtestar
