@@ -199,6 +199,31 @@ def get_quality():
     return _records(_read_csv(path))
 
 
+@app.get("/api/rotation")
+def get_rotation():
+    """ETF/sektor-rotation (D-spåret): regim + rankade ETF:er m. flöde. Global.
+    Tom struktur om signalen ännu inte körts (etf_rotation.py signal)."""
+    path = RESULTS_DIR / "etf_rotation.csv"
+    meta_path = RESULTS_DIR / "etf_rotation_meta.json"
+    if not path.exists():
+        return {"meta": None, "rows": []}
+    rows = _records(_read_csv(path))
+    meta = None
+    if meta_path.exists():
+        with open(meta_path) as f:
+            meta = _clean(json.load(f))
+    return {"meta": meta, "rows": rows}
+
+
+@app.get("/api/thesis")
+def get_thesis():
+    """Kausala 'nästa-trend'-idéer (D-spårets hypotes-lager). Global. Idéer, ej signaler."""
+    path = RESULTS_DIR / "etf_thesis.csv"
+    if not path.exists():
+        return []
+    return _records(_read_csv(path))
+
+
 @app.get("/api/paper-ledger")
 def get_paper_ledger(limit: int = 520, segment: Optional[str] = None):
     """

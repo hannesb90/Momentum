@@ -32,4 +32,6 @@ export const api = {
   prices: (ticker, limit = 260) =>
     getJson(`/prices?ticker=${encodeURIComponent(ticker)}&limit=${limit}`),
   quality: () => getJson('/quality'),
+  rotation: () => getJson('/rotation'),
+  thesis: () => getJson('/thesis'),
 }

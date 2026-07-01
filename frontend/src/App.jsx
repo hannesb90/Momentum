@@ -8,6 +8,7 @@ import { SectorsPage } from './pages/Sectors'
 import { AnalysisPage } from './pages/Analysis'
 import { WatchlistPage } from './pages/Watchlist'
 import { QualityPage } from './pages/Quality'
+import { RotationPage } from './pages/Rotation'
 import { StockDetailPage } from './pages/StockDetail'
 import { setApiSegment } from './api'
 
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/analys" element={<AnalysisPage />} />
           <Route path="/bevakning" element={<WatchlistPage />} />
           <Route path="/kvalitet" element={<QualityPage />} />
+          <Route path="/rotation" element={<RotationPage />} />
           <Route path="/aktie/:ticker" element={<StockDetailPage />} />
         </Routes>
       </main>

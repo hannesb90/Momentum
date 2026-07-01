@@ -244,6 +244,19 @@ def signal():
     out = Path("results/etf_rotation.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(out, index=False)
+    # Metadata (regim + innehav) så frontend kan visa bull/björn utan att räkna om.
+    import json as _json
+    meta = {
+        "date": str(panel.index[-1].date()),
+        "risk_on": bool(risk_on),
+        "regime_ticker": config.ETF_ROT_REGIME_TICKER,
+        "regime_ma": config.ETF_ROT_REGIME_MA,
+        "top_k": config.ETF_ROT_TOP_K,
+        "held": hold_list,
+        "defensive_slots": defslots,
+        "defensive": config.ETF_ROT_DEFENSIVE or "kontanter",
+    }
+    (out.parent / "etf_rotation_meta.json").write_text(_json.dumps(meta, ensure_ascii=False))
     print(f"\n  Signal sparad: {out}")
 
 
