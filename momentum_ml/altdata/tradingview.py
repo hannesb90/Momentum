@@ -23,6 +23,8 @@ Inofficiellt API → kan sluta funka utan förvarning; behandla som best effort.
 
     python altdata/tradingview.py probe VOLV-B.ST SAAB-B.ST   # några bolag – verifiera fält
     python altdata/tradingview.py fill                        # alla poängsatta → _tradingview.json
+    python altdata/tradingview.py universe                    # dry-run: visa bolag som SAKNAS i universumet
+    python altdata/tradingview.py universe write              # addera dem till sweden_universe.csv
 """
 import sys
 import json
@@ -155,6 +157,119 @@ def fill() -> None:
     print("Kör nu 'quality_screener.py report' – TradingView vägs in efter EODHD, före Yahoo.")
 
 
+# ── Universum-uppdatering: hämta HELA svenska aktielistan (inkl. First North) ──
+# TradingViews 'sweden'-scan enumererar alla svenska aktier. Vi ADDERAR bara de
+# som saknas i data/sweden_universe.csv (rör aldrig de 633 kurerade raderna) → löser
+# den stela main-market-snapshoten utan att förstöra befintlig sektor-kurering.
+_TV_SECTOR_GICS = {
+    "technology services": "Information Technology", "electronic technology": "Information Technology",
+    "health technology": "Health Care", "health services": "Health Care",
+    "finance": "Financials",
+    "energy minerals": "Energy",
+    "non-energy minerals": "Materials", "process industries": "Materials",
+    "producer manufacturing": "Industrials", "industrial services": "Industrials",
+    "commercial services": "Industrials", "distribution services": "Industrials",
+    "transportation": "Industrials", "miscellaneous": "Industrials",
+    "consumer non-durables": "Consumer Staples",
+    "consumer durables": "Consumer Discretionary", "consumer services": "Consumer Discretionary",
+    "retail trade": "Consumer Discretionary",
+    "communications": "Communication Services",
+    "utilities": "Utilities",
+}
+
+
+def _gics(tv_sector) -> str:
+    return _TV_SECTOR_GICS.get(str(tv_sector or "").strip().lower(), "Unknown")
+
+
+def _cap_tier(mcap_sek) -> str:
+    if not isinstance(mcap_sek, (int, float)):
+        return "Nano Cap"
+    m = mcap_sek / 1e6                                  # MSEK
+    if m >= 10000:
+        return "Large Cap"
+    if m >= 2000:
+        return "Mid Cap"
+    if m >= 500:
+        return "Small Cap"
+    if m >= 100:
+        return "Micro Cap"
+    return "Nano Cap"
+
+
+def _fetch_all_swedish() -> list:
+    """Scanner-filter: alla svenska aktier (type=stock). Returnerar rå data-lista."""
+    if requests is None:
+        raise RuntimeError("paketet 'requests' saknas – pip install requests")
+    body = {"filter": [{"left": "type", "operation": "equal", "right": "stock"}],
+            "columns": ["description", "market_cap_basic", "sector", "type", "subtype"],
+            "sort": {"sortBy": "market_cap_basic", "sortOrder": "desc"},
+            "range": [0, 4000], "options": {"lang": "en"}}
+    r = requests.post(config.TRADINGVIEW_SCAN_URL, json=body,
+                      headers={"User-Agent": _UA, "Content-Type": "application/json"}, timeout=45)
+    r.raise_for_status()
+    return r.json().get("data") or []
+
+
+def universe(write=False) -> None:
+    """Hämtar hela svenska aktielistan och ADDERAR de som saknas i universumet.
+    Dry-run som default: kör 'universe write' för att faktiskt skriva filen."""
+    import csv
+    from collections import Counter
+    uni_path = Path(__file__).parent.parent / "data" / "sweden_universe.csv"
+    rows = list(csv.reader(open(uni_path, encoding="utf-8")))
+    header, body = rows[0], rows[1:]
+    existing = {r[0] for r in body}
+    try:
+        data = _fetch_all_swedish()
+    except Exception as e:  # noqa: BLE001
+        print(f"[universe] kunde inte hämta: {e}  (körs på Pi:n – molnet saknar nät)")
+        return
+    exch = Counter(row.get("s", "").split(":")[0] for row in data if row.get("s"))
+    print(f"[universe] TradingView: {len(data)} aktier · börser: {dict(exch)}")
+    new, skipped = [], Counter()
+    for row in data:
+        s, d = row.get("s", ""), (row.get("d") or [])
+        if ":" not in s:
+            continue
+        ex, base = s.split(":", 1)
+        if ex != config.TRADINGVIEW_EXCHANGE:          # bara Nasdaq Stockholm → .ST-format
+            skipped[ex] += 1
+            continue
+        subtype = (str(d[4]).lower() if len(d) > 4 else "")
+        if subtype and subtype not in ("common", "preferred"):   # skippa etf/fond/dr
+            continue
+        ticker = base.replace("_", "-") + ".ST"
+        if ticker in existing:
+            continue
+        name = str(d[0]) if d else base
+        sector = _gics(d[2] if len(d) > 2 else "")
+        tier = _cap_tier(d[1] if len(d) > 1 else None)
+        new.append((ticker, name, sector, tier))
+    new.sort()
+    on_sthlm = sum(1 for r in data if r.get("s", "").startswith(config.TRADINGVIEW_EXCHANGE + ":"))
+    print(f"[universe] {on_sthlm} på {config.TRADINGVIEW_EXCHANGE}, varav {len(new)} SAKNAS i universumet:")
+    for t in new[:50]:
+        print(f"    + {t[0]:<13}{str(t[1])[:30]:<31}{t[2]:<24}{t[3]}")
+    if len(new) > 50:
+        print(f"    … och {len(new) - 50} till")
+    if skipped:
+        print(f"  (hoppade börser som ej mappar till .ST: {dict(skipped)})")
+    unknown = sum(1 for t in new if t[2] == "Unknown")
+    if unknown:
+        print(f"  OBS: {unknown} nya bolag fick sektor 'Unknown' (TV-sektor saknade GICS-mappning).")
+    if not write:
+        print("  DRY-RUN – inget skrivet. Kör 'python altdata/tradingview.py universe write' för att lägga till.")
+        return
+    allrows = body + [list(t) for t in new]
+    allrows.sort(key=lambda r: r[0])
+    with open(uni_path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        w.writerows(allrows)
+    print(f"[universe] skrev {len(allrows)} bolag (+{len(new)} nya) → {uni_path}")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "probe"
     if cmd == "probe":
@@ -162,6 +277,8 @@ def main():
         probe(args)
     elif cmd == "fill":
         fill()
+    elif cmd == "universe":
+        universe(write=(len(sys.argv) > 2 and sys.argv[2] == "write"))
     else:
         print(__doc__)
 
