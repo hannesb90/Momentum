@@ -565,31 +565,56 @@ def lookback(months=6, n=5) -> None:
         p1 = float(s.iloc[-1])
         return p0, p1, (p1 / p0 - 1), full
 
+    def zone_then(mult_now, p0, p1, basis):
+        """Dåtidens multipel/zon: multipeln skalar med priset (aktier konstant), så
+        mult_då = mult_nu × pris_då/pris_nu. Visar om 'billig'-stämpeln fanns DÅ eller
+        bara uppstod för att kursen sedan föll."""
+        if mult_now is None or pd.isna(mult_now) or not p1:
+            return None, None
+        mult_t = round(float(mult_now) * p0 / p1, 1)
+        is_ps = str(basis) == "P/S"
+        cheap, fair = ((config.QUALITY_PS_CHEAP, config.QUALITY_PS_FAIR) if is_ps
+                       else (config.QUALITY_MULT_CHEAP, config.QUALITY_MULT_FAIR))
+        return mult_t, _zone_by_multiple(mult_t, cheap, fair)
+
     print(f"\n  BAKÅTBLICK {months}m – dagens {len(pick)} 'billig'+kvalitet, likaviktad")
-    print("  ⚠ EJ giltig backtest: look-ahead + survivorship (dagens billiga överlevare)\n")
-    rets = []
+    print("  ⚠ EJ giltig backtest: look-ahead + survivorship (dagens billiga överlevare)")
+    print("  Kolumnen 'zon då' = hade bolaget stämpeln FÖR 6 MÅN SEDAN (rekonstruerad multipel)?\n")
+    rets, billig_then = [], 0
     for _, r in pick.iterrows():
         w = window(r["ticker"])
         if not w:
-            print(f"   {r['ticker']:<12} {str(r['name'])[:24]:<24} ingen kursdata")
+            print(f"   {r['ticker']:<12} {str(r['name'])[:22]:<22} ingen kursdata")
             continue
         p0, p1, ret, full = w
         rets.append(ret)
-        flag = "" if full else "  (kortare historik än fönstret)"
-        print(f"   {r['ticker']:<12} {str(r['name'])[:24]:<24} comp {r['composite']:>4}  "
-              f"{p0:>8.2f} → {p1:>8.2f}   {ret:+.1%}{flag}")
+        mt, zt = zone_then(r.get("ebitda_multiple"), p0, p1, r.get("earnings_basis"))
+        if zt == "billig":
+            billig_then += 1
+        zt_str = f"{zt} ({mt}x)" if zt else "?"
+        flag = "" if full else " ⚠kort hist."
+        print(f"   {r['ticker']:<12} {str(r['name'])[:22]:<22} comp {r['composite']:>4}  "
+              f"{p0:>7.2f}→{p1:>7.2f} {ret:>+6.1%}   zon då: {zt_str:<16} nu: {r.get('zone')}{flag}")
     if not rets:
         print("  (ingen kursdata för urvalet)")
         return
     port = sum(rets) / len(rets)
+    srt = sorted(rets)
+    med = srt[len(srt) // 2] if len(srt) % 2 else (srt[len(srt) // 2 - 1] + srt[len(srt) // 2]) / 2
+    ex_top = [x for x in rets if x != max(rets)]
     bw = window(bench)
-    print("  " + "-" * 62)
-    line = f"   PORTFÖLJ (likaviktad, {len(rets)} bolag):  {port:+.1%}"
+    print("  " + "-" * 66)
+    line = f"   PORTFÖLJ (likavikt, {len(rets)} bolag):  snitt {port:+.1%}   median {med:+.1%}"
     if bw:
-        line += f"     INDEX {bench}: {bw[2]:+.1%}     skillnad {port - bw[2]:+.1%}"
+        line += f"   index {bw[2]:+.1%}"
     print(line)
-    print("\n  Kom ihåg: detta säger inget om framtida edge – kör 'snapshot' idag "
-          "för det ärliga framåt-testet.")
+    if ex_top:
+        print(f"   Utan bästa namnet: snitt {sum(ex_top)/len(ex_top):+.1%}  "
+              f"(så mycket hängde på en enda vinnare)")
+    print(f"\n   >>> Hade 'billig'-stämpel FÖR {months} MÅN SEDAN: {billig_then} av {len(rets)} <<<")
+    print("   Resten blev 'billiga' först EFTER att kursen föll – stämpeln är alltså delvis")
+    print("   en konsekvens av nedgången, inte en signal som fanns att agera på då.")
+    print("\n   Enda ärliga testet: 'snapshot' idag → 'track' framåt.")
 
 
 def main():
