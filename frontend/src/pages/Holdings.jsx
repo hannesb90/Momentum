@@ -201,20 +201,31 @@ export function HoldingsPage() {
           <h3 className="section-title">
             Kandidater från övriga vyer
             <InfoButton title="Konkreta idéer, inte bara breda ETF:er">
-              För Sverige-/temadelen: bolag ur Kvalitets-screenern och de starkaste temana ur
-              Rotation. <b>Idéer att bedöma, inte bevisad edge</b> – den breda kärnan är fortfarande
-              basen. Använd dem för den andel du medvetet vill lägga i Sverige/tema.
+              För Sverige-/temadelen: bolag ur Kvalitets-screenern, momentum-signaler och de
+              starkaste temana ur Rotation. <b>Idéer att bedöma, inte bevisad edge</b> – den breda
+              kärnan är fortfarande basen. Använd dem för den andel du medvetet vill lägga i
+              Sverige/tema. <b>Uppdragsanalys</b> (Redeye, Analyst Group m.fl.) är <b>betald av
+              bolaget → positivt biased</b>; visas som narrativ, inte signal.
             </InfoButton>
           </h3>
           {analysis.candidates.sweden?.length > 0 && (
             <>
-              <p className="footnote" style={{ marginBottom: 4 }}>Sverige – kvalitetsbolag (screenern):</p>
+              <p className="footnote" style={{ marginBottom: 4 }}>Sverige – kvalitet + momentum:</p>
               <div className="table-wrap">
                 <table>
                   <tbody>
                     {analysis.candidates.sweden.map((c) => (
                       <tr key={c.ticker}>
-                        <td>{c.name}</td>
+                        <td>
+                          {c.name}
+                          {c.source && <span className={`cand-src cand-src--${c.source}`}>{c.source}</span>}
+                          {c.analys && (
+                            <div className="cand-analys">
+                              uppdragsanalys{c.analys.riktkurs ? ` · riktkurs ${c.analys.riktkurs} kr` : ''}
+                              {c.analys.date ? ` (${c.analys.date})` : ''} · betald, biased
+                            </div>
+                          )}
+                        </td>
                         <td className="mono">{c.ticker}</td>
                         <td className="flow-flat">{c.note}</td>
                       </tr>

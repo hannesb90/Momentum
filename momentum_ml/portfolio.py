@@ -13,6 +13,7 @@ timing. Innehav läggs in manuellt (CLI eller i appen, som skriver samma fil).
 import sys
 import csv
 import json
+import re
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -65,10 +66,75 @@ def _kinds():
     return out
 
 
+_RESEARCH_FIRMS = ("analyst group", "redeye", "emergers", "carlsquare", "erik penser",
+                   "penser", "mangold", "kalqyl", "analysguiden", "nordic issuing")
+_RIKTKURS = re.compile(r"riktkurs\D{0,25}(\d[\d\s.,]*)\s*(kr|sek)", re.I)
+
+
+def _research_note(ticker):
+    """Token-fri skanning av MFN-cachen: senaste uppdragsanalys-PM + ev. riktkurs.
+    OBS: uppdragsanalys är BETALD av bolaget → positivt biased. Visas som narrativ,
+    inte signal."""
+    p = Path(config.MFN_CACHE_DIR) / f"{ticker}.json"
+    if not p.exists():
+        return None
+    try:
+        items = json.loads(p.read_text(encoding="utf-8")).get("items", [])
+    except Exception:  # noqa: BLE001
+        return None
+    for it in sorted(items, key=lambda x: x.get("published", ""), reverse=True)[:40]:
+        blob = (str(it.get("title", "")) + " " + str(it.get("text", "")))
+        low = blob.lower()
+        if any(f in low for f in _RESEARCH_FIRMS) or "uppdragsanalys" in low:
+            m = _RIKTKURS.search(blob)
+            return {"date": str(it.get("published", ""))[:10],
+                    "riktkurs": (m.group(1).strip() if m else None),
+                    "title": str(it.get("title", ""))[:70]}
+    return None
+
+
+def _momentum_picks():
+    """Momentum-köpsignaler för svenska småbolag (Signaler-vyn). Loser mot index –
+    idéer, inte edge."""
+    seg = config.SEGMENTS.get("small", {})
+    sp = Path(seg.get("results_dir", "")) / "signals.csv"
+    if not sp.exists():
+        return []
+    last = {}
+    try:
+        for r in csv.DictReader(open(sp, encoding="utf-8")):
+            if r.get("ticker"):
+                last[r["ticker"]] = r         # sista raden per ticker = senaste vecka
+    except Exception:  # noqa: BLE001
+        return []
+    def pu(r):
+        try:
+            return float(r.get("prob_up") or 0)
+        except ValueError:
+            return 0.0
+    buys = [r for r in last.values() if str(r.get("pred_signal")) in ("1", "1.0")]
+    buys.sort(key=pu, reverse=True)
+    return [{"name": r.get("name") or r.get("ticker"), "ticker": r.get("ticker"),
+             "note": f"momentum P(upp) {pu(r):.0%}", "source": "momentum"} for r in buys[:5]]
+
+
 def _candidates() -> dict:
     """Konkreta idéer från övriga vyer, per hink – bolag/teman, inte bara breda ETF:er.
-    sweden = kvalitets-screenerns bästa bolag; theme = rotationens starkaste teman."""
+    sweden = kvalitets-screenern + momentum-signaler (+ uppdragsanalys om funnen);
+    theme = rotationens starkaste teman."""
     out = {"sweden": [], "theme": []}
+    seen = set()
+
+    def add_sweden(name, ticker, note, source):
+        if not ticker or ticker in seen:
+            return
+        seen.add(ticker)
+        c = {"name": name, "ticker": ticker, "note": note, "source": source}
+        r = _research_note(ticker)
+        if r:
+            c["analys"] = r
+        out["sweden"].append(c)
+
     # Kvalitets-screenern → svenska kvalitetsbolag (hög composite + billig/rimlig).
     qp = Path("results/quality_shortlist.csv")
     if qp.exists():
@@ -79,14 +145,17 @@ def _candidates() -> dict:
                     return float(r.get("composite") or 0)
                 except ValueError:
                     return 0.0
-            picks = [r for r in rows if comp(r) >= 4.0 and (r.get("zone") in ("billig", "rimlig"))]
-            picks.sort(key=comp, reverse=True)
+            picks = sorted([r for r in rows if comp(r) >= 4.0 and r.get("zone") in ("billig", "rimlig")],
+                           key=comp, reverse=True)
             for r in picks[:5]:
-                out["sweden"].append({"name": r.get("name") or r.get("ticker"),
-                                      "ticker": r.get("ticker"),
-                                      "note": f"kvalitet {r.get('composite')} · {r.get('zone')}"})
+                add_sweden(r.get("name") or r.get("ticker"), r.get("ticker"),
+                           f"kvalitet {r.get('composite')} · {r.get('zone')}", "kvalitet")
         except Exception:  # noqa: BLE001
             pass
+    # Momentum-signaler → svenska småbolag.
+    for m in _momentum_picks():
+        add_sweden(m["name"], m["ticker"], m["note"], "momentum")
+
     # Rotationen → starkaste tema-ETF:erna (för temadelen).
     rp = Path("results/etf_rotation.csv")
     if rp.exists():
@@ -99,10 +168,9 @@ def _candidates() -> dict:
                     return float(r.get("rel_mom") or 0)
                 except ValueError:
                     return 0.0
-            themes.sort(key=mom, reverse=True)
-            for r in themes[:5]:
+            for r in sorted(themes, key=mom, reverse=True)[:5]:
                 out["theme"].append({"name": r.get("sector"), "ticker": r.get("etf"),
-                                     "note": f"rel.mom {mom(r):+.0%}"})
+                                     "note": f"rel.mom {mom(r):+.0%}", "source": "rotation"})
         except Exception:  # noqa: BLE001
             pass
     return out
