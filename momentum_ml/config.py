@@ -453,6 +453,12 @@ ETF_ROT_MOM_WINDOWS = [26, 52]     # veckor – sammanvägd RELATIV momentum-ran
 ETF_ROT_REGIME_ENABLED = True
 ETF_ROT_REGIME_TICKER  = "EUNL.DE"  # bred marknad (MSCI World) för trend-regimen
 ETF_ROT_REGIME_MA      = 40         # veckor (~200 dagar / 10 mån) glidande medel
+# Makro-stress-overlay (token-fritt): tvinga risk-off ÄVEN om trenden håller, när
+# BÅDE VIX är i stress OCH kreditspreadar vidgas (två bekräftande = få falsklarm).
+# Fångar snabba krascher innan World bryter 40v-trenden (rapportens flight-to-safety).
+ETF_ROT_MACRO_REGIME   = True
+MACRO_VIX_STRESS       = 28.0       # VIX-nivå för "stress"
+MACRO_CREDIT_STRESS    = -0.01      # HYG−IEF 13v under detta = kreditstress
 ETF_ROT_ABS_WINDOW  = 52           # veckor – ABSOLUT momentum-filter (trend på/av)
 ETF_ROT_ABS_MIN     = 0.0          # håll bara om ETF:ens egen 52v-avk > detta, annars defensivt
 ETF_ROT_DEFENSIVE   = ""           # defensivt ben när trend saknas ("" = kontanter/risk-fritt)

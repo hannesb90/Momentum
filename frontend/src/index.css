@@ -1184,6 +1184,37 @@ h2 {
   line-height: 1.5;
 }
 
+.macro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.macro-stat {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+}
+.macro-stat__val {
+  font-weight: 800;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+.macro-stat__label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.macro-good .macro-stat__val {
+  color: var(--good);
+}
+.macro-warn .macro-stat__val {
+  color: #eab308;
+}
+.macro-bad .macro-stat__val {
+  color: var(--bad);
+}
+
 .qrow {
   cursor: pointer;
 }

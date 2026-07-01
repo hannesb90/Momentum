@@ -24,6 +24,47 @@ function flowLabel(r) {
   return { text: '→ stabil', cls: 'flow-flat' }
 }
 
+function Stat({ label, value, tone }) {
+  return (
+    <div className={`macro-stat${tone ? ` macro-${tone}` : ''}`}>
+      <div className="macro-stat__val">{value}</div>
+      <div className="macro-stat__label">{label}</div>
+    </div>
+  )
+}
+
+function MacroPanel({ m }) {
+  const pct = (v) => (v == null ? '–' : `${(v * 100).toFixed(1)}%`)
+  const curve = m.yield_curve_10y_3m
+  const vix = m.vix
+  const credit = m.credit_hyg_vs_ief_13w
+  return (
+    <div className="macro-grid">
+      {curve != null && (
+        <Stat label="Räntekurva 10y–3m" value={`${curve > 0 ? '+' : ''}${curve}`}
+          tone={curve < 0 ? 'bad' : 'good'} />
+      )}
+      {vix != null && (
+        <Stat label={`VIX${m.vix_pctile_1y != null ? ` (p${Math.round(m.vix_pctile_1y * 100)})` : ''}`}
+          value={vix.toFixed(1)} tone={vix >= 28 ? 'bad' : vix >= 20 ? 'warn' : 'good'} />
+      )}
+      {credit != null && (
+        <Stat label="Kredit HYG–IEF 13v" value={pct(credit)} tone={credit < 0 ? 'bad' : 'good'} />
+      )}
+      {m.usd_above_40w != null && (
+        <Stat label="USD-trend" value={m.usd_above_40w ? '↑ flight' : 'neutral'}
+          tone={m.usd_above_40w ? 'warn' : ''} />
+      )}
+      {m.copper_gold_13w != null && (
+        <Stat label="Koppar–guld 13v" value={pct(m.copper_gold_13w)}
+          tone={m.copper_gold_13w >= 0 ? 'good' : 'warn'} />
+      )}
+      {m.gold_13w != null && <Stat label="Guld 13v" value={pct(m.gold_13w)} />}
+      {m.oil_13w != null && <Stat label="Olja 13v" value={pct(m.oil_13w)} />}
+    </div>
+  )
+}
+
 export function RotationPage() {
   const rot = useApiData(() => api.rotation(), [])
   const thesis = useApiData(() => api.thesis(), [])
@@ -81,11 +122,25 @@ export function RotationPage() {
             <div className="regime-title">{riskOn ? 'BULL – risk-on' : 'BJÖRN – risk-off'}</div>
             <div className="regime-sub">
               {riskOn
-                ? 'Breda marknaden över sin långa trend – rotation aktiv.'
-                : `Breda marknaden under sin ${meta.regime_ma}v-trend – hela boken defensivt (${meta.defensive}).`}
+                ? 'Breda marknaden över sin långa trend och ingen makro-stress – rotation aktiv.'
+                : `Risk-off – hela boken defensivt (${meta.defensive}). Trend bruten och/eller makro-stress (VIX + kreditspread).`}
             </div>
           </div>
         </div>
+      )}
+
+      {meta?.macro && (
+        <>
+          <h3 className="section-title">
+            Makroläge
+            <InfoButton title="Bakgrundsdata (token-fritt)">
+              Fria marknadsdata (räntor, VIX, kredit, USD, råvaror) som göder stress-regimen.
+              Regimen tvingas risk-off när VIX är i stress OCH kreditspreadar vidgas – även
+              om trenden ännu håller. Recessionskurvan visas som kontext (slår inte av ensam).
+            </InfoButton>
+          </h3>
+          <MacroPanel m={meta.macro} />
+        </>
       )}
 
       <h3 className="section-title">
