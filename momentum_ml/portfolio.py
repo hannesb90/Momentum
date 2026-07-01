@@ -55,6 +55,59 @@ def save_holdings(rows) -> None:
                         "bucket": b if b in BUCKETS else "theme"})
 
 
+def _kinds():
+    out = {}
+    uf = Path(getattr(config, "ETF_ROT_UNIVERSE_FILE", ""))
+    if uf and uf.exists():
+        with open(uf, encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                out[r["ticker"]] = r.get("kind", "")
+    return out
+
+
+def _candidates() -> dict:
+    """Konkreta idéer från övriga vyer, per hink – bolag/teman, inte bara breda ETF:er.
+    sweden = kvalitets-screenerns bästa bolag; theme = rotationens starkaste teman."""
+    out = {"sweden": [], "theme": []}
+    # Kvalitets-screenern → svenska kvalitetsbolag (hög composite + billig/rimlig).
+    qp = Path("results/quality_shortlist.csv")
+    if qp.exists():
+        try:
+            rows = list(csv.DictReader(open(qp, encoding="utf-8")))
+            def comp(r):
+                try:
+                    return float(r.get("composite") or 0)
+                except ValueError:
+                    return 0.0
+            picks = [r for r in rows if comp(r) >= 4.0 and (r.get("zone") in ("billig", "rimlig"))]
+            picks.sort(key=comp, reverse=True)
+            for r in picks[:5]:
+                out["sweden"].append({"name": r.get("name") or r.get("ticker"),
+                                      "ticker": r.get("ticker"),
+                                      "note": f"kvalitet {r.get('composite')} · {r.get('zone')}"})
+        except Exception:  # noqa: BLE001
+            pass
+    # Rotationen → starkaste tema-ETF:erna (för temadelen).
+    rp = Path("results/etf_rotation.csv")
+    if rp.exists():
+        try:
+            kinds = _kinds()
+            rows = list(csv.DictReader(open(rp, encoding="utf-8")))
+            themes = [r for r in rows if kinds.get(r.get("etf")) == "theme"]
+            def mom(r):
+                try:
+                    return float(r.get("rel_mom") or 0)
+                except ValueError:
+                    return 0.0
+            themes.sort(key=mom, reverse=True)
+            for r in themes[:5]:
+                out["theme"].append({"name": r.get("sector"), "ticker": r.get("etf"),
+                                     "note": f"rel.mom {mom(r):+.0%}"})
+        except Exception:  # noqa: BLE001
+            pass
+    return out
+
+
 def compute(rows, amount=None) -> dict:
     total = sum(r["value"] for r in rows) or 0.0
     buckets = {b: 0.0 for b in BUCKETS}
@@ -77,6 +130,7 @@ def compute(rows, amount=None) -> dict:
            "buckets_sek": {b: round(buckets[b], 0) for b in BUCKETS},
            "target": config.PORTFOLIO_TARGET,
            "warnings": warnings,
+           "candidates": _candidates(),
            "holdings": [{"name": r["name"], "value": round(r["value"], 0), "bucket": r["bucket"]} for r in rows]}
 
     if amount:

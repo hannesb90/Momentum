@@ -196,6 +196,55 @@ export function HoldingsPage() {
           </div>
         </>
       )}
+      {(analysis?.candidates?.sweden?.length > 0 || analysis?.candidates?.theme?.length > 0) && (
+        <>
+          <h3 className="section-title">
+            Kandidater från övriga vyer
+            <InfoButton title="Konkreta idéer, inte bara breda ETF:er">
+              För Sverige-/temadelen: bolag ur Kvalitets-screenern och de starkaste temana ur
+              Rotation. <b>Idéer att bedöma, inte bevisad edge</b> – den breda kärnan är fortfarande
+              basen. Använd dem för den andel du medvetet vill lägga i Sverige/tema.
+            </InfoButton>
+          </h3>
+          {analysis.candidates.sweden?.length > 0 && (
+            <>
+              <p className="footnote" style={{ marginBottom: 4 }}>Sverige – kvalitetsbolag (screenern):</p>
+              <div className="table-wrap">
+                <table>
+                  <tbody>
+                    {analysis.candidates.sweden.map((c) => (
+                      <tr key={c.ticker}>
+                        <td>{c.name}</td>
+                        <td className="mono">{c.ticker}</td>
+                        <td className="flow-flat">{c.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+          {analysis.candidates.theme?.length > 0 && (
+            <>
+              <p className="footnote" style={{ marginBottom: 4, marginTop: 10 }}>Tema – starkaste ur Rotation:</p>
+              <div className="table-wrap">
+                <table>
+                  <tbody>
+                    {analysis.candidates.theme.map((c) => (
+                      <tr key={c.ticker}>
+                        <td>{c.name}</td>
+                        <td className="mono">{c.ticker}</td>
+                        <td className="flow-flat">{c.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
       <p className="footnote">
         Fyll-mot-mål via inflöden – <b>inget säljs</b>. Koncentrationen späds över tid.
         Beslutsstöd, inte en signal med bevisad edge; en global indexfond är standardvalet.
