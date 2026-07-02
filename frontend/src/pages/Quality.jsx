@@ -30,11 +30,21 @@ const QUALITY_TIERS = [
 ]
 
 const SORTS = [
+  { value: 'quant_score', label: 'Kvant' },
   { value: 'composite', label: 'Kvalitet' },
   { value: 'ebitda_multiple', label: 'Billigast' },
   { value: 'mcap_msek', label: 'Minst börsvärde' },
-  { value: 'revenue_msek', label: 'Omsättning' },
 ]
+
+// Värderingszon ur kvant-data (samma trösklar som backend): vinstmultipel om positiv,
+// annars P/S. Fyller zon för ALLA bolag ur TradingView – inte bara de Claude-poängsatta.
+function zoneFromQuant(r) {
+  const ev = Number(r.ev_ebitda)
+  if (Number.isFinite(ev) && ev > 0) return ev <= 12 ? 'billig' : ev <= 18 ? 'rimlig' : 'dyr'
+  const ps = Number(r.ps)
+  if (Number.isFinite(ps) && ps > 0) return ps <= 1.5 ? 'billig' : ps <= 4 ? 'rimlig' : 'dyr'
+  return 'okänd'
+}
 
 const VIEWS = [
   { value: 'table', label: 'Tabell' },
@@ -164,8 +174,25 @@ function DetailPanel({ row }) {
           {investors.length > 0 && (
             <div className="qdetail__fact"><span>Ägare (nämnda)</span><b>{investors.join(', ')}</b></div>
           )}
+          {row.quant_score != null && (
+            <div className="qdetail__fact"><span>Kvant-betyg (hård data)</span><b>{Math.round(row.quant_score)}/100</b></div>
+          )}
+          {row.ebitda_margin != null && (
+            <div className="qdetail__fact"><span>EBITDA-marginal</span><b>{Number(row.ebitda_margin).toFixed(1)}%</b></div>
+          )}
+          {row.rev_growth != null && (
+            <div className="qdetail__fact"><span>Omsättningstillväxt</span><b>{Number(row.rev_growth).toFixed(1)}%</b></div>
+          )}
+          {row.roe != null && (
+            <div className="qdetail__fact"><span>ROE</span><b>{Number(row.roe).toFixed(1)}%</b></div>
+          )}
         </div>
       </div>
+      {row.composite == null && (
+        <p className="footnote" style={{ marginTop: 8 }}>
+          Endast kvant-data (hård finansdata) – ingen kvalitativ Claude-analys för detta bolag ännu.
+        </p>
+      )}
 
       {flags.length > 0 && (
         <div className="qdetail__flags">
@@ -183,13 +210,47 @@ function DetailPanel({ row }) {
 }
 
 export function QualityPage() {
-  const { data, error, loading } = useApiData(() => api.quality(), [])
+  const qRes = useApiData(() => api.quality(), [])
+  const qnRes = useApiData(() => api.quant(), [])
   const [query, setQuery] = useState('')
   const [zone, setZone] = useState('all')
   const [minQuality, setMinQuality] = useState(0)
-  const [sort, setSort] = useState('composite')
+  const [sort, setSort] = useState('quant_score')
   const [view, setView] = useState('table')
   const [expanded, setExpanded] = useState(null)
+
+  const loading = qRes.loading || qnRes.loading
+  const error = qRes.error && qnRes.error ? (qRes.error || qnRes.error) : null
+
+  // EN vy: kvant (hård data, ALLA bolag) som bas + Claude-kvalitativ + värdering ovanpå.
+  const data = useMemo(() => {
+    const llm = Array.isArray(qRes.data) ? qRes.data : []
+    const quant = Array.isArray(qnRes.data) ? qnRes.data : []
+    const map = {}
+    for (const r of quant) {
+      if (!r.ticker) continue
+      map[r.ticker] = {
+        ticker: r.ticker, name: r.name, quant_score: r.quant_score,
+        q_quality: r.quality, q_growth: r.growth, q_safety: r.safety, q_value: r.value,
+        ebitda_margin: r.ebitda_margin, rev_growth: r.rev_growth, roe: r.roe,
+        ps: r.ps, ev_ebitda: r.ev_ebitda, mcap_msek: r.mcap_msek,
+        ebitda_multiple: Number(r.ev_ebitda) > 0 ? r.ev_ebitda : null,
+        zone: zoneFromQuant(r), composite: null,
+      }
+    }
+    for (const s of llm) {                            // Claude-analysen är rikare → lägg ovanpå
+      if (!s.ticker) continue
+      const base = map[s.ticker] || {}
+      map[s.ticker] = {
+        ...base, ...s,
+        quant_score: base.quant_score ?? null,
+        zone: s.zone && s.zone !== 'okänd' ? s.zone : (base.zone ?? s.zone ?? 'okänd'),
+        mcap_msek: s.mcap_msek ?? base.mcap_msek,
+        ebitda_multiple: s.ebitda_multiple ?? base.ebitda_multiple,
+      }
+    }
+    return Object.values(map)
+  }, [qRes.data, qnRes.data])
 
   const rows = useMemo(() => {
     if (!data) return []
@@ -282,7 +343,7 @@ export function QualityPage() {
           </InfoButton>
         </h1>
         <p className="page-subtitle">
-          {data.length} bolag poängsatta · {cheapCount} billiga/rimliga
+          {data.length} bolag · {cheapCount} billiga/rimliga · kvant (hård data) + kvalitativ analys
         </p>
       </div>
 
@@ -395,6 +456,14 @@ export function QualityPage() {
               <tr>
                 <th>Bolag</th>
                 <th>
+                  Kvant
+                  <InfoButton title="Kvant-betyg (hård data, token-fritt)">
+                    0–100 ur hård finansdata (TradingView, gratis): kvalitet (marginaler,
+                    ROE/ROIC), tillväxt, trygghet (skuld/likviditet) och värdering, rankat mot
+                    hela universumet. Finns för <b>alla</b> bolag – ingen Claude-token.
+                  </InfoButton>
+                </th>
+                <th>
                   Kvalitet
                   <InfoButton title="Kvalitet (composite 1–5)">
                     Snittet av 9 kvalitativa kriterier som Claude poängsatt ur bolagets rapport
@@ -440,7 +509,8 @@ export function QualityPage() {
                         <span className="ticker-link__name">{cleanName(row.name, row.ticker)}</span>
                         <span className="ticker-link__ticker">{row.ticker} <TvLink ticker={row.ticker} /></span>
                       </td>
-                      <td className="qcomposite">{fmtNum(row.composite, 2)}</td>
+                      <td className="qcomposite">{row.quant_score == null ? '–' : Math.round(row.quant_score)}</td>
+                      <td className="qcomposite">{row.composite == null ? '–' : fmtNum(row.composite, 2)}</td>
                       <td>
                         <span className={`zonebadge zonebadge--${zoneClass(row.zone)}`}>
                           {ZONE_LABEL[row.zone] ?? String(row.zone).toUpperCase()}
@@ -452,7 +522,7 @@ export function QualityPage() {
                     </tr>
                     {open && (
                       <tr className="qrow-detail">
-                        <td colSpan={5}>
+                        <td colSpan={6}>
                           <DetailPanel row={row} />
                         </td>
                       </tr>
