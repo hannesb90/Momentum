@@ -45,6 +45,7 @@ export const api = {
   prices: (ticker, limit = 260) =>
     getJson(`/prices?ticker=${encodeURIComponent(ticker)}&limit=${limit}`),
   quality: () => getJson('/quality'),
+  quant: () => getJson('/quant'),
   rotation: () => getJson('/rotation'),
   thesis: () => getJson('/thesis'),
   // Egen väg för manuella innehav – /portfolio är backtest-equity-kurvan.

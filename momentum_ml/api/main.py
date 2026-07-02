@@ -206,6 +206,16 @@ def get_quality():
     return _records(_read_csv(path))
 
 
+@app.get("/api/quant")
+def get_quant():
+    """Token-fri kvantitativ kortlista (hård data: kvalitet/tillväxt/trygghet/värde).
+    Tom lista om quant_screener ännu inte körts. Anchor-medveten (MOMENTUM_HOME)."""
+    path = Path(config.anchor(config.RESULTS_DIR)) / "quant_shortlist.csv"
+    if not path.exists():
+        return []
+    return _records(_read_csv(path))
+
+
 @app.get("/api/rotation")
 def get_rotation():
     """ETF/sektor-rotation (D-spåret): regim + rankade ETF:er m. flöde. Global.

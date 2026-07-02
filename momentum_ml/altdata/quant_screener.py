@@ -38,18 +38,20 @@ _UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
 
 # TradingView-scannerns fältnamn (best effort – 'probe' visar vilka som faktiskt svarar).
 _COLS = [
-    "description", "market_cap_basic", "currency",
-    "total_revenue", "revenue_growth_ttm_yoy",
+    "description", "market_cap_basic", "currency", "sector",
+    "total_revenue", "total_revenue_yoy_growth_ttm", "revenue_growth",
     "gross_margin_ttm", "ebitda_margin_ttm", "net_margin_ttm",
     "return_on_equity", "return_on_invested_capital",
     "debt_to_equity", "current_ratio",
     "enterprise_value_ebitda_ttm", "price_sales_ratio",
 ]
+# Fältnamnet för omsättningstillväxt varierar – prova flera, ta första med värde.
+_GROWTH_FIELDS = ["total_revenue_yoy_growth_ttm", "revenue_growth"]
 
 # Faktor-grupper: (fält, riktning). +1 = högre bättre, -1 = lägre bättre.
 _QUALITY = [("gross_margin_ttm", 1), ("ebitda_margin_ttm", 1), ("net_margin_ttm", 1),
             ("return_on_equity", 1), ("return_on_invested_capital", 1)]
-_GROWTH = [("revenue_growth_ttm_yoy", 1)]
+_GROWTH = [("_growth", 1)]                     # _growth injiceras i score() (coalesce ovan)
 _SAFETY = [("debt_to_equity", -1), ("current_ratio", 1)]
 _VALUE = [("price_sales_ratio", -1), ("enterprise_value_ebitda_ttm", -1)]
 _WEIGHTS = {"quality": 0.40, "growth": 0.20, "safety": 0.15, "value": 0.25}
@@ -156,16 +158,37 @@ def _group_score(data, factors) -> dict:
     return {t: sum(p[t] for p in parts) / len(parts) for t in data}
 
 
-def score() -> None:
+def score(min_rev_msek=100) -> None:
     import csv
     cache = Path(config.QUALITY_CACHE_DIR) / "_quant.json"
     if not cache.exists():
         print("[score] ingen _quant.json – kör 'fetch' först.")
         return
-    data = json.loads(cache.read_text())
-    if not data:
+    raw = json.loads(cache.read_text())
+    if not raw:
         print("[score] tom cache.")
         return
+    # Filtrera bort det som gör kvant-betyg meningslöst: pre-revenue-skal (biotech/
+    # prospektering med ~0 omsättning → skräp-marginaler) och Health Care (binärt
+    # lotteri, samma exkludering som LLM-screenern). Percentiler räknas på det som är kvar.
+    min_rev = min_rev_msek * 1e6
+    data, drop_rev, drop_sec = {}, 0, 0
+    for t, rec in raw.items():
+        rev = _num(rec.get("total_revenue"))
+        if rev is None or rev < min_rev:            # för lite omsättning → ej betygsättbart
+            drop_rev += 1
+            continue
+        if "health" in str(rec.get("sector") or "").lower():   # medtech/pharma = binärt lotteri
+            drop_sec += 1
+            continue
+        rec["_growth"] = next((rec[f] for f in _GROWTH_FIELDS
+                               if isinstance(rec.get(f), (int, float))), None)
+        data[t] = rec
+    if not data:
+        print("[score] inga bolag kvar efter filter.")
+        return
+    print(f"[score] filter: −{drop_rev} med < {min_rev_msek} MSEK omsättning, "
+          f"−{drop_sec} health → {len(data)} betygsatta")
     groups = {"quality": _group_score(data, _QUALITY), "growth": _group_score(data, _GROWTH),
               "safety": _group_score(data, _SAFETY), "value": _group_score(data, _VALUE)}
     rows = []
@@ -181,7 +204,7 @@ def score() -> None:
             "mcap_msek": (round(_num(rec.get("market_cap_basic")) / 1e6, 1)
                           if _num(rec.get("market_cap_basic")) else None),
             "ebitda_margin": _num(rec.get("ebitda_margin_ttm")),
-            "rev_growth": _num(rec.get("revenue_growth_ttm_yoy")),
+            "rev_growth": _num(rec.get("_growth")),
             "roe": _num(rec.get("return_on_equity")),
             "ps": _num(rec.get("price_sales_ratio")),
             "ev_ebitda": _num(rec.get("enterprise_value_ebitda_ttm")),
@@ -208,7 +231,7 @@ def main():
     elif cmd == "fetch":
         fetch()
     elif cmd == "score":
-        score()
+        score(float(sys.argv[2]) if len(sys.argv) > 2 else 100)
     else:
         print(__doc__)
 
