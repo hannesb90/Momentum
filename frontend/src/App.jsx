@@ -6,7 +6,7 @@ import { SignalsHubPage } from './pages/SignalsHub'
 import { SectorsPage } from './pages/Sectors'
 import { AnalysisPage } from './pages/Analysis'
 import { WatchlistPage } from './pages/Watchlist'
-import { QualityPage } from './pages/Quality'
+import { QualityHubPage } from './pages/QualityHub'
 import { RotationPage } from './pages/Rotation'
 import { MarketPage } from './pages/Market'
 import { HoldingsPage } from './pages/Holdings'
@@ -53,7 +53,7 @@ export default function App() {
           <Route path="/" element={<OverviewPage />} />
           <Route path="/signaler" element={<SignalsHubPage />} />
           <Route path="/marknad" element={<MarketPage />} />
-          <Route path="/kvalitet" element={<QualityPage />} />
+          <Route path="/kvalitet" element={<QualityHubPage />} />
           <Route path="/innehav" element={<HoldingsPage />} />
           <Route path="/analys" element={<AnalysisPage />} />
           {/* Deep-link-vägar (nås via sub-flikar men behåller egna URL:er) */}
