@@ -325,7 +325,7 @@ def report() -> None:
         rows.append(r)
 
     rows.sort(key=lambda r: r.get("composite", 0), reverse=True)
-    out = Path("results/quality_shortlist.csv")
+    out = Path(config.RESULTS_DIR) / "quality_shortlist.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     cols = ["ticker", "name", "composite", "zone", "loss", "mcap_msek", "ebitda_multiple",
             "earnings_basis", *_SCORE_KEYS, "revenue_msek", "ebitda_msek", "ebit_msek",
@@ -424,7 +424,7 @@ def plot_positioning() -> None:
     ax.set_ylabel("Börsvärde (MSEK)")
     ax.set_title("Börsvärde vs EBITDA (bubbla = omsättning) – x12/x18-multiplar")
     ax.grid(True, alpha=0.2)
-    out = Path("results/quality_positioning.png")
+    out = Path(config.RESULTS_DIR) / "quality_positioning.png"
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout(); fig.savefig(out, dpi=140)
     print(f"[chart] sparad: {out}  ({len(pts)} bolag med EBITDA+aktier)")
@@ -444,7 +444,7 @@ def snapshot(label=None) -> None:
     import pandas as pd
     from data.data_loader import fetch_weekly_data
 
-    src = Path("results/quality_shortlist.csv")
+    src = Path(config.RESULTS_DIR) / "quality_shortlist.csv"
     if not src.exists():
         print("[snapshot] kör 'report' först (results/quality_shortlist.csv saknas).")
         return
@@ -481,7 +481,7 @@ def snapshot(label=None) -> None:
     if not rows:
         print("[snapshot] inga ingångskurser (Yahoo?) – avbryter.")
         return
-    ledger = Path("results/quality_ledger.csv")
+    ledger = Path(config.RESULTS_DIR) / "quality_ledger.csv"
     exists = ledger.exists()
     with open(ledger, "a", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
@@ -499,7 +499,7 @@ def track() -> None:
     import pandas as pd
     from data.data_loader import fetch_weekly_data
 
-    ledger = Path("results/quality_ledger.csv")
+    ledger = Path(config.RESULTS_DIR) / "quality_ledger.csv"
     if not ledger.exists():
         print("[track] ingen ledger än – kör 'snapshot' först.")
         return
@@ -545,7 +545,7 @@ def lookback(months=6, n=5) -> None:
     import datetime
     from data.data_loader import fetch_weekly_data
 
-    src = Path("results/quality_shortlist.csv")
+    src = Path(config.RESULTS_DIR) / "quality_shortlist.csv"
     if not src.exists():
         print("[lookback] kör 'report' först (results/quality_shortlist.csv saknas).")
         return

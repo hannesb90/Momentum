@@ -625,3 +625,20 @@ SEGMENTS = {
               "gate_enabled": False, "gate_min": 0.10},
 }
 DEFAULT_SEGMENT = "large"
+
+
+# ── Förankra ALLA data-sökvägar under $MOMENTUM_HOME (om satt) ────────────────
+# SIST i filen (refererar konstanterna ovan). Löser klon/deploy-splittringen helt:
+# sätt MOMENTUM_HOME=/opt/momentum/momentum_ml i systemd-uniten OCH i skalet, så
+# läser/skriver API:t och ALLA CLI-verktyg samma cache/ + results/ oavsett vilken
+# katalog de startas ifrån. Osatt → relativt CWD (oförändrat, inget kan gå sönder).
+RESULTS_DIR = anchor(RESULTS_DIR)
+QUALITY_CACHE_DIR = anchor(QUALITY_CACHE_DIR)
+MFN_CACHE_DIR = anchor(MFN_CACHE_DIR)
+SENTIMENT_CACHE_DIR = anchor(SENTIMENT_CACHE_DIR)
+MACRO_CACHE_DIR = anchor(MACRO_CACHE_DIR)
+EODHD_CACHE_DIR = anchor(EODHD_CACHE_DIR)
+PORTFOLIO_HOLDINGS_FILE = anchor(PORTFOLIO_HOLDINGS_FILE)
+PORTFOLIO_VALUE_LOG = anchor(PORTFOLIO_VALUE_LOG)
+for _seg in SEGMENTS.values():
+    _seg["results_dir"] = anchor(_seg["results_dir"])

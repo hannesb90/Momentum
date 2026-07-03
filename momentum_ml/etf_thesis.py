@@ -53,7 +53,7 @@ def _adjacency(edges):
 
 def _hot_sectors():
     """Dagens heta sektorer = grupperna för de ETF:er rotationssignalen HÅLLER."""
-    sig = Path("results/etf_rotation.csv")
+    sig = Path(config.RESULTS_DIR) / "etf_rotation.csv"
     if not sig.exists():
         return []
     etf_group = {}
@@ -119,7 +119,7 @@ def next_trends(seeds=None):
                 "chain": "".join(best_chain[node]).replace("  ", " ").strip(),
                 "headwind": int(node in headwind and headwind[node] > sc)}
                for i, (node, sc) in enumerate(ranked[:12])]
-    outp = Path("results/etf_thesis.csv")
+    outp = Path(config.RESULTS_DIR) / "etf_thesis.csv"
     outp.parent.mkdir(parents=True, exist_ok=True)
     import csv as _csv
     with open(outp, "w", newline="", encoding="utf-8") as f:
@@ -190,7 +190,7 @@ def leadlag():
     if not ranked:
         print("  (inga ledande sektorer med positiv momentum just nu)")
     import csv as _csv
-    outp = Path("results/etf_leadlag.csv")
+    outp = Path(config.RESULTS_DIR) / "etf_leadlag.csv"
     outp.parent.mkdir(parents=True, exist_ok=True)
     with open(outp, "w", newline="", encoding="utf-8") as f:
         w = _csv.DictWriter(f, fieldnames=["rank", "node", "etf", "score", "leaders"])
