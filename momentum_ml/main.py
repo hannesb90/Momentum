@@ -205,11 +205,18 @@ def main():
     # Frusen holdout: de sista HOLDOUT_WEEKS veckorna får modellen aldrig
     # träna på, så backtesten över den perioden är en äkta out-of-sample-test.
     all_dates = model_df.index.unique().sort_values()
-    if len(all_dates) > config.HOLDOUT_WEEKS:
+    if len(all_dates) > config.HOLDOUT_WEEKS + config.FORWARD_WEEKS:
         holdout_start = all_dates[-config.HOLDOUT_WEEKS]
-        dev_df = model_df[model_df.index < holdout_start]
+        # PURGE vid holdout-gränsen (bugfix): en rad vid tid t bär ett label på
+        # pris vid t+FORWARD_WEEKS. Utan gap tränar modellen på utfall realiserade
+        # INNE i den "frusna" holdouten – samma läcka som walk-forward-embargot
+        # redan stoppar mellan train/val/test, men vid holdout-gränsen saknades den.
+        purge_start = all_dates[-(config.HOLDOUT_WEEKS + config.FORWARD_WEEKS)]
+        dev_df = model_df[model_df.index < purge_start]
         print(f"  Frusen holdout: {holdout_start.date()} → slut "
-              f"({config.HOLDOUT_WEEKS}v, modellen tränas aldrig på dessa)")
+              f"({config.HOLDOUT_WEEKS}v, modellen tränas aldrig på dessa; "
+              f"träningen purgas dessutom {config.FORWARD_WEEKS}v före gränsen "
+              f"så inga labels läcker in)")
     else:
         holdout_start = None
         dev_df = model_df
