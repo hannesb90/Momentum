@@ -40,6 +40,7 @@ class PaperTrader:
         self.cash: float = initial_capital
         self.holdings: Dict[str, float] = {}
         self.last_date: Optional[str] = None
+        self.last_prices: Dict[str, float] = {}   # senast kända pris per ticker (carry-forward)
         self._load()
 
     # ── Persistens ───────────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ class PaperTrader:
             self.cash      = st.get("cash", self.initial_capital)
             self.holdings  = st.get("holdings", {})
             self.last_date = st.get("last_date")
+            self.last_prices = st.get("last_prices", {})
 
     def _save(self):
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -58,6 +60,7 @@ class PaperTrader:
                 "cash": self.cash,
                 "holdings": self.holdings,
                 "last_date": self.last_date,
+                "last_prices": self.last_prices,
                 "initial_capital": self.initial_capital,
             }, f, indent=2)
 
@@ -88,13 +91,19 @@ class PaperTrader:
         return config.COMMISSION + config.SLIPPAGE + spread
 
     def _market_value(self, prices: Dict[str, pd.DataFrame], date: pd.Timestamp) -> float:
+        """Marknadsvärde av innehaven. Om ett INNEHAV saknar kurs denna körning
+        (ticker ej hämtad/utelämnad/data-glapp) värderas det till SENAST KÄNDA pris –
+        aldrig till 0. Att nolla en position man fortfarande äger skapade fantom-ras
+        (t.ex. −12% på en vecka när ett stort innehav tillfälligt saknade prisdata)."""
         total = 0.0
         for ticker, sh in self.holdings.items():
             df = prices.get(ticker)
-            if df is None:
-                continue
-            p = self._price_at(df, date)
-            if p:
+            p = self._price_at(df, date) if df is not None else None
+            if p and p > 0:
+                self.last_prices[ticker] = p          # uppdatera senast kända pris
+            else:
+                p = self.last_prices.get(ticker)      # bär fram senaste kända pris
+            if p and p > 0:
                 total += sh * p
         return total
 
