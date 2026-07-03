@@ -392,6 +392,10 @@ REGIME_SMA_WEEKS = 26       # trend-proxy för bull/bear/sidledes-klassificering
 # marknad. Björn-skyddet BEHÅLLS (0.25) → skalar ner i tydliga kraschregimer.
 MARKET_FILTER_EXPOSURE = {"bull": 1.0, "sideways": 1.0, "bear": 0.25}
 
+# Pappershandeln: innehav vars ticker saknar pris så här många KÖRNINGAR i rad
+# tvångssäljs på senast kända pris (avnotering/namnbyte = tvingad exit i verkligheten).
+PAPER_MISSING_LIQUIDATE_STEPS = 4
+
 # ── Frusen holdout ────────────────────────────────────────────────────────────
 HOLDOUT_WEEKS = 104         # ~2 år som modellen aldrig tränas på
 
