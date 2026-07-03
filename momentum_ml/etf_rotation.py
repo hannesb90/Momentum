@@ -433,7 +433,7 @@ def signal():
         dgt = config.ETF_ROT_DEFENSIVE or "kontanter"
         print(f"    {defslots} slot(s) → defensivt ({dgt}) – dessa sektorer trendar inte (absolut mom ≤ "
               f"{config.ETF_ROT_ABS_MIN:.0%}).")
-    out = Path("results/etf_rotation.csv")
+    out = Path(config.RESULTS_DIR) / "etf_rotation.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(out, index=False)
     # Metadata (regim + innehav) så frontend kan visa bull/björn utan att räkna om.

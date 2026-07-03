@@ -151,7 +151,7 @@ def show():
                    ("copper_gold_13w", "Koppar–guld 13v (cyklisk aptit)")):
         if ind.get(k) is not None:
             print(f"  {lbl:<32} {ind[k]:+.1%}")
-    out = Path("results/macro_snapshot.json")
+    out = Path(config.RESULTS_DIR) / "macro_snapshot.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(ind, ensure_ascii=False))
     print(f"\n  Snapshot sparad: {out}")

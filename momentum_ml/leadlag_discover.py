@@ -108,7 +108,7 @@ def discover(merge=False, weekly=False):
     p_one = 0.5 * math.erfc(config.LEADLAG_MIN_T / math.sqrt(2))
     exp_fp = tests * p_one
 
-    out = Path("results/leadlag_matrix.csv")
+    out = Path(config.RESULTS_DIR) / "leadlag_matrix.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["leader", "leader_etf", "follower",
