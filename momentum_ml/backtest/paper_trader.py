@@ -54,6 +54,9 @@ class PaperTrader:
             self.last_date = st.get("last_date")
             self.last_prices = st.get("last_prices", {})
             self.missing_weeks = st.get("missing_weeks", {})
+            # Basera return_since_start på liggarens URSPRUNGLIGA startkapital –
+            # annars skiftar en ändrad config.INITIAL_CAPITAL baslinjen i efterhand.
+            self.initial_capital = float(st.get("initial_capital", self.initial_capital))
 
     def _save(self):
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
