@@ -134,7 +134,7 @@ export function OverviewPage() {
             {hasIndex && (
               <div className="hero__legend">
                 <span><i className="dot dot--accent" />Strategins portfölj</span>
-                <span><i className="dot dot--muted" />Index (köp-och-behåll)</span>
+                <span><i className="dot dot--muted" />Likaviktat index (survivorship-biased)</span>
               </div>
             )}
           </div>
