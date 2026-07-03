@@ -533,21 +533,32 @@ def main():
         try:
             idx_close = idx_df["Close"].reindex(
                 idx_df.index.union(results.index)).sort_index().ffill().reindex(results.index)
-            base = idx_close.dropna().iloc[0] if idx_close.dropna().size else None
-            if base:
-                idx_value = idx_close / base * config.INITIAL_CAPITAL
+            valid = idx_close.dropna()
+            if valid.size >= 2:
+                # VIKTIGT (bugfix): index-ETF:ns historik kan börja långt efter back-
+                # testens start (XACT-fonderna är unga). Jämför då BÅDA benen över det
+                # GEMENSAMMA fönstret – att dra indexets CAGR (sitt eget, ofta korta
+                # fönster) från strategins CAGR (hela backtesten) blandade perioder
+                # och gav felaktig 'strategi vs index'.
+                start_dt = valid.index[0]
+                overlap = results.loc[results.index >= start_dt, "portfolio_value"]
+                weeks = max(len(valid) - 1, 1)
+                idx_cagr = (valid.iloc[-1] / valid.iloc[0]) ** (52 / weeks) - 1
+                strat_cagr = (overlap.iloc[-1] / overlap.iloc[0]) ** (52 / max(len(overlap) - 1, 1)) - 1
+                # Visuell linje: skala index till PORTFÖLJENS värde vid indexets första
+                # datum ("tänk om jag bytt till index här") – inte till startkapitalet,
+                # som ritade ett 1 Mkr-index mot en portfölj som redan hunnit växa.
+                idx_value = idx_close / valid.iloc[0] * float(overlap.iloc[0])
                 results["omxs30_value"] = idx_value
-                weeks = max(len(idx_value.dropna()) - 1, 1)
-                idx_cagr = (idx_value.dropna().iloc[-1] / config.INITIAL_CAPITAL) ** (52 / weeks) - 1
-                strat_cagr = (results["portfolio_value"].iloc[-1] /
-                              results["portfolio_value"].iloc[0]) ** (52 / max(len(results) - 1, 1)) - 1
                 index_summary = {
                     "label": config.INDEX_BENCHMARK_LABEL,
                     "CAGR": f"{idx_cagr:.1%}",
                     "alpha_cagr": float(strat_cagr - idx_cagr),
+                    "window": f"{start_dt.date()} → {results.index[-1].date()}",
                 }
                 print(f"  Index ({config.INDEX_BENCHMARK_LABEL}): {idx_cagr:.1%}/år  |  "
-                      f"strategi vs index: {strat_cagr - idx_cagr:+.1%}")
+                      f"strategi vs index: {strat_cagr - idx_cagr:+.1%}  "
+                      f"(gemensamt fönster {start_dt.date()} →)")
         except Exception as e:
             print(f"  [WARN] Kunde inte bygga OMXS30-linje (icke-kritiskt): {e}")
 

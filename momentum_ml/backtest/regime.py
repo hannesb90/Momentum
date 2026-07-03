@@ -26,18 +26,25 @@ import config
 
 
 def _market_proxy(price_data: Dict[str, pd.DataFrame]) -> pd.Series:
-    """Likaviktat, normaliserat prisindex över alla tickers (bas=1.0)."""
-    normalized = []
-    for ticker, df in price_data.items():
-        close = df["Close"].dropna()
-        if close.empty:
-            continue
-        normalized.append(close / close.iloc[0])
-    if not normalized:
+    """Likaviktat KEDJEINDEX över alla tickers (bas=1.0).
+
+    BUGFIX: den gamla varianten normaliserade varje ticker till 1.0 vid SITT
+    första datum och tog tvärsnittsMEDLET AV NIVÅER. Varje ny notering gick då
+    in på exakt 1.0 och ryckte snittet mot 1.0 – proxyn fick artificiella hopp
+    och lutningsbyten vid rena kompositionsförändringar, vilket kunde flippa
+    bull/bear-etiketten (och därmed marknadsfiltret) utan att marknaden rört
+    sig. Rätt konstruktion: likaviktat medel av VECKOAVKASTNINGAR (bara tickers
+    med pris båda veckorna) som kedjas ihop – immunt mot när bolag kommer/går."""
+    closes = pd.DataFrame({t: df["Close"] for t, df in price_data.items()
+                           if "Close" in df and not df["Close"].dropna().empty})
+    if closes.empty:
         raise ValueError("Ingen prisdata tillgänglig för marknadsproxyn.")
-    combined = pd.concat(normalized, axis=1).mean(axis=1)
-    combined.name = "market_proxy"
-    return combined.sort_index()
+    closes = closes.sort_index()
+    rets = closes.pct_change(fill_method=None)      # NaN där endera veckan saknas
+    mean_ret = rets.mean(axis=1, skipna=True).fillna(0.0)
+    proxy = (1.0 + mean_ret).cumprod()
+    proxy.name = "market_proxy"
+    return proxy
 
 
 def classify_regimes(
