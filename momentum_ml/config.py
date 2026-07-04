@@ -68,7 +68,7 @@ XS_TARGET_QUANTILE = 0.67       # topp-tertil = positiv klass
 # (mätt: ~8–20 %-enheter/år kostnadsdrag). Vi håller därför innehaven en hel
 # prognoshorisont och rebalanserar var FORWARD_WEEKS:e vecka. Marknadsfiltret
 # kan ändå de-riska däremellan (se backtester.run).
-REBALANCE_WEEKS    = FORWARD_WEEKS  # = 4
+REBALANCE_WEEKS    = FORWARD_WEEKS  # följer prognoshorisonten (13v)
 
 # Asymmetrisk exit: behåll de långsamma kvartals-INGÅNGARNA (rid vinnare), men
 # tillåt en SNABB utgång mellan rebalanseringar om ett innehavs trend bryts
@@ -107,7 +107,7 @@ TEST_STEP_WEEKS    = 13         # Rulla 1 kvartal åt gången
 # de sista veckornas labels i ett fönster överlappar nästa fönsters features.
 # Vi rensar (purgar) de sista EMBARGO_WEEKS observationerna ur varje segment
 # innan nästa börjar. Se walk_forward_splits och López de Prado (purged CV).
-EMBARGO_WEEKS      = FORWARD_WEEKS  # = 4, en hel label-horisont
+EMBARGO_WEEKS      = FORWARD_WEEKS  # en hel label-horisont (13v)
 
 # ── Resursbegränsningar (för svagare hårdvara, t.ex. Raspberry Pi) ───────────
 # Antal CPU-trådar att avsätta för LightGBM/PyTorch-träning. Lämna minst en
