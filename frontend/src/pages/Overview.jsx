@@ -28,11 +28,9 @@ export function OverviewPage() {
     return portfolio.data.map((r) => ({
       date: r.date,
       value: r.portfolio_value,
-      ewi: r.benchmark_value,      // likaviktat universum-index (full historik, survivorship-biased)
-      idx: r.omxs30_value,         // riktigt segment-index (XACT total-avk., börjar ~2017)
+      idx: r.omxs30_value,         // riktigt, ägbart segment-index (XACT total-avk.)
     }))
   }, [portfolio.data])
-  const hasEwi = series.some((r) => r.ewi != null)
   const hasIdx = series.some((r) => r.idx != null)
 
   if (stats.loading || portfolio.loading) return <Loading />
@@ -93,21 +91,23 @@ export function OverviewPage() {
             </InfoButton>
           </div>
         )}
-        {stats.data.benchmark && (
+        {stats.data.index_benchmark && (
           <div className="hero__bench">
-            Index (köp-och-behåll): {stats.data.benchmark.overall.CAGR}/år ·{' '}
-            <span className={stats.data.benchmark.alpha_cagr >= 0 ? 'pos' : 'neg'}>
-              alfa {stats.data.benchmark.alpha_cagr >= 0 ? '+' : ''}
-              {(stats.data.benchmark.alpha_cagr * 100).toFixed(1)}%
+            {stats.data.index_benchmark.label}: {stats.data.index_benchmark.CAGR}/år ·{' '}
+            <span className={stats.data.index_benchmark.alpha_cagr >= 0 ? 'pos' : 'neg'}>
+              vs index {stats.data.index_benchmark.alpha_cagr >= 0 ? '+' : ''}
+              {(stats.data.index_benchmark.alpha_cagr * 100).toFixed(1)}%/år
             </span>
-            <InfoButton title="Alfa mot index">
+            <InfoButton title="Strategi vs riktigt index">
               <p>
-                Jämför strategin mot ett passivt likaviktat köp-och-behåll av samma universum. Alfa
-                = strategins årsavkastning minus indexets.
+                Jämför strategin mot det <b>riktiga, ägbara</b> segment-indexet (XACT total-
+                avkastning){stats.data.index_benchmark.window ? ` över ${stats.data.index_benchmark.window}` : ''}.
+                Positivt = strategin slog en indexfond, negativt = du hade tjänat mer på att bara
+                köpa indexet.
               </p>
               <p>
-                Positiv alfa = strategin tillför värde. Negativ = du hade tjänat mer på att bara äga
-                allt. Se fliken Analys → Backtest för full jämförelse.
+                <b>OBS survivorship:</b> backtesten körs på dagens överlevande bolag – döda/av-
+                noterade saknas – så marginalen är optimistisk. Lita på holdouten och live-liggaren.
               </p>
             </InfoButton>
           </div>
@@ -125,16 +125,9 @@ export function OverviewPage() {
                 <YAxis domain={['dataMin', 'dataMax']} hide />
                 <Tooltip
                   contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
-                  formatter={(v, name) => [
-                    fmtSek(v),
-                    name === 'idx' ? 'Index (XACT)' : name === 'ewi' ? 'Likaviktat' : 'Strategi',
-                  ]}
+                  formatter={(v, name) => [fmtSek(v), name === 'idx' ? 'Index (XACT)' : 'Strategi']}
                   labelFormatter={() => ''}
                 />
-                {hasEwi && (
-                  <Area type="monotone" dataKey="ewi" stroke="var(--text-muted)" strokeWidth={1.4}
-                    strokeDasharray="4 3" fill="none" dot={false} connectNulls />
-                )}
                 {hasIdx && (
                   <Area type="monotone" dataKey="idx" stroke="var(--good)" strokeWidth={1.6}
                     fill="none" dot={false} connectNulls />
@@ -142,11 +135,10 @@ export function OverviewPage() {
                 <Area type="monotone" dataKey="value" stroke="var(--accent)" strokeWidth={2} fill="url(#heroFill)" />
               </AreaChart>
             </ResponsiveContainer>
-            {(hasEwi || hasIdx) && (
+            {hasIdx && (
               <div className="hero__legend">
                 <span><i className="dot dot--accent" />Strategi</span>
-                {hasIdx && <span><i className="dot dot--good" />Index (XACT total-avk.)</span>}
-                {hasEwi && <span><i className="dot dot--muted" />Likaviktat universum (survivorship)</span>}
+                <span><i className="dot dot--good" />Index (XACT total-avk.)</span>
               </div>
             )}
           </div>

@@ -83,16 +83,11 @@ export function BacktestPage() {
     return portfolio.data.map((row) => ({
       date: row.date,
       value: row.portfolio_value,
-      benchmark: row.benchmark_value ?? null,
       omxs30: row.omxs30_value ?? null,
       drawdown: row.drawdown * 100,
     }))
   }, [portfolio.data])
 
-  const hasBenchmark = useMemo(
-    () => chartData.some((d) => d.benchmark != null),
-    [chartData],
-  )
   const hasOmxs30 = useMemo(
     () => chartData.some((d) => d.omxs30 != null),
     [chartData],
@@ -111,18 +106,18 @@ export function BacktestPage() {
 
       <div className="chart-card">
         <h3>
-          Portföljvärde {hasBenchmark && <span className="chart-legend">— blå: strategi · grå: likaviktat universum{hasOmxs30 && ' · gul: OMXS30'}</span>}
-          <InfoButton title="Portföljvärde vs benchmark">
+          Portföljvärde {hasOmxs30 && <span className="chart-legend">— blå: strategi · gul: index (XACT)</span>}
+          <InfoButton title="Portföljvärde vs index">
             <p>
               Blå linje: hur en tänkt portfölj skulle ha utvecklats om man följt modellens
-              köp/sälj-signaler historiskt. Grå linje: ett passivt likaviktat köp-och-behåll av
-              samma universum. Gul linje: OMXS30 (XACT-ETF) – det en bred publik annars köper
-              passivt (kap-viktat, 30 största).
+              köp/sälj-signaler historiskt. Gul linje: det <b>riktiga, ägbara</b> segment-indexet
+              (XACT total-avkastning) – det du annars köper passivt.
             </p>
             <p>
-              Om den blå inte ligger över den grå tillför strategin inget jämfört med att bara äga
-              allt – det är själva testet på om modellen har en edge. Detta är en backtest, inte
-              dina egna pengar.
+              <b>OBS survivorship:</b> backtesten körs på dagens överlevande bolag; döda/av-
+              noterade saknas, så strategins marginal är optimistisk. Det ärliga måttet är
+              holdouten och live-liggaren – inte den här 15-åriga kurvan. Detta är en backtest,
+              inte dina egna pengar.
             </p>
           </InfoButton>
         </h3>
@@ -136,16 +131,9 @@ export function BacktestPage() {
               labelFormatter={fmtDate}
               formatter={(v, name) => [
                 `${Number(v).toLocaleString('sv-SE')} SEK`,
-                name === 'benchmark'
-                  ? 'Likaviktat universum'
-                  : name === 'omxs30'
-                    ? 'OMXS30'
-                    : 'Strategi',
+                name === 'omxs30' ? 'Index (XACT)' : 'Strategi',
               ]}
             />
-            {hasBenchmark && (
-              <Line type="monotone" dataKey="benchmark" stroke="#64748b" dot={false} strokeWidth={1.5} strokeDasharray="4 4" />
-            )}
             {hasOmxs30 && (
               <Line type="monotone" dataKey="omxs30" stroke="#f59e0b" dot={false} strokeWidth={1.5} strokeDasharray="2 3" />
             )}
@@ -177,43 +165,35 @@ export function BacktestPage() {
         </ResponsiveContainer>
       </div>
 
-      {stats.data.benchmark && (
+      {stats.data.index_benchmark && (
         <div className="stats-block">
           <h3>
             Strategi vs index
-            <InfoButton title="Strategi vs index (alfa/beta)">
+            <InfoButton title="Strategi vs riktigt index">
               <p>
-                Jämför strategin mot ett passivt likaviktat köp-och-behåll av samma universum.
-                Alfa = strategins årsavkastning minus indexets. Positiv alfa = strategin tillför
-                värde; negativ = du hade tjänat mer på att bara äga allt.
+                Jämför strategin mot det <b>riktiga, ägbara</b> segment-indexet (XACT total-
+                avkastning){stats.data.index_benchmark.window ? ` över ${stats.data.index_benchmark.window}` : ''}.
+                Skillnaden = strategins CAGR minus indexets. Positivt = strategin slog en
+                indexfond; negativt = du hade tjänat mer på att bara köpa indexet.
               </p>
               <p>
-                Beta = hur mycket strategin följer marknaden. Eftersom strategin är long-only bär
-                den marknadsrisk – en beta nära 1 betyder att den i stort sett rör sig med index.
+                <b>OBS survivorship:</b> backtesten körs på dagens överlevande bolag; döda/av-
+                noterade saknas, så marginalen är optimistisk. Det ärliga måttet är holdouten och
+                live-liggaren, inte den här kurvan.
               </p>
             </InfoButton>
           </h3>
           <div className="stat-grid">
             <StatCard
-              label="Alfa (vs index)"
-              value={`${stats.data.benchmark.alpha_cagr >= 0 ? '+' : ''}${(stats.data.benchmark.alpha_cagr * 100).toFixed(1)}%`}
-              tone={stats.data.benchmark.alpha_cagr >= 0 ? 'good' : 'bad'}
-              info="Strategins CAGR minus indexets CAGR. Detta är kärnfrågan: tillför modellen något jämfört med att passivt äga hela universumet? Negativt = nej."
-            />
-            <StatCard
-              label="Beta (marknad)"
-              value={Number.isFinite(stats.data.benchmark.beta) ? stats.data.benchmark.beta.toFixed(2) : '–'}
-              info="Marknadskänslighet. ~1 = rör sig med index, <1 = mindre svängigt än marknaden, >1 = mer. Long-only momentum har typiskt positiv beta och bär alltså marknadsrisk."
+              label="Vs index (CAGR/år)"
+              value={`${stats.data.index_benchmark.alpha_cagr >= 0 ? '+' : ''}${(stats.data.index_benchmark.alpha_cagr * 100).toFixed(1)}%`}
+              tone={stats.data.index_benchmark.alpha_cagr >= 0 ? 'good' : 'bad'}
+              info="Strategins CAGR minus det riktiga indexets CAGR, över det gemensamma fönstret. Optimistiskt pga survivorship – lita på holdout + live."
             />
             <StatCard
               label="Index CAGR"
-              value={stats.data.benchmark.overall.CAGR}
-              info={`Årlig avkastning för jämförelsen: ${stats.data.benchmark.label}.`}
-            />
-            <StatCard
-              label="Index Sharpe"
-              value={stats.data.benchmark.overall.Sharpe}
-              info="Indexets riskjusterade avkastning – jämför med strategins Sharpe ovan."
+              value={stats.data.index_benchmark.CAGR}
+              info={`Årlig avkastning för ${stats.data.index_benchmark.label} (ägbar total-avkastnings-ETF).`}
             />
           </div>
         </div>
