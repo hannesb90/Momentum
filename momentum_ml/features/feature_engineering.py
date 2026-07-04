@@ -108,6 +108,18 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     feat["ret_skew_13w"]  = wr.rolling(13).skew()
     feat["ret_kurt_13w"]  = wr.rolling(13).kurt()
 
+    # ── Edge-tillägg: reversal + vol-skalat momentum ─────────────────────────
+    # 1-veckas reversal: veckoavkastning har NEGATIV autokorrelation på 1v-horisont
+    # (kortsiktig rekyl efter en spik). Låter modellen lära sig "stark trend + svag
+    # senaste vecka = bättre/billigare entry". Används också som råvara till
+    # residual-momentum i add_cross_sectional.
+    feat["ret_1w"] = wr
+    # Vol-skalat (t-statistik-) momentum: avkastning PER ENHET RISK är en starkare
+    # tvärsnitts-rankningssignal än rå avkastning (jämför äpplen med äpplen mellan
+    # lugna large-caps och stökiga small-caps). 26v-momentum delat på annualiserad
+    # 26v-vol – en dimensionslös t-stat-liknande kvot.
+    feat["mom_tstat_26w"] = (c / c.shift(26) - 1) / (wr.rolling(26).std() * np.sqrt(52) + 1e-9)
+
     # ── 2. Trend (EMA-kors, ADX) ─────────────────────────────────────────────
     for fast, slow in config.EMA_PAIRS:
         ema_f = _ema(c, fast)
@@ -217,6 +229,27 @@ def add_cross_sectional(all_features: Dict[str, pd.DataFrame]) -> Dict[str, pd.D
     dvol_rank = dvol.rank(axis=1, pct=True)   # 0=tunnast, 1=mest likvid i universumet just det datumet
     rank_13   = roc_13.rank(axis=1, pct=True) # percentilrank på 13v-momentum, per datum
 
+    # ── Residual-momentum (Blitz-Huij-Martens) ───────────────────────────────
+    # Rå momentum bär stor marknads-/beta-exponering: högmomentum-korgen är ofta
+    # bara "hög beta i en uppgång", vilket kraschar hårt i sättningar (momentum-
+    # crashes). Residual-momentum tar bort marknadsdelen: regressera varje akties
+    # veckoavkastning mot marknaden (universums-medel) via rullande 52v-beta, och
+    # ranka momentum på RESIDUALEN. Ger en jämnare, mindre crash-benägen signal.
+    # Allt kausalt: beta och residual-summan använder bara data t.o.m. datum t,
+    # och momentum-fönstret hoppar över senaste 4v (shift(4)) som vanligt momentum.
+    rets = pd.DataFrame({t: f["ret_1w"] for t, f in all_features.items()})
+    mkt  = rets.mean(axis=1)                                  # likaviktad marknadsproxy
+    mkt_var = mkt.rolling(52).var()
+    resid_mom = {}
+    for ticker in all_features:
+        r = rets[ticker]
+        beta = r.rolling(52).cov(mkt) / (mkt_var + 1e-9)
+        resid = r - beta * mkt                                # marknads-neutraliserad avkastning
+        # 48v residual-momentum (hoppar senaste 4v), skalat på residualens vol
+        num = resid.shift(4).rolling(48).sum()
+        den = resid.rolling(52).std() * np.sqrt(52) + 1e-9
+        resid_mom[ticker] = num / den
+
     for ticker, feat in all_features.items():
         feat["rs_4w"]   = feat["roc_4w"]  - universe_mean_4
         feat["rs_13w"]  = feat["roc_13w"] - roc_13.mean(axis=1)
@@ -228,6 +261,7 @@ def add_cross_sectional(all_features: Dict[str, pd.DataFrame]) -> Dict[str, pd.D
         # analog till sektorns "Kapital in"). Positivt = klättrar i universumet,
         # dvs. relativ styrka tilltar – ofta ett tidigt rotations-tecken.
         feat["rank_change_4w"] = rank_13[ticker] - rank_13[ticker].shift(4)
+        feat["resid_mom"] = resid_mom[ticker].reindex(feat.index)
 
     # ── Tvärsnitts-target (relativ rangordning) ──────────────────────────────
     # Sätt klassificerings-targetet RELATIVT: positiv klass = aktier vars
@@ -343,6 +377,7 @@ FEATURE_COLS = [
     *[f"roc_{w}w" for w in config.MOMENTUM_WINDOWS],
     "mom_12_1",
     "ret_skew_13w", "ret_kurt_13w",
+    "ret_1w", "mom_tstat_26w",
     # Trend
     *[f"ema_cross_{f}_{s}" for f, s in config.EMA_PAIRS],
     *[f"ema_slope_{f}w" for f, _ in config.EMA_PAIRS],
@@ -359,7 +394,7 @@ FEATURE_COLS = [
     "donchian_pos", "breakout_nw", "roc_accel_4w", "pullback",
     # Cross-sectional
     "rs_4w", "rs_13w", "rs_26w", "rank_4w", "rank_26w", "liquidity_rank",
-    "rank_change_4w",
+    "rank_change_4w", "resid_mom",
     # Klassificering (ordinal-kodad, fast lista i config.py)
     "sector_code", "cap_tier_code",
 ]
