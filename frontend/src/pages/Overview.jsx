@@ -26,10 +26,14 @@ export function OverviewPage() {
   const series = useMemo(() => {
     if (!portfolio.data) return []
     return portfolio.data.map((r) => ({
-      date: r.date, value: r.portfolio_value, index: r.benchmark_value,
+      date: r.date,
+      value: r.portfolio_value,
+      ewi: r.benchmark_value,      // likaviktat universum-index (full historik, survivorship-biased)
+      idx: r.omxs30_value,         // riktigt segment-index (XACT total-avk., börjar ~2017)
     }))
   }, [portfolio.data])
-  const hasIndex = series.some((r) => r.index != null)
+  const hasEwi = series.some((r) => r.ewi != null)
+  const hasIdx = series.some((r) => r.idx != null)
 
   if (stats.loading || portfolio.loading) return <Loading />
   if (stats.error) return <ErrorBlock error={stats.error} />
@@ -121,20 +125,28 @@ export function OverviewPage() {
                 <YAxis domain={['dataMin', 'dataMax']} hide />
                 <Tooltip
                   contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
-                  formatter={(v, name) => [fmtSek(v), name === 'index' ? 'Index' : 'Strategi']}
+                  formatter={(v, name) => [
+                    fmtSek(v),
+                    name === 'idx' ? 'Index (XACT)' : name === 'ewi' ? 'Likaviktat' : 'Strategi',
+                  ]}
                   labelFormatter={() => ''}
                 />
-                {hasIndex && (
-                  <Area type="monotone" dataKey="index" stroke="var(--text-muted)" strokeWidth={1.5}
-                    strokeDasharray="4 3" fill="none" dot={false} />
+                {hasEwi && (
+                  <Area type="monotone" dataKey="ewi" stroke="var(--text-muted)" strokeWidth={1.4}
+                    strokeDasharray="4 3" fill="none" dot={false} connectNulls />
+                )}
+                {hasIdx && (
+                  <Area type="monotone" dataKey="idx" stroke="var(--good)" strokeWidth={1.6}
+                    fill="none" dot={false} connectNulls />
                 )}
                 <Area type="monotone" dataKey="value" stroke="var(--accent)" strokeWidth={2} fill="url(#heroFill)" />
               </AreaChart>
             </ResponsiveContainer>
-            {hasIndex && (
+            {(hasEwi || hasIdx) && (
               <div className="hero__legend">
-                <span><i className="dot dot--accent" />Strategins portfölj</span>
-                <span><i className="dot dot--muted" />Likaviktat index (survivorship-biased)</span>
+                <span><i className="dot dot--accent" />Strategi</span>
+                {hasIdx && <span><i className="dot dot--good" />Index (XACT total-avk.)</span>}
+                {hasEwi && <span><i className="dot dot--muted" />Likaviktat universum (survivorship)</span>}
               </div>
             )}
           </div>

@@ -664,6 +664,9 @@ h2 {
   color: var(--text-muted);
   border-top-style: dashed;
 }
+.hero__legend .dot--good {
+  color: var(--good);
+}
 
 .myportf {
   margin: 4px 0 20px;
