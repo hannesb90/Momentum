@@ -199,7 +199,17 @@ class MomentumBacktester:
         rets = vals.pct_change().dropna()
         if len(rets) < 2 or rets.std() == 0:
             return 1.0
-        realized = float(rets.std()) * math.sqrt(52)
+        if getattr(config, "VOL_TARGET_EWMA", False):
+            # RiskMetrics EWMA-vol: väger senaste avkastningen tyngst. Kausal –
+            # bara realiserade portföljavkastningar t.o.m. nu.
+            lam = float(getattr(config, "VOL_TARGET_EWMA_LAMBDA", 0.94))
+            ewma_var = rets.ewm(alpha=1.0 - lam, adjust=False).var(bias=True).iloc[-1]
+            weekly_std = float(np.sqrt(max(ewma_var, 0.0)))
+        else:
+            weekly_std = float(rets.std())
+        if weekly_std <= 0:
+            return 1.0
+        realized = weekly_std * math.sqrt(52)
         if realized <= 0:
             return 1.0
         target = float(getattr(config, "VOL_TARGET_ANNUAL", 0.15))
@@ -385,8 +395,9 @@ class MomentumBacktester:
             current_value  = current_shares * price
             diff_value     = target_value - current_value
 
-            if abs(diff_value) < portfolio_value * 0.005:
-                continue   # under 0.5% – rebalansera ej
+            band = float(getattr(config, "REBALANCE_BUFFER_PCT", 0.005))
+            if abs(diff_value) < portfolio_value * band:
+                continue   # under bandet – rebalansera ej (låg omsättning)
 
             diff_value = self._liquidity_cap(ticker, date, diff_value)
             cost_rate = self._execution_cost_rate(ticker, date, diff_value)

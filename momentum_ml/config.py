@@ -93,6 +93,13 @@ EXIT_SMA_WEEKS     = 20
 REBALANCE_MODE     = "calendar"
 KEEP_BAND_MULT     = 2.0    # håll ett innehav så länge det är inom topp 2N (hysteres)
 
+# No-trade-band (rebalans-buffert): vid schemalagd rebalans handlas en position
+# bara om måldiffen överstiger denna andel av portföljvärdet. Ett bredare band
+# = färre små justeringar = lägre omsättning/courtage, till priset av något
+# lösare viktning. 0.005 (0,5%) är den historiska baslinjen. Höj till t.ex.
+# 0.02–0.03 på Pi:n och A/B-testa mot holdouten om omsättningen tynger.
+REBALANCE_BUFFER_PCT = 0.005
+
 # Delisting-detektor: om en ticker saknar ny kurs i mer än så här många veckor
 # (relativt universumets senaste datum) tolkas bolaget som avnoterat och tas bort
 # – ska inte visas som aktuell signal eller störa beräkningarna. Se
@@ -261,6 +268,13 @@ VOL_TARGET_ENABLED        = True
 VOL_TARGET_ANNUAL         = 0.10   # mål: 10% annualiserad portföljvol
 VOL_TARGET_LOOKBACK_WEEKS = 13     # fönster för realiserad vol
 VOL_TARGET_MAX_LEVERAGE   = 1.0    # tak (1.0 = ingen hävstång, bara de-risking)
+# EWMA-skattning av realiserad vol (RiskMetrics): väg senaste veckorna tyngre än
+# ett platt fönster. Reagerar snabbare när vol skjuter i höjden (de-riskar tidigare
+# inför en sättning) och släpper greppet snabbare efteråt. lambda≈0.94 ger en
+# effektiv halveringstid på ~11 veckor. Default av → platt rullande std (baslinjen);
+# slå på och A/B-testa mot holdouten på Pi:n.
+VOL_TARGET_EWMA           = False
+VOL_TARGET_EWMA_LAMBDA    = 0.94
 
 # ── Backtest-kostnader ────────────────────────────────────────────────────────
 COMMISSION         = 0.001     # 0.1% per trade
