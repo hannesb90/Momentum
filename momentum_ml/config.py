@@ -525,6 +525,29 @@ ETF_ROT_ABS_MIN     = 0.0          # håll bara om ETF:ens egen 52v-avk > detta,
 ETF_ROT_DEFENSIVE   = ""           # defensivt ben när trend saknas ("" = kontanter/risk-fritt)
 ETF_ROT_REBAL_WEEKS = 4            # ombalanseringsintervall (veckor)
 ETF_ROT_FLOW_LOOKBACK = 4          # veckor för rank-change (flödesproxy)
+
+# ── ETF-rotation: kostnader + edge-knoppar (env-styrbara, default = baslinje) ──
+# KOSTNAD: backtesten var tidigare kostnadsfri – varje innehavsbyte är gratis och
+# hög omsättning ser bättre ut än den är (samma fälla som fällde aktiemodellens
+# horisont-ensemble: brutto-vinst, netto-förlust). Enkelriktad kostnad per handlad
+# krona: halva spreaden + courtage. EU-sektor/tema-UCITS: ~10–25 bp spread.
+ETF_ROT_COST_ONEWAY = float(_os.environ.get("MOMENTUM_ETF_COST_ONEWAY", 0.0015))
+# VOL-JUSTERAD RANK: ranka på momentum/vol i stället för rå avkastning. I ett
+# blandat universum (lågvol World vs högvol uran/semis) väljer rå rank systematiskt
+# de stökigaste temana nära deras toppar; per-enhet-risk jämför rättvist.
+ETF_ROT_VOL_ADJ     = _os.environ.get("MOMENTUM_ETF_VOL_ADJ", "0") not in ("0", "", "false", "False")
+# HYSTERES i absolut-filtret: NYA innehav kräver 52v-avk > ABS_ENTER; BEFINTLIGA
+# säljs först under ABS_EXIT. Utan gapet flippar en ETF nära 0% in/ut varje
+# ombalansering (churn utan information). None = av (enter=exit=ABS_MIN).
+ETF_ROT_ABS_ENTER   = float(_os.environ.get("MOMENTUM_ETF_ABS_ENTER", "nan"))
+ETF_ROT_ABS_EXIT    = float(_os.environ.get("MOMENTUM_ETF_ABS_EXIT", "nan"))
+# KEEP-BAND (rank-hysteres): behåll ett innehav tills det faller ur topp
+# K×KEEP_MULT (samma idé som aktiemodellens KEEP_BAND_MULT). 1.0 = av (strikt topp-K).
+ETF_ROT_KEEP_MULT   = float(_os.environ.get("MOMENTUM_ETF_KEEP_MULT", 1.0))
+# KORRELATIONSSPÄRR: hoppa över en kandidat vars 52v-korrelation mot ett redan
+# valt innehav överstiger taket (topp-3 = tre olika bet, inte samma bet ×3).
+# 1.0 = av.
+ETF_ROT_CORR_MAX    = float(_os.environ.get("MOMENTUM_ETF_CORR_MAX", 1.0))
 # Rätt neutral måttstock för ett globalt universum = hela världen (MSCI ACWI).
 # US-referenser visas också. OMX var fel (svenskt index mot global rotation).
 ETF_ROT_BENCHMARK   = "IUSQ.DE"           # iShares MSCI ACWI (global)
