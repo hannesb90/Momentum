@@ -485,19 +485,37 @@ def _unified_rank(rows, top_n=3) -> list:
 
 def _takeprofit(rows) -> list:
     """
-    SÄLJVAKTEN (enda sälj-regeln i köp-och-behåll): flagga innehav som avkastat
-    ≥ TAKEPROFIT_GAP_PP MER än sitt segment-index över TAKEPROFIT_WEEKS veckor.
-    'Upp 50% på kort tid utan att index hängt med' = parabolisk ifrånsprungenhet –
-    ta hem vinsten (house money: sälj vinsten, behåll insatsen), rid inte gratisluft.
-    Data: prices.csv + portfolio.csv (omxs30_value = segment-index) per segment.
+    SÄLJVAKTEN v2 – en TRAPPA, inte en ensam tröskel. Styrka i sig är INTE
+    säljskäl (momentum-vinnare fortsätter oftare än de rekylerar – att sälja rå
+    styrka är att kapa sina bästa compounders). Det man säljer på är styrka som
+    TAPPAR STÖD. Gap mot index ARMERAR vakten; bekräftelser eskalerar rådet:
+
+      nivå 1 'bevaka'         gap ≥ TAKEPROFIT_GAP_PP över TAKEPROFIT_WEEKS.
+      nivå 2 'ta hem vinsten' armerad + minst en bekräftelse:
+                                · melt-up: ≥ TAKEPROFIT_ACCEL_SHARE av hela
+                                  uppgången kom de senaste 4 veckorna
+                                · värdering: zon 'dyr' i Kvalitet-vyn
+                                · distribution: CMF 13v < 0 (flöden UT trots
+                                  stigande kurs – de stora kliver av)
+                                · modellen har släppt bolaget (pred_signal 0)
+                              → house money: sälj vinsten, behåll insatsen.
+      nivå 3 'sälj'           armerad + TRENDBROTT (kurs < SMA20): vinsten
+                              avdunstar – hela positionen ifrågasätts.
+
+    Tröskeln kalibreras empiriskt med tune_takeprofit.py (event-studie på hela
+    universumet) – 0.50 är startvärde, inte facit.
+    Data: prices.csv + portfolio.csv (index) + flow_snapshot.csv per segment,
+    samt kvalitetszon/modellsignal ur _load_scores. Allt billiga CSV-läsningar.
     """
     gap_min = float(getattr(config, "TAKEPROFIT_GAP_PP", 0.50))
     weeks = int(getattr(config, "TAKEPROFIT_WEEKS", 26))
+    accel_share = float(getattr(config, "TAKEPROFIT_ACCEL_SHARE", 0.5))
     tickers = {(r.get("ticker") or _resolve_ticker(r["name"]) or "").upper(): r
                for r in rows}
     tickers.pop("", None)
     if not tickers:
         return []
+    scores = _load_scores()
     flags, seen = [], set()
     for seg in config.SEGMENTS.values():
         rd = Path(seg.get("results_dir", ""))
@@ -512,6 +530,11 @@ def _takeprofit(rows) -> list:
                     closes.setdefault(tk, []).append(_num(r.get("close")))
             idx = [v for v in (_num(r.get("omxs30_value"))
                                for r in csv.DictReader(open(bb, encoding="utf-8"))) if v]
+            flows = {}
+            fp = rd / "flow_snapshot.csv"
+            if fp.exists():
+                for r in csv.DictReader(open(fp, encoding="utf-8")):
+                    flows[(r.get("ticker") or "").upper()] = r
         except Exception:  # noqa: BLE001
             continue
         if len(idx) <= weeks:
@@ -523,17 +546,52 @@ def _takeprofit(rows) -> list:
             seen.add(tk)
             h_ret = series[-1] / series[-1 - weeks] - 1
             gap = h_ret - idx_ret
-            if gap >= gap_min:
-                r = tickers[tk]
-                flags.append({
-                    "name": r["name"], "ticker": tk,
-                    "ret": round(h_ret, 4), "index_ret": round(idx_ret, 4), "gap": round(gap, 4),
-                    "weeks": weeks,
-                    "advice": ("Kraftigt ifrånsprunget index på kort tid. Överväg att sälja "
-                               "VINSTEN och behålla insatsen (house money) – behåll exponeringen, "
-                               "ta bort gratisluften."),
-                })
-    flags.sort(key=lambda f: -f["gap"])
+            if gap < gap_min:
+                continue
+
+            reasons, level = [], 1
+            # melt-up: hur stor del av 26v-uppgången kom de senaste 4v?
+            if h_ret > 0.10 and len(series) > 5 and series[-5]:
+                r4 = series[-1] / series[-5] - 1
+                share = r4 / h_ret
+                if share >= accel_share:
+                    reasons.append(f"melt-up: {share:.0%} av uppgången på 4v")
+            sc = scores.get(tk, {})
+            if sc.get("zone") == "dyr":
+                reasons.append("värdering: zon 'dyr'")
+            fl = flows.get(tk, {})
+            try:
+                cmf = float(fl.get("cmf_13w"))   # _num duger inte: den slänger negativa tal
+            except (TypeError, ValueError):
+                cmf = None
+            if cmf is not None and cmf < 0:
+                reasons.append(f"distribution: CMF {cmf:+.2f} (flöden ut)")
+            if sc.get("pred_signal") in ("0", "0.0"):
+                reasons.append("modellen har släppt bolaget")
+            if reasons:
+                level = 2
+            if str(fl.get("below_sma20")) == "1":
+                reasons.append("TRENDBROTT: kurs under SMA20")
+                level = 3
+
+            action = {1: "bevaka", 2: "ta hem vinsten", 3: "sälj"}[level]
+            hr = tickers[tk]
+            house_kr = None
+            if hr.get("cost") and hr["value"] > hr["cost"]:
+                house_kr = round(hr["value"] - hr["cost"])
+            flags.append({
+                "name": hr["name"], "ticker": tk,
+                "ret": round(h_ret, 4), "index_ret": round(idx_ret, 4), "gap": round(gap, 4),
+                "weeks": weeks, "level": level, "action": action,
+                "reasons": reasons or ["armerad – inga bekräftelser ännu, bara bevaka"],
+                "house_money_kr": house_kr,
+                "advice": {
+                    1: "Kraftigt före index men trend/flöden/värdering håller ännu – rid vidare, bevaka.",
+                    2: "Före index MED varningssignal. House money: sälj vinsten, behåll insatsen.",
+                    3: "Före index och trenden bruten – vinsten avdunstar. Överväg att sälja hela positionen.",
+                }[level],
+            })
+    flags.sort(key=lambda f: (-f["level"], -f["gap"]))
     return flags
 
 

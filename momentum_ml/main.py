@@ -485,6 +485,37 @@ def main():
     except Exception as e:
         print(f"  [WARN] Kunde inte spara prishistorik (icke-kritiskt): {e}")
 
+    # Flödes-/trend-snapshot per ticker – säljvaktens bekräftelsesignaler:
+    # CMF 13v (ackumulation/distribution: säljer de stora in i uppgången?),
+    # relativ volym (4v vs 26v) och trendbrott (kurs < SMA20). Läses av
+    # portfolio._takeprofit; billig CSV så API:t slipper röra OHLCV-cachen.
+    try:
+        need = {"High", "Low", "Close", "Volume"}
+        snap = []
+        for ticker, df in data.items():
+            if df is None or df.empty or not need.issubset(df.columns):
+                continue
+            d = df.dropna(subset=list(need)).tail(30)
+            if len(d) < 20:
+                continue
+            hl = (d["High"] - d["Low"]).replace(0, float("nan"))
+            mfm = ((d["Close"] - d["Low"]) - (d["High"] - d["Close"])) / hl
+            mfv = mfm.fillna(0.0) * d["Volume"]
+            v13 = float(d["Volume"].tail(13).sum()) or 1.0
+            sma20 = float(d["Close"].rolling(20).mean().iloc[-1])
+            snap.append({
+                "ticker": ticker,
+                "cmf_13w": round(float(mfv.tail(13).sum()) / v13, 3),
+                "relvol": round(float(d["Volume"].tail(4).mean())
+                                / (float(d["Volume"].mean()) or 1.0), 2),
+                "below_sma20": int(float(d["Close"].iloc[-1]) < sma20),
+            })
+        if snap:
+            pd.DataFrame(snap).to_csv(f"{config.RESULTS_DIR}/flow_snapshot.csv", index=False)
+            print(f"  Flödes-snapshot sparad: {config.RESULTS_DIR}/flow_snapshot.csv ({len(snap)} tickers)")
+    except Exception as e:
+        print(f"  [WARN] Flödes-snapshot misslyckades (icke-kritiskt): {e}")
+
     # Visa aktuella signaler (senaste veckan)
     latest = signals_df.groupby("ticker").last().reset_index()
     latest = latest.sort_values("prob_up", ascending=False)
