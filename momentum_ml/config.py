@@ -522,7 +522,13 @@ PORTFOLIO_TARGET = {"broad": 0.60, "sweden": 0.15, "theme": 0.20, "leverage": 0.
 # alla varianter OOS och aktiemodellens holdout). Beloppet är bara default för
 # vyn; frontend kan skicka valfritt belopp.
 PORTFOLIO_CORE_ETF = ("IUSQ.DE", "iShares MSCI ACWI (hela världen)")
-NEXT_BUY_DEFAULT_AMOUNT = 5000
+NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
+# Säljvakten – ENDA sälj-regeln i köp-och-behåll-disciplinen: flagga innehav vars
+# avkastning över TAKEPROFIT_WEEKS överstiger segment-indexets med ≥ GAP_PP
+# procentenheter ("upp 50% på kort tid utan att index hängt med"). Rådet är
+# house money: sälj vinsten, behåll insatsen – exponeringen kvar, gratisluften bort.
+TAKEPROFIT_GAP_PP = 0.50
+TAKEPROFIT_WEEKS  = 26
 # Föreslagna breda ETF:er för kärnan (nytt kapital riktas hit när 'broad' är låg):
 PORTFOLIO_BROAD_ETFS = {"World (MSCI)": "EUNL.DE", "USA (S&P 500)": "SXR8.DE",
                         "Emerging Markets": "IS3N.DE", "Europa": "EXSA.DE"}
