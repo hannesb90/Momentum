@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ResponsiveContainer, AreaChart, Area, YAxis, Tooltip } from 'recharts'
 import { api } from '../api'
@@ -16,6 +16,73 @@ const NEXTBUY_AMOUNTS = [
   { value: '20000', label: '20 000 kr' },
 ]
 
+const BUCKET_LABEL = { broad: 'Bred kärna', sweden: 'Sverige', theme: 'Tematiskt' }
+
+function AllocationEditor({ initial, onSaved }) {
+  const [vals, setVals] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (initial && !vals) {
+      setVals({
+        broad: Math.round((initial.broad ?? 0.6) * 100),
+        sweden: Math.round((initial.sweden ?? 0.15) * 100),
+        theme: Math.round((initial.theme ?? 0.2) * 100),
+      })
+    }
+  }, [initial, vals])
+
+  if (!vals) return null
+  const sum = vals.broad + vals.sweden + vals.theme || 1
+  const pct = (v) => Math.round((v / sum) * 100)
+  const activePct = pct(vals.sweden) + pct(vals.theme)
+
+  const save = async (payload) => {
+    setSaving(true)
+    try {
+      await api.saveTarget(payload)
+      onSaved()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <details className="alloc-editor">
+      <summary>Justera fördelning (nu: {pct(vals.broad)}% kärna · {activePct}% aktivt)</summary>
+      <div style={{ padding: '8px 2px' }}>
+        {['broad', 'sweden', 'theme'].map((k) => (
+          <label key={k} style={{ display: 'block', marginBottom: 10 }}>
+            <span style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85em' }}>
+              <span>{BUCKET_LABEL[k]}</span>
+              <span className={k === 'broad' ? 'pos' : ''}>{pct(vals[k])}%</span>
+            </span>
+            <input
+              type="range" min="0" max="100" step="5" value={vals[k]}
+              onChange={(e) => setVals({ ...vals, [k]: Number(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+          </label>
+        ))}
+        <p className="footnote" style={{ margin: '4px 0 10px' }}>
+          Evidensen säger att den breda kärnan är svår att slå – dra inte det aktiva för högt.
+          Hävstång ingår aldrig (ruinrisk). Värdena normaliseras till 100%.
+        </p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn--primary" disabled={saving}
+            onClick={() => save({ broad: vals.broad, sweden: vals.sweden, theme: vals.theme })}>
+            {saving ? 'Sparar…' : 'Spara fördelning'}
+          </button>
+          <button className="btn" disabled={saving}
+            onClick={() => { setVals({ broad: 60, sweden: 15, theme: 20 }); save({ broad: 60, sweden: 15, theme: 20 }) }}>
+            Återställ (60/15/20)
+          </button>
+        </div>
+      </div>
+    </details>
+  )
+}
+
 export function OverviewPage() {
   const stats = useApiData(() => api.stats(), [])
   const portfolio = useApiData(() => api.portfolio(), [])
@@ -23,7 +90,9 @@ export function OverviewPage() {
   const sectors = useApiData(() => api.sectorMomentum(), [])
   const myLog = useApiData(() => api.portfolioLog(), [])
   const [buyAmount, setBuyAmount] = useState('10000')
-  const nextBuy = useApiData(() => api.nextBuy(buyAmount), [buyAmount])
+  const [reloadKey, setReloadKey] = useState(0)
+  const nextBuy = useApiData(() => api.nextBuy(buyAmount), [buyAmount, reloadKey])
+  const targetData = useApiData(() => api.portfolioTarget(), [reloadKey])
 
   const mySeries = useMemo(
     () => (myLog.data ?? []).map((r) => ({ date: r.date, value: r.value })),
@@ -111,6 +180,10 @@ export function OverviewPage() {
       </div>
       {nextBuy.data?.note && <p className="footnote">{nextBuy.data.note}</p>}
 
+      {targetData.data?.target && (
+        <AllocationEditor initial={targetData.data.target} onSaved={() => setReloadKey((k) => k + 1)} />
+      )}
+
       {/* Säljvakten – enda sälj-regeln i köp-och-behåll-disciplinen */}
       {(nextBuy.data?.sell_watch ?? []).length > 0 && (
         <>
@@ -157,6 +230,11 @@ export function OverviewPage() {
               </div>
             ))}
           </div>
+          <p className="footnote">
+            {nextBuy.data?.isk
+              ? 'Portföljen antas ligga på ISK (under 300 000 kr) – att ta hem vinsten är skattefritt, bara courtage. House money är därför billigt att följa.'
+              : 'Portföljen är över ISK-gränsen (300 000 kr) – reavinstskatt tillkommer vid försäljning, så väg vinsten mot skatten innan du säljer.'}
+          </p>
         </>
       )}
 

@@ -99,6 +99,53 @@ def load_holdings() -> list:
     return rows
 
 
+def target_path() -> Path:
+    return Path(config.anchor(getattr(config, "PORTFOLIO_TARGET_FILE", "cache/portfolio_target.json")))
+
+
+def load_target() -> dict:
+    """Användarens egen målfördelning om sparad, annars config-defaulten.
+    Alltid normaliserad (broad+sweden+theme=1, leverage=0)."""
+    base = dict(config.PORTFOLIO_TARGET)
+    p = target_path()
+    if p.exists():
+        try:
+            saved = json.loads(p.read_text(encoding="utf-8"))
+            for b in ("broad", "sweden", "theme"):
+                if b in saved:
+                    base[b] = saved[b]
+        except Exception:  # noqa: BLE001 – trasig fil → default
+            pass
+    return _normalize_target(base)
+
+
+def _normalize_target(d: dict) -> dict:
+    """Behåll broad/sweden/theme, klamp [0,1], normalisera till summa 1. leverage=0
+    (evidens: hävstång ger decay/ruinrisk – aldrig ett nytt-kapital-mål)."""
+    vals = {}
+    for b in ("broad", "sweden", "theme"):
+        try:
+            vals[b] = max(0.0, min(1.0, float(d.get(b, 0.0))))
+        except (TypeError, ValueError):
+            vals[b] = 0.0
+    s = sum(vals.values())
+    if s <= 0:
+        vals = {"broad": 0.60, "sweden": 0.15, "theme": 0.20}
+        s = 1.0
+    out = {b: round(v / s, 4) for b, v in vals.items()}
+    out["leverage"] = 0.0
+    return out
+
+
+def save_target(d: dict) -> dict:
+    """Persistera användarens målfördelning (normaliserad). Returnerar det sparade."""
+    norm = _normalize_target(d)
+    p = target_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(norm, ensure_ascii=False), encoding="utf-8")
+    return norm
+
+
 def save_holdings(rows) -> None:
     p = holdings_path()
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -322,10 +369,11 @@ def compute(rows, amount=None) -> dict:
         if big and big["value"] / total > 0.12:
             warnings.append(f"Störst enskilt innehav: {big['name']} ({big['value']/total:.0%}).")
 
+    tgt = load_target()
     out = {"total": round(total, 0),
            "buckets": {b: (round(buckets[b] / total, 4) if total else 0.0) for b in BUCKETS},
            "buckets_sek": {b: round(buckets[b], 0) for b in BUCKETS},
-           "target": config.PORTFOLIO_TARGET,
+           "target": tgt,
            "warnings": warnings,
            "candidates": _candidates(),
            "housemoney": _house_money(rows),
@@ -335,7 +383,7 @@ def compute(rows, amount=None) -> dict:
 
     if amount:
         after = total + amount
-        gaps = {b: max(0.0, config.PORTFOLIO_TARGET.get(b, 0.0) * after - buckets[b]) for b in BUCKETS}
+        gaps = {b: max(0.0, tgt.get(b, 0.0) * after - buckets[b]) for b in BUCKETS}
         gsum = sum(gaps.values()) or 1.0
         plan = {b: round(amount * g / gsum) for b, g in gaps.items() if g > 0}
         broad_etfs = {}
@@ -515,6 +563,12 @@ def _takeprofit(rows) -> list:
     tickers.pop("", None)
     if not tickers:
         return []
+    # ISK-antagande: under gränsen är en försäljning skattefri (bara courtage) →
+    # house-money-rådet är billigt att följa. Över gränsen tillkommer reavinstskatt.
+    total = sum(r.get("value", 0.0) for r in rows)
+    is_isk = total <= float(getattr(config, "PORTFOLIO_ISK_LIMIT", 300000))
+    tax_note = (" På ISK är detta skattefritt – bara courtage." if is_isk
+                else " OBS: vanlig depå – reavinstskatt tillkommer, så väg vinsten mot skatten.")
     scores = _load_scores()
     flags, seen = [], set()
     for seg in config.SEGMENTS.values():
@@ -587,8 +641,8 @@ def _takeprofit(rows) -> list:
                 "house_money_kr": house_kr,
                 "advice": {
                     1: "Kraftigt före index men trend/flöden/värdering håller ännu – rid vidare, bevaka.",
-                    2: "Före index MED varningssignal. House money: sälj vinsten, behåll insatsen.",
-                    3: "Före index och trenden bruten – vinsten avdunstar. Överväg att sälja hela positionen.",
+                    2: "Före index MED varningssignal. House money: sälj vinsten, behåll insatsen." + tax_note,
+                    3: "Före index och trenden bruten – vinsten avdunstar. Överväg att sälja hela positionen." + tax_note,
                 }[level],
             })
     flags.sort(key=lambda f: (-f["level"], -f["gap"]))
@@ -610,10 +664,11 @@ def next_buy(rows, amount=None) -> dict:
     stället – planen blir alltid ett komplett "så här placeras hela beloppet".
     """
     amount = float(amount or getattr(config, "NEXT_BUY_DEFAULT_AMOUNT", 5000))
+    tgt = load_target()
     buckets = {b: 0.0 for b in BUCKETS}
     for r in rows:
         buckets[r["bucket"] if r["bucket"] in buckets else "theme"] += r["value"]
-    plan = _fill_split(buckets, amount, config.PORTFOLIO_TARGET)
+    plan = _fill_split(buckets, amount, tgt)
 
     core_tk, core_name = getattr(config, "PORTFOLIO_CORE_ETF",
                                  ("IUSQ.DE", "iShares MSCI ACWI (hela världen)"))
@@ -685,9 +740,10 @@ def next_buy(rows, amount=None) -> dict:
         "rows": out_rows,
         "best": (out_rows[0] if out_rows else None),   # DET enskilt bästa köpet just nu
         "sell_watch": _takeprofit(rows),               # säljvakten (enda sälj-regeln)
+        "isk": sum(r.get("value", 0.0) for r in rows) <= float(getattr(config, "PORTFOLIO_ISK_LIMIT", 300000)),
         "skipped": skipped,
         "buckets": {b: (round(buckets[b] / total, 4) if total else 0.0) for b in BUCKETS},
-        "target": config.PORTFOLIO_TARGET,
+        "target": tgt,
         "has_holdings": bool(rows),
         "note": ("Köp och behåll: nya kronor fyller mot målet – ingen försäljning, ingen timing. "
                  "Enda sälj-regeln är säljvakten: innehav som rusat kraftigt ifrån index på kort tid "

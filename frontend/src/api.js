@@ -52,6 +52,8 @@ export const api = {
   holdings: (amount) => getJson(`/holdings${amount ? `?amount=${amount}` : ''}`),
   // Coret: ETT rangordnat svar på "var ska nästa krona in?" (hemvyns huvudkort).
   nextBuy: (amount) => getJson(`/next-buy${amount ? `?amount=${amount}` : ''}`),
+  portfolioTarget: () => getJson('/portfolio-target'),
+  saveTarget: (target) => postJson('/portfolio-target', target),
   saveHoldings: (holdings, amount) => postJson('/holdings', { holdings, amount }),
   exitSignals: () => getJson('/exit-signals'),
   portfolioLog: () => getJson('/portfolio-log'),

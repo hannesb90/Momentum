@@ -257,6 +257,21 @@ def get_next_buy(amount: Optional[float] = None):
     return _clean(pf.next_buy(pf.load_holdings(), amount=amount))
 
 
+@app.get("/api/portfolio-target")
+def get_portfolio_target():
+    """Användarens målfördelning (broad/sweden/theme, normaliserad)."""
+    import portfolio as pf
+    return _clean({"target": pf.load_target(), "default": config.PORTFOLIO_TARGET})
+
+
+@app.post("/api/portfolio-target")
+async def set_portfolio_target(request: Request):
+    """Sparar användarens målfördelning. Body: {broad, sweden, theme} (normaliseras)."""
+    import portfolio as pf
+    body = await request.json()
+    return _clean({"target": pf.save_target(body)})
+
+
 @app.post("/api/holdings")
 async def save_portfolio_holdings(request: Request):
     """Sparar hela innehavslistan (skriver cache/portfolio_holdings.csv) och

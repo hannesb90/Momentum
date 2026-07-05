@@ -517,12 +517,22 @@ PORTFOLIO_HOLDINGS_FILE = "cache/portfolio_holdings.csv"
 # spar). Bygger en ÄKTA personlig utvecklingskurva från och med nu (gitignorerad).
 PORTFOLIO_VALUE_LOG = "cache/portfolio_value_log.csv"
 PORTFOLIO_TARGET = {"broad": 0.60, "sweden": 0.15, "theme": 0.20, "leverage": 0.0}
+# Användarens egen målfördelning (justeras via reglaget i appen) sparas här och
+# åsidosätter default ovan. GITIGNORERAD (personlig, som innehaven). Saknas den
+# används PORTFOLIO_TARGET. leverage hålls alltid 0 (evidens: hävstång = ruinrisk).
+PORTFOLIO_TARGET_FILE = "cache/portfolio_target.json"
 # "Nästa köp"-Coret (hemvyns huvudkort): EN global kärn-ETF som förstahandsval –
 # bredast+billigast vann varje netto-jämförelse vi kört (ACWI slog rotationens
 # alla varianter OOS och aktiemodellens holdout). Beloppet är bara default för
 # vyn; frontend kan skicka valfritt belopp.
 PORTFOLIO_CORE_ETF = ("IUSQ.DE", "iShares MSCI ACWI (hela världen)")
 NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
+# Antagande: portföljer upp till denna nivå ligger på ISK. På ISK utlöser en
+# försäljning INGEN reavinstskatt (bara schablonskatt på hela kontot, oberoende
+# av enskilda affärer) → säljvaktens house-money-råd är i praktiken skattefritt,
+# bara courtage/spread. Under gränsen väger därför "ta hem vinsten" tyngre; över
+# den (vanlig depå/AF) väger "behåll" tyngre pga reavinstskatt vid försäljning.
+PORTFOLIO_ISK_LIMIT = 300000
 # Säljvakten – ENDA sälj-regeln i köp-och-behåll-disciplinen. GAP_PP ARMERAR
 # bara vakten ("upp kraftigt utan att index hängt med"); bekräftelser (melt-up,
 # zon 'dyr', CMF-distribution, modell-släpp, trendbrott) eskalerar rådet i en
