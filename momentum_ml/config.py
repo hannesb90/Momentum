@@ -533,15 +533,19 @@ NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
 # bara courtage/spread. Under gränsen väger därför "ta hem vinsten" tyngre; över
 # den (vanlig depå/AF) väger "behåll" tyngre pga reavinstskatt vid försäljning.
 PORTFOLIO_ISK_LIMIT = 300000
-# Säljvakten – ENDA sälj-regeln i köp-och-behåll-disciplinen. GAP_PP ARMERAR
-# bara vakten ("upp kraftigt utan att index hängt med"); bekräftelser (melt-up,
-# zon 'dyr', CMF-distribution, modell-släpp, trendbrott) eskalerar rådet i en
-# trappa: bevaka → ta hem vinsten (house money) → sälj. Styrka i sig är inte
-# säljskäl – momentum-vinnare fortsätter oftare än de rekylerar.
+# Säljvakten – ENDA sälj-regeln i köp-och-behåll-disciplinen.
+# ARMERAS på DIN faktiska orealiserade vinst (value/cost − 1 ≥ TAKEPROFIT_GAIN),
+# INTE på aktiens marknadsavkastning – annars kunde vakten flagga "ta hem vinsten"
+# på ett innehav du köpt dyrt och står back i. Kräver alltså att inköpspris
+# (cost) är angivet och att du faktiskt är i vinst. Styrka i sig är inte säljskäl
+# (momentum-vinnare fortsätter oftare än de rekylerar) → gainen ARMERAR bara;
+# bekräftelser (melt-up, zon 'dyr', CMF-distribution, modell-släpp, trendbrott)
+# eskalerar rådet: bevaka → ta hem vinsten (house money) → sälj.
 # OBS: 0.50 är startvärde, inte facit – kalibrera med tune_takeprofit.py.
-TAKEPROFIT_GAP_PP      = 0.50
-TAKEPROFIT_WEEKS       = 26
-TAKEPROFIT_ACCEL_SHARE = 0.5   # ≥50% av 26v-uppgången på senaste 4v = melt-up
+TAKEPROFIT_GAIN        = 0.50   # DIN orealiserade vinst som armerar vakten
+TAKEPROFIT_GAP_PP      = 0.50   # bekräftelse: aktien sprungit ≥ så här ifrån index (froth-kontext)
+TAKEPROFIT_WEEKS       = 26     # fönster för marknads-froth-kontexten
+TAKEPROFIT_ACCEL_SHARE = 0.5    # ≥50% av uppgången på senaste 4v = melt-up
 # Föreslagna breda ETF:er för kärnan (nytt kapital riktas hit när 'broad' är låg):
 PORTFOLIO_BROAD_ETFS = {"World (MSCI)": "EUNL.DE", "USA (S&P 500)": "SXR8.DE",
                         "Emerging Markets": "IS3N.DE", "Europa": "EXSA.DE"}
