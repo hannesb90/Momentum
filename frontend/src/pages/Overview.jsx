@@ -179,6 +179,45 @@ export function OverviewPage() {
         <AllocationEditor initial={targetData.data.target} onSaved={() => setReloadKey((k) => k + 1)} />
       )}
 
+      {/* Opportunistiskt köp – taktiskt front-load denna månad (PEAD-disciplin) */}
+      {nextBuy.data?.opportunity && (
+        <details className="alloc-editor" style={{ marginTop: 10 }}>
+          <summary>
+            Opportunistiskt köp denna månad{' '}
+            {nextBuy.data.opportunity.confirmed
+              ? <span className="pos">★ {nextBuy.data.opportunity.name} (bekräftad)</span>
+              : <span style={{ opacity: 0.6 }}>– vänta på bekräftelse</span>}
+          </summary>
+          <div style={{ padding: '8px 2px' }}>
+            {nextBuy.data.opportunity.confirmed ? (
+              <>
+                <div className="list-row" style={{ padding: '4px 0' }}>
+                  <div className="list-row__main">
+                    <span className="list-row__ticker">★ {nextBuy.data.opportunity.name}</span>
+                    <span className="list-row__sub">
+                      {nextBuy.data.opportunity.ticker} · {nextBuy.data.opportunity.note}
+                      {(nextBuy.data.opportunity.confirmations ?? []).length
+                        ? ` · ${nextBuy.data.opportunity.confirmations.join(' · ')}` : ''}
+                    </span>
+                  </div>
+                  <div className="list-row__side">
+                    <span className="list-row__num pos">{fmtSek(nextBuy.data.opportunity.kr)}</span>
+                  </div>
+                </div>
+                <p className="footnote">{nextBuy.data.opportunity.advice}</p>
+              </>
+            ) : (
+              <p className="footnote">{nextBuy.data.opportunity.advice}</p>
+            )}
+            <p className="footnote" style={{ opacity: 0.7 }}>
+              Grinden: köp den bekräftade driften (inflöden + intakt trend + inte dyr), inte ryktet
+              före en rapport. Front-loadar du en satellit blir du undervikt kärnan → nästa månads
+              insättning styrs dit automatiskt.
+            </p>
+          </div>
+        </details>
+      )}
+
       {/* Säljvakten – enda sälj-regeln i köp-och-behåll-disciplinen */}
       {(nextBuy.data?.sell_watch ?? []).length > 0 && (
         <>

@@ -533,6 +533,10 @@ NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
 # bara courtage/spread. Under gränsen väger därför "ta hem vinsten" tyngre; över
 # den (vanlig depå/AF) väger "behåll" tyngre pga reavinstskatt vid försäljning.
 PORTFOLIO_ISK_LIMIT = 300000
+# Opportunistiskt köp: max andel av EN månadsinsättning som får front-loadas i
+# den bästa BEKRÄFTADE satelliten (kärnan hämtas ikapp nästa månad via fyll-mot-
+# mål). 0.5 = upp till halva insättningen; taktiskt tak, inte bet-the-farm.
+OPPORTUNITY_MAX_SHARE = 0.5
 # Säljvakten – ENDA sälj-regeln i köp-och-behåll-disciplinen.
 # ARMERAS på DIN faktiska orealiserade vinst (value/cost − 1 ≥ TAKEPROFIT_GAIN),
 # INTE på aktiens marknadsavkastning – annars kunde vakten flagga "ta hem vinsten"
