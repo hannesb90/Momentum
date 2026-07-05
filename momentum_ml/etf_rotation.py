@@ -70,11 +70,22 @@ def _panel(tickers):
     return panel.ffill(limit=1)   # olika börskalendrar (.DE/.L) → jämna ut enstaka glapp
 
 
-def _scores(panel, etfs):
-    """Sammanvägd relativ momentum + absolut 52v-momentum, per datum × ETF."""
+def _scores(panel, etfs, vol_adj=None, windows=None):
+    """Sammanvägd relativ momentum + absolut 52v-momentum, per datum × ETF.
+
+    vol_adj: ranka på momentum PER ENHET RISK (score = rel / 26v-vol) i stället
+    för rå avkastning. I ett blandat universum (lågvol World vs högvol uran/semis)
+    väljer rå rank systematiskt de stökigaste temana nära deras toppar – riskjusterat
+    jämför äpplen med äpplen. Default: config.ETF_ROT_VOL_ADJ."""
     px = panel[etfs]
-    rel = sum(px / px.shift(w) - 1 for w in config.ETF_ROT_MOM_WINDOWS) / len(config.ETF_ROT_MOM_WINDOWS)
+    win = windows or config.ETF_ROT_MOM_WINDOWS
+    rel = sum(px / px.shift(w) - 1 for w in win) / len(win)
     absm = px / px.shift(config.ETF_ROT_ABS_WINDOW) - 1
+    if vol_adj is None:
+        vol_adj = getattr(config, "ETF_ROT_VOL_ADJ", False)
+    if vol_adj:
+        vol = px.pct_change().rolling(26).std() * np.sqrt(52)
+        rel = rel / vol.clip(lower=0.05)   # golv: mikroskopisk vol ska inte blåsa upp ranken
     return rel, absm
 
 
@@ -177,15 +188,42 @@ def _regime(panel):
 
 
 # ── Rotationsbeslut ───────────────────────────────────────────────────────────
-def _decide(rel_row, abs_row, k, defensive, abs_min):
+def _decide(rel_row, abs_row, k, defensive, abs_min, *,
+            held=None, keep_mult=1.0, abs_exit=None, corr_blocked=None):
     """Top-K på relativ momentum; en ETF utan positiv absolut trend → defensivt ben.
-    Returnerar (vikter dict, lista av (ticker, hålls, abs_mom)) för insyn."""
+    Returnerar (vikter dict, lista av (ticker, hålls, abs_mom)) för insyn.
+
+    Edge-knoppar (default = exakt gamla beteendet):
+      held/keep_mult – rank-hysteres: ett REDAN HÅLLET innehav behåller sin slot
+        så länge det är inom topp K×keep_mult (byt inte på rank-brus).
+      abs_exit – hysteres i absolut-filtret: befintliga innehav säljs först under
+        abs_exit; nya kräver > abs_min (enter). Stänger churn-flippandet kring 0%.
+      corr_blocked – corr_blocked(kandidat, valda) -> True = hoppa över kandidaten
+        (för hög korrelation mot redan valt innehav = samma bet igen)."""
     ranked = rel_row.dropna().sort_values(ascending=False)
+    order = list(ranked.index)
+    rank_of = {t: i + 1 for i, t in enumerate(order)}
+    held = held or set()
+    slots = []
+    # 1. Rank-hysteres: hållna innehav inom keep-bandet behåller sin slot.
+    if keep_mult > 1.0 and held:
+        band = int(round(k * keep_mult))
+        slots = [t for t in order if t in held and rank_of[t] <= band][:k]
+    # 2. Fyll resterande slots med högst rankade nykomlingar (ev. corr-spärrade).
+    for t in order:
+        if len(slots) >= k:
+            break
+        if t in slots:
+            continue
+        if corr_blocked is not None and corr_blocked(t, slots):
+            continue
+        slots.append(t)
     picks, weights = [], {}
     cash = defensive or "_CASH"
-    for t in ranked.index[:k]:
+    for t in slots[:k]:
         a = abs_row.get(t)
-        hold = pd.notna(a) and a > abs_min
+        thr = abs_exit if (abs_exit is not None and t in held) else abs_min
+        hold = pd.notna(a) and a > thr
         tgt = t if hold else cash
         weights[tgt] = weights.get(tgt, 0.0) + 1.0 / k
         picks.append((t, bool(hold), float(a) if pd.notna(a) else np.nan))
@@ -213,6 +251,70 @@ def _fmt_stats(name, s):
             f"vol {s['vol']:>5.1%}  Sharpe {s['sharpe']:>4.2f}  maxDD {s['maxdd']:>6.1%}")
 
 
+# ── Strategimotor (delad av backtest, sweep och tune_etf_rotation) ────────────
+def _run(panel, rel, absm, rets, have, *, k, rebal, abs_min, defensive,
+         regime=None, keep_mult=1.0, abs_exit=None, corr_max=None,
+         cost=None, start=None):
+    """
+    Kör rotationsstrategin och returnerar dict med:
+      port          – veckoavkastningsserie NETTO efter transaktionskostnad
+      turnover      – total enkelriktad omsättning (summa |Δvikt| över alla beslut)
+      cost_drag     – total kostnadsbelastning (andel av kapitalet, ackumulerad)
+      riskoff_weeks – veckor i risk-off
+
+    cost = enkelriktad kostnad per handlad krona (halva spreaden + courtage).
+    Appliceras på summan |Δvikt| över ETF-ben (kontant-benet kostar inget;
+    ett defensivt ETF-ben kostar som vanligt). Kostnaden dras från veckan
+    EFTER beslutet (handeln sker då).
+    """
+    if cost is None:
+        cost = getattr(config, "ETF_ROT_COST_ONEWAY", 0.0)
+    if start is None:
+        start = max(config.ETF_ROT_ABS_WINDOW, config.ETF_ROT_REGIME_MA) + 1
+    cash = defensive or "_CASH"
+
+    def corr_blocked(t, picked):
+        if corr_max is None or corr_max >= 1.0 or not picked:
+            return False
+        w = rets[[t] + [p for p in picked if p in rets.columns]].iloc[max(0, _i - 52):_i].dropna()
+        if len(w) < 26 or t not in w.columns:
+            return False
+        return any(w[t].corr(w[p]) > corr_max for p in picked if p in w.columns)
+
+    weights, prev_w = {}, {}
+    port, turnover_tot, cost_tot, riskoff_wk = [], 0.0, 0.0, 0
+    pending_cost = 0.0
+    idx = panel.index[start:]
+    for j, i in enumerate(range(start, len(panel))):
+        _i = i   # ses av corr_blocked (trailing fönster t.o.m. NU – kausalt)
+        if weights:                                   # veckans avk på FÖRRA beslutets vikter
+            wr = 0.0
+            for t, w in weights.items():
+                r = rets.iloc[i].get(t) if t in rets.columns else np.nan
+                wr += w * (r if pd.notna(r) else 0.0)  # saknad/kontant slot = 0
+            port.append(wr - pending_cost)             # handelskostnad dras här
+        else:
+            port.append(-pending_cost)
+        pending_cost = 0.0
+        if j % rebal == 0:                            # nytt beslut vid stängning i
+            if regime is not None and not bool(regime.iloc[i]):
+                new_w = {cash: 1.0}
+                riskoff_wk += rebal
+            else:
+                held = {t for t in weights if t != cash and t != "_CASH"}
+                new_w, _ = _decide(rel.iloc[i], absm.iloc[i], k, defensive, abs_min,
+                                   held=held, keep_mult=keep_mult, abs_exit=abs_exit,
+                                   corr_blocked=corr_blocked if (corr_max or 1.0) < 1.0 else None)
+            legs = (set(new_w) | set(weights)) - {"_CASH", ""}
+            to = sum(abs(new_w.get(t, 0.0) - weights.get(t, 0.0)) for t in legs)
+            turnover_tot += to
+            pending_cost = to * cost
+            cost_tot += pending_cost
+            weights = new_w
+    return {"port": pd.Series(port, index=idx), "turnover": turnover_tot,
+            "cost_drag": cost_tot, "riskoff_weeks": riskoff_wk}
+
+
 # ── Backtest ──────────────────────────────────────────────────────────────────
 def backtest(always_invested=False):
     uni = _load_universe()
@@ -236,27 +338,20 @@ def backtest(always_invested=False):
     if len(panel) <= start + rebal:
         print("[backtest] för kort historik för ETF-universumet.")
         return
-    cash = defensive or "_CASH"
 
-    weights, port, riskoff_wk = {}, [], 0
-    idx = panel.index[start:]
-    for j, i in enumerate(range(start, len(panel))):
-        if weights:                                   # veckans avkastning på FÖRRA beslutets vikter
-            wr = 0.0
-            for t, w in weights.items():
-                r = rets.iloc[i].get(t) if t in rets.columns else np.nan
-                wr += w * (r if pd.notna(r) else 0.0)  # saknad/kontant slot = 0
-            port.append(wr)
-        else:
-            port.append(0.0)
-        if j % rebal == 0:                            # nytt beslut vid stängning i → nästa vecka
-            if regime is not None and not bool(regime.iloc[i]):
-                weights = {cash: 1.0}                  # BJÖRN → allt defensivt/kontanter
-                riskoff_wk += rebal
-            else:
-                weights, _ = _decide(rel.iloc[i], absm.iloc[i], k, defensive, abs_min)
-
-    port = pd.Series(port, index=idx)
+    # Edge-knoppar från config (env-styrbara; default = gamla beteendet).
+    import math as _math
+    abs_enter = getattr(config, "ETF_ROT_ABS_ENTER", float("nan"))
+    abs_exit = getattr(config, "ETF_ROT_ABS_EXIT", float("nan"))
+    r = _run(panel, rel, absm, rets, have, k=k, rebal=rebal,
+             abs_min=(abs_enter if not _math.isnan(abs_enter) else abs_min),
+             defensive=defensive, regime=regime,
+             keep_mult=getattr(config, "ETF_ROT_KEEP_MULT", 1.0),
+             abs_exit=(None if _math.isnan(abs_exit) else abs_exit),
+             corr_max=getattr(config, "ETF_ROT_CORR_MAX", 1.0),
+             start=start)
+    port, riskoff_wk = r["port"], r["riskoff_weeks"]
+    idx = port.index
     eqw = rets[have].reindex(idx).mean(axis=1)        # köp-och-behåll, likaviktad hela poolen
 
     reg_txt = ("ALLTID 100% INVESTERAD (ingen kontant, inget absolut-filter)" if always_invested
@@ -296,26 +391,21 @@ def backtest(always_invested=False):
     print(f"    Likaviktad pool:       {_final(eqw):>14,.0f} kr".replace(",", " "))
     for b, bs in bench_series.items():
         print(f"    Index {b:<12}     {_final(bs):>14,.0f} kr".replace(",", " "))
-    print("\n  (Ombalansering utan transaktionskostnad/skatt. Absolut-filtret + regim = "
-          "skydd i björnmarknad; jämför särskilt maxDD, inte bara slutvärdet.)")
+    yrs = max(len(idx) / 52.0, 1e-9)
+    print(f"\n  Kostnader: {config.ETF_ROT_COST_ONEWAY:.2%} enkelriktat per handlad krona → "
+          f"omsättning {r['turnover'] / yrs:.1f}×/år, kostnadsbelastning "
+          f"{r['cost_drag'] / yrs:.2%}/år (INBAKAT i strategisiffrorna ovan; "
+          f"benchmarks är köp-och-behåll utan kostnad).")
+    print("  (Absolut-filtret + regim = skydd i björnmarknad; jämför särskilt maxDD, "
+          "inte bara slutvärdet.)")
 
 
 # ── Parametersvep med in-sample/OOS-split (mot curve-fitting) ─────────────────
-def _sim(panel, rel, absm, rets, have, k, rebal, defensive):
-    """Alltid-investerad top-K (ingen regim, inget absolut-filter) → port-avk-serie."""
-    start = max(config.ETF_ROT_ABS_WINDOW, config.ETF_ROT_REGIME_MA) + 1
-    weights, port = {}, []
-    idx = panel.index[start:]
-    for j, i in enumerate(range(start, len(panel))):
-        wr = 0.0
-        for t, w in weights.items():
-            r = rets.iloc[i].get(t) if t in rets.columns else None
-            if r is not None and pd.notna(r):
-                wr += w * r
-        port.append(wr)
-        if j % rebal == 0:
-            weights, _ = _decide(rel.iloc[i], absm.iloc[i], k, defensive, -1e9)
-    return pd.Series(port, index=idx)
+def _sim(panel, rel, absm, rets, have, k, rebal, defensive, **knobs):
+    """Alltid-investerad top-K (ingen regim, inget absolut-filter) → port-avk-serie
+    NETTO efter transaktionskostnad (ETF_ROT_COST_ONEWAY). knobs → _run."""
+    return _run(panel, rel, absm, rets, have, k=k, rebal=rebal, abs_min=-1e9,
+                defensive=defensive, regime=None, **knobs)["port"]
 
 
 def sweep():
@@ -388,8 +478,27 @@ def signal():
 
     regime = _regime(panel)
     risk_on = True if regime is None else bool(regime.iloc[last])
-    weights, picks = _decide(rel_now, absm.iloc[last], config.ETF_ROT_TOP_K,
-                             config.ETF_ROT_DEFENSIVE, config.ETF_ROT_ABS_MIN)
+    # Edge-knoppar (env-styrbara i config): rank-hysteres behöver förra körningens
+    # innehav – läs dem ur förra meta-filen (saknas den = inga keepers, ofarligt).
+    import math as _math
+    import json as _json0
+    prev_held = set()
+    try:
+        _meta_p = Path(config.RESULTS_DIR) / "etf_rotation_meta.json"
+        if _meta_p.exists():
+            prev_held = set(_json0.loads(_meta_p.read_text()).get("held") or [])
+    except Exception:  # noqa: BLE001 – hysteres är opportunistisk, aldrig blockerande
+        prev_held = set()
+    _enter = getattr(config, "ETF_ROT_ABS_ENTER", float("nan"))
+    _exit = getattr(config, "ETF_ROT_ABS_EXIT", float("nan"))
+    weights, picks = _decide(
+        rel_now, absm.iloc[last], config.ETF_ROT_TOP_K,
+        config.ETF_ROT_DEFENSIVE,
+        (_enter if not _math.isnan(_enter) else config.ETF_ROT_ABS_MIN),
+        held=prev_held,
+        keep_mult=getattr(config, "ETF_ROT_KEEP_MULT", 1.0),
+        abs_exit=(None if _math.isnan(_exit) else _exit),
+    )
     held = {t for t, hold, _ in picks if hold}
 
     breadth = _sector_breadth()   # global bekräftelse (EU+US per GICS-sektor)
