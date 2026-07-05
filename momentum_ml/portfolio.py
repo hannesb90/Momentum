@@ -533,28 +533,31 @@ def _unified_rank(rows, top_n=3) -> list:
 
 def _takeprofit(rows) -> list:
     """
-    SÄLJVAKTEN v2 – en TRAPPA, inte en ensam tröskel. Styrka i sig är INTE
-    säljskäl (momentum-vinnare fortsätter oftare än de rekylerar – att sälja rå
-    styrka är att kapa sina bästa compounders). Det man säljer på är styrka som
-    TAPPAR STÖD. Gap mot index ARMERAR vakten; bekräftelser eskalerar rådet:
+    SÄLJVAKTEN v2 – en TRAPPA som armeras på DIN vinst, inte aktiens kurs.
 
-      nivå 1 'bevaka'         gap ≥ TAKEPROFIT_GAP_PP över TAKEPROFIT_WEEKS.
+    ARMERAS bara om DU faktiskt är i vinst: orealiserad gain (value/cost − 1) ≥
+    TAKEPROFIT_GAIN. En aktie som rusat i marknaden INNAN du köpte den (eller som
+    du köpt dyrt) armerar alltså aldrig – det finns ingen vinst att ta hem. Styrka
+    i sig är inte säljskäl (momentum-vinnare fortsätter oftare än de rekylerar) →
+    gainen armerar bara; bekräftelser eskalerar rådet:
+
+      nivå 1 'bevaka'         du är upp ≥ TAKEPROFIT_GAIN men trend/flöden/
+                              värdering håller – rid vinnaren vidare.
       nivå 2 'ta hem vinsten' armerad + minst en bekräftelse:
-                                · melt-up: ≥ TAKEPROFIT_ACCEL_SHARE av hela
-                                  uppgången kom de senaste 4 veckorna
-                                · värdering: zon 'dyr' i Kvalitet-vyn
-                                · distribution: CMF 13v < 0 (flöden UT trots
-                                  stigande kurs – de stora kliver av)
+                                · melt-up: ≥ TAKEPROFIT_ACCEL_SHARE av uppgången
+                                  de senaste 4 veckorna
+                                · värdering: zon 'dyr' (runnit förbi fundamenta)
+                                · distribution: CMF 13v < 0 (flöden UT)
                                 · modellen har släppt bolaget (pred_signal 0)
+                                · sprungit ≥ GAP_PP ifrån index (froth-kontext)
                               → house money: sälj vinsten, behåll insatsen.
-      nivå 3 'sälj'           armerad + TRENDBROTT (kurs < SMA20): vinsten
-                              avdunstar – hela positionen ifrågasätts.
+      nivå 3 'sälj'           armerad + TRENDBROTT (kurs < SMA20).
 
-    Tröskeln kalibreras empiriskt med tune_takeprofit.py (event-studie på hela
-    universumet) – 0.50 är startvärde, inte facit.
-    Data: prices.csv + portfolio.csv (index) + flow_snapshot.csv per segment,
-    samt kvalitetszon/modellsignal ur _load_scores. Allt billiga CSV-läsningar.
+    Innehav UTAN inköpspris kan inte bedömas (vet ej om du är i vinst); visar en
+    'ange inköpspris'-notis om aktien ser överhettad ut i marknaden.
+    Trösklarna kalibreras empiriskt med tune_takeprofit.py – 0.50 är startvärde.
     """
+    gain_min = float(getattr(config, "TAKEPROFIT_GAIN", 0.50))
     gap_min = float(getattr(config, "TAKEPROFIT_GAP_PP", 0.50))
     weeks = int(getattr(config, "TAKEPROFIT_WEEKS", 26))
     accel_share = float(getattr(config, "TAKEPROFIT_ACCEL_SHARE", 0.5))
@@ -598,54 +601,73 @@ def _takeprofit(rows) -> list:
             if tk in seen or len(series) <= weeks or not series[-1] or not series[-1 - weeks]:
                 continue
             seen.add(tk)
-            h_ret = series[-1] / series[-1 - weeks] - 1
+            hr = tickers[tk]
+            h_ret = series[-1] / series[-1 - weeks] - 1   # aktiens marknadsavk. (kontext)
             gap = h_ret - idx_ret
-            if gap < gap_min:
-                continue
 
-            reasons, level = [], 1
-            # melt-up: hur stor del av 26v-uppgången kom de senaste 4v?
+            # ── ARMERING: DIN orealiserade vinst, inte aktiens kurs ──────────
+            cost = hr.get("cost")
+            gain = (hr["value"] / cost - 1) if (cost and cost > 0 and hr.get("value")) else None
+
+            # Marknads-froth-bekräftelser (beräknas oavsett – styr eskaleringen).
+            confirms = []
             if h_ret > 0.10 and len(series) > 5 and series[-5]:
-                r4 = series[-1] / series[-5] - 1
-                share = r4 / h_ret
+                share = (series[-1] / series[-5] - 1) / h_ret
                 if share >= accel_share:
-                    reasons.append(f"melt-up: {share:.0%} av uppgången på 4v")
+                    confirms.append(f"melt-up: {share:.0%} av uppgången på 4v")
             sc = scores.get(tk, {})
             if sc.get("zone") == "dyr":
-                reasons.append("värdering: zon 'dyr'")
+                confirms.append("värdering: zon 'dyr'")
             fl = flows.get(tk, {})
             try:
                 cmf = float(fl.get("cmf_13w"))   # _num duger inte: den slänger negativa tal
             except (TypeError, ValueError):
                 cmf = None
             if cmf is not None and cmf < 0:
-                reasons.append(f"distribution: CMF {cmf:+.2f} (flöden ut)")
+                confirms.append(f"distribution: CMF {cmf:+.2f} (flöden ut)")
             if sc.get("pred_signal") in ("0", "0.0"):
-                reasons.append("modellen har släppt bolaget")
-            if reasons:
-                level = 2
-            if str(fl.get("below_sma20")) == "1":
-                reasons.append("TRENDBROTT: kurs under SMA20")
-                level = 3
+                confirms.append("modellen har släppt bolaget")
+            if gap >= gap_min:
+                confirms.append(f"sprungit +{gap:.0%} ifrån index på {weeks}v")
+            broken = str(fl.get("below_sma20")) == "1"
 
+            if gain is None:
+                # Kan inte bedöma vinst utan inköpspris. Nämn bara om aktien ser
+                # överhettad ut (froth-bekräftelse) – annars tyst.
+                if confirms and gap >= gap_min:
+                    flags.append({
+                        "name": hr["name"], "ticker": tk, "level": 0, "action": "ange inköpspris",
+                        "gain": None, "ret": round(h_ret, 4), "index_ret": round(idx_ret, 4),
+                        "gap": round(gap, 4), "weeks": weeks, "house_money_kr": None,
+                        "reasons": confirms,
+                        "advice": ("Ser överhettad ut i marknaden, men du saknar inköpspris – "
+                                   "ange det i Innehav så vet vakten om du faktiskt är i vinst att ta hem."),
+                    })
+                continue
+            if gain < gain_min:
+                continue   # du är inte tillräckligt i vinst → ingen vinst att skydda
+
+            level = 1
+            if confirms:
+                level = 2
+            if broken:
+                confirms.append("TRENDBROTT: kurs under SMA20")
+                level = 3
             action = {1: "bevaka", 2: "ta hem vinsten", 3: "sälj"}[level]
-            hr = tickers[tk]
-            house_kr = None
-            if hr.get("cost") and hr["value"] > hr["cost"]:
-                house_kr = round(hr["value"] - hr["cost"])
+            house_kr = round(hr["value"] - cost)   # gain>0 garanterat här
             flags.append({
                 "name": hr["name"], "ticker": tk,
-                "ret": round(h_ret, 4), "index_ret": round(idx_ret, 4), "gap": round(gap, 4),
-                "weeks": weeks, "level": level, "action": action,
-                "reasons": reasons or ["armerad – inga bekräftelser ännu, bara bevaka"],
+                "gain": round(gain, 4), "ret": round(h_ret, 4), "index_ret": round(idx_ret, 4),
+                "gap": round(gap, 4), "weeks": weeks, "level": level, "action": action,
+                "reasons": confirms or ["din vinst ≥ tröskeln men inga varningssignaler – bara bevaka"],
                 "house_money_kr": house_kr,
                 "advice": {
-                    1: "Kraftigt före index men trend/flöden/värdering håller ännu – rid vidare, bevaka.",
-                    2: "Före index MED varningssignal. House money: sälj vinsten, behåll insatsen." + tax_note,
-                    3: "Före index och trenden bruten – vinsten avdunstar. Överväg att sälja hela positionen." + tax_note,
+                    1: f"Du är upp {gain:.0%} men trend/flöden/värdering håller – rid vinnaren vidare, bevaka.",
+                    2: f"Du är upp {gain:.0%} MED varningssignal. House money: sälj vinsten, behåll insatsen." + tax_note,
+                    3: f"Du är upp {gain:.0%} och trenden är bruten – vinsten avdunstar. Överväg att sälja." + tax_note,
                 }[level],
             })
-    flags.sort(key=lambda f: (-f["level"], -f["gap"]))
+    flags.sort(key=lambda f: (-f["level"], -(f.get("gain") or 0)))
     return flags
 
 

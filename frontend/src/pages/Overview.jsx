@@ -206,21 +206,25 @@ export function OverviewPage() {
               <div key={s.ticker} className="list-row">
                 <div className="list-row__main">
                   <span className="list-row__ticker">
-                    {s.level >= 3 ? '⛔' : s.level === 2 ? '⚠⚠' : '⚠'} {s.name}{' '}
+                    {{ 0: '📝', 1: '⚠', 2: '⚠⚠', 3: '⛔' }[s.level] ?? '⚠'} {s.name}{' '}
                     <span className={s.level >= 2 ? 'neg' : ''} style={{ fontSize: '0.78em' }}>
                       {s.action?.toUpperCase()}
                       {s.level === 2 && s.house_money_kr ? ` ~${fmtSek(s.house_money_kr)}` : ''}
                     </span>
                   </span>
                   <span className="list-row__sub">
-                    {s.ticker} · {fmtPct(s.ret)} på {s.weeks}v medan index {fmtPct(s.index_ret)}
+                    {s.gain != null
+                      ? `Din vinst ${fmtPct(s.gain)} (marknad ${fmtPct(s.ret)} vs index ${fmtPct(s.index_ret)})`
+                      : `Marknad ${fmtPct(s.ret)} vs index ${fmtPct(s.index_ret)}`}
                     {(s.reasons ?? []).length ? ` · ${(s.reasons ?? []).join(' · ')}` : ''}
                   </span>
                 </div>
                 <div className="list-row__side">
-                  <span className={`list-row__num ${s.level >= 2 ? 'neg' : ''}`}>
-                    +{(s.gap * 100).toFixed(0)} pp
-                  </span>
+                  {s.gain != null ? (
+                    <span className={`list-row__num ${s.level >= 2 ? 'neg' : 'pos'}`}>{fmtPct(s.gain)}</span>
+                  ) : (
+                    <span className="list-row__num">?</span>
+                  )}
                 </div>
               </div>
             ))}
