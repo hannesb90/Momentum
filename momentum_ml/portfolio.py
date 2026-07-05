@@ -464,6 +464,89 @@ def _load_scores() -> dict:
     return out
 
 
+def _load_flows() -> dict:
+    """{ticker: flow-rad} ur flow_snapshot.csv över båda segmenten (CMF/relvol/SMA20)."""
+    out = {}
+    for seg in config.SEGMENTS.values():
+        fp = Path(seg.get("results_dir", "")) / "flow_snapshot.csv"
+        if not fp.exists():
+            continue
+        try:
+            for r in csv.DictReader(open(fp, encoding="utf-8")):
+                out.setdefault((r.get("ticker") or "").upper(), r)
+        except Exception:  # noqa: BLE001
+            pass
+    return out
+
+
+def _opportunity(rows, amount) -> dict:
+    """
+    OPPORTUNISTISKT KÖP (denna månad): låt den bästa satelliten front-loada en del
+    av månadsinsättningen NÄR den visar BEKRÄFTAD styrka – inte på hopp inför en
+    katalysator. Kärnan hämtas ikapp nästa månad automatiskt (fyll-mot-mål gör dig
+    undervikt kärnan efter en satellit-tung månad → nästa insättning styrs dit).
+
+    PEAD-disciplin: köp den BEKRÄFTADE driften, inte ryktet. En kandidat
+    diskvalificeras (→ 'vänta på bekräftelse') om något av detta gäller:
+      · distribution: CMF 13v < 0 (flöden UT – de stora kliver av)
+      · trendbrott: kurs < SMA20
+      · värdering: zon 'dyr' (redan förbi fundamenta)
+    Klarar den grinden får den front-loada upp till OPPORTUNITY_MAX_SHARE av
+    beloppet. Utan rapportkalender (MFN) approximeras 'bekräftad' med flödena
+    ovan; det fångar 'köp inte in i en fallande kniv eller en froth-topp'.
+    """
+    ranked = _unified_rank(rows, top_n=5)
+    if not ranked:
+        return None
+    scores = _load_scores()
+    flows = _load_flows()
+    cap = round(float(amount) * float(getattr(config, "OPPORTUNITY_MAX_SHARE", 0.5)))
+
+    def evaluate(c):
+        tk = c["ticker"]
+        fl = flows.get(tk, {})
+        try:
+            cmf = float(fl.get("cmf_13w"))
+        except (TypeError, ValueError):
+            cmf = None
+        below = str(fl.get("below_sma20")) == "1"
+        zone = scores.get(tk, {}).get("zone")
+        blocks = []
+        if cmf is not None and cmf < 0:
+            blocks.append(f"distribution (CMF {cmf:+.2f} – flöden ut)")
+        if below:
+            blocks.append("trendbrott (kurs < SMA20)")
+        if zone == "dyr":
+            blocks.append("värdering 'dyr' (förbi fundamenta)")
+        confirm = []
+        if cmf is not None and cmf >= 0.03:
+            confirm.append(f"ackumulation (CMF {cmf:+.2f})")
+        if not below and fl:
+            confirm.append("trend intakt (över SMA20)")
+        return blocks, confirm
+
+    for c in ranked:
+        blocks, confirm = evaluate(c)
+        if not blocks:
+            return {
+                "confirmed": True, "ticker": c["ticker"], "name": c["name"],
+                "kr": cap, "note": c["note"], "score": c["score"],
+                "confirmations": confirm or ["klarar grinden (inga varningsflaggor)"],
+                "advice": (f"Front-loada upp till {cap:,.0f} kr denna månad i {c['name']} – "
+                           "bekräftad styrka, inte hopp. Kärnan hämtas ikapp nästa månad. "
+                           "OBS: taktiskt vad, inte kärna – det är obevisad edge.").replace(",", " "),
+            }
+    top = ranked[0]
+    blocks, _ = evaluate(top)
+    return {
+        "confirmed": False, "ticker": top["ticker"], "name": top["name"],
+        "kr": 0, "note": top["note"], "score": top["score"], "blocked_by": blocks,
+        "advice": (f"Bästa satelliten ({top['name']}) är INTE bekräftad just nu: "
+                   f"{', '.join(blocks)}. Köp inte in i det – följ den vanliga fördelningen och "
+                   "vänta tills flödena/trenden vänt (eller en rapport bekräftat driften)."),
+    }
+
+
 def _pct_rank(values, v):
     """Percentil av v bland values (0..1). Skalfri normalisering mellan modeller."""
     vals = sorted(x for x in values if x is not None)
@@ -761,6 +844,7 @@ def next_buy(rows, amount=None) -> dict:
         "risk_on": risk_on,
         "rows": out_rows,
         "best": (out_rows[0] if out_rows else None),   # DET enskilt bästa köpet just nu
+        "opportunity": _opportunity(rows, amount),     # taktiskt front-load denna månad (PEAD-disciplin)
         "sell_watch": _takeprofit(rows),               # säljvakten (enda sälj-regeln)
         "isk": sum(r.get("value", 0.0) for r in rows) <= float(getattr(config, "PORTFOLIO_ISK_LIMIT", 300000)),
         "skipped": skipped,
