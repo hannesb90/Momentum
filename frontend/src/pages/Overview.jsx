@@ -11,9 +11,9 @@ import { SegmentedControl } from '../components/SegmentedControl'
 import { fmtPct, fmtSek, fmtNum, cleanName } from '../format'
 
 const NEXTBUY_AMOUNTS = [
-  { value: '1000', label: '1 000 kr' },
   { value: '5000', label: '5 000 kr' },
   { value: '10000', label: '10 000 kr' },
+  { value: '20000', label: '20 000 kr' },
 ]
 
 export function OverviewPage() {
@@ -22,7 +22,7 @@ export function OverviewPage() {
   const signals = useApiData(() => api.latestSignals(), [])
   const sectors = useApiData(() => api.sectorMomentum(), [])
   const myLog = useApiData(() => api.portfolioLog(), [])
-  const [buyAmount, setBuyAmount] = useState('5000')
+  const [buyAmount, setBuyAmount] = useState('10000')
   const nextBuy = useApiData(() => api.nextBuy(buyAmount), [buyAmount])
 
   const mySeries = useMemo(
@@ -84,7 +84,7 @@ export function OverviewPage() {
           <div key={`${r.order}-${r.ticker}`} className="list-row">
             <div className="list-row__main">
               <span className="list-row__ticker">
-                {r.order}. {r.name}{' '}
+                {r.order === 1 ? '★ ' : `${r.order}. `}{r.name}{' '}
                 <span className={r.evidence === 'kärna' ? 'pos' : ''} style={{ fontSize: '0.78em' }}>
                   {r.evidence === 'kärna' ? '● kärna' : '○ satellit'}
                 </span>
@@ -110,6 +110,43 @@ export function OverviewPage() {
         )}
       </div>
       {nextBuy.data?.note && <p className="footnote">{nextBuy.data.note}</p>}
+
+      {/* Säljvakten – enda sälj-regeln i köp-och-behåll-disciplinen */}
+      {(nextBuy.data?.sell_watch ?? []).length > 0 && (
+        <>
+          <div className="section-head">
+            <h2>
+              Säljvakt
+              <InfoButton title="Säljvakten – enda sälj-regeln">
+                <p>
+                  Köp-och-behåll betyder inte behåll blint. Säljvakten flaggar innehav som
+                  avkastat <b>kraftigt mer än index på kort tid</b> (default: +50 procentenheter
+                  över 26 veckor) – parabolisk ifrånsprungenhet som ofta rekylerar.
+                </p>
+                <p>
+                  Rådet är <b>house money</b>: sälj bara vinsten och behåll den ursprungliga
+                  insatsen. Exponeringen finns kvar, men gratisluften är hemtagen.
+                </p>
+              </InfoButton>
+            </h2>
+          </div>
+          <div className="list-card">
+            {(nextBuy.data?.sell_watch ?? []).map((s) => (
+              <div key={s.ticker} className="list-row">
+                <div className="list-row__main">
+                  <span className="list-row__ticker">⚠ {s.name}</span>
+                  <span className="list-row__sub">
+                    {s.ticker} · {fmtPct(s.ret)} på {s.weeks}v medan index {fmtPct(s.index_ret)} · {s.advice}
+                  </span>
+                </div>
+                <div className="list-row__side">
+                  <span className="list-row__num neg">+{(s.gap * 100).toFixed(0)} pp</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Backtest – simulering, nedgraderad under Coret */}
       <div className={`hero ${positiveReturn ? 'hero--up' : 'hero--down'}`}>

@@ -348,6 +348,195 @@ def compute(rows, amount=None) -> dict:
     return out
 
 
+def _load_scores() -> dict:
+    """
+    SAMMANSLAGNINGEN: en per-ticker-poängkarta ur ALLA modellers output.
+      quality  – Kvalitet-vyns composite (LLM+kvant-merged, 0–5) + värderingszon
+      quant    – token-fria kvant-screenerns betyg (skala varierar → percentilrankas)
+      prob_up  – momentum-modellens senaste P(upp), båda segmenten
+      research – uppdragsanalys/analys-anteckning finns
+    Saknade filer/kolumner ignoreras tyst – kartan byggs av det som finns.
+    """
+    out = {}
+
+    def ent(tk, name=None):
+        e = out.setdefault(tk, {"ticker": tk})
+        if name and not e.get("name"):
+            e["name"] = name
+        return e
+
+    qp = _results_dir() / "quality_shortlist.csv"
+    if qp.exists():
+        try:
+            for r in csv.DictReader(open(qp, encoding="utf-8")):
+                tk = (r.get("ticker") or "").strip().upper()
+                if not tk:
+                    continue
+                e = ent(tk, r.get("name"))
+                e["quality"] = _num(r.get("composite"))
+                e["zone"] = (r.get("zone") or "").strip()
+        except Exception:  # noqa: BLE001
+            pass
+
+    kp = _results_dir() / "quant_shortlist.csv"
+    if kp.exists():
+        try:
+            rows_k = list(csv.DictReader(open(kp, encoding="utf-8")))
+            col = next((c for c in ("grade", "quant_score", "composite", "score", "total")
+                        if rows_k and _num(rows_k[0].get(c)) is not None), None)
+            if col:
+                for r in rows_k:
+                    tk = (r.get("ticker") or "").strip().upper()
+                    v = _num(r.get(col))
+                    if tk and v is not None:
+                        ent(tk, r.get("name"))["quant"] = v
+        except Exception:  # noqa: BLE001
+            pass
+
+    for seg in config.SEGMENTS.values():
+        sp = Path(seg.get("results_dir", "")) / "signals.csv"
+        if not sp.exists():
+            continue
+        try:
+            last = {}
+            for r in csv.DictReader(open(sp, encoding="utf-8")):
+                if r.get("ticker"):
+                    last[r["ticker"].strip().upper()] = r    # sista raden per ticker = senaste vecka
+            for tk, r in last.items():
+                p = _num(r.get("prob_up"))
+                if p is not None:
+                    e = ent(tk, r.get("name"))
+                    e["prob_up"] = max(p, e.get("prob_up") or 0.0)
+                    e["pred_signal"] = str(r.get("pred_signal"))
+        except Exception:  # noqa: BLE001
+            pass
+
+    for tk, e in out.items():
+        e["research"] = bool(_research_note(tk))
+    return out
+
+
+def _pct_rank(values, v):
+    """Percentil av v bland values (0..1). Skalfri normalisering mellan modeller."""
+    vals = sorted(x for x in values if x is not None)
+    if not vals or v is None:
+        return None
+    return sum(1 for x in vals if x <= v) / len(vals)
+
+
+def _unified_rank(rows, top_n=3) -> list:
+    """
+    'Absolut bästa nästa köp' bland svenska aktier: EN rankning som väger ihop
+    alla modeller, med KÖP-OCH-BEHÅLL-vikter (kvalitet tyngst – det man ska äga
+    i åratal; momentum är bara timing-tiebreak) och PORTFÖLJ-MEDVETENHET:
+      · zon 'dyr' utesluts (betala inte upp för att momentum lyser)
+      · innehav som redan är >8% av portföljen utesluts (koncentrera inte mer)
+      · samma sektor som portföljens största (>25%) straffas
+      · ren momentum-punt utan kvalitets-/kvantbetyg kvalificerar inte
+    """
+    scores = _load_scores()
+    if not scores:
+        return []
+    total = sum(r["value"] for r in rows) or 0.0
+    owned_frac, sector_frac = {}, {}
+    for r in rows:
+        tk = (r.get("ticker") or _resolve_ticker(r["name"]) or "").upper()
+        if tk and total:
+            owned_frac[tk] = owned_frac.get(tk, 0.0) + r["value"] / total
+            sec = _sector_of(tk)
+            if sec:
+                sector_frac[sec] = sector_frac.get(sec, 0.0) + r["value"] / total
+    big_sectors = {s for s, f in sector_frac.items() if f > 0.25}
+
+    q_all = [e.get("quality") for e in scores.values()]
+    k_all = [e.get("quant") for e in scores.values()]
+    ranked = []
+    for tk, e in scores.items():
+        if e.get("zone") == "dyr":
+            continue
+        if owned_frac.get(tk, 0.0) > 0.08:
+            continue
+        qn = _pct_rank(q_all, e.get("quality"))
+        kn = _pct_rank(k_all, e.get("quant"))
+        if qn is None and kn is None:
+            continue                     # köp-och-behåll: kräver fundament, inte bara fart
+        pn = e.get("prob_up")
+        score = (0.45 * (qn if qn is not None else kn)
+                 + 0.20 * (kn if kn is not None else qn)
+                 + 0.25 * (pn if pn is not None else 0.5)
+                 + (0.10 if e.get("research") else 0.0))
+        sec = _sector_of(tk)
+        if sec in big_sectors:
+            score -= 0.15
+        why = []
+        if e.get("quality") is not None:
+            why.append(f"kvalitet {e['quality']:.1f}/5" + (f" · {e['zone']}" if e.get("zone") else ""))
+        if e.get("quant") is not None:
+            why.append(f"kvant {e['quant']:.0f}")
+        if pn is not None:
+            why.append(f"P(upp) {pn:.0%}")
+        if e.get("research"):
+            why.append("uppdragsanalys ✓")
+        ranked.append({"ticker": tk, "name": e.get("name") or tk,
+                       "score": round(score, 3), "note": " · ".join(why), "source": "sammanvägd"})
+    ranked.sort(key=lambda x: -x["score"])
+    return ranked[:top_n]
+
+
+def _takeprofit(rows) -> list:
+    """
+    SÄLJVAKTEN (enda sälj-regeln i köp-och-behåll): flagga innehav som avkastat
+    ≥ TAKEPROFIT_GAP_PP MER än sitt segment-index över TAKEPROFIT_WEEKS veckor.
+    'Upp 50% på kort tid utan att index hängt med' = parabolisk ifrånsprungenhet –
+    ta hem vinsten (house money: sälj vinsten, behåll insatsen), rid inte gratisluft.
+    Data: prices.csv + portfolio.csv (omxs30_value = segment-index) per segment.
+    """
+    gap_min = float(getattr(config, "TAKEPROFIT_GAP_PP", 0.50))
+    weeks = int(getattr(config, "TAKEPROFIT_WEEKS", 26))
+    tickers = {(r.get("ticker") or _resolve_ticker(r["name"]) or "").upper(): r
+               for r in rows}
+    tickers.pop("", None)
+    if not tickers:
+        return []
+    flags, seen = [], set()
+    for seg in config.SEGMENTS.values():
+        rd = Path(seg.get("results_dir", ""))
+        pp, bb = rd / "prices.csv", rd / "portfolio.csv"
+        if not (pp.exists() and bb.exists()):
+            continue
+        try:
+            closes = {}
+            for r in csv.DictReader(open(pp, encoding="utf-8")):
+                tk = (r.get("ticker") or "").upper()
+                if tk in tickers:
+                    closes.setdefault(tk, []).append(_num(r.get("close")))
+            idx = [v for v in (_num(r.get("omxs30_value"))
+                               for r in csv.DictReader(open(bb, encoding="utf-8"))) if v]
+        except Exception:  # noqa: BLE001
+            continue
+        if len(idx) <= weeks:
+            continue
+        idx_ret = idx[-1] / idx[-1 - weeks] - 1
+        for tk, series in closes.items():
+            if tk in seen or len(series) <= weeks or not series[-1] or not series[-1 - weeks]:
+                continue
+            seen.add(tk)
+            h_ret = series[-1] / series[-1 - weeks] - 1
+            gap = h_ret - idx_ret
+            if gap >= gap_min:
+                r = tickers[tk]
+                flags.append({
+                    "name": r["name"], "ticker": tk,
+                    "ret": round(h_ret, 4), "index_ret": round(idx_ret, 4), "gap": round(gap, 4),
+                    "weeks": weeks,
+                    "advice": ("Kraftigt ifrånsprunget index på kort tid. Överväg att sälja "
+                               "VINSTEN och behålla insatsen (house money) – behåll exponeringen, "
+                               "ta bort gratisluften."),
+                })
+    flags.sort(key=lambda f: -f["gap"])
+    return flags
+
+
 def next_buy(rows, amount=None) -> dict:
     """
     KÄRNAN ("Nästa köp"): ETT rangordnat, konkret svar på var nästa krona ska in.
@@ -393,7 +582,10 @@ def next_buy(rows, amount=None) -> dict:
         theme_kr = 0.0
 
     sweden_kr = plan.get("sweden", 0.0)
-    sweden_picks = (cands.get("sweden") or [])[:2]
+    # Sverige-slotten fylls av den SAMMANVÄGDA rankningen (kvalitet+kvant+momentum+
+    # research, portfölj-medveten) – inte en enskild modells lista. Faller tillbaka
+    # på de gamla per-modell-kandidaterna om poängkartan saknas.
+    sweden_picks = _unified_rank(rows, top_n=2) or (cands.get("sweden") or [])[:2]
     if sweden_kr > 0 and not sweden_picks:
         skipped.append({"bucket": "sweden", "reason": "inga svenska kandidater just nu → kronorna går till kärnan"})
         broad_kr += sweden_kr
@@ -409,9 +601,12 @@ def next_buy(rows, amount=None) -> dict:
     if sweden_kr > 0.5 and sweden_picks:
         per = sweden_kr / len(sweden_picks)
         for c in sweden_picks:
+            unified = c.get("source") == "sammanvägd"
             out_rows.append({
                 "kr": round(per), "ticker": c.get("ticker"), "name": c.get("name"), "bucket": "sweden",
-                "why": f"Modellens bästa Sverige-kandidat ({c.get('note')}). Aktivt vad – obevisat (holdout minus).",
+                "why": ((f"Bästa köp enligt ALLA modeller sammanvägt: {c.get('note')}. "
+                         "Köp-och-behåll-vad – obevisat (holdout minus).") if unified else
+                        f"Modellens bästa Sverige-kandidat ({c.get('note')}). Aktivt vad – obevisat (holdout minus)."),
                 "evidence": "satellit",
             })
     if theme_kr > 0.5 and theme_pick:
@@ -430,13 +625,16 @@ def next_buy(rows, amount=None) -> dict:
         "amount": round(amount),
         "risk_on": risk_on,
         "rows": out_rows,
+        "best": (out_rows[0] if out_rows else None),   # DET enskilt bästa köpet just nu
+        "sell_watch": _takeprofit(rows),               # säljvakten (enda sälj-regeln)
         "skipped": skipped,
         "buckets": {b: (round(buckets[b] / total, 4) if total else 0.0) for b in BUCKETS},
         "target": config.PORTFOLIO_TARGET,
         "has_holdings": bool(rows),
-        "note": ("Fyll-mot-mål: nya kronor går dit du är underviktad – ingen försäljning, ingen timing. "
-                 "Kärnan är evidensbackad; satelliterna är dina aktiva vad och måste förtjäna sin plats "
-                 "mot kärnan i din framåt-logg."),
+        "note": ("Köp och behåll: nya kronor fyller mot målet – ingen försäljning, ingen timing. "
+                 "Enda sälj-regeln är säljvakten: innehav som rusat kraftigt ifrån index på kort tid "
+                 "flaggas för att ta hem vinsten (behåll insatsen). Kärnan är evidensbackad; "
+                 "satelliterna är aktiva vad som måste förtjäna sin plats i din framåt-logg."),
     }
 
 
