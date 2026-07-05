@@ -523,12 +523,15 @@ PORTFOLIO_TARGET = {"broad": 0.60, "sweden": 0.15, "theme": 0.20, "leverage": 0.
 # vyn; frontend kan skicka valfritt belopp.
 PORTFOLIO_CORE_ETF = ("IUSQ.DE", "iShares MSCI ACWI (hela världen)")
 NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
-# Säljvakten – ENDA sälj-regeln i köp-och-behåll-disciplinen: flagga innehav vars
-# avkastning över TAKEPROFIT_WEEKS överstiger segment-indexets med ≥ GAP_PP
-# procentenheter ("upp 50% på kort tid utan att index hängt med"). Rådet är
-# house money: sälj vinsten, behåll insatsen – exponeringen kvar, gratisluften bort.
-TAKEPROFIT_GAP_PP = 0.50
-TAKEPROFIT_WEEKS  = 26
+# Säljvakten – ENDA sälj-regeln i köp-och-behåll-disciplinen. GAP_PP ARMERAR
+# bara vakten ("upp kraftigt utan att index hängt med"); bekräftelser (melt-up,
+# zon 'dyr', CMF-distribution, modell-släpp, trendbrott) eskalerar rådet i en
+# trappa: bevaka → ta hem vinsten (house money) → sälj. Styrka i sig är inte
+# säljskäl – momentum-vinnare fortsätter oftare än de rekylerar.
+# OBS: 0.50 är startvärde, inte facit – kalibrera med tune_takeprofit.py.
+TAKEPROFIT_GAP_PP      = 0.50
+TAKEPROFIT_WEEKS       = 26
+TAKEPROFIT_ACCEL_SHARE = 0.5   # ≥50% av 26v-uppgången på senaste 4v = melt-up
 # Föreslagna breda ETF:er för kärnan (nytt kapital riktas hit när 'broad' är låg):
 PORTFOLIO_BROAD_ETFS = {"World (MSCI)": "EUNL.DE", "USA (S&P 500)": "SXR8.DE",
                         "Emerging Markets": "IS3N.DE", "Europa": "EXSA.DE"}

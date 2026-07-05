@@ -117,15 +117,18 @@ export function OverviewPage() {
           <div className="section-head">
             <h2>
               Säljvakt
-              <InfoButton title="Säljvakten – enda sälj-regeln">
+              <InfoButton title="Säljvakten – en trappa, inte en tröskel">
                 <p>
-                  Köp-och-behåll betyder inte behåll blint. Säljvakten flaggar innehav som
-                  avkastat <b>kraftigt mer än index på kort tid</b> (default: +50 procentenheter
-                  över 26 veckor) – parabolisk ifrånsprungenhet som ofta rekylerar.
+                  Styrka i sig är inte säljskäl – momentumvinnare fortsätter oftare än de
+                  rekylerar. Ett stort försprång mot index (default +50 pp på 26v) <b>armerar</b>
+                  bara vakten. Bekräftelser eskalerar rådet:
                 </p>
                 <p>
-                  Rådet är <b>house money</b>: sälj bara vinsten och behåll den ursprungliga
-                  insatsen. Exponeringen finns kvar, men gratisluften är hemtagen.
+                  <b>Bevaka</b> = armerad, men trend/flöden/värdering håller – rid vidare.{' '}
+                  <b>Ta hem vinsten</b> = armerad + varningssignal (melt-up, dyr värdering,
+                  utflöden i volymdata, eller modellen har släppt bolaget) – sälj vinsten,
+                  behåll insatsen (house money). <b>Sälj</b> = armerad + trendbrott (kurs under
+                  SMA20) – vinsten avdunstar, hela positionen ifrågasätts.
                 </p>
               </InfoButton>
             </h2>
@@ -134,13 +137,22 @@ export function OverviewPage() {
             {(nextBuy.data?.sell_watch ?? []).map((s) => (
               <div key={s.ticker} className="list-row">
                 <div className="list-row__main">
-                  <span className="list-row__ticker">⚠ {s.name}</span>
+                  <span className="list-row__ticker">
+                    {s.level >= 3 ? '⛔' : s.level === 2 ? '⚠⚠' : '⚠'} {s.name}{' '}
+                    <span className={s.level >= 2 ? 'neg' : ''} style={{ fontSize: '0.78em' }}>
+                      {s.action?.toUpperCase()}
+                      {s.level === 2 && s.house_money_kr ? ` ~${fmtSek(s.house_money_kr)}` : ''}
+                    </span>
+                  </span>
                   <span className="list-row__sub">
-                    {s.ticker} · {fmtPct(s.ret)} på {s.weeks}v medan index {fmtPct(s.index_ret)} · {s.advice}
+                    {s.ticker} · {fmtPct(s.ret)} på {s.weeks}v medan index {fmtPct(s.index_ret)}
+                    {(s.reasons ?? []).length ? ` · ${(s.reasons ?? []).join(' · ')}` : ''}
                   </span>
                 </div>
                 <div className="list-row__side">
-                  <span className="list-row__num neg">+{(s.gap * 100).toFixed(0)} pp</span>
+                  <span className={`list-row__num ${s.level >= 2 ? 'neg' : ''}`}>
+                    +{(s.gap * 100).toFixed(0)} pp
+                  </span>
                 </div>
               </div>
             ))}
