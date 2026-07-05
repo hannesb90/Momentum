@@ -348,6 +348,98 @@ def compute(rows, amount=None) -> dict:
     return out
 
 
+def next_buy(rows, amount=None) -> dict:
+    """
+    KÄRNAN ("Nästa köp"): ETT rangordnat, konkret svar på var nästa krona ska in.
+
+    Hierarkin är evidensordningen från våra egna tester, inte tycke:
+      1. BRED KÄRNA – en enda global fond. I varje netto-test vi kört (aktie-
+         holdout, ETF-rotationens OOS-svep) slog den varje aktiv variant.
+      2. SVERIGE-SATELLIT – modellens bästa kandidat. Ärligt stämplad OBEVISAD
+         (holdouten var negativ); får bara den kapacitet målfördelningen ger.
+      3. TEMA-SATELLIT – rotationens starkaste tema, bara i risk-on. Rotationen
+         slog aldrig index netto → minsta hinken, aldrig kärnersättning.
+    En satellit utan kandidat/regim-stöd skickar sina kronor till kärnan i
+    stället – planen blir alltid ett komplett "så här placeras hela beloppet".
+    """
+    amount = float(amount or getattr(config, "NEXT_BUY_DEFAULT_AMOUNT", 5000))
+    buckets = {b: 0.0 for b in BUCKETS}
+    for r in rows:
+        buckets[r["bucket"] if r["bucket"] in buckets else "theme"] += r["value"]
+    plan = _fill_split(buckets, amount, config.PORTFOLIO_TARGET)
+
+    core_tk, core_name = getattr(config, "PORTFOLIO_CORE_ETF",
+                                 ("IUSQ.DE", "iShares MSCI ACWI (hela världen)"))
+    risk_on = None
+    try:
+        meta = json.loads((_results_dir() / "etf_rotation_meta.json").read_text(encoding="utf-8"))
+        risk_on = bool(meta.get("risk_on"))
+    except Exception:  # noqa: BLE001 – rotation ej körd → gate:a inte på regim
+        risk_on = None
+    cands = _candidates()
+
+    skipped = []
+    broad_kr = plan.get("broad", 0.0) + plan.get("leverage", 0.0)  # hävstång (mål 0) → kärnan
+
+    theme_kr = plan.get("theme", 0.0)
+    theme_pick = (cands.get("theme") or [None])[0]
+    if theme_kr > 0 and risk_on is False:
+        skipped.append({"bucket": "theme", "reason": "risk-off i rotationens regim → kronorna går till kärnan"})
+        broad_kr += theme_kr
+        theme_kr = 0.0
+    elif theme_kr > 0 and not theme_pick:
+        skipped.append({"bucket": "theme", "reason": "ingen tema-signal → kronorna går till kärnan"})
+        broad_kr += theme_kr
+        theme_kr = 0.0
+
+    sweden_kr = plan.get("sweden", 0.0)
+    sweden_picks = (cands.get("sweden") or [])[:2]
+    if sweden_kr > 0 and not sweden_picks:
+        skipped.append({"bucket": "sweden", "reason": "inga svenska kandidater just nu → kronorna går till kärnan"})
+        broad_kr += sweden_kr
+        sweden_kr = 0.0
+
+    out_rows = []
+    if broad_kr > 0.5:
+        out_rows.append({
+            "kr": round(broad_kr), "ticker": core_tk, "name": core_name, "bucket": "broad",
+            "why": "Bred global kärna – slog varje aktiv variant netto i våra tester. Här byggs förmögenheten.",
+            "evidence": "kärna",
+        })
+    if sweden_kr > 0.5 and sweden_picks:
+        per = sweden_kr / len(sweden_picks)
+        for c in sweden_picks:
+            out_rows.append({
+                "kr": round(per), "ticker": c.get("ticker"), "name": c.get("name"), "bucket": "sweden",
+                "why": f"Modellens bästa Sverige-kandidat ({c.get('note')}). Aktivt vad – obevisat (holdout minus).",
+                "evidence": "satellit",
+            })
+    if theme_kr > 0.5 and theme_pick:
+        out_rows.append({
+            "kr": round(theme_kr), "ticker": theme_pick.get("ticker"), "name": theme_pick.get("name"),
+            "bucket": "theme",
+            "why": f"Starkaste tema i rotationen ({theme_pick.get('note')}). Taktiskt – rotationen slår inte index netto.",
+            "evidence": "satellit",
+        })
+    out_rows.sort(key=lambda r: -r["kr"])
+    for i, r in enumerate(out_rows, 1):
+        r["order"] = i
+
+    total = sum(v for v in buckets.values())
+    return {
+        "amount": round(amount),
+        "risk_on": risk_on,
+        "rows": out_rows,
+        "skipped": skipped,
+        "buckets": {b: (round(buckets[b] / total, 4) if total else 0.0) for b in BUCKETS},
+        "target": config.PORTFOLIO_TARGET,
+        "has_holdings": bool(rows),
+        "note": ("Fyll-mot-mål: nya kronor går dit du är underviktad – ingen försäljning, ingen timing. "
+                 "Kärnan är evidensbackad; satelliterna är dina aktiva vad och måste förtjäna sin plats "
+                 "mot kärnan i din framåt-logg."),
+    }
+
+
 def _house_money(rows) -> list:
     """Per innehav med KÄND insats: sälj vinsten, behåll ursprungskapitalet. Kräver
     cost (insatt) < value. sell_frac = vinst/(1+vinst) → frigör exakt insatsen som cash."""

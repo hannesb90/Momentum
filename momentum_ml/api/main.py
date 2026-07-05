@@ -249,6 +249,14 @@ def get_portfolio_holdings(amount: Optional[float] = None):
     return _clean(pf.compute(pf.load_holdings(), amount=amount))
 
 
+@app.get("/api/next-buy")
+def get_next_buy(amount: Optional[float] = None):
+    """Coret: ETT rangordnat svar på 'var ska nästa krona in?' (hemvyns huvudkort).
+    Kärna-först-hierarkin och gate-logiken ligger i portfolio.next_buy."""
+    import portfolio as pf
+    return _clean(pf.next_buy(pf.load_holdings(), amount=amount))
+
+
 @app.post("/api/holdings")
 async def save_portfolio_holdings(request: Request):
     """Sparar hela innehavslistan (skriver cache/portfolio_holdings.csv) och

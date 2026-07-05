@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ResponsiveContainer, AreaChart, Area, YAxis, Tooltip } from 'recharts'
 import { api } from '../api'
@@ -7,7 +7,14 @@ import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { SignalBadge } from '../components/SignalBadge'
 import { InfoButton } from '../components/InfoButton'
 import { LiveTrackRecord } from '../components/LiveTrackRecord'
+import { SegmentedControl } from '../components/SegmentedControl'
 import { fmtPct, fmtSek, fmtNum, cleanName } from '../format'
+
+const NEXTBUY_AMOUNTS = [
+  { value: '1000', label: '1 000 kr' },
+  { value: '5000', label: '5 000 kr' },
+  { value: '10000', label: '10 000 kr' },
+]
 
 export function OverviewPage() {
   const stats = useApiData(() => api.stats(), [])
@@ -15,6 +22,8 @@ export function OverviewPage() {
   const signals = useApiData(() => api.latestSignals(), [])
   const sectors = useApiData(() => api.sectorMomentum(), [])
   const myLog = useApiData(() => api.portfolioLog(), [])
+  const [buyAmount, setBuyAmount] = useState('5000')
+  const nextBuy = useApiData(() => api.nextBuy(buyAmount), [buyAmount])
 
   const mySeries = useMemo(
     () => (myLog.data ?? []).map((r) => ({ date: r.date, value: r.value })),
@@ -50,18 +59,71 @@ export function OverviewPage() {
 
   return (
     <section className="page">
-      {/* Hero – strategins backtestportfölj som "saldo" */}
+      {/* CORE – Nästa köp: ETT rangordnat svar på "var ska nästa krona in?" */}
+      <div className="section-head">
+        <h2>
+          Nästa köp
+          <InfoButton title="Nästa köp – modellens Core">
+            <p>
+              Det här är appens huvudsvar: <b>hit går nästa krona</b>, givet dina sparade innehav
+              och målfördelningen (fyll-mot-mål – ingen försäljning, ingen timing).
+            </p>
+            <p>
+              Ordningen är evidensordningen från våra egna tester: <b>bred global kärna först</b>
+              (slog varje aktiv variant netto), därefter Sverige-modellen och rotationens tema som
+              små satelliter – ärligt stämplade som obevisade aktiva vad.
+            </p>
+          </InfoButton>
+        </h2>
+        <SegmentedControl options={NEXTBUY_AMOUNTS} value={buyAmount} onChange={setBuyAmount} size="sm" />
+      </div>
+      <div className="list-card">
+        {nextBuy.loading && <div className="list-card__empty">Räknar…</div>}
+        {nextBuy.error && <div className="list-card__empty">Kunde inte hämta planen.</div>}
+        {(nextBuy.data?.rows ?? []).map((r) => (
+          <div key={`${r.order}-${r.ticker}`} className="list-row">
+            <div className="list-row__main">
+              <span className="list-row__ticker">
+                {r.order}. {r.name}{' '}
+                <span className={r.evidence === 'kärna' ? 'pos' : ''} style={{ fontSize: '0.78em' }}>
+                  {r.evidence === 'kärna' ? '● kärna' : '○ satellit'}
+                </span>
+              </span>
+              <span className="list-row__sub">{r.ticker} · {r.why}</span>
+            </div>
+            <div className="list-row__side">
+              <span className="list-row__num">{fmtSek(r.kr)}</span>
+            </div>
+          </div>
+        ))}
+        {(nextBuy.data?.skipped ?? []).map((s) => (
+          <div key={s.bucket} className="list-row" style={{ opacity: 0.6 }}>
+            <div className="list-row__main">
+              <span className="list-row__sub">{s.reason}</span>
+            </div>
+          </div>
+        ))}
+        {nextBuy.data && !nextBuy.data.has_holdings && (
+          <div className="list-card__empty">
+            <Link to="/innehav">Spara dina innehav</Link> så anpassas planen efter vad du redan äger.
+          </div>
+        )}
+      </div>
+      {nextBuy.data?.note && <p className="footnote">{nextBuy.data.note}</p>}
+
+      {/* Backtest – simulering, nedgraderad under Coret */}
       <div className={`hero ${positiveReturn ? 'hero--up' : 'hero--down'}`}>
         <div className="hero__label">
-          Strategins portfölj · backtest
-          <InfoButton title="Strategins portfölj · backtest">
+          Backtest · simulering – inte dina pengar
+          <InfoButton title="Backtest · simulering">
             <p>
               Det här är INTE dina egna pengar – det är hur en tänkt portfölj skulle ha utvecklats om
               man hade följt modellens köp/sälj-signaler historiskt, med start på en fast summa.
             </p>
             <p>
-              Syftet är att visa hur strategin presterat över tid innan du litar på den med riktiga
-              pengar. Se fliken Portfölj för dina egna, faktiska innehav.
+              <b>OBS survivorship:</b> simuleringen körs på dagens överlevande bolag – döda/avnoterade
+              saknas – så kurvan är systematiskt för optimistisk. Det ärliga måttet är holdouten
+              (aldrig sedd data) som visas nedan, och din egen framåt-loggade portfölj.
             </p>
           </InfoButton>
         </div>
@@ -109,6 +171,22 @@ export function OverviewPage() {
                 <b>OBS survivorship:</b> backtesten körs på dagens överlevande bolag – döda/av-
                 noterade saknas – så marginalen är optimistisk. Lita på holdouten och live-liggaren.
               </p>
+            </InfoButton>
+          </div>
+        )}
+        {stats.data.holdout?.CAGR && (
+          <div className="hero__bench">
+            Holdout (ärligaste måttet, aldrig sedd data): CAGR{' '}
+            <span className={String(stats.data.holdout.CAGR).trim().startsWith('-') ? 'neg' : 'pos'}>
+              {stats.data.holdout.CAGR}
+            </span>
+            <InfoButton title="Holdout – det ärliga måttet">
+              <p>
+                De senaste två åren är <b>frusna</b>: modellen tränas aldrig på dem. Siffran här är
+                därför den enda historiska mätning som liknar verkligheten – till skillnad från
+                15-årskurvan ovan, som är survivorship-uppblåst.
+              </p>
+              <p>Är holdouten svag ska du lita mer på den breda kärnan än på strategins signaler.</p>
             </InfoButton>
           </div>
         )}
