@@ -517,6 +517,12 @@ PORTFOLIO_HOLDINGS_FILE = "cache/portfolio_holdings.csv"
 # spar). Bygger en ÄKTA personlig utvecklingskurva från och med nu (gitignorerad).
 PORTFOLIO_VALUE_LOG = "cache/portfolio_value_log.csv"
 PORTFOLIO_TARGET = {"broad": 0.60, "sweden": 0.15, "theme": 0.20, "leverage": 0.0}
+# "Nästa köp"-Coret (hemvyns huvudkort): EN global kärn-ETF som förstahandsval –
+# bredast+billigast vann varje netto-jämförelse vi kört (ACWI slog rotationens
+# alla varianter OOS och aktiemodellens holdout). Beloppet är bara default för
+# vyn; frontend kan skicka valfritt belopp.
+PORTFOLIO_CORE_ETF = ("IUSQ.DE", "iShares MSCI ACWI (hela världen)")
+NEXT_BUY_DEFAULT_AMOUNT = 5000
 # Föreslagna breda ETF:er för kärnan (nytt kapital riktas hit när 'broad' är låg):
 PORTFOLIO_BROAD_ETFS = {"World (MSCI)": "EUNL.DE", "USA (S&P 500)": "SXR8.DE",
                         "Emerging Markets": "IS3N.DE", "Europa": "EXSA.DE"}

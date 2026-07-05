@@ -50,6 +50,8 @@ export const api = {
   thesis: () => getJson('/thesis'),
   // Egen väg för manuella innehav – /portfolio är backtest-equity-kurvan.
   holdings: (amount) => getJson(`/holdings${amount ? `?amount=${amount}` : ''}`),
+  // Coret: ETT rangordnat svar på "var ska nästa krona in?" (hemvyns huvudkort).
+  nextBuy: (amount) => getJson(`/next-buy${amount ? `?amount=${amount}` : ''}`),
   saveHoldings: (holdings, amount) => postJson('/holdings', { holdings, amount }),
   exitSignals: () => getJson('/exit-signals'),
   portfolioLog: () => getJson('/portfolio-log'),
