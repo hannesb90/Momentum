@@ -2,6 +2,7 @@
 config.py – Alla parametrar för momentum ML-systemet.
 Ändra här; rör inte modellkoden.
 """
+import os as _os   # för env-styrda knoppar nedan (A/B utan filredigering)
 
 # ── Data ─────────────────────────────────────────────────────────────────────
 DEFAULT_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META", "JPM"]
@@ -98,7 +99,7 @@ KEEP_BAND_MULT     = 2.0    # håll ett innehav så länge det är inom topp 2N 
 # = färre små justeringar = lägre omsättning/courtage, till priset av något
 # lösare viktning. 0.005 (0,5%) är den historiska baslinjen. Höj till t.ex.
 # 0.02–0.03 på Pi:n och A/B-testa mot holdouten om omsättningen tynger.
-REBALANCE_BUFFER_PCT = 0.005
+REBALANCE_BUFFER_PCT = float(_os.environ.get("MOMENTUM_REBALANCE_BUFFER_PCT", 0.005))
 
 # Delisting-detektor: om en ticker saknar ny kurs i mer än så här många veckor
 # (relativt universumets senaste datum) tolkas bolaget som avnoterat och tas bort
@@ -121,7 +122,6 @@ EMBARGO_WEEKS      = FORWARD_WEEKS  # en hel label-horisont (13v)
 # kärna ledig åt API-servern om de körs på samma maskin samtidigt.
 # Sätts via env-variabeln MOMENTUM_TRAINING_THREADS (se deploy/), annars
 # None = låt biblioteken välja själva (default, använder alla kärnor).
-import os as _os
 _env_threads = _os.environ.get("MOMENTUM_TRAINING_THREADS")
 NUM_TRAINING_THREADS = int(_env_threads) if _env_threads else None
 
@@ -273,7 +273,7 @@ VOL_TARGET_MAX_LEVERAGE   = 1.0    # tak (1.0 = ingen hävstång, bara de-riskin
 # inför en sättning) och släpper greppet snabbare efteråt. lambda≈0.94 ger en
 # effektiv halveringstid på ~11 veckor. Default av → platt rullande std (baslinjen);
 # slå på och A/B-testa mot holdouten på Pi:n.
-VOL_TARGET_EWMA           = False
+VOL_TARGET_EWMA           = _os.environ.get("MOMENTUM_VOL_TARGET_EWMA", "0") not in ("0", "", "false", "False")
 VOL_TARGET_EWMA_LAMBDA    = 0.94
 
 # ── Backtest-kostnader ────────────────────────────────────────────────────────
@@ -405,6 +405,11 @@ REGIME_SMA_WEEKS = 26       # trend-proxy för bull/bear/sidledes-klassificering
 # Sidledes-dämpningen borttagen (var 0.6 → 1.0): inget kontant-drag i sidledes-
 # marknad. Björn-skyddet BEHÅLLS (0.25) → skalar ner i tydliga kraschregimer.
 MARKET_FILTER_EXPOSURE = {"bull": 1.0, "sideways": 1.0, "bear": 0.25}
+# A/B: dämpa exponeringen i sidledes-regim (holdouten tappar mest just där).
+# MOMENTUM_SIDEWAYS_EXP=0.5 skalar sidledes-vikterna till 50%; default oförändrat.
+_sideways_exp = _os.environ.get("MOMENTUM_SIDEWAYS_EXP")
+if _sideways_exp:
+    MARKET_FILTER_EXPOSURE["sideways"] = float(_sideways_exp)
 
 # Pappershandeln: innehav vars ticker saknar pris så här många KÖRNINGAR i rad
 # tvångssäljs på senast kända pris (avnotering/namnbyte = tvingad exit i verkligheten).
