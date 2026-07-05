@@ -103,13 +103,8 @@ export function OverviewPage() {
 
   const series = useMemo(() => {
     if (!portfolio.data) return []
-    return portfolio.data.map((r) => ({
-      date: r.date,
-      value: r.portfolio_value,
-      idx: r.omxs30_value,         // riktigt, ägbart segment-index (XACT total-avk.)
-    }))
+    return portfolio.data.map((r) => ({ date: r.date, value: r.portfolio_value }))
   }, [portfolio.data])
-  const hasIdx = series.some((r) => r.idx != null)
 
   if (stats.loading || portfolio.loading) return <Loading />
   if (stats.error) return <ErrorBlock error={stats.error} />
@@ -280,27 +275,6 @@ export function OverviewPage() {
             </InfoButton>
           </div>
         )}
-        {stats.data.index_benchmark && (
-          <div className="hero__bench">
-            {stats.data.index_benchmark.label}: {stats.data.index_benchmark.CAGR}/år ·{' '}
-            <span className={stats.data.index_benchmark.alpha_cagr >= 0 ? 'pos' : 'neg'}>
-              vs index {stats.data.index_benchmark.alpha_cagr >= 0 ? '+' : ''}
-              {(stats.data.index_benchmark.alpha_cagr * 100).toFixed(1)}%/år
-            </span>
-            <InfoButton title="Strategi vs riktigt index">
-              <p>
-                Jämför strategin mot det <b>riktiga, ägbara</b> segment-indexet (XACT total-
-                avkastning){stats.data.index_benchmark.window ? ` över ${stats.data.index_benchmark.window}` : ''}.
-                Positivt = strategin slog en indexfond, negativt = du hade tjänat mer på att bara
-                köpa indexet.
-              </p>
-              <p>
-                <b>OBS survivorship:</b> backtesten körs på dagens överlevande bolag – döda/av-
-                noterade saknas – så marginalen är optimistisk. Lita på holdouten och live-liggaren.
-              </p>
-            </InfoButton>
-          </div>
-        )}
         {stats.data.holdout?.CAGR && (
           <div className="hero__bench">
             Holdout (ärligaste måttet, aldrig sedd data): CAGR{' '}
@@ -330,22 +304,12 @@ export function OverviewPage() {
                 <YAxis domain={['dataMin', 'dataMax']} hide />
                 <Tooltip
                   contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
-                  formatter={(v, name) => [fmtSek(v), name === 'idx' ? 'Index (XACT)' : 'Strategi']}
+                  formatter={(v) => [fmtSek(v), 'Simulering']}
                   labelFormatter={() => ''}
                 />
-                {hasIdx && (
-                  <Area type="monotone" dataKey="idx" stroke="var(--good)" strokeWidth={1.6}
-                    fill="none" dot={false} connectNulls />
-                )}
                 <Area type="monotone" dataKey="value" stroke="var(--accent)" strokeWidth={2} fill="url(#heroFill)" />
               </AreaChart>
             </ResponsiveContainer>
-            {hasIdx && (
-              <div className="hero__legend">
-                <span><i className="dot dot--accent" />Strategi</span>
-                <span><i className="dot dot--good" />Index (XACT total-avk.)</span>
-              </div>
-            )}
           </div>
         )}
       </div>

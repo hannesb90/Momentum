@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { NavBar } from './components/NavBar'
 import { OverviewPage } from './pages/Overview'
 import { SignalsHubPage } from './pages/SignalsHub'
@@ -30,23 +30,29 @@ export default function App() {
     localStorage.setItem('segment', segment)
   }, [segment])
 
-  // Segmentbyte sker enbart via knapparna (swipe-toggeln borttagen – den
-  // krockade med sido-scroll i breda vyer).
+  // Segmenttoggeln göms på hemvyn: den är nu Core:t (Nästa köp) som är segment-
+  // oberoende, så knapparna fyllde ingen funktion där. På forskningsvyerna
+  // (Signaler/Kvalitet/Analys) styr den fortfarande vilket segment som visas.
+  const { pathname } = useLocation()
+  const showSegments = pathname !== '/'
+
   return (
     <div className="app">
       <NavBar />
-      <div className="segment-bar">
-        {SEGMENTS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            className={`segment-toggle__btn${segment === s.id ? ' segment-toggle__btn--active' : ''}`}
-            onClick={() => setSegment(s.id)}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      {showSegments && (
+        <div className="segment-bar">
+          {SEGMENTS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`segment-toggle__btn${segment === s.id ? ' segment-toggle__btn--active' : ''}`}
+              onClick={() => setSegment(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
       {/* key={segment} -> alla sidor monteras om och hämtar för rätt segment */}
       <main className="app__content" key={segment}>
         <Routes>
