@@ -9,7 +9,17 @@ export function setApiSegment(s) {
 
 async function getJson(path) {
   const sep = path.includes('?') ? '&' : '?'
-  const res = await fetch(`${BASE}${path}${sep}segment=${encodeURIComponent(currentSegment)}`)
+  // Timeout: en hängande begäran ska ge ett synligt fel, inte en evig spinner.
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 20000)
+  let res
+  try {
+    res = await fetch(`${BASE}${path}${sep}segment=${encodeURIComponent(currentSegment)}`, { signal: ctrl.signal })
+  } catch (e) {
+    throw new Error(e.name === 'AbortError' ? `Tidsgräns (20 s) – ${path} svarade inte` : e.message)
+  } finally {
+    clearTimeout(timer)
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.detail || `${res.status} ${res.statusText}`)
