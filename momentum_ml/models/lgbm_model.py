@@ -215,10 +215,12 @@ class MomentumLGBM:
         model_idx = self._select_model_idx(df.index)
 
         cls_preds = np.empty(len(df))
+        raw_preds = np.empty(len(df))
         reg_preds = np.empty(len(df))
         for idx in np.unique(model_idx):
             mask = model_idx == idx
             raw = self.cls_models[idx].predict(X[mask])
+            raw_preds[mask] = raw
             # Bakåtkompatibelt: äldre sparade modeller (innan kalibrering
             # infördes) har en tom calibrators-lista – kör då okalibrerat
             # istället för att krascha vid laddning av en gammal pkl.
@@ -228,8 +230,15 @@ class MomentumLGBM:
                 cls_preds[mask] = raw
             reg_preds[mask] = self.reg_models[idx].predict(X[mask])
 
+        # prob_raw: isotonic är en TRAPPSTEGSFUNKTION – vid svag signal kollapsar
+        # den till en bred platå på basfrekvensen (~34%), där nästan alla bolag
+        # står exakt lika i prob_up i åratal och topp-N-urvalet blir godtyckliga
+        # tie-breaks. Den råa poängen är kontinuerlig och bevarar modellens
+        # finordning; den följer med till signals.csv som tie-break i urvalet
+        # och som underlag för prob_rank (tvärsnitts-percentil) i appen.
         return pd.DataFrame({
             "prob_up":     cls_preds,
+            "prob_raw":    raw_preds,
             "pred_signal": (cls_preds > 0.5).astype(int),
             "pred_return": reg_preds,
         }, index=df.index)
