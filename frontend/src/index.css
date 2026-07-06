@@ -1741,3 +1741,22 @@ h2 {
 .alloc-editor summary::-webkit-details-marker { display: none; }
 .alloc-editor summary::before { content: '⚙ '; }
 .alloc-editor input[type="range"] { accent-color: var(--accent, #2196F3); margin-top: 2px; }
+
+/* Innehav – sök/filtrera i universumet */
+.pf-search { position: relative; margin: 6px 0 10px; }
+.pf-search__input { width: 100%; box-sizing: border-box; }
+.pf-search__drop {
+  position: absolute; z-index: 20; left: 0; right: 0; margin-top: 4px;
+  background: var(--surface, #0f172a); border: 1px solid #1e293b; border-radius: 10px;
+  overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.pf-search__item {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  width: 100%; padding: 9px 12px; background: none; border: none; cursor: pointer;
+  color: inherit; text-align: left; border-bottom: 1px solid #1e293b;
+}
+.pf-search__item:last-child { border-bottom: none; }
+.pf-search__item:hover { background: rgba(255,255,255,0.05); }
+.pf-search__name { font-weight: 500; }
+.pf-search__meta { display: flex; align-items: center; gap: 8px; font-size: 0.82em; }
+.pf-search__empty { display: block; padding: 9px 12px; opacity: 0.6; font-size: 0.85em; }

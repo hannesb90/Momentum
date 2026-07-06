@@ -54,6 +54,7 @@ export const api = {
   nextBuy: (amount) => getJson(`/next-buy${amount ? `?amount=${amount}` : ''}`),
   portfolioTarget: () => getJson('/portfolio-target'),
   saveTarget: (target) => postJson('/portfolio-target', target),
+  universe: () => getJson('/universe'),   // sökbara värdepapper (sök/filtrera vid innehav)
   saveHoldings: (holdings, amount) => postJson('/holdings', { holdings, amount }),
   exitSignals: () => getJson('/exit-signals'),
   portfolioLog: () => getJson('/portfolio-log'),

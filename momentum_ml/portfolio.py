@@ -754,6 +754,60 @@ def _takeprofit(rows) -> list:
     return flags
 
 
+_UNIVERSE_CACHE: list = []
+
+
+def universe() -> list:
+    """
+    Alla sökbara värdepapper appen känner till, för sök/filtrera vid innehav:
+      · svenska börsbolag + börshandlade fonder (data/sweden_universe.csv m.fl.)
+      · breda kärn-ETF:er (config.PORTFOLIO_CORE_ETF/PORTFOLIO_BROAD_ETFS)
+      · rotationens region/tema-ETF:er (rotation_universe.csv)
+    Returnerar [{ticker, name, sector, bucket}] sorterat på namn. Bucket är ett
+    FÖRSLAG (broad/sweden/theme) så tillägg hamnar rätt hink direkt.
+    """
+    if _UNIVERSE_CACHE:
+        return _UNIVERSE_CACHE
+    out = {}
+
+    def add(ticker, name, sector, bucket):
+        tk = (ticker or "").strip().upper()
+        if not tk or tk in out:
+            return
+        out[tk] = {"ticker": tk, "name": (name or tk).strip(),
+                   "sector": (sector or "").strip(), "bucket": bucket}
+
+    # Breda kärn-ETF:er först (så de rankas som broad även om de dyker upp nedan).
+    core = getattr(config, "PORTFOLIO_CORE_ETF", None)
+    if core:
+        add(core[0], core[1], "Global", "broad")
+    for lbl, tk in getattr(config, "PORTFOLIO_BROAD_ETFS", {}).items():
+        add(tk, lbl, "Bred", "broad")
+
+    # Svenska universumet (bolag + börsfonder) via den förbyggda CSV:n.
+    try:
+        from data.data_loader import load_sweden_universe
+        tickers, sector_map, _cap, name_map = load_sweden_universe()
+        for tk in tickers:
+            add(tk, name_map.get(tk), sector_map.get(tk), "sweden")
+    except Exception:  # noqa: BLE001 – universum-fil saknas → hoppa svenska delen
+        pass
+
+    # Rotationens region/tema-ETF:er.
+    uf = Path(__file__).parent / getattr(config, "ETF_ROT_UNIVERSE_FILE", "")
+    if getattr(config, "ETF_ROT_UNIVERSE_FILE", "") and uf.exists():
+        try:
+            for r in csv.DictReader(open(uf, encoding="utf-8")):
+                kind = (r.get("kind") or "").strip()
+                bucket = "theme" if kind == "theme" else "broad"
+                add(r.get("ticker"), r.get("name"), r.get("group"), bucket)
+        except Exception:  # noqa: BLE001
+            pass
+
+    _UNIVERSE_CACHE.extend(sorted(out.values(), key=lambda x: x["name"].lower()))
+    return _UNIVERSE_CACHE
+
+
 def _safe(fn, default, label):
     """Kör fn(); returnera default + logga vid fel så EN trasig delkomponent
     (opportunist/säljvakt/sammanvägd rank) inte sänker hela Nästa köp-kortet."""
