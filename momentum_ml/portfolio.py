@@ -754,6 +754,41 @@ def _takeprofit(rows) -> list:
     return flags
 
 
+def _safe(fn, default, label):
+    """Kör fn(); returnera default + logga vid fel så EN trasig delkomponent
+    (opportunist/säljvakt/sammanvägd rank) inte sänker hela Nästa köp-kortet."""
+    try:
+        return fn()
+    except Exception as e:  # noqa: BLE001
+        import traceback
+        print(f"[portfolio] Nästa köp: '{label}' misslyckades: {e}")
+        traceback.print_exc()
+        return default
+
+
+_NEXTBUY_CACHE: dict = {}
+
+
+def _data_mtime() -> float:
+    """Senaste ändringstid bland alla filer Nästa köp läser. Datan skrivs nattligt
+    (kl 02) + när du sparar innehav – så länge inget ändrats är resultatet
+    identiskt och kan cachas i stället för att räknas om vid varje appstart."""
+    paths = [holdings_path(), target_path()]
+    for seg in config.SEGMENTS.values():
+        rd = Path(seg.get("results_dir", ""))
+        for f in ("signals.csv", "quality_shortlist.csv", "quant_shortlist.csv",
+                  "flow_snapshot.csv", "prices.csv", "portfolio.csv",
+                  "etf_rotation.csv", "etf_rotation_meta.json"):
+            paths.append(rd / f)
+    m = 0.0
+    for p in paths:
+        try:
+            m = max(m, p.stat().st_mtime)
+        except OSError:
+            pass
+    return m
+
+
 def next_buy(rows, amount=None) -> dict:
     """
     KÄRNAN ("Nästa köp"): ETT rangordnat, konkret svar på var nästa krona ska in.
@@ -769,10 +804,17 @@ def next_buy(rows, amount=None) -> dict:
     stället – planen blir alltid ett komplett "så här placeras hela beloppet".
     """
     amount = float(amount or getattr(config, "NEXT_BUY_DEFAULT_AMOUNT", 5000))
+
+    # Cache: datan laddas nattligt (kl 02) + vid innehavssparning. Så länge inga
+    # av filerna ändrats är svaret identiskt → räkna INTE om vid varje appstart.
+    cache_key = (round(amount), _data_mtime())
+    if cache_key in _NEXTBUY_CACHE:
+        return _NEXTBUY_CACHE[cache_key]
+
     tgt = load_target()
     buckets = {b: 0.0 for b in BUCKETS}
     for r in rows:
-        buckets[r["bucket"] if r["bucket"] in buckets else "theme"] += r["value"]
+        buckets[r["bucket"] if r["bucket"] in buckets else "theme"] += r.get("value", 0.0)
     plan = _fill_split(buckets, amount, tgt)
 
     core_tk, core_name = getattr(config, "PORTFOLIO_CORE_ETF",
@@ -783,7 +825,7 @@ def next_buy(rows, amount=None) -> dict:
         risk_on = bool(meta.get("risk_on"))
     except Exception:  # noqa: BLE001 – rotation ej körd → gate:a inte på regim
         risk_on = None
-    cands = _candidates()
+    cands = _safe(_candidates, {"sweden": [], "theme": []}, "kandidater")
 
     skipped = []
     broad_kr = plan.get("broad", 0.0) + plan.get("leverage", 0.0)  # hävstång (mål 0) → kärnan
@@ -803,7 +845,8 @@ def next_buy(rows, amount=None) -> dict:
     # Sverige-slotten fylls av den SAMMANVÄGDA rankningen (kvalitet+kvant+momentum+
     # research, portfölj-medveten) – inte en enskild modells lista. Faller tillbaka
     # på de gamla per-modell-kandidaterna om poängkartan saknas.
-    sweden_picks = _unified_rank(rows, top_n=2) or (cands.get("sweden") or [])[:2]
+    sweden_picks = (_safe(lambda: _unified_rank(rows, top_n=2), [], "sammanvägd rank")
+                    or (cands.get("sweden") or [])[:2])
     if sweden_kr > 0 and not sweden_picks:
         skipped.append({"bucket": "sweden", "reason": "inga svenska kandidater just nu → kronorna går till kärnan"})
         broad_kr += sweden_kr
@@ -839,13 +882,13 @@ def next_buy(rows, amount=None) -> dict:
         r["order"] = i
 
     total = sum(v for v in buckets.values())
-    return {
+    result = {
         "amount": round(amount),
         "risk_on": risk_on,
         "rows": out_rows,
         "best": (out_rows[0] if out_rows else None),   # DET enskilt bästa köpet just nu
-        "opportunity": _opportunity(rows, amount),     # taktiskt front-load denna månad (PEAD-disciplin)
-        "sell_watch": _takeprofit(rows),               # säljvakten (enda sälj-regeln)
+        "opportunity": _safe(lambda: _opportunity(rows, amount), None, "opportunist"),
+        "sell_watch": _safe(lambda: _takeprofit(rows), [], "säljvakt"),
         "isk": sum(r.get("value", 0.0) for r in rows) <= float(getattr(config, "PORTFOLIO_ISK_LIMIT", 300000)),
         "skipped": skipped,
         "buckets": {b: (round(buckets[b] / total, 4) if total else 0.0) for b in BUCKETS},
@@ -856,6 +899,10 @@ def next_buy(rows, amount=None) -> dict:
                  "flaggas för att ta hem vinsten (behåll insatsen). Kärnan är evidensbackad; "
                  "satelliterna är aktiva vad som måste förtjäna sin plats i din framåt-logg."),
     }
+    if len(_NEXTBUY_CACHE) > 8:
+        _NEXTBUY_CACHE.clear()
+    _NEXTBUY_CACHE[cache_key] = result
+    return result
 
 
 def _house_money(rows) -> list:
