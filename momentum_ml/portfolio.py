@@ -352,6 +352,32 @@ def _candidates() -> dict:
     return out
 
 
+def months_to_target(rows, amount, max_months=240):
+    """
+    Antal månadsinsättningar (à `amount`) tills den BREDA KÄRNAN når sin målvikt
+    via fyll-mot-mål (allt nytt kapital till undervikt, inget säljs). Simulerar
+    månad för månad. 0 = redan på/över mål, None = längre än max_months.
+    """
+    tgt = load_target()
+    buckets = {b: 0.0 for b in BUCKETS}
+    for r in rows:
+        buckets[r["bucket"] if r["bucket"] in buckets else "theme"] += r.get("value", 0.0)
+    tb = float(tgt.get("broad", 0.6))
+    total = sum(buckets.values())
+    if total > 0 and buckets["broad"] / total >= tb - 0.005:
+        return 0
+    amount = float(amount or 0)
+    if amount <= 0:
+        return None
+    for m in range(1, max_months + 1):
+        for b, kr in _fill_split(buckets, amount, tgt).items():
+            buckets[b] = buckets.get(b, 0.0) + kr
+        total = sum(buckets.values())
+        if total > 0 and buckets["broad"] / total >= tb - 0.005:
+            return m
+    return None
+
+
 _COMPUTE_CACHE: dict = {}
 
 
@@ -401,6 +427,10 @@ def compute(rows, amount=None) -> dict:
                           for lbl, tk in config.PORTFOLIO_BROAD_ETFS.items()}
         out["newcapital"] = {"amount": amount, "plan": plan, "broad_etfs": broad_etfs}
         out["riskon"] = _riskon_plan(amount)          # aggressiv motpol (ingen riskberäkning)
+    # Väg till målnivå: hur många månadsinsättningar tills kärnan når sin målvikt.
+    proj_amt = amount or getattr(config, "NEXT_BUY_DEFAULT_AMOUNT", 10000)
+    out["months_to_core"] = _safe(lambda: months_to_target(rows, proj_amt), None, "months_to_core")
+    out["proj_amount"] = round(float(proj_amt))
     if len(_COMPUTE_CACHE) > 8:
         _COMPUTE_CACHE.clear()
     _COMPUTE_CACHE[_ck] = out
