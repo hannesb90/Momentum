@@ -352,17 +352,23 @@ def _candidates() -> dict:
     return out
 
 
-def months_to_target(rows, amount, max_months=240):
+def months_to_target(rows, amount, threshold=None, max_months=360):
     """
-    Antal månadsinsättningar (à `amount`) tills den BREDA KÄRNAN når sin målvikt
-    via fyll-mot-mål (allt nytt kapital till undervikt, inget säljs). Simulerar
-    månad för månad. 0 = redan på/över mål, None = längre än max_months.
+    Antal månadsinsättningar (à `amount`) tills den breda kärnan når `threshold`
+    andel av portföljen via fyll-mot-mål (nytt kapital till undervikt, inget säljs).
+    threshold=None → kärnans målvikt (helt i balans). Simulerar månad för månad.
+    0 = redan där, None = längre än max_months.
+
+    OBS: att nå MÅLVIKTEN begränsas ofta inte av kärnan utan av den STÖRSTA
+    övervikten – den måste spädas ut, vilket bara sker när totalen växer. En stor
+    övervikt (t.ex. Sverige 56%) tar därför lång tid att späda till 15% enbart via
+    inflöden. Kärnan blir största innehav långt innan hela portföljen är i balans.
     """
     tgt = load_target()
     buckets = {b: 0.0 for b in BUCKETS}
     for r in rows:
         buckets[r["bucket"] if r["bucket"] in buckets else "theme"] += r.get("value", 0.0)
-    tb = float(tgt.get("broad", 0.6))
+    tb = float(threshold if threshold is not None else tgt.get("broad", 0.65))
     total = sum(buckets.values())
     if total > 0 and buckets["broad"] / total >= tb - 0.005:
         return 0
@@ -427,8 +433,10 @@ def compute(rows, amount=None) -> dict:
                           for lbl, tk in config.PORTFOLIO_BROAD_ETFS.items()}
         out["newcapital"] = {"amount": amount, "plan": plan, "broad_etfs": broad_etfs}
         out["riskon"] = _riskon_plan(amount)          # aggressiv motpol (ingen riskberäkning)
-    # Väg till målnivå: hur många månadsinsättningar tills kärnan når sin målvikt.
+    # Väg till balans: när blir kärnan DOMINANT (≥50%) och när är HELA portföljen
+    # på mål (begränsas ofta av största övervikten, inte av kärnan).
     proj_amt = amount or getattr(config, "NEXT_BUY_DEFAULT_AMOUNT", 10000)
+    out["months_core_50"] = _safe(lambda: months_to_target(rows, proj_amt, threshold=0.50), None, "months_core_50")
     out["months_to_core"] = _safe(lambda: months_to_target(rows, proj_amt), None, "months_to_core")
     out["proj_amount"] = round(float(proj_amt))
     if len(_COMPUTE_CACHE) > 8:

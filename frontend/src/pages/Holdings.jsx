@@ -293,11 +293,16 @@ export function HoldingsPage() {
           {analysis.warnings.map((w, i) => <span className="qflag" key={i}>{w}</span>)}
         </div>
       )}
-      {analysis?.months_to_core != null && (
+      {(analysis?.months_core_50 != null || analysis?.months_to_core != null) && (
         <p className="footnote" style={{ marginTop: 8 }}>
-          {analysis.months_to_core === 0
-            ? '✓ Kärnan är på målnivå.'
-            : `Väg till målnivå: vid ${fmtKr(analysis.proj_amount)}/mån når den breda kärnan sin målvikt om ~${analysis.months_to_core} månader (≈ ${(analysis.months_to_core / 12).toFixed(1)} år), enbart via nya insättningar – inget säljs. Höj insättningen eller sänk temavikten för att gå snabbare.`}
+          Väg till balans vid {fmtKr(analysis.proj_amount)}/mån (fyll-mot-mål, inget säljs):{' '}
+          {analysis.months_core_50 === 0
+            ? 'kärnan är redan största innehav'
+            : `kärnan blir största innehav (~50%) om ~${analysis.months_core_50} mån`}
+          {analysis.months_to_core != null && analysis.months_to_core !== 0 && (
+            <> · helt i balans om ~{analysis.months_to_core} mån (≈ {(analysis.months_to_core / 12).toFixed(1)} år) – bromsas av din största övervikt (Sverige) som bara späds ut när totalen växer</>
+          )}
+          . Snabbare med högre insättning eller genom att sälja ned satelliterna.
         </p>
       )}
 

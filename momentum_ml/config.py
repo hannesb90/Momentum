@@ -516,7 +516,7 @@ PORTFOLIO_HOLDINGS_FILE = "cache/portfolio_holdings.csv"
 # Framåt-logg av din portföljs totala värde (en punkt per dag, upsert vid varje
 # spar). Bygger en ÄKTA personlig utvecklingskurva från och med nu (gitignorerad).
 PORTFOLIO_VALUE_LOG = "cache/portfolio_value_log.csv"
-PORTFOLIO_TARGET = {"broad": 0.60, "sweden": 0.15, "theme": 0.20, "leverage": 0.0}
+PORTFOLIO_TARGET = {"broad": 0.65, "sweden": 0.15, "theme": 0.20, "leverage": 0.0}  # summerar till 1.0
 # Användarens egen målfördelning (justeras via reglaget i appen) sparas här och
 # åsidosätter default ovan. GITIGNORERAD (personlig, som innehaven). Saknas den
 # används PORTFOLIO_TARGET. leverage hålls alltid 0 (evidens: hävstång = ruinrisk).
