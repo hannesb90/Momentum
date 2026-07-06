@@ -45,6 +45,8 @@ export function HoldingsPage() {
   const [error, setError] = useState(null)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [universe, setUniverse] = useState([])
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     api.holdings(amount)
@@ -55,8 +57,21 @@ export function HoldingsPage() {
       .catch(setError)
       .finally(() => setLoading(false))
     api.exitSignals().then(setExit).catch(() => {})
+    api.universe().then(setUniverse).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Sök/filtrera i universumet appen känner (namn eller ticker).
+  const q = search.trim().toLowerCase()
+  const matches = q.length < 2 ? [] : universe
+    .filter((u) => u.name.toLowerCase().includes(q) || u.ticker.toLowerCase().includes(q))
+    .slice(0, 8)
+
+  function addFromUniverse(u) {
+    setHoldings((hs) => [...hs, { name: u.name, value: 0, bucket: u.bucket || 'broad', ticker: u.ticker, cost: '' }])
+    setDirty(true)
+    setSearch('')
+  }
 
   function refreshAmount(a) {
     setAmount(a)
@@ -98,6 +113,7 @@ export function HoldingsPage() {
   if (error) return <ErrorBlock error={error} />
 
   const total = analysis?.total ?? 0
+  const liveTotal = holdings.reduce((s, h) => s + (Number(h.value) || 0), 0)
   const buckets = analysis?.buckets ?? {}
   const target = analysis?.target ?? {}
   const plan = analysis?.newcapital?.plan ?? {}
@@ -167,24 +183,52 @@ export function HoldingsPage() {
         </p>
       )}
 
+      {/* Sök/filtrera i universumet appen känner → lägg till förifyllt innehav */}
+      <div className="pf-search">
+        <input
+          className="pf-in pf-search__input"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={`🔍 Sök värdepapper (${universe.length} i universumet) – namn eller ticker`}
+        />
+        {matches.length > 0 && (
+          <div className="pf-search__drop">
+            {matches.map((u) => (
+              <button key={u.ticker} className="pf-search__item" onClick={() => addFromUniverse(u)}>
+                <span className="pf-search__name">{u.name}</span>
+                <span className="pf-search__meta">
+                  <span className="mono">{u.ticker}</span>
+                  <span className={`cand-src cand-src--${u.bucket}`}>{BUCKET_LABEL[u.bucket] ?? u.bucket}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {q.length >= 2 && matches.length === 0 && (
+          <div className="pf-search__drop"><span className="pf-search__empty">Inget i universumet – lägg till manuellt nedan.</span></div>
+        )}
+      </div>
+
       <div className="table-wrap pf-holdings">
         <table>
           <thead>
-            <tr><th>Innehav</th><th>Ticker</th><th>Värde</th><th>Insatt</th><th>Hink</th><th></th></tr>
+            <tr><th>Innehav</th><th>Värde</th><th>Insatt</th><th>Vinst</th><th>Andel</th><th>Hink</th><th></th></tr>
           </thead>
           <tbody>
             {holdings.map((h, i) => {
               const t = tierOf(h)
               const rowCls = t && (t.tier === 'red' || t.tier === 'amber') ? `exit-row-${t.tier}` : ''
+              const val = Number(h.value) || 0
+              const cost = h.cost === '' || h.cost == null ? null : Number(h.cost)
+              const gain = cost && cost > 0 ? val / cost - 1 : null
+              const share = liveTotal > 0 ? val / liveTotal : 0
               return (
                 <tr key={i} className={rowCls} title={t ? `${TIER[t.tier]?.label} · ${t.tech_note}` : undefined}>
                   <td>
                     <input className="pf-in" value={h.name}
                       onChange={(e) => edit(i, 'name', e.target.value)} placeholder="Namn" />
-                  </td>
-                  <td>
                     <input className="pf-in pf-tk" value={h.ticker || ''}
-                      onChange={(e) => edit(i, 'ticker', e.target.value)} placeholder="auto" />
+                      onChange={(e) => edit(i, 'ticker', e.target.value)} placeholder="ticker (auto)" />
                   </td>
                   <td>
                     <input className="pf-in pf-num" type="number" min="0" value={h.value}
@@ -194,6 +238,10 @@ export function HoldingsPage() {
                     <input className="pf-in pf-num" type="number" min="0" value={h.cost ?? ''}
                       onChange={(e) => edit(i, 'cost', e.target.value)} placeholder="–" />
                   </td>
+                  <td className={gain == null ? 'flow-flat' : gain >= 0 ? 'flow-in' : 'flow-out'}>
+                    {gain == null ? '–' : fmtPct(gain)}
+                  </td>
+                  <td className="flow-flat">{(share * 100).toFixed(0)}%</td>
                   <td>
                     <select className="pf-in" value={h.bucket} onChange={(e) => edit(i, 'bucket', e.target.value)}>
                       {BUCKETS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
@@ -207,14 +255,15 @@ export function HoldingsPage() {
         </table>
       </div>
       <div className="pf-actions">
-        <button className="pf-btn" onClick={addRow}>+ Lägg till innehav</button>
+        <button className="pf-btn" onClick={addRow}>+ Tom rad</button>
         <button className="pf-btn pf-btn--primary" onClick={save} disabled={saving || !dirty}>
           {saving ? 'Sparar…' : dirty ? 'Spara' : 'Sparat'}
         </button>
       </div>
       <p className="footnote">
-        <b>Ticker</b> fylls i automatiskt från namnet när du sparar (går att skriva över).
-        <b> Insatt</b> = ditt inköpsbelopp – behövs för house-money nedan.
+        Sök ovan för att lägga till från appens universum (ticker fylls i automatiskt), eller
+        <b> + Tom rad</b> för något utanför. <b>Insatt</b> = ditt inköpsbelopp (inköpsvärde) –
+        behövs för vinst-% och house-money.
       </p>
 
       <h3 className="section-title">Fördelning mot mål</h3>

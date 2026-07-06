@@ -257,6 +257,13 @@ def get_next_buy(amount: Optional[float] = None):
     return _clean(pf.next_buy(pf.load_holdings(), amount=amount))
 
 
+@app.get("/api/universe")
+def get_universe():
+    """Alla sökbara värdepapper appen känner (sök/filtrera vid innehav)."""
+    import portfolio as pf
+    return _clean(pf.universe())
+
+
 @app.get("/api/portfolio-target")
 def get_portfolio_target():
     """Användarens målfördelning (broad/sweden/theme, normaliserad)."""
