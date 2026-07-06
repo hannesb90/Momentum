@@ -527,6 +527,10 @@ PORTFOLIO_TARGET_FILE = "cache/portfolio_target.json"
 # vyn; frontend kan skicka valfritt belopp.
 PORTFOLIO_CORE_ETF = ("IUSQ.DE", "iShares MSCI ACWI (hela världen)")
 NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
+# Min-köp: en enskild post under detta är inte värd courtage/spread. Sådana
+# satellit-poster viks in i kärnan denna månad och byggs nästa månad när gapet
+# blivit stort nog för en vettig affär (fyll-mot-mål ackumulerar ändå).
+NEXT_BUY_MIN_TRADE_SEK = 500
 # Antagande: portföljer upp till denna nivå ligger på ISK. På ISK utlöser en
 # försäljning INGEN reavinstskatt (bara schablonskatt på hela kontot, oberoende
 # av enskilda affärer) → säljvaktens house-money-råd är i praktiken skattefritt,

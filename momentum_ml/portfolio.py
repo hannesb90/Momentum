@@ -882,6 +882,9 @@ def next_buy(rows, amount=None) -> dict:
     cands = _safe(_candidates, {"sweden": [], "theme": []}, "kandidater")
 
     skipped = []
+    # Min-köp: satellit-poster under denna gräns är inte värda courtage/spread →
+    # viks in i kärnan denna månad (fyll-mot-mål bygger dem nästa månad).
+    min_trade = float(getattr(config, "NEXT_BUY_MIN_TRADE_SEK", 500))
     broad_kr = plan.get("broad", 0.0) + plan.get("leverage", 0.0)  # hävstång (mål 0) → kärnan
 
     theme_kr = plan.get("theme", 0.0)
@@ -892,6 +895,11 @@ def next_buy(rows, amount=None) -> dict:
         theme_kr = 0.0
     elif theme_kr > 0 and not theme_pick:
         skipped.append({"bucket": "theme", "reason": "ingen tema-signal → kronorna går till kärnan"})
+        broad_kr += theme_kr
+        theme_kr = 0.0
+    elif 0 < theme_kr < min_trade:
+        skipped.append({"bucket": "theme",
+                        "reason": f"under min-köp ({min_trade:.0f} kr) → läggs på kärnan, byggs nästa månad"})
         broad_kr += theme_kr
         theme_kr = 0.0
 
@@ -905,6 +913,15 @@ def next_buy(rows, amount=None) -> dict:
         skipped.append({"bucket": "sweden", "reason": "inga svenska kandidater just nu → kronorna går till kärnan"})
         broad_kr += sweden_kr
         sweden_kr = 0.0
+    elif 0 < sweden_kr < min_trade:
+        skipped.append({"bucket": "sweden",
+                        "reason": f"under min-köp ({min_trade:.0f} kr) → läggs på kärnan, byggs nästa månad"})
+        broad_kr += sweden_kr
+        sweden_kr = 0.0
+    else:
+        # Begränsa antal Sverige-poster så VARJE post ≥ min-köp (inga 60-kr-splittar).
+        max_picks = max(1, int(sweden_kr // min_trade))
+        sweden_picks = sweden_picks[:min(len(sweden_picks), max_picks)]
 
     out_rows = []
     if broad_kr > 0.5:
@@ -913,7 +930,7 @@ def next_buy(rows, amount=None) -> dict:
             "why": "Bred global kärna – slog varje aktiv variant netto i våra tester. Här byggs förmögenheten.",
             "evidence": "kärna",
         })
-    if sweden_kr > 0.5 and sweden_picks:
+    if sweden_kr >= min_trade and sweden_picks:
         per = sweden_kr / len(sweden_picks)
         for c in sweden_picks:
             unified = c.get("source") == "sammanvägd"
@@ -924,7 +941,7 @@ def next_buy(rows, amount=None) -> dict:
                         f"Modellens bästa Sverige-kandidat ({c.get('note')}). Aktivt vad – obevisat (holdout minus)."),
                 "evidence": "satellit",
             })
-    if theme_kr > 0.5 and theme_pick:
+    if theme_kr >= min_trade and theme_pick:
         out_rows.append({
             "kr": round(theme_kr), "ticker": theme_pick.get("ticker"), "name": theme_pick.get("name"),
             "bucket": "theme",
