@@ -352,7 +352,15 @@ def _candidates() -> dict:
     return out
 
 
+_COMPUTE_CACHE: dict = {}
+
+
 def compute(rows, amount=None) -> dict:
+    # Cache som next_buy: datan ändras nattligt + vid innehavssparning. Innehav-
+    # sidan slipper då räkna om (~3 s på Pi:n) vid varje appstart.
+    _ck = (round(float(amount or 0)), _data_mtime())
+    if _ck in _COMPUTE_CACHE:
+        return _COMPUTE_CACHE[_ck]
     total = sum(r["value"] for r in rows) or 0.0
     buckets = {b: 0.0 for b in BUCKETS}
     for r in rows:
@@ -393,6 +401,9 @@ def compute(rows, amount=None) -> dict:
                           for lbl, tk in config.PORTFOLIO_BROAD_ETFS.items()}
         out["newcapital"] = {"amount": amount, "plan": plan, "broad_etfs": broad_etfs}
         out["riskon"] = _riskon_plan(amount)          # aggressiv motpol (ingen riskberäkning)
+    if len(_COMPUTE_CACHE) > 8:
+        _COMPUTE_CACHE.clear()
+    _COMPUTE_CACHE[_ck] = out
     return out
 
 
