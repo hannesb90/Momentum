@@ -494,7 +494,10 @@ class MomentumBacktester:
         keep_mult = float(getattr(config, "KEEP_BAND_MULT", 2.0))
 
         elig = day[day["pred_return"] > config.MIN_EXPECTED_RETURN]
-        elig = elig.sort_values("prob_up", ascending=False)
+        # prob_raw som tie-break om kolumnen finns (isotonic-platån gör prob_up
+        # identisk för nästan alla → utan tie-break blir rankningen radordning).
+        sort_cols = ["prob_up", "prob_raw"] if "prob_raw" in elig.columns else ["prob_up"]
+        elig = elig.sort_values(sort_cols, ascending=False)
         elig_tickers = list(elig["ticker"])
         keep_set = set(elig_tickers[:max(int(n * keep_mult), 1)])
 

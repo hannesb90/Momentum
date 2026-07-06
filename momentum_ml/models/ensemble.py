@@ -69,6 +69,10 @@ class MomentumEnsemble:
         combined = pd.DataFrame(index=idx)
         combined["prob_up"]     = w_lg * lg["prob_up"]    + w_ls * ls["prob_up"]
         combined["pred_return"] = w_lg * lg["pred_return"] + w_ls * ls["pred_return"]
+        # prob_raw (LGBM:s okalibrerade poäng) följer med som finordnings-/tie-
+        # break-signal – LSTM saknar motsvarighet, så den blandas inte.
+        if "prob_raw" in lg.columns:
+            combined["prob_raw"] = lg["prob_raw"]
         # OBS kalibrering: LGBM:s prob_up är isotoniskt kalibrerad, LSTM:s är inte,
         # och MEDELVÄRDET av två sannolikheter är i allmänhet INTE kalibrerat. Den
         # blandade prob_up används därför främst för (a) RANGORDNING till topp-N –
@@ -310,6 +314,10 @@ def build_full_output(
                 "Date":          date,
                 "ticker":        ticker,
                 "prob_up":       row["prob_up"],
+                # rå (okalibrerad) poäng: tie-break när isotonic-platån gör
+                # prob_up identisk för nästan alla bolag. Saknas (gammal pkl)
+                # → faller tillbaka på prob_up (samma beteende som förut).
+                "prob_raw":      float(row.get("prob_raw", row["prob_up"])),
                 "pred_return":   row["pred_return"],
                 "ta_score":      ta_score,
                 "raw_kelly":     raw_kelly,
@@ -339,7 +347,11 @@ def build_full_output(
             cand = cand[cand["mom"] > float(getattr(config, "MOMENTUM_GATE_MIN", 0.0))]
         if cand.empty:
             return pd.Series(0.0, index=group.index)
-        top = cand.sort_values("prob_up", ascending=False).head(config.MAX_POSITIONS)
+        # Sortera på kalibrerad prob FÖRST (oförändrat där den skiljer), med rå
+        # poäng som TIE-BREAK: på isotonic-platån (nästan alla exakt 34,4%) var
+        # urvalet annars godtycklig radordning – nu avgör modellens finordning.
+        top = (cand.sort_values(["prob_up", "prob_raw"], ascending=False)
+               .head(config.MAX_POSITIONS))
         n = len(top)
         eq = 1.0 / n
         # Tilt KRYMPT mot likavikt så portföljen inte kollapsar till de få namn
@@ -384,5 +396,11 @@ def build_full_output(
     df["position_size"] = df.groupby(level="Date", group_keys=False).apply(_size_date)
     # pred_signal = "hålls i portföljen nu" (topp-N), inte en absolut tröskel.
     df["pred_signal"] = (df["position_size"] > 0).astype(int)
+    # prob_rank: tvärsnitts-percentil av rå poäng per datum (0–1). Det ÄRLIGA
+    # talet att visa i appen – kalibrerad prob_up är en isotonic-trappa som vid
+    # svag signal står på exakt basfrekvensen (34,4%) i åratal och ser trasig ut,
+    # medan percentilen alltid varierar och betyder något: "hur stark är aktien
+    # relativt universumet just nu?" (det är också så urvalet faktiskt fungerar).
+    df["prob_rank"] = df.groupby(level="Date")["prob_raw"].rank(pct=True)
     df = df.drop(columns=["raw_kelly", "vol", "mom", "eligible"])
     return df

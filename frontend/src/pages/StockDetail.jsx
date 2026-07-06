@@ -27,11 +27,17 @@ export function StockDetailPage() {
     if (!history.data) return []
     return history.data.map((r) => ({
       date: r.date,
-      prob: r.prob_up != null ? r.prob_up * 100 : null,
+      // Relativ styrka (tvärsnitts-percentil av rå modellpoäng) när den finns –
+      // kalibrerad prob_up är en isotonic-trappa som vid svag signal står platt
+      // på basfrekvensen (~34%) i åratal och ser trasig ut. Percentilen varierar
+      // alltid och är det urvalet faktiskt rankar på. Fallback: gamla prob_up.
+      prob: r.prob_rank != null ? r.prob_rank * 100
+        : (r.prob_up != null ? r.prob_up * 100 : null),
       ret: r.pred_return != null ? r.pred_return * 100 : null,
       signal: r.pred_signal,
     }))
   }, [history.data])
+  const hasRank = useMemo(() => (history.data ?? []).some((r) => r.prob_rank != null), [history.data])
 
   const priceSeries = useMemo(() => {
     if (!prices.data) return []
@@ -172,13 +178,27 @@ export function StockDetailPage() {
         )}
       </div>
 
-      {/* Signalhistorik (P(upp) över tid) */}
+      {/* Signalhistorik – relativ styrka (percentil) när tillgänglig, annars P(upp) */}
       <div className="chart-card">
         <h3>
-          Modellens signalhistorik
-          <InfoButton title="Signalhistorik">
-            Hur modellens uppgångssannolikhet P(upp) utvecklats över tid. Den streckade linjen är
-            köptröskeln – när P(upp) ligger ovanför den ger modellen köpsignal.
+          {hasRank ? 'Relativ styrka i universumet' : 'Modellens signalhistorik'}
+          <InfoButton title={hasRank ? 'Relativ styrka (percentil)' : 'Signalhistorik'}>
+            {hasRank ? (
+              <>
+                <p>
+                  Aktiens <b>percentilrank</b> i modellens rå-poäng, per vecka: 90% = starkare än
+                  90% av alla bolag just då. Det är så modellen faktiskt väljer – den håller de
+                  ~10 relativt starkaste, oavsett absolut nivå.
+                </p>
+                <p>
+                  Vi visar percentilen i stället för den kalibrerade sannolikheten, som vid svag
+                  signal låser sig på basfrekvensen (~34%) och ser platt ut i åratal.
+                </p>
+              </>
+            ) : (
+              <>Hur modellens uppgångssannolikhet P(upp) utvecklats över tid. Den streckade linjen är
+              köptröskeln – när P(upp) ligger ovanför den ger modellen köpsignal.</>
+            )}
           </InfoButton>
         </h3>
         {sigSeries.length < 2 ? (
@@ -192,16 +212,24 @@ export function StockDetailPage() {
               <Tooltip
                 contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
                 labelFormatter={fmtDate}
-                formatter={(v, name) => [`${Number(v).toFixed(1)}%`, name === 'prob' ? 'P(upp)' : 'Förv. avk.']}
+                formatter={(v, name) => [`${Number(v).toFixed(1)}%`,
+                  name === 'prob' ? (hasRank ? 'Relativ styrka' : 'P(upp)') : 'Förv. avk.']}
               />
-              {stats.data?.threshold?.buy_threshold != null && (
+              {hasRank ? (
+                <ReferenceLine
+                  y={80}
+                  stroke="#f59e0b"
+                  strokeDasharray="4 4"
+                  label={{ value: 'topp-20%', fill: '#f59e0b', fontSize: 11, position: 'insideTopRight' }}
+                />
+              ) : (stats.data?.threshold?.buy_threshold != null && (
                 <ReferenceLine
                   y={stats.data.threshold.buy_threshold * 100}
                   stroke="#f59e0b"
                   strokeDasharray="4 4"
                   label={{ value: 'köptröskel', fill: '#f59e0b', fontSize: 11, position: 'insideTopRight' }}
                 />
-              )}
+              ))}
               <Line type="monotone" dataKey="prob" stroke="#4CAF50" dot={false} strokeWidth={1.5} />
             </LineChart>
           </ResponsiveContainer>
