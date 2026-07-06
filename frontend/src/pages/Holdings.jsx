@@ -293,6 +293,13 @@ export function HoldingsPage() {
           {analysis.warnings.map((w, i) => <span className="qflag" key={i}>{w}</span>)}
         </div>
       )}
+      {analysis?.months_to_core != null && (
+        <p className="footnote" style={{ marginTop: 8 }}>
+          {analysis.months_to_core === 0
+            ? '✓ Kärnan är på målnivå.'
+            : `Väg till målnivå: vid ${fmtKr(analysis.proj_amount)}/mån når den breda kärnan sin målvikt om ~${analysis.months_to_core} månader (≈ ${(analysis.months_to_core / 12).toFixed(1)} år), enbart via nya insättningar – inget säljs. Höj insättningen eller sänk temavikten för att gå snabbare.`}
+        </p>
+      )}
 
       <h3 className="section-title">
         Nytt kapital – vart det ska in
