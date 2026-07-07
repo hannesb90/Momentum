@@ -35,9 +35,10 @@ def _key() -> str:
     k = os.environ.get("BORSAPI_API_KEY")
     if not k:
         # Fallback: läs ~/.momentum.env direkt så interaktiva körningar bara funkar.
+        # Tål både 'VAR=...' (systemd EnvironmentFile) och 'export VAR=...' (shell).
         envf = Path.home() / ".momentum.env"
         if envf.exists():
-            m = re.search(r"^BORSAPI_API_KEY=(.+)$", envf.read_text(), re.M)
+            m = re.search(r"^(?:export\s+)?BORSAPI_API_KEY\s*=\s*(.+)$", envf.read_text(), re.M)
             if m:
                 k = m.group(1).strip().strip('"').strip("'")
     if not k:
