@@ -8,6 +8,24 @@ export function setApiSegment(s) {
 }
 
 async function getJson(path) {
+  // Endpoints kan pinna segment explicit (t.ex. sektorer = alltid 'large');
+  // annars bifogas det globala valet.
+  if (path.includes('segment=')) {
+    const ctrl0 = new AbortController()
+    const t0 = setTimeout(() => ctrl0.abort(), 20000)
+    try {
+      const res0 = await fetch(`${BASE}${path}`, { signal: ctrl0.signal })
+      if (!res0.ok) {
+        const body = await res0.json().catch(() => ({}))
+        throw new Error(body.detail || `${res0.status} ${res0.statusText}`)
+      }
+      return res0.json()
+    } catch (e) {
+      throw new Error(e.name === 'AbortError' ? `Tidsgräns (20 s) – ${path} svarade inte` : e.message)
+    } finally {
+      clearTimeout(t0)
+    }
+  }
   const sep = path.includes('?') ? '&' : '?'
   // Timeout: en hängande begäran ska ge ett synligt fel, inte en evig spinner.
   const ctrl = new AbortController()
@@ -50,7 +68,9 @@ export const api = {
   portfolio: (limit = 1000) => getJson(`/portfolio?limit=${limit}`),
   drift: (limit = 260) => getJson(`/drift?limit=${limit}`),
   regime: () => getJson('/regime'),
-  sectorMomentum: () => getJson('/sector-momentum'),
+  // Sektorer är marknadsvyn – alltid bredaste segmentet (ETF-mappad aggregat),
+  // oberoende av Storbolag/Småbolag-växlaren (som är gömd på Marknad).
+  sectorMomentum: () => getJson('/sector-momentum?segment=large'),
   paperLedger: (limit = 520) => getJson(`/paper-ledger?limit=${limit}`),
   prices: (ticker, limit = 260) =>
     getJson(`/prices?ticker=${encodeURIComponent(ticker)}&limit=${limit}`),
