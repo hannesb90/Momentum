@@ -222,9 +222,14 @@ def backfill(budget: int = None):
             break
         cid = c["id"]
         try:
+            # Bara åren features:en behöver (F-score: 2 år, fund. momentum: ~3;
+            # +1 buffert). Full historik är forskningslyx som kan hämtas senare –
+            # detta kapar backfill-kostnaden ~60%.
+            import datetime as _dt
+            since = _dt.date.today().year - int(getattr(config, "BORSAPI_BACKFILL_YEARS", 4))
             rep = _get(f"/companies/{cid}/reports",
-                       {"period_type": "year", "limit": 100},
-                       cache_key=f"reports_{cid}_year_all")
+                       {"period_type": "year", "limit": 100, "from_year": since},
+                       cache_key=f"reports_{cid}_year_since{since}")
             rows = rep.get("data") or []
             spent += max(len(rows), 1)
             if rows:
