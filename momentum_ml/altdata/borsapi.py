@@ -210,15 +210,29 @@ def backfill(budget: int = None):
     ours = {_norm_name(name_map.get(t, t)): t for t in tickers}
 
     companies = _company_list()
-    # Dedupe: BörsAPI listar vissa bolag flera gånger (A/B-aktier som separata
-    # poster med samma namn) – Electrolux hämtades dubbelt = dubbla krediter.
-    # En hämtning per normaliserat namn räcker (rapporterna är bolagets, inte aktieslagets).
-    matched, seen_names = [], set()
+    # Matcha på TICKER (fältet finns i deras lista: 'BEIJ-B' ↔ vårt 'BEIJ-B.ST')
+    # – exakt, väljer rätt aktieslag (INVE-A vs INVE-B) och dedupar naturligt.
+    # Namnmatchning kvar bara som fallback för de få som inte träffar.
+    by_ticker = {}
     for c in companies:
-        nn = _norm_name(c.get("name"))
-        if nn in ours and (c.get("market") or "") == "XSTO" and nn not in seen_names:
-            seen_names.add(nn)
-            matched.append((c, ours[nn]))
+        if (c.get("market") or "") == "XSTO" and c.get("ticker"):
+            by_ticker.setdefault(str(c["ticker"]).upper().strip(), c)
+    matched, taken = [], set()
+    for t in tickers:
+        bt = (t[:-3] if t.upper().endswith(".ST") else t).upper()
+        c = by_ticker.get(bt)
+        if c and c["id"] not in taken:
+            taken.add(c["id"])
+            matched.append((c, t))
+    by_name = {_norm_name(c.get("name")): c for c in companies
+               if (c.get("market") or "") == "XSTO"}
+    for nn, t in ours.items():
+        if any(tk == t for _c, tk in matched):
+            continue
+        c = by_name.get(nn)
+        if c and c["id"] not in taken:
+            taken.add(c["id"])
+            matched.append((c, t))
     pending = [(c, tk) for c, tk in matched
                if (c.get("id") not in state["done"]) and (c.get("id") not in state["empty"])]
     print(f"[backfill] {len(matched)} matchade huvudlist-bolag · {len(pending)} kvar · budget {budget} krediter")
@@ -241,7 +255,9 @@ def backfill(budget: int = None):
             spent += max(len(rows), 1)
             if rows:
                 state["done"].append(cid)
-                print(f"  {tk:<14} {c.get('name','')[:34]:<34} {len(rows)} årsrapporter")
+                yrs = sorted(set(str(r.get("period"))[:4] for r in rows))
+                print(f"  {tk:<14} {c.get('name','')[:34]:<34} {len(rows)} rader "
+                      f"({yrs[0]}–{yrs[-1]}, RR/BR/KA)")
             else:
                 state["empty"].append(cid)
                 print(f"  {tk:<14} {c.get('name','')[:34]:<34} TOM")
