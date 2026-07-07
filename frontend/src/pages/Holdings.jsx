@@ -189,7 +189,7 @@ export function HoldingsPage() {
           className="pf-in pf-search__input"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={`🔍 Sök värdepapper (${universe.length} i universumet) – namn eller ticker`}
+          placeholder={`Sök värdepapper (${universe.length} i universumet) – namn eller ticker`}
         />
         {matches.length > 0 && (
           <div className="pf-search__drop">

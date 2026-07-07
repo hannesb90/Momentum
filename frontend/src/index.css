@@ -1752,7 +1752,7 @@ h2 {
   list-style: none;
 }
 .alloc-editor summary::-webkit-details-marker { display: none; }
-.alloc-editor summary::before { content: '⚙ '; }
+.alloc-editor 
 .alloc-editor input[type="range"] { accent-color: var(--accent); margin-top: 2px; }
 
 /* Innehav – sök/filtrera i universumet */
@@ -1852,3 +1852,129 @@ input:focus, select:focus { border-color: var(--accent); outline: none; }
 /* Recharts-tooltips är medvetet mörka overlays → ljus text för läsbarhet */
 .recharts-default-tooltip { color: #e7efe9; }
 .recharts-tooltip-label { color: #cfe0d6; }
+
+/* ═══ v2.1: LAYOUT-omarbetning (hierarki, kompakta filter, mobilkort) ════ */
+
+/* Typografisk rytm: stramare rubriker, luft där det betyder något */
+h1 { font-size: 1.3rem; }
+.page-head { margin-bottom: 6px; }
+.page-subtitle { margin: 2px 0 14px; max-width: 62ch; }
+.section-head h2 { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+
+/* NIVÅ 1 – Segment (Storbolag/Småbolag): kompakt kontroll, inte helskärmspiller.
+   Lugn aktiv-stil (tonplatta+kant) i stället för gradient – underordnad sidmenyn. */
+.segment-bar { padding: 6px 8px; gap: 6px; }
+.segment-toggle__btn {
+  flex: 0 1 auto;
+  min-width: 128px;
+  padding: 6px 18px;
+  font-size: 0.8rem;
+  background: var(--bg-card);
+}
+.segment-toggle__btn--active {
+  background: var(--accent-soft);
+  border: 1px solid rgba(14, 159, 110, 0.4);
+  color: var(--accent-2);
+}
+
+/* NIVÅ 2 – Undertabbar: text med indikatorlinje (skiljer sig tydligt från
+   segmentkontrollen ovanför – hierarki i stället för piller-på-piller). */
+.subtabs { gap: 2px; border-bottom: 1px solid var(--border); margin: 2px 0 14px; }
+.subtab {
+  flex: 0 1 auto;
+  max-width: none;
+  border: none;
+  background: none;
+  border-radius: 0;
+  padding: 9px 14px 11px;
+  margin-bottom: -1px;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+}
+.subtab--active {
+  background: none;
+  color: var(--accent-2);
+  border-bottom: 2px solid var(--accent);
+  font-weight: 700;
+}
+
+/* FILTER: en kompakt verktygsrad, inte en trappa av jättepiller */
+.filter-bar { gap: 8px; margin-bottom: 8px; }
+.filter-bar--secondary { margin-bottom: 10px; }
+.filter-bar__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.segmented { padding: 2px; background: var(--bg-card); }
+.segmented__item { padding: 5px 12px; font-size: 0.8rem; }
+.segmented--sm .segmented__item { padding: 4px 10px; font-size: 0.75rem; }
+.segmented__item--active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(4, 120, 87, 0.3);
+}
+.search-input { padding: 8px 12px; border-radius: var(--radius-sm); background: var(--bg-card); font-size: 0.88rem; }
+
+/* Tabeller: luft + tydliga rubriker */
+th { padding: 10px 12px; }
+td { padding: 10px 12px; }
+.badge, .sigbadge { font-weight: 700; letter-spacing: 0.02em; }
+
+/* Collapsibles (justera fördelning / opportunistiskt köp): chevron, ren rad */
+.alloc-editor summary { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--text); }
+.alloc-editor summary::after {
+  content: '▾';
+  margin-left: auto;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+.alloc-editor[open] summary::after { transform: rotate(180deg); }
+
+/* INNEHAV på mobil: tabell-med-inputs → staplade kort (grid-areas per rad).
+   Kolumnordningen är fast (namn+ticker, värde, insatt, vinst, andel, hink, ✕),
+   så nth-child-mappningen är stabil för just .pf-holdings. */
+@media (max-width: 720px) {
+  .pf-holdings table, .pf-holdings tbody { display: block; }
+  .pf-holdings thead { display: none; }
+  .pf-holdings tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas:
+      'name  name  del'
+      'value cost  gain'
+      'share bucket bucket';
+    gap: 8px 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pf-holdings tr:last-child { border-bottom: none; }
+  .pf-holdings td { display: block; border: none; padding: 0; }
+  .pf-holdings td:nth-child(1) { grid-area: name; display: flex; flex-direction: column; gap: 6px; }
+  .pf-holdings td:nth-child(2) { grid-area: value; }
+  .pf-holdings td:nth-child(3) { grid-area: cost; }
+  .pf-holdings td:nth-child(4) { grid-area: gain; align-self: end; font-weight: 700; }
+  .pf-holdings td:nth-child(5) { grid-area: share; align-self: center; }
+  .pf-holdings td:nth-child(6) { grid-area: bucket; }
+  .pf-holdings td:nth-child(7) { grid-area: del; justify-self: end; }
+  .pf-holdings td:nth-child(2)::before,
+  .pf-holdings td:nth-child(3)::before,
+  .pf-holdings td:nth-child(4)::before,
+  .pf-holdings td:nth-child(5)::before {
+    display: block;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+  }
+  .pf-holdings td:nth-child(2)::before { content: 'Värde'; }
+  .pf-holdings td:nth-child(3)::before { content: 'Insatt'; }
+  .pf-holdings td:nth-child(4)::before { content: 'Vinst'; }
+  .pf-holdings td:nth-child(5)::before { content: 'Andel'; }
+}
+
+/* Inputs i portföljtabellen: vita, diskreta – inte grå klossar */
+.pf-in { background: var(--bg-card); border-radius: var(--radius-sm); padding: 8px 10px; }
+.pf-tk { font-family: var(--mono); font-size: 0.78rem; color: var(--text-muted); }
+.pf-del { font-size: 1.05rem; padding: 4px 8px; }
+
+/* Nästa köp-kortets sektioner: skippade rader som diskret fotnot-rad */
+.list-row[style*='opacity'] .list-row__sub { font-size: 0.78rem; }
