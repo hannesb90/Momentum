@@ -117,6 +117,12 @@ def score_item(item: dict, client=None) -> Optional[dict]:
     cp = _cache_path(item["id"])
     if cp.exists():
         return json.loads(cp.read_text())
+    if _backend() == "ollama":
+        parsed = _ollama_score(item)
+        if parsed:
+            parsed["id"] = item["id"]
+            cp.write_text(json.dumps(parsed, ensure_ascii=False))
+        return parsed
     client = client or _client()
     msg = client.messages.create(
         model=config.SENTIMENT_MODEL,
@@ -129,6 +135,50 @@ def score_item(item: dict, client=None) -> Optional[dict]:
         parsed["id"] = item["id"]
         cp.write_text(json.dumps(parsed, ensure_ascii=False))
     return parsed
+
+
+# ── Lokal backend (Ollama) ────────────────────────────────────────────────────
+# Samma prompt, schema och cache som Claude-vägen – bara annan motor. Används
+# för token-fri historisk masskörning på hyrd GPU (RunPod/Vast.ai) eller lokal
+# burk. Runbook (engångs, ~5000 PM):
+#   1. Hyr GPU-instans (t.ex. RTX 4090) → installera Ollama → `ollama pull qwen2.5:14b`
+#   2. rsync cache/mfn/ till instansen (+ detta repo)
+#   3. MOMENTUM_SENTIMENT_BACKEND=ollama python -m altdata.sentiment backfill
+#   4. rsync cache/sentiment/ TILLBAKA till Pi:n → klart, stäng instansen.
+# Kostnad: ~5000 PM × ~2s ≈ 3h GPU-tid. Cachen gör att avbrott/omstart är gratis.
+def _ollama_score(item: dict) -> Optional[dict]:
+    import requests as _rq
+    url = getattr(config, "OLLAMA_URL", "http://127.0.0.1:11434")
+    model = getattr(config, "OLLAMA_MODEL", "qwen2.5:14b")
+    r = _rq.post(f"{url}/api/chat", json={
+        "model": model, "stream": False,
+        "messages": [{"role": "system", "content": _SYSTEM},
+                     {"role": "user", "content": _prompt(item)}],
+        "options": {"temperature": 0.0},
+    }, timeout=120)
+    r.raise_for_status()
+    txt = (r.json().get("message") or {}).get("content", "")
+    try:
+        d = json.loads(txt)
+        if _valid(d):
+            return d
+    except Exception:  # noqa: BLE001
+        pass
+    m = re.search(r"\{.*\}", txt, re.S)
+    if m:
+        try:
+            d = json.loads(m.group(0))
+            if _valid(d):
+                return d
+        except Exception:  # noqa: BLE001
+            pass
+    return None
+
+
+def _backend() -> str:
+    import os as _o
+    return (_o.environ.get("MOMENTUM_SENTIMENT_BACKEND")
+            or getattr(config, "SENTIMENT_BACKEND", "claude"))
 
 
 # ── Batch (historisk massa, -50%) – RESUMBAR ──────────────────────────────────
