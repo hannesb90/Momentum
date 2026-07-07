@@ -448,6 +448,7 @@ MFN_MAX_BODY_CHARS  = 8000         # klipp PM-text innan LLM (håller token-kost
 MFN_CACHE_DIR       = "cache/mfn"   # rå-PM cachas här (JSON per ticker)
 BORSAPI_CACHE_DIR   = "cache/borsapi"  # BörsAPI-svar cachas för alltid (kvot = engångspott)
 BORSAPI_DAILY_BUDGET = 90              # krediter/dygn för backfill (gratis engångspott: kör "backfill 70"; Hobby: 90; Pro: 480)
+BORSAPI_BACKFILL_YEARS = 4             # hämta bara senaste N årens rapporter (F-score 2, fund-momentum 3, +1 buffert)
 
 # LLM-sentiment (Anthropic). API-NYCKELN läses ur miljövariabeln ANTHROPIC_API_KEY
 # – lägg ALDRIG nyckeln i koden/repot. Haiku räcker för klassificering; höj till
