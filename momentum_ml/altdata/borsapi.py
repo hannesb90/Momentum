@@ -38,7 +38,7 @@ def _key() -> str:
         # Tål både 'VAR=...' (systemd EnvironmentFile) och 'export VAR=...' (shell).
         envf = Path.home() / ".momentum.env"
         if envf.exists():
-            m = re.search(r"^(?:export\s+)?BORSAPI_API_KEY\s*=\s*(.+)$", envf.read_text(), re.M)
+            m = re.search(r"^\s*(?:export\s+)?BORSAPI_API_KEY\s*=\s*(.+)$", envf.read_text(), re.M)
             if m:
                 k = m.group(1).strip().strip('"').strip("'")
     if not k:
