@@ -454,6 +454,9 @@ BORSAPI_BACKFILL_YEARS = 4             # hämta bara senaste N årens rapporter 
 # – lägg ALDRIG nyckeln i koden/repot. Haiku räcker för klassificering; höj till
 # Sonnet bara om A/B på ~200 PM visar att Haiku missar nyanser i svensk PM-text.
 SENTIMENT_MODEL     = "claude-haiku-4-5"
+SENTIMENT_BACKEND   = "claude"   # "claude" (API, batch -50%) | "ollama" (lokal/hyrd GPU, token-fri). Env: MOMENTUM_SENTIMENT_BACKEND
+OLLAMA_URL          = "http://127.0.0.1:11434"
+OLLAMA_MODEL        = "qwen2.5:14b"
 SENTIMENT_USE_BATCH = True          # Batch-API = -50% för historisk massa-poängsättning
 SENTIMENT_CACHE_DIR = "cache/sentiment"  # poäng cachas per PM-id (kör aldrig om samma PM)
 SENTIMENT_MAX_TOKENS = 400
