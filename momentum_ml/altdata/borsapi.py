@@ -163,6 +163,85 @@ def evaluate():
     print("  Kör 'python -m altdata.borsapi probe' för exakt kvarvarande kvot.")
 
 
+def _company_list() -> list:
+    """Hela bolagslistan via sidindelad /companies (billig: 1 kredit/sida).
+    Cachas för evigt – körs i praktiken en gång."""
+    out, offset = [], 0
+    while True:
+        page = _get("/companies", {"limit": 100, "offset": offset, "market": "all"},
+                    cache_key=f"companies_all_{offset}")
+        items = page.get("data") or []
+        out += items
+        total = page.get("total") or 0
+        offset += 100
+        if offset >= total or not items:
+            break
+    return out
+
+
+def _norm_name(s: str) -> str:
+    s = (s or "").lower()
+    for junk in (" ab (publ)", " (publ)", " ab", " publ", " plc", " asa", "."):
+        s = s.replace(junk, "")
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _backfill_state_path() -> Path:
+    return _cache_dir() / "_backfill_state.json"
+
+
+def backfill(budget: int = None):
+    """
+    Kvot-medveten backfill av ÅRSRAPPORTER för huvudlist-bolagen i vårt stora
+    segment (First North-rapporter är tomma i deras beta – hoppas över tills de
+    fylls på). Hushållar med daglig budget (default config.BORSAPI_DAILY_BUDGET),
+    återupptar där den slutade, cachar allt för evigt. Körs manuellt eller via
+    cron tills klar:  python -m altdata.borsapi backfill
+    """
+    import datetime as dt
+    budget = int(budget or getattr(config, "BORSAPI_DAILY_BUDGET", 90))
+    sp = _backfill_state_path()
+    state = json.loads(sp.read_text()) if sp.exists() else {"done": [], "empty": []}
+
+    # Vårt stora segment (Large+Mid, huvudlistan) → matcha mot BörsAPI:s lista på namn.
+    from data.data_loader import load_sweden_universe
+    seg = config.SEGMENTS["large"]
+    tickers, _s, _c, name_map = load_sweden_universe(min_market_cap=seg["market_cap"])
+    ours = {_norm_name(name_map.get(t, t)): t for t in tickers}
+
+    companies = _company_list()
+    matched = [(c, ours[_norm_name(c.get("name"))]) for c in companies
+               if _norm_name(c.get("name")) in ours and (c.get("market") or "") == "XSTO"]
+    pending = [(c, tk) for c, tk in matched
+               if (c.get("id") not in state["done"]) and (c.get("id") not in state["empty"])]
+    print(f"[backfill] {len(matched)} matchade huvudlist-bolag · {len(pending)} kvar · budget {budget} krediter")
+
+    spent = 0
+    for c, tk in pending:
+        if spent >= budget:
+            break
+        cid = c["id"]
+        try:
+            rep = _get(f"/companies/{cid}/reports",
+                       {"period_type": "year", "limit": 100},
+                       cache_key=f"reports_{cid}_year_all")
+            rows = rep.get("data") or []
+            spent += max(len(rows), 1)
+            if rows:
+                state["done"].append(cid)
+                print(f"  {tk:<14} {c.get('name','')[:34]:<34} {len(rows)} årsrapporter")
+            else:
+                state["empty"].append(cid)
+                print(f"  {tk:<14} {c.get('name','')[:34]:<34} TOM")
+        except Exception as e:  # noqa: BLE001
+            print(f"  {tk}: FEL {e}")
+            break   # trolig kvot-/nätgräns – fortsätt imorgon
+        sp.write_text(json.dumps(state))
+    remaining = len(pending) - len([1 for c, _ in pending if c["id"] in state["done"] + state["empty"]])
+    print(f"[backfill] klart för idag: ~{spent} krediter · ~{remaining} bolag kvar "
+          f"(kör igen imorgon, cachen gör omstart gratis)")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "probe"
     if cmd == "probe":
@@ -172,6 +251,8 @@ def main():
             print(json.dumps(c, ensure_ascii=False))
     elif cmd == "eval":
         evaluate()
+    elif cmd == "backfill":
+        backfill(int(sys.argv[2]) if len(sys.argv) > 2 else None)
     else:
         print(__doc__)
 
