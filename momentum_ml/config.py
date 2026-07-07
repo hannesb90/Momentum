@@ -449,6 +449,7 @@ MFN_CACHE_DIR       = "cache/mfn"   # rå-PM cachas här (JSON per ticker)
 BORSAPI_CACHE_DIR   = "cache/borsapi"  # BörsAPI-svar cachas för alltid (kvot = engångspott)
 BORSAPI_DAILY_BUDGET = 90              # krediter/dygn för backfill (gratis engångspott: kör "backfill 70"; Hobby: 90; Pro: 480)
 BORSAPI_BACKFILL_YEARS = 4             # hämta bara senaste N årens rapporter (F-score 2, fund-momentum 3, +1 buffert)
+BORSDATA_CACHE_DIR  = "cache/borsdata"  # Börsdata-svar cachas för alltid (rate limit är per sekund, inte en pott)
 
 # LLM-sentiment (Anthropic). API-NYCKELN läses ur miljövariabeln ANTHROPIC_API_KEY
 # – lägg ALDRIG nyckeln i koden/repot. Haiku räcker för klassificering; höj till
@@ -731,6 +732,7 @@ RESULTS_DIR = anchor(RESULTS_DIR)
 QUALITY_CACHE_DIR = anchor(QUALITY_CACHE_DIR)
 MFN_CACHE_DIR = anchor(MFN_CACHE_DIR)
 BORSAPI_CACHE_DIR = anchor(BORSAPI_CACHE_DIR)
+BORSDATA_CACHE_DIR = anchor(BORSDATA_CACHE_DIR)
 SENTIMENT_CACHE_DIR = anchor(SENTIMENT_CACHE_DIR)
 BENCHMARK_CACHE_DIR = anchor(BENCHMARK_CACHE_DIR)
 MACRO_CACHE_DIR = anchor(MACRO_CACHE_DIR)
