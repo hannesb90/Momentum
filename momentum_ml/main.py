@@ -522,6 +522,10 @@ def main():
     # även när båda segmenten kör samma natt.
     try:
         import portfolio as _pf
+        try:
+            _pf.fetch_holding_quotes()       # kurser för innehav utanför universum (ETF:er, micro caps)
+        except Exception as qe:  # noqa: BLE001
+            print(f"  [WARN] Kompletterande kurser misslyckades (icke-kritiskt): {qe}")
         _rows = _pf.load_holdings()          # refresh=True → värden mot senaste kurs
         if _rows:
             _tot = sum(r.get("value", 0.0) for r in _rows)
