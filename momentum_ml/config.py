@@ -702,7 +702,12 @@ SEGMENTS = {
               "max_positions": 10, "conviction_blend": 0.5,
               "index_ticker": "XACT-SVERIGE.ST",  "index_label": "OMX Sthlm bred (XACT Sverige)",
               "gate_enabled": True,  "gate_min": 0.10},
-    "small": {"label": "Småbolag",  "market_cap": ["Small Cap"],            "results_dir": "results/small",
+    # Micro Cap ingår i småbolagssegmentet (First North-namn som Acconeer/
+    # Swedencare/Physitrack klassas Micro): likviditetsfiltret
+    # (UNIVERSE_MIN_AVG_TURNOVER) rensar ändå de ohandlade – kategorin ensam
+    # ska inte utesluta bolag ur signaler/kurser. Nano exkluderas fortsatt
+    # (klassningen är opålitlig i botten och spread/likviditet oftast otjänlig).
+    "small": {"label": "Småbolag",  "market_cap": ["Small Cap", "Micro Cap"], "results_dir": "results/small",
               "max_positions": 20, "conviction_blend": 0.5,
               "index_ticker": "XACT-SMABOLAG.ST", "index_label": "Svenska Småbolag (XACT)",
               "gate_enabled": False, "gate_min": 0.10},
