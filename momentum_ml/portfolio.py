@@ -82,7 +82,44 @@ def _num(v):
         return None
 
 
-def load_holdings() -> list:
+def _latest_closes() -> dict:
+    """{ticker: senaste stängningskurs} ur båda segmentens prices.csv (skrivs av
+    den nattliga körningen). Svenska tickers – utländska ETF:er saknas och
+    behåller manuellt värde."""
+    out = {}
+    for seg in config.SEGMENTS.values():
+        pp = Path(seg.get("results_dir", "")) / "prices.csv"
+        if not pp.exists():
+            continue
+        try:
+            for r in csv.DictReader(open(pp, encoding="utf-8")):
+                tk = (r.get("ticker") or "").upper()
+                v = _num(r.get("close"))
+                if tk and v:
+                    out[tk] = v            # sista raden per ticker vinner = senaste
+        except Exception:  # noqa: BLE001
+            pass
+    return out
+
+
+def _refresh_values(rows: list) -> list:
+    """Innehav med ANTAL + ticker får värdet omräknat mot senaste stängningskurs
+    (uppdateras därmed automatiskt av varje nattlig körning). Insatt härleds ur
+    antal × inköpskurs när det saknas. Innehav utan antal/ticker (utländska
+    ETF:er, klumpsummor) behåller sitt manuella värde."""
+    closes = _latest_closes()
+    for r in rows:
+        sh, bp = r.get("shares"), r.get("buy_price")
+        px = closes.get((r.get("ticker") or "").upper())
+        if sh and px:
+            r["value"] = sh * px
+            r["auto"] = True               # frontend: "uppdateras nattligt"
+        if sh and bp and not r.get("cost"):
+            r["cost"] = sh * bp
+    return rows
+
+
+def load_holdings(refresh: bool = True) -> list:
     p = holdings_path()
     if not p.exists():
         return []
@@ -93,10 +130,12 @@ def load_holdings() -> list:
                 rows.append({"name": r["name"].strip(), "value": float(r["value_sek"]),
                              "bucket": (r.get("bucket") or "theme").strip(),
                              "ticker": (r.get("ticker") or "").strip().upper(),
-                             "cost": _num(r.get("cost_sek"))})
+                             "cost": _num(r.get("cost_sek")),
+                             "shares": _num(r.get("shares")),
+                             "buy_price": _num(r.get("buy_price"))})
             except (ValueError, KeyError):
                 continue
-    return rows
+    return _refresh_values(rows) if refresh else rows
 
 
 def target_path() -> Path:
@@ -149,20 +188,31 @@ def save_target(d: dict) -> dict:
 def save_holdings(rows) -> None:
     p = holdings_path()
     p.parent.mkdir(parents=True, exist_ok=True)
+    closes = _latest_closes()
     with open(p, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=["name", "value_sek", "bucket", "ticker", "cost_sek"])
+        w = csv.DictWriter(f, fieldnames=["name", "value_sek", "bucket", "ticker",
+                                          "cost_sek", "shares", "buy_price"])
         w.writeheader()
         for r in rows:
             b = r.get("bucket", "theme")
             name = r.get("name", "")
             tk = (r.get("ticker") or "").strip().upper() or _resolve_ticker(name)  # auto-fyll ticker
+            sh = _num(r.get("shares"))
+            bp = _num(r.get("buy_price"))
             cost = _num(r.get("cost") if r.get("cost") is not None else r.get("cost_sek"))
+            if not cost and sh and bp:
+                cost = sh * bp                          # insatt = antal × inköpskurs
+            val = float(r.get("value", r.get("value_sek", 0)) or 0)
+            if sh and closes.get(tk):
+                val = sh * closes[tk]                   # värde = antal × senaste kurs
             w.writerow({"name": name,
-                        "value_sek": float(r.get("value", r.get("value_sek", 0)) or 0),
+                        "value_sek": val,
                         "bucket": b if b in BUCKETS else "theme",
                         "ticker": tk,
-                        "cost_sek": (round(cost) if cost else "")})
-    total = sum(float(r.get("value", r.get("value_sek", 0)) or 0) for r in rows)
+                        "cost_sek": (round(cost) if cost else ""),
+                        "shares": (sh if sh else ""),
+                        "buy_price": (bp if bp else "")})
+    total = sum(r2["value"] for r2 in load_holdings())
     log_value(total)                                   # framåt-logg: dagens totalvärde
 
 
@@ -419,7 +469,9 @@ def compute(rows, amount=None) -> dict:
            "housemoney": _house_money(rows),
            "holdings": [{"name": r["name"], "value": round(r["value"], 0), "bucket": r["bucket"],
                          "ticker": r.get("ticker") or _resolve_ticker(r["name"]),
-                         "cost": (round(r["cost"]) if r.get("cost") else None)} for r in rows]}
+                         "cost": (round(r["cost"]) if r.get("cost") else None),
+                         "shares": r.get("shares"), "buy_price": r.get("buy_price"),
+                         "auto": bool(r.get("auto"))} for r in rows]}
 
     if amount:
         after = total + amount

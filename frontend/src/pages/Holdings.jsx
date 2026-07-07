@@ -61,16 +61,30 @@ export function HoldingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Sök/filtrera i universumet appen känner (namn eller ticker).
+  // Lägg till-flödet: sök i universumet → välj → ange antal + inköpskurs.
+  const [addOpen, setAddOpen] = useState(false)
+  const [addSel, setAddSel] = useState(null)      // valt värdepapper
+  const [addShares, setAddShares] = useState('')
+  const [addPrice, setAddPrice] = useState('')
+  const [addValue, setAddValue] = useState('')    // manuellt värde (utländska/fonder)
+  const [editIdx, setEditIdx] = useState(null)    // rad i redigeringsläge
+
   const q = search.trim().toLowerCase()
   const matches = q.length < 2 ? [] : universe
     .filter((u) => u.name.toLowerCase().includes(q) || u.ticker.toLowerCase().includes(q))
     .slice(0, 8)
 
-  function addFromUniverse(u) {
-    setHoldings((hs) => [...hs, { name: u.name, value: 0, bucket: u.bucket || 'broad', ticker: u.ticker, cost: '' }])
+  function confirmAdd() {
+    const sh = Number(addShares) || null
+    const bp = Number(addPrice) || null
+    const mv = Number(addValue) || 0
+    if (!addSel?.name || (!sh && mv <= 0)) return
+    setHoldings((hs) => [...hs, {
+      name: addSel.name, ticker: addSel.ticker || '', bucket: addSel.bucket || 'broad',
+      shares: sh, buy_price: bp, value: mv, cost: sh && bp ? sh * bp : null,
+    }])
     setDirty(true)
-    setSearch('')
+    setAddOpen(false); setAddSel(null); setSearch(''); setAddShares(''); setAddPrice(''); setAddValue('')
   }
 
   function refreshAmount(a) {
@@ -79,10 +93,6 @@ export function HoldingsPage() {
   }
   function edit(i, field, val) {
     setHoldings((hs) => hs.map((h, j) => (j === i ? { ...h, [field]: val } : h)))
-    setDirty(true)
-  }
-  function addRow() {
-    setHoldings((hs) => [...hs, { name: '', value: 0, bucket: 'broad', ticker: '', cost: '' }])
     setDirty(true)
   }
   function del(i) {
@@ -96,8 +106,10 @@ export function HoldingsPage() {
         .map((h) => ({
           name: (h.name || '').trim(), value: Number(h.value) || 0, bucket: h.bucket,
           ticker: (h.ticker || '').trim(), cost: h.cost === '' || h.cost == null ? null : Number(h.cost),
+          shares: h.shares === '' || h.shares == null ? null : Number(h.shares),
+          buy_price: h.buy_price === '' || h.buy_price == null ? null : Number(h.buy_price),
         }))
-        .filter((h) => h.name && h.value > 0)
+        .filter((h) => h.name && (h.value > 0 || h.shares))
       const d = await api.saveHoldings(clean, amount)
       setAnalysis(d)
       setHoldings((d.holdings ?? []).map((h) => ({ ...h })))
@@ -183,87 +195,156 @@ export function HoldingsPage() {
         </p>
       )}
 
-      {/* Sök/filtrera i universumet appen känner → lägg till förifyllt innehav */}
-      <div className="pf-search">
-        <input
-          className="pf-in pf-search__input"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={`Sök värdepapper (${universe.length} i universumet) – namn eller ticker`}
-        />
-        {matches.length > 0 && (
-          <div className="pf-search__drop">
-            {matches.map((u) => (
-              <button key={u.ticker} className="pf-search__item" onClick={() => addFromUniverse(u)}>
-                <span className="pf-search__name">{u.name}</span>
-                <span className="pf-search__meta">
-                  <span className="mono">{u.ticker}</span>
-                  <span className={`cand-src cand-src--${u.bucket}`}>{BUCKET_LABEL[u.bucket] ?? u.bucket}</span>
-                </span>
-              </button>
-            ))}
+      {/* ── Lägg till innehav: sök → antal + inköpskurs ─────────────────── */}
+      {!addOpen ? (
+        <div className="pf-actions" style={{ margin: '2px 0 12px' }}>
+          <button className="pf-btn pf-btn--primary" onClick={() => setAddOpen(true)}>+ Lägg till innehav</button>
+          {dirty && (
+            <button className="pf-btn" onClick={save} disabled={saving}>
+              {saving ? 'Sparar…' : 'Spara ändringar'}
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="h-add">
+          {!addSel ? (
+            <div className="pf-search">
+              <input
+                autoFocus
+                className="pf-in pf-search__input"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Sök namn eller ticker…"
+              />
+              {matches.length > 0 && (
+                <div className="pf-search__drop">
+                  {matches.map((u) => (
+                    <button key={u.ticker} className="pf-search__item" onClick={() => { setAddSel(u); setSearch('') }}>
+                      <span className="pf-search__name">{u.name}</span>
+                      <span className="pf-search__meta">
+                        <span className="mono">{u.ticker}</span>
+                        <span className={`cand-src cand-src--${u.bucket}`}>{BUCKET_LABEL[u.bucket] ?? u.bucket}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {q.length >= 2 && matches.length === 0 && (
+                <div className="pf-search__drop">
+                  <button className="pf-search__item" onClick={() => setAddSel({ name: search.trim(), ticker: '', bucket: 'theme' })}>
+                    <span className="pf-search__name">Lägg till ”{search.trim()}” manuellt</span>
+                    <span className="pf-search__meta"><span className="mono">utanför universumet</span></span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="h-add__sel">
+                <b>{addSel.name}</b>
+                {addSel.ticker && <span className="mono">{addSel.ticker}</span>}
+                <button className="pf-del" onClick={() => setAddSel(null)} title="Byt">✕</button>
+              </div>
+              <div className="h-add__fields">
+                <label>Antal
+                  <input className="pf-in pf-num" type="number" min="0" inputMode="decimal"
+                    value={addShares} onChange={(e) => setAddShares(e.target.value)} placeholder="t.ex. 100" />
+                </label>
+                <label>Inköpskurs (kr)
+                  <input className="pf-in pf-num" type="number" min="0" step="0.01" inputMode="decimal"
+                    value={addPrice} onChange={(e) => setAddPrice(e.target.value)} placeholder="t.ex. 12,47" />
+                </label>
+                {!addSel.ticker?.endsWith('.ST') && (
+                  <label>Värde nu (kr)
+                    <input className="pf-in pf-num" type="number" min="0" inputMode="decimal"
+                      value={addValue} onChange={(e) => setAddValue(e.target.value)} placeholder="om ej svensk ticker" />
+                  </label>
+                )}
+              </div>
+              <p className="footnote" style={{ margin: '6px 0' }}>
+                Svenska innehav med antal värderas om automatiskt varje natt mot senaste kurs.
+                Utländska (EUR-ETF:er) behöver värdet manuellt.
+              </p>
+            </>
+          )}
+          <div className="pf-actions" style={{ marginTop: 8 }}>
+            {addSel && <button className="pf-btn pf-btn--primary" onClick={confirmAdd}>Lägg till</button>}
+            <button className="pf-btn" onClick={() => { setAddOpen(false); setAddSel(null); setSearch('') }}>Avbryt</button>
           </div>
-        )}
-        {q.length >= 2 && matches.length === 0 && (
-          <div className="pf-search__drop"><span className="pf-search__empty">Inget i universumet – lägg till manuellt nedan.</span></div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="table-wrap pf-holdings">
-        <table>
-          <thead>
-            <tr><th>Innehav</th><th>Värde</th><th>Insatt</th><th>Vinst</th><th>Andel</th><th>Hink</th><th></th></tr>
-          </thead>
-          <tbody>
-            {holdings.map((h, i) => {
-              const t = tierOf(h)
-              const rowCls = t && (t.tier === 'red' || t.tier === 'amber') ? `exit-row-${t.tier}` : ''
-              const val = Number(h.value) || 0
-              const cost = h.cost === '' || h.cost == null ? null : Number(h.cost)
-              const gain = cost && cost > 0 ? val / cost - 1 : null
-              const share = liveTotal > 0 ? val / liveTotal : 0
-              return (
-                <tr key={i} className={rowCls} title={t ? `${TIER[t.tier]?.label} · ${t.tech_note}` : undefined}>
-                  <td>
-                    <input className="pf-in" value={h.name}
-                      onChange={(e) => edit(i, 'name', e.target.value)} placeholder="Namn" />
-                    <input className="pf-in pf-tk" value={h.ticker || ''}
-                      onChange={(e) => edit(i, 'ticker', e.target.value)} placeholder="ticker (auto)" />
-                  </td>
-                  <td>
-                    <input className="pf-in pf-num" type="number" min="0" value={h.value}
-                      onChange={(e) => edit(i, 'value', e.target.value)} />
-                  </td>
-                  <td>
-                    <input className="pf-in pf-num" type="number" min="0" value={h.cost ?? ''}
-                      onChange={(e) => edit(i, 'cost', e.target.value)} placeholder="–" />
-                  </td>
-                  <td className={gain == null ? 'flow-flat' : gain >= 0 ? 'flow-in' : 'flow-out'}>
-                    {gain == null ? '–' : fmtPct(gain)}
-                  </td>
-                  <td className="flow-flat">{(share * 100).toFixed(0)}%</td>
-                  <td>
+      {/* ── Innehavslista: läskort med Redigera per rad ─────────────────── */}
+      <div className="list-card">
+        {holdings.length === 0 && <div className="list-card__empty">Inga innehav än – lägg till ovan.</div>}
+        {holdings.map((h, i) => {
+          const t = tierOf(h)
+          const val = Number(h.value) || 0
+          const cost = h.cost === '' || h.cost == null ? null : Number(h.cost)
+          const gain = cost && cost > 0 ? val / cost - 1 : null
+          const share = liveTotal > 0 ? val / liveTotal : 0
+          const editing = editIdx === i
+          return (
+            <div key={i} className={`h-card${t ? ` exit-row-${t.tier}` : ''}`}>
+              <div className="h-card__top">
+                <span className="h-card__name">
+                  {h.name} {h.ticker && <span className="mono h-card__tk">{h.ticker}</span>}
+                  {h.auto && <span className="h-card__auto" title="Värderas om varje natt">auto</span>}
+                </span>
+                <button className="pf-btn pf-btn--sm" onClick={() => setEditIdx(editing ? null : i)}>
+                  {editing ? 'Klar' : 'Redigera'}
+                </button>
+              </div>
+              {!editing ? (
+                <div className="h-card__stats">
+                  <span><i>Värde</i>{fmtKr(val)}</span>
+                  <span className={gain == null ? '' : gain >= 0 ? 'pos' : 'neg'}>
+                    <i>Vinst</i>{gain == null ? '–' : fmtPct(gain)}
+                  </span>
+                  <span><i>Andel</i>{(share * 100).toFixed(0)}%</span>
+                  <span><i>Hink</i>{BUCKET_LABEL[h.bucket] ?? h.bucket}</span>
+                </div>
+              ) : (
+                <div className="h-card__edit">
+                  <label>Antal
+                    <input className="pf-in pf-num" type="number" min="0" inputMode="decimal"
+                      value={h.shares ?? ''} onChange={(e) => edit(i, 'shares', e.target.value)} placeholder="–" />
+                  </label>
+                  <label>Inköpskurs
+                    <input className="pf-in pf-num" type="number" min="0" step="0.01" inputMode="decimal"
+                      value={h.buy_price ?? ''} onChange={(e) => edit(i, 'buy_price', e.target.value)} placeholder="–" />
+                  </label>
+                  {!h.auto && (
+                    <label>Värde (kr)
+                      <input className="pf-in pf-num" type="number" min="0" inputMode="decimal"
+                        value={h.value} onChange={(e) => edit(i, 'value', e.target.value)} />
+                    </label>
+                  )}
+                  <label>Hink
                     <select className="pf-in" value={h.bucket} onChange={(e) => edit(i, 'bucket', e.target.value)}>
                       {BUCKETS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
                     </select>
-                  </td>
-                  <td><button className="pf-del" onClick={() => del(i)} title="Ta bort">✕</button></td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                  </label>
+                  <button className="pf-btn pf-btn--danger" onClick={() => { del(i); setEditIdx(null) }}>
+                    Ta bort innehav
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
-      <div className="pf-actions">
-        <button className="pf-btn" onClick={addRow}>+ Tom rad</button>
-        <button className="pf-btn pf-btn--primary" onClick={save} disabled={saving || !dirty}>
-          {saving ? 'Sparar…' : dirty ? 'Spara' : 'Sparat'}
-        </button>
-      </div>
+      {dirty && (
+        <div className="pf-actions">
+          <button className="pf-btn pf-btn--primary" onClick={save} disabled={saving}>
+            {saving ? 'Sparar…' : 'Spara ändringar'}
+          </button>
+        </div>
+      )}
       <p className="footnote">
-        Sök ovan för att lägga till från appens universum (ticker fylls i automatiskt), eller
-        <b> + Tom rad</b> för något utanför. <b>Insatt</b> = ditt inköpsbelopp (inköpsvärde) –
-        behövs för vinst-% och house-money.
+        Innehav med <b>antal + svensk ticker</b> värderas om automatiskt varje nattlig körning
+        (märkta ”auto”) och loggas i din portföljkurva. Inköpskurs behövs för vinst-%, säljvakt
+        och house-money.
       </p>
 
       <h3 className="section-title">Fördelning mot mål</h3>

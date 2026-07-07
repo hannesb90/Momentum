@@ -287,23 +287,26 @@ async def save_portfolio_holdings(request: Request):
     body = await request.json()
     holdings = body.get("holdings", [])
     rows = []
-    for h in holdings:
+    def _f(x):
         try:
-            v = float(h.get("value") if h.get("value") is not None else h.get("value_sek", 0))
+            return float(x) if x not in (None, "", 0, "0") else None
         except (TypeError, ValueError):
-            continue
+            return None
+    for h in holdings:
+        v = _f(h.get("value") if h.get("value") is not None else h.get("value_sek")) or 0.0
         name = str(h.get("name", "")).strip()
-        if not name or v <= 0:
+        shares = _f(h.get("shares"))
+        # antal+ticker räcker (värdet räknas ur senaste kurs); annars krävs värde
+        if not name or (v <= 0 and not shares):
             continue
         b = str(h.get("bucket", "theme"))
-        try:
-            cost = float(h.get("cost")) if h.get("cost") not in (None, "", 0) else None
-        except (TypeError, ValueError):
-            cost = None
         rows.append({"name": name, "value": v, "bucket": b if b in pf.BUCKETS else "theme",
-                     "ticker": str(h.get("ticker", "")).strip().upper(), "cost": cost})
+                     "ticker": str(h.get("ticker", "")).strip().upper(),
+                     "cost": _f(h.get("cost")), "shares": shares,
+                     "buy_price": _f(h.get("buy_price"))})
     pf.save_holdings(rows)
-    return _clean(pf.compute(rows, amount=body.get("amount")))
+    # Läs tillbaka med refresh så svaret innehåller auto-beräknade värden.
+    return _clean(pf.compute(pf.load_holdings(), amount=body.get("amount")))
 
 
 @app.get("/api/portfolio-log")

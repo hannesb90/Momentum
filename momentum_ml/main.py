@@ -516,6 +516,20 @@ def main():
     except Exception as e:
         print(f"  [WARN] Flödes-snapshot misslyckades (icke-kritiskt): {e}")
 
+    # Nattlig portfölj-uppdatering: innehav med antal×ticker värderas om mot de
+    # färska kurserna (prices.csv ovan) och dagens totalvärde loggas i din
+    # framåt-kurva – utan att du behöver öppna appen. Upsert per dag = säkert
+    # även när båda segmenten kör samma natt.
+    try:
+        import portfolio as _pf
+        _rows = _pf.load_holdings()          # refresh=True → värden mot senaste kurs
+        if _rows:
+            _tot = sum(r.get("value", 0.0) for r in _rows)
+            _pf.log_value(_tot)
+            print(f"  Portfölj-logg uppdaterad: {_tot:,.0f} kr ({len(_rows)} innehav)".replace(",", " "))
+    except Exception as e:
+        print(f"  [WARN] Portfölj-logg misslyckades (icke-kritiskt): {e}")
+
     # Visa aktuella signaler (senaste veckan)
     latest = signals_df.groupby("ticker").last().reset_index()
     latest = latest.sort_values("prob_up", ascending=False)

@@ -30,11 +30,13 @@ export default function App() {
     localStorage.setItem('segment', segment)
   }, [segment])
 
-  // Segmenttoggeln göms på hemvyn: den är nu Core:t (Nästa köp) som är segment-
-  // oberoende, så knapparna fyllde ingen funktion där. På forskningsvyerna
-  // (Signaler/Kvalitet/Analys) styr den fortfarande vilket segment som visas.
+  // Segmenttoggeln göms där den inte styr något: hemvyn (Core:t är segment-
+  // oberoende), Innehav (din portfölj är din portfölj) och Marknad/Sektorer/
+  // Rotation (ETF-/marknadsvy – sektordatan är pinnad till bredaste segmentet).
+  // På forskningsvyerna (Signaler/Kvalitet/Analys) styr den visat segment.
   const { pathname } = useLocation()
-  const showSegments = pathname !== '/'
+  const showSegments = !['/', '/innehav', '/marknad', '/sektorer', '/rotation']
+    .some((p) => pathname === p || (p !== '/' && pathname.startsWith(p)))
 
   return (
     <div className="app">
