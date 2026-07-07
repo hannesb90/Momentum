@@ -114,6 +114,10 @@ def _refresh_values(rows: list) -> list:
         if sh and px:
             r["value"] = sh * px
             r["auto"] = True               # frontend: "uppdateras nattligt"
+        elif sh and bp and not r.get("value"):
+            # Kurs saknas i prices.csv (t.ex. före nästa nattkörning) → visa
+            # åtminstone inköpsvärdet i stället för 0 kr. Blir auto när kursen finns.
+            r["value"] = sh * bp
         if sh and bp and not r.get("cost"):
             r["cost"] = sh * bp
     return rows
@@ -205,6 +209,8 @@ def save_holdings(rows) -> None:
             val = float(r.get("value", r.get("value_sek", 0)) or 0)
             if sh and closes.get(tk):
                 val = sh * closes[tk]                   # värde = antal × senaste kurs
+            elif sh and bp and not val:
+                val = sh * bp                           # kurs saknas → inköpsvärde, aldrig 0
             w.writerow({"name": name,
                         "value_sek": val,
                         "bucket": b if b in BUCKETS else "theme",
