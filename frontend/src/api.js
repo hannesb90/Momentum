@@ -87,5 +87,6 @@ export const api = {
   universe: () => getJson('/universe'),   // sökbara värdepapper (sök/filtrera vid innehav)
   saveHoldings: (holdings, amount) => postJson('/holdings', { holdings, amount }),
   exitSignals: () => getJson('/exit-signals'),
+  caseChanges: () => getJson('/case-changes'),
   portfolioLog: () => getJson('/portfolio-log'),
 }

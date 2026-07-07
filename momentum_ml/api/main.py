@@ -328,6 +328,17 @@ def get_exit_signals():
         return _clean(json.load(f))
 
 
+@app.get("/api/case-changes")
+def get_case_changes():
+    """Har investeringscaset förändrats? (altdata/case_tracker.py). Jämför
+    senaste 90d PM-signaler mot föregående 90d per bolag. Tom lista om
+    trackern ännu inte körts."""
+    path = Path(config.anchor(config.RESULTS_DIR)) / "case_changes.csv"
+    if not path.exists():
+        return []
+    return _records(_read_csv(path))
+
+
 @app.get("/api/paper-ledger")
 def get_paper_ledger(limit: int = 520, segment: Optional[str] = None):
     """

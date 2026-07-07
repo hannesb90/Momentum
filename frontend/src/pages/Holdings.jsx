@@ -37,6 +37,7 @@ export function HoldingsPage() {
   const [holdings, setHoldings] = useState([])
   const [analysis, setAnalysis] = useState(null)
   const [exit, setExit] = useState(null)
+  const [caseChanges, setCaseChanges] = useState([])
   const [amount, setAmount] = useState(10000)
   const [riskOn, setRiskOn] = useState(false)
   const [sizeAmt, setSizeAmt] = useState(10000)
@@ -58,6 +59,7 @@ export function HoldingsPage() {
       .finally(() => setLoading(false))
     api.exitSignals().then(setExit).catch(() => {})
     api.universe().then(setUniverse).catch(() => {})
+    api.caseChanges().then(setCaseChanges).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -144,6 +146,15 @@ export function HoldingsPage() {
   const alarms = exitRows.filter((e) => e.tier === 'red' || e.tier === 'amber')
   const sizePlan = sizeIn(sizeAmt, sizeN)
 
+  // Case-förändringar: matcha på ticker mot dina innehav.
+  const caseByTicker = {}
+  caseChanges.forEach((c) => { if (c.ticker) caseByTicker[c.ticker.toUpperCase()] = c })
+  const caseOf = (h) => caseByTicker[(h.ticker || '').toUpperCase()]
+  const myCaseChanges = holdings
+    .map((h) => ({ h, c: caseOf(h) }))
+    .filter(({ c }) => c && c.status !== 'oförändrat')
+  const CASE_ACTION = { förbättrat: 'Fortsätt hålla / överväg att bygga vidare', försämrat: 'Bevaka / överväg att minska' }
+
   return (
     <section className="page">
       <div className="page-head">
@@ -193,6 +204,40 @@ export function HoldingsPage() {
           Exit-skanning: {String(exit.generated).slice(0, 16).replace('T', ' ')}
           {alarms.length === 0 && ' · inga larm just nu'}
         </p>
+      )}
+
+      {/* ── Har investeringscaset förändrats? ────────────────────────────── */}
+      {myCaseChanges.length > 0 && (
+        <div className="exit-panel">
+          <h3 className="section-title" style={{ marginBottom: 8 }}>
+            Caseförändringar
+            <InfoButton title="Har investeringscaset förändrats?">
+              <p>
+                Jämför de senaste 90 dagarnas AI-tolkade pressmeddelanden mot föregående 90 dagar:
+                guidance, ledningston, nya riskflaggor, kapitalanskaffning och katalysatorer.
+              </p>
+              <p>
+                Ingen ny AI-analys – bara en aggregering av redan extraherade signaler. Ett
+                observationsverktyg, inte en köp-/säljorder – bekräfta själv.
+              </p>
+            </InfoButton>
+          </h3>
+          {myCaseChanges.map(({ h, c }) => (
+            <div key={h.ticker || h.name} className={`exit-item ${c.status === 'försämrat' ? 'exit-amber' : ''}`}>
+              <div className="exit-item__head">
+                <span className="exit-item__tier">
+                  {c.status === 'förbättrat' ? '▲ Förbättrat' : '▼ Försämrat'}
+                </span>
+                <b>{h.name}</b>
+                {h.ticker && <span className="mono">{h.ticker}</span>}
+              </div>
+              <div className="exit-item__notes">
+                <span>Orsaker: {c.reasons}</span>
+                <span>Åtgärd: {CASE_ACTION[c.status]}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* ── Lägg till innehav: sök → antal + inköpskurs ─────────────────── */}
@@ -279,6 +324,7 @@ export function HoldingsPage() {
         {holdings.length === 0 && <div className="list-card__empty">Inga innehav än – lägg till ovan.</div>}
         {holdings.map((h, i) => {
           const t = tierOf(h)
+          const c = caseOf(h)
           const val = Number(h.value) || 0
           const cost = h.cost === '' || h.cost == null ? null : Number(h.cost)
           const gain = cost && cost > 0 ? val / cost - 1 : null
@@ -290,6 +336,14 @@ export function HoldingsPage() {
                 <span className="h-card__name">
                   {h.name} {h.ticker && <span className="mono h-card__tk">{h.ticker}</span>}
                   {h.auto && <span className="h-card__auto" title="Värderas om varje natt">auto</span>}
+                  {c && c.status !== 'oförändrat' && (
+                    <span className="h-card__auto" style={{
+                      background: c.status === 'förbättrat' ? 'var(--good-soft)' : 'var(--bad-soft)',
+                      color: c.status === 'förbättrat' ? 'var(--good)' : 'var(--bad)',
+                    }} title={c.reasons}>
+                      {c.status === 'förbättrat' ? '▲ case' : '▼ case'}
+                    </span>
+                  )}
                 </span>
                 <button className="pf-btn pf-btn--sm" onClick={() => setEditIdx(editing ? null : i)}>
                   {editing ? 'Klar' : 'Redigera'}
