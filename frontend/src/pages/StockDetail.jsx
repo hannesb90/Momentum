@@ -164,11 +164,11 @@ export function StockDetailPage() {
                   <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#64748b" minTickGap={40} />
-              <YAxis stroke="#64748b" domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
+              <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#8aa094" minTickGap={40} />
+              <YAxis stroke="#8aa094" domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
               <Tooltip
-                contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
+                contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3', borderRadius: 8 }}
                 labelFormatter={fmtDate}
                 formatter={(v) => [fmtNum(v, 2), 'Kurs']}
               />
@@ -206,11 +206,11 @@ export function StockDetailPage() {
         ) : (
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={sigSeries} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#64748b" minTickGap={40} />
-              <YAxis domain={[0, 100]} stroke="#64748b" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
+              <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#8aa094" minTickGap={40} />
+              <YAxis domain={[0, 100]} stroke="#8aa094" tickFormatter={(v) => `${v}%`} tick={{ fontSize: 12 }} />
               <Tooltip
-                contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
+                contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3', borderRadius: 8 }}
                 labelFormatter={fmtDate}
                 formatter={(v, name) => [`${Number(v).toFixed(1)}%`,
                   name === 'prob' ? (hasRank ? 'Relativ styrka' : 'P(upp)') : 'Förv. avk.']}
@@ -230,7 +230,7 @@ export function StockDetailPage() {
                   label={{ value: 'köptröskel', fill: '#f59e0b', fontSize: 11, position: 'insideTopRight' }}
                 />
               ))}
-              <Line type="monotone" dataKey="prob" stroke="#4CAF50" dot={false} strokeWidth={1.5} />
+              <Line type="monotone" dataKey="prob" stroke="var(--good)" dot={false} strokeWidth={1.5} />
             </LineChart>
           </ResponsiveContainer>
         )}

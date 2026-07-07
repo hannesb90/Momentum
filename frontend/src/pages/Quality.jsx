@@ -383,12 +383,12 @@ export function QualityPage() {
           <div className="qchart">
             <ResponsiveContainer width="100%" height={460}>
               <ScatterChart margin={{ top: 16, right: 26, bottom: 30, left: 14 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
                 <XAxis
                   type="number"
                   dataKey="x"
                   name="Vinst"
-                  stroke="#64748b"
+                  stroke="#8aa094"
                   tickFormatter={fmtAxis}
                   label={{ value: 'Vinst (EBITDA/EBIT/resultat), MSEK', position: 'insideBottom', offset: -16, fill: '#64748b', fontSize: 12 }}
                 />
@@ -396,7 +396,7 @@ export function QualityPage() {
                   type="number"
                   dataKey="y"
                   name="Börsvärde"
-                  stroke="#64748b"
+                  stroke="#8aa094"
                   tickFormatter={fmtAxis}
                   label={{ value: 'Börsvärde (MSEK)', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 12 }}
                 />

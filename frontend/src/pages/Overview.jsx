@@ -346,7 +346,7 @@ export function OverviewPage() {
                 </defs>
                 <YAxis domain={['dataMin', 'dataMax']} hide />
                 <Tooltip
-                  contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
+                  contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3', borderRadius: 8 }}
                   formatter={(v) => [fmtSek(v), 'Simulering']}
                   labelFormatter={() => ''}
                 />
@@ -387,7 +387,7 @@ export function OverviewPage() {
                 </defs>
                 <YAxis domain={['dataMin', 'dataMax']} hide />
                 <Tooltip
-                  contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
+                  contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3', borderRadius: 8 }}
                   formatter={(v) => [fmtSek(v), 'Min portfölj']}
                   labelFormatter={(l) => l}
                 />

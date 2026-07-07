@@ -123,11 +123,11 @@ export function BacktestPage() {
         </h3>
         <ResponsiveContainer width="100%" height={280}>
           <ComposedChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#64748b" minTickGap={40} />
-            <YAxis stroke="#64748b" tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
+            <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#8aa094" minTickGap={40} />
+            <YAxis stroke="#8aa094" tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
             <Tooltip
-              contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }}
+              contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3' }}
               labelFormatter={fmtDate}
               formatter={(v, name) => [
                 `${Number(v).toLocaleString('sv-SE')} SEK`,
@@ -137,7 +137,7 @@ export function BacktestPage() {
             {hasOmxs30 && (
               <Line type="monotone" dataKey="omxs30" stroke="#f59e0b" dot={false} strokeWidth={1.5} strokeDasharray="2 3" />
             )}
-            <Line type="monotone" dataKey="value" stroke="#2196F3" dot={false} strokeWidth={1.5} />
+            <Line type="monotone" dataKey="value" stroke="var(--accent)" dot={false} strokeWidth={1.5} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -152,11 +152,11 @@ export function BacktestPage() {
         </h3>
         <ResponsiveContainer width="100%" height={160}>
           <ComposedChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#64748b" minTickGap={40} />
-            <YAxis stroke="#64748b" tickFormatter={(v) => `${v}%`} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
+            <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#8aa094" minTickGap={40} />
+            <YAxis stroke="#8aa094" tickFormatter={(v) => `${v}%`} />
             <Tooltip
-              contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }}
+              contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3' }}
               labelFormatter={fmtDate}
               formatter={(v) => [`${Number(v).toFixed(1)}%`, 'Drawdown']}
             />

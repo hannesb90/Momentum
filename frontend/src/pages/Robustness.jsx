@@ -99,11 +99,11 @@ export function RobustnessPage() {
             <>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={gridData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="threshold" stroke="#64748b" tick={{ fontSize: 12 }} />
-                  <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
+                  <XAxis dataKey="threshold" stroke="#8aa094" tick={{ fontSize: 12 }} />
+                  <YAxis stroke="#8aa094" tick={{ fontSize: 12 }} />
                   <Tooltip
-                    contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
+                    contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3', borderRadius: 8 }}
                     formatter={(v, name) =>
                       name === 'score'
                         ? [v == null ? '–' : Number(v).toFixed(3), `${OBJ_LABEL[threshold.objective] ?? threshold.objective}`]
@@ -218,18 +218,18 @@ export function RobustnessPage() {
         </h3>
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={drift.data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#64748b" minTickGap={40} />
-            <YAxis domain={[0.3, 0.8]} stroke="#64748b" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
+            <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#8aa094" minTickGap={40} />
+            <YAxis domain={[0.3, 0.8]} stroke="#8aa094" />
             <Tooltip
-              contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }}
+              contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3' }}
               labelFormatter={fmtDate}
               formatter={(v) => [Number(v).toFixed(3), 'AUC']}
             />
             {driftSummary && (
               <ReferenceLine y={driftSummary.auc_floor} stroke="#f44336" strokeDasharray="4 4" label="Golv" />
             )}
-            <Line type="monotone" dataKey="auc" stroke="#4CAF50" dot={false} strokeWidth={1.5} />
+            <Line type="monotone" dataKey="auc" stroke="var(--good)" dot={false} strokeWidth={1.5} />
           </LineChart>
         </ResponsiveContainer>
       </div>

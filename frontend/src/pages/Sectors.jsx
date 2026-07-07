@@ -134,11 +134,11 @@ export function SectorsPage() {
             </h3>
             <ResponsiveContainer width="100%" height={Math.max(220, chartData.length * 26)}>
               <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 16 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
-                <XAxis type="number" stroke="#64748b" tickFormatter={(v) => fmtNum(v, 2)} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" horizontal={false} />
+                <XAxis type="number" stroke="#8aa094" tickFormatter={(v) => fmtNum(v, 2)} />
                 <YAxis type="category" dataKey="label" stroke="#94a3b8" width={150} tick={{ fontSize: 12 }} />
                 <Tooltip
-                  contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }}
+                  contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3', borderRadius: 8 }}
                   formatter={(v) => [fmtNum(v, 3), 'Momentum']}
                 />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]}>
