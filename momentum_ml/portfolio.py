@@ -82,10 +82,12 @@ def _num(v):
         return None
 
 
-def _latest_closes() -> dict:
-    """{ticker: senaste stängningskurs} ur båda segmentens prices.csv (skrivs av
-    den nattliga körningen). Svenska tickers – utländska ETF:er saknas och
-    behåller manuellt värde."""
+def _latest_closes(include_quotes: bool = True) -> dict:
+    """{ticker: senaste stängningskurs i SEK}. Källor i ordning:
+      1. Segmentens prices.csv (modellens universum, skrivs nattligt).
+      2. holdings_quotes.csv – kompletterande Yahoo-hämtning för innehav
+         UTANFÖR universum (utländska ETF:er, micro caps), redan i SEK.
+    """
     out = {}
     for seg in config.SEGMENTS.values():
         pp = Path(seg.get("results_dir", "")) / "prices.csv"
@@ -99,6 +101,79 @@ def _latest_closes() -> dict:
                     out[tk] = v            # sista raden per ticker vinner = senaste
         except Exception:  # noqa: BLE001
             pass
+    if include_quotes:
+        qp = _results_dir() / "holdings_quotes.csv"
+        if qp.exists():
+            try:
+                for r in csv.DictReader(open(qp, encoding="utf-8")):
+                    tk = (r.get("ticker") or "").upper()
+                    v = _num(r.get("close_sek"))
+                    if tk and v:
+                        out.setdefault(tk, v)   # prices.csv vinner om båda finns
+            except Exception:  # noqa: BLE001
+                pass
+    return out
+
+
+def fetch_holding_quotes() -> dict:
+    """
+    Hämtar senaste kurs (omräknad till SEK) för innehav vars ticker INTE täcks
+    av modellens prices.csv: utländska ETF:er (EUR/USD/GBp) och svenska bolag
+    utanför segmentens universum (micro caps). Direkt från samma kurskälla som
+    resten av pipelinen (Yahoo) – kräver nät, körs nattligt via main.py STEG 5.
+    Skriver results/holdings_quotes.csv som _latest_closes() plockar upp.
+    Valutor: fast_info.currency; GBp (pence) → /100 → GBP; växlas via <CUR>SEK=X.
+    """
+    rows = load_holdings(refresh=False)
+    have = _latest_closes(include_quotes=False)
+    need = sorted({(r.get("ticker") or "").upper() for r in rows} - set(have) - {""})
+    if not need:
+        return {}
+    import yfinance as yf
+
+    fx_cache = {"SEK": 1.0}
+
+    def fx(cur):
+        cur = (cur or "SEK").upper()
+        if cur not in fx_cache:
+            try:
+                h = yf.Ticker(f"{cur}SEK=X").history(period="5d")["Close"].dropna()
+                fx_cache[cur] = float(h.iloc[-1]) if len(h) else None
+            except Exception:  # noqa: BLE001
+                fx_cache[cur] = None
+        return fx_cache[cur]
+
+    out = {}
+    for tk in need:
+        try:
+            t = yf.Ticker(tk)
+            h = t.history(period="7d")["Close"].dropna()
+            if not len(h):
+                continue
+            px = float(h.iloc[-1])
+            try:
+                fi = t.fast_info
+                cur = fi.get("currency") if hasattr(fi, "get") else getattr(fi, "currency", None)
+            except Exception:  # noqa: BLE001
+                cur = None
+            cur = cur or "SEK"
+            if cur == "GBp":                      # London-notering i pence
+                px, cur = px / 100.0, "GBP"
+            rate = fx(cur)
+            if rate:
+                out[tk] = round(px * rate, 4)
+        except Exception as e:  # noqa: BLE001
+            print(f"[quotes] {tk}: {e}")
+    if out:
+        qp = _results_dir() / "holdings_quotes.csv"
+        qp.parent.mkdir(parents=True, exist_ok=True)
+        with open(qp, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["ticker", "close_sek"])
+            for tk, v in sorted(out.items()):
+                w.writerow([tk, v])
+        print(f"[quotes] {len(out)}/{len(need)} kompletterande kurser sparade (SEK): "
+              f"{', '.join(sorted(out))}")
     return out
 
 
@@ -1466,6 +1541,8 @@ def main():
         backtest(monthly, months)
     elif cmd == "exitscan":
         exitscan()
+    elif cmd == "quotes":
+        fetch_holding_quotes()
     elif cmd == "sizein":
         amt = float(sys.argv[2]) if len(sys.argv) > 2 else 10000
         n = int(sys.argv[3]) if len(sys.argv) > 3 else 4
