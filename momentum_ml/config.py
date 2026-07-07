@@ -673,6 +673,7 @@ TRADINGVIEW_SYMBOL_BASE  = "https://www.tradingview.com/symbols"   # {BÖRS}-{SY
 
 SENTIMENT_LOOKBACK_DAYS = 7         # PM publicerade senaste veckan räknas in i veckans signal
 SENTIMENT_OOS_START     = "2016"    # rent OOS-fönster (samma som era_analysis.py)
+BENCHMARK_CACHE_DIR     = "cache/sentiment_benchmark"  # separat cache – rör aldrig skarp sentiment-data
 # Poängsätt bara PM från detta datum (en buffert före OOS-start). Vi backtestar
 # enbart 2016+, så att betala för 2010-2015 års PM är bortkastat. Sänk vid behov.
 SENTIMENT_SCORE_FROM    = "2015-09-01"
@@ -731,6 +732,7 @@ QUALITY_CACHE_DIR = anchor(QUALITY_CACHE_DIR)
 MFN_CACHE_DIR = anchor(MFN_CACHE_DIR)
 BORSAPI_CACHE_DIR = anchor(BORSAPI_CACHE_DIR)
 SENTIMENT_CACHE_DIR = anchor(SENTIMENT_CACHE_DIR)
+BENCHMARK_CACHE_DIR = anchor(BENCHMARK_CACHE_DIR)
 MACRO_CACHE_DIR = anchor(MACRO_CACHE_DIR)
 EODHD_CACHE_DIR = anchor(EODHD_CACHE_DIR)
 PORTFOLIO_HOLDINGS_FILE = anchor(PORTFOLIO_HOLDINGS_FILE)
