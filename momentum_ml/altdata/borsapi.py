@@ -210,8 +210,15 @@ def backfill(budget: int = None):
     ours = {_norm_name(name_map.get(t, t)): t for t in tickers}
 
     companies = _company_list()
-    matched = [(c, ours[_norm_name(c.get("name"))]) for c in companies
-               if _norm_name(c.get("name")) in ours and (c.get("market") or "") == "XSTO"]
+    # Dedupe: BörsAPI listar vissa bolag flera gånger (A/B-aktier som separata
+    # poster med samma namn) – Electrolux hämtades dubbelt = dubbla krediter.
+    # En hämtning per normaliserat namn räcker (rapporterna är bolagets, inte aktieslagets).
+    matched, seen_names = [], set()
+    for c in companies:
+        nn = _norm_name(c.get("name"))
+        if nn in ours and (c.get("market") or "") == "XSTO" and nn not in seen_names:
+            seen_names.add(nn)
+            matched.append((c, ours[nn]))
     pending = [(c, tk) for c, tk in matched
                if (c.get("id") not in state["done"]) and (c.get("id") not in state["empty"])]
     print(f"[backfill] {len(matched)} matchade huvudlist-bolag · {len(pending)} kvar · budget {budget} krediter")
