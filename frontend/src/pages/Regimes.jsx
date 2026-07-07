@@ -5,7 +5,7 @@ import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { InfoButton } from '../components/InfoButton'
 
 const REGIME_LABELS = { bull: 'Bull', bear: 'Bear', sideways: 'Sidledes' }
-const REGIME_COLORS = { bull: '#4CAF50', bear: '#f44336', sideways: '#64748b' }
+const REGIME_COLORS = { bull: 'var(--good)', bear: '#f44336', sideways: '#64748b' }
 
 export function RegimesPage() {
   const { data, error, loading } = useApiData(() => api.regime(), [])
@@ -51,16 +51,16 @@ export function RegimesPage() {
         </h3>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="label" stroke="#64748b" />
-            <YAxis stroke="#64748b" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
+            <XAxis dataKey="label" stroke="#8aa094" />
+            <YAxis stroke="#8aa094" />
             <Tooltip
-              contentStyle={{ background: '#0f172a', border: '1px solid #1e293b' }}
+              contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3' }}
               formatter={(v) => [Number(v).toFixed(2), 'Sharpe']}
             />
             <Bar dataKey="sharpe">
               {chartData.map((row) => (
-                <Cell key={row.regime} fill={REGIME_COLORS[row.regime] ?? '#2196F3'} />
+                <Cell key={row.regime} fill={REGIME_COLORS[row.regime] ?? 'var(--accent)'} />
               ))}
             </Bar>
           </BarChart>

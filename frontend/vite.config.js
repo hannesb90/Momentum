@@ -13,8 +13,8 @@ export default defineConfig({
         name: 'Momentum ML Dashboard',
         short_name: 'Momentum',
         description: 'Signaler, backtest och modell-robusthet för momentum ML-systemet',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        theme_color: '#0e9f6e',
+        background_color: '#f4f7f5',
         display: 'standalone',
         start_url: '/',
         icons: [
