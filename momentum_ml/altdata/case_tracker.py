@@ -47,9 +47,12 @@ def _load_joined() -> dict:
         if f.name.startswith("_"):
             continue
         try:
-            items = json.loads(f.read_text(encoding="utf-8"))
+            raw = json.loads(f.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
             continue
+        # mfn_fetch.fetch_universe skriver {"ticker":…, "items":[...]} – tål även
+        # en ren lista (t.ex. probe-cachen) för robusthet.
+        items = raw.get("items", []) if isinstance(raw, dict) else raw
         if not isinstance(items, list):
             continue
         for it in items:
