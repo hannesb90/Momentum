@@ -2016,6 +2016,12 @@ td { padding: 10px 12px; }
 }
 .h-card__edit { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 10px; }
 .h-card__edit .pf-btn--danger { align-self: end; }
+.h-card__actions { display: flex; gap: 8px; margin-top: 10px; }
+.h-card__trade {
+  margin-top: 10px; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px;
+}
+.h-card__trade-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 10px; }
 
 .pf-btn--sm { padding: 5px 12px; font-size: 0.78rem; border-radius: 999px; }
 .pf-btn--danger { color: var(--bad); border-color: var(--bad-soft); background: var(--bad-soft); }

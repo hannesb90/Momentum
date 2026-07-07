@@ -141,6 +141,7 @@ export function OverviewPage() {
         </h2>
         <SegmentedControl options={NEXTBUY_AMOUNTS} value={buyAmount} onChange={setBuyAmount} size="sm" />
       </div>
+      {nextBuy.refreshing && <p className="footnote" style={{ margin: '-4px 0 6px' }}>Uppdaterar…</p>}
       <div className="list-card">
         {nextBuy.loading && <div className="list-card__empty">Räknar…</div>}
         {nextBuy.error && <div className="list-card__empty">Kunde inte hämta planen.</div>}
