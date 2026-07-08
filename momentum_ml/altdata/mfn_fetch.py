@@ -15,6 +15,7 @@ VIKTIGT – körs på Pi:n (molncontainern når varken mfn.se eller Yahoo).
     python altdata/mfn_fetch.py probe "Saab"     # rök-test mot feeden (gratis)
     python altdata/mfn_fetch.py one  "Saab" SAAB-B.ST   # ett bolag, filtrerat på ticker
     python altdata/mfn_fetch.py fetch large      # hela segmentet (cachas per ticker)
+    python altdata/mfn_fetch.py stats            # PM/dag mätt på redan hämtad cache (inget nätanrop)
 """
 import sys
 import re
@@ -229,6 +230,67 @@ def fetch_universe(target: str) -> None:
     print(f"[fetch] klart – {total} PM cachade i {cache_dir}/")
 
 
+def stats() -> None:
+    """Statistik ur REDAN HÄMTAD cache (inget nätanrop) – ärligt svar, mätt på
+    vårt eget universum, på 'hur många PM kommer det ut per dag från MFN'.
+    Kör efter (eller mitt under, för en tidig fingervisning) 'fetch'."""
+    from datetime import date, timedelta
+    from collections import Counter
+    cache_dir = Path(config.MFN_CACHE_DIR)
+    files = [f for f in cache_dir.glob("*.json") if not f.name.startswith("_")]
+    if not files:
+        print(f"Ingen cache i {cache_dir}/ än – kör 'fetch' först.")
+        return
+
+    dates: List[date] = []
+    lengths: List[int] = []
+    per_ticker: Counter = Counter()
+    for f in files:
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        items = d.get("items", [])
+        per_ticker[d.get("ticker", f.stem)] = len(items)
+        for it in items:
+            pub = str(it.get("published") or "")[:10]
+            try:
+                dates.append(date.fromisoformat(pub))
+            except ValueError:
+                continue
+            lengths.append(len(it.get("text") or ""))
+
+    if not dates:
+        print(f"{len(files)} bolag cachade, men inga tolkningsbara PM hittades.")
+        return
+
+    dates.sort()
+    span_days = max((dates[-1] - dates[0]).days, 1)
+    n = len(dates)
+    print(f"[mfn stats] {len(files)} bolag cachade, {n:,} PM totalt (id-dubbletter redan borttagna)"
+          .replace(",", " "))
+    print(f"  Period: {dates[0]} → {dates[-1]} ({span_days:,} dagar)".replace(",", " "))
+    print(f"  Snitt hela perioden: {n / span_days:.1f} PM/dag  (~{n / (span_days / 7):.0f} PM/vecka)")
+
+    cutoff = dates[-1] - timedelta(days=90)
+    recent = [d for d in dates if d >= cutoff]
+    recent_span = max((dates[-1] - cutoff).days, 1)
+    print(f"  Senaste 90 dagarna: {len(recent)} PM → {len(recent) / recent_span:.1f} PM/dag "
+          f"(färskare bild – historiken kan innehålla luckor från borttagna/avnoterade bolag)")
+
+    by_month = Counter(d.strftime("%Y-%m") for d in dates)
+    print("  Mest aktiva månader (rapportsäsong-toppar):")
+    for m, c in by_month.most_common(5):
+        print(f"    {m}: {c} PM")
+
+    avg_len = sum(lengths) / len(lengths)
+    print(f"  Snittlängd PM-text: {avg_len:.0f} tecken (klippt vid MFN_MAX_BODY_CHARS={config.MFN_MAX_BODY_CHARS})")
+
+    print("  Flest PM (bolag):")
+    for tk, c in per_ticker.most_common(10):
+        print(f"    {tk:<14} {c}")
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -245,6 +307,8 @@ def main():
               f"{f' (ticker {tk})' if tk else ''}")
     elif cmd == "fetch":
         fetch_universe(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
+    elif cmd == "stats":
+        stats()
     else:
         print(__doc__)
 
