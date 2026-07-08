@@ -3,7 +3,8 @@ altdata/mfn_fundamentals.py – Regex-extraherar HÅRDA finansiella siffror
 direkt ur MFN-pressmeddelandenas text: nettoomsättning, EBIT, EBITDA,
 resultat efter skatt, resultat per aktie, rörelsemarginal. Ingen AI, inget
 nätanrop – bara mönstermatchning mot vanliga svenska rapporteringsfraser
-("Nettoomsättningen uppgick till 125,3 (110,2) Mkr").
+("Nettoomsättningen uppgick till 125,3 (110,2) Mkr" ELLER "Rörelseresultatet
+uppgick till MSEK 724 (871)" – båda enhet-ordningarna stöds, se nedan).
 
 SYFTE: undersöka om vi kan täcka hela eller delar av Börsdata Pro+ GRATIS
 genom att plocka siffrorna som redan finns i MFN-texten, i stället för att
@@ -14,8 +15,9 @@ manuellt.
 fulla rapportnarrativ i själva MFN-PM:et eller bara publicerar en kort
 announcement + PDF-länk (se mfn_fetch.py:s 'types'-kommando). Denna modul
 kan ALDRIG läsa en PDF-bilaga. Regelmönstren är byggda på kända svenska
-IR-rapporteringskonventioner, INTE verifierade mot ett stort urval riktiga
-MFN-texter – kör själv:
+IR-rapporteringskonventioner OCH på faktiska exempel ur skarp cache (Saabs
+rapporter avslöjade "enhet-FÖRE-talet"-stilen och "procent" utskrivet i
+stället för "%") – men är fortfarande inte uttömmande verifierade. Kör:
 
     python -m altdata.mfn_fundamentals selftest large   # TRÄFFGRAD mot din cache
     python -m altdata.mfn_fundamentals extract large    # bygg fundamentals_from_mfn.csv
@@ -37,12 +39,17 @@ import config
 
 # ── Nummer/enhet-mönster (svensk notation: komma decimal, ev. mellanslag som
 # tusentalsavgränsare, ev. minustecken) ────────────────────────────────────
-# OBS: [  ] (mellanslag/hårt mellanslag) – INTE \s. \s matchar även \n/\t,
-# vilket i skarp körning fångade en rad-brytning MITT I ett tal (HTML-tabell
-# stripad till text) och kraschade _parse_num ("2\n271", "-8\n.8"). Ett riktigt
-# tal spänner aldrig en radbrytning.
-_NUM = r"-?\d[\d  ]*(?:,\d+)?"
+# OBS: mellanslag/hårt mellanslag – INTE \s. \s matchar även \n/\t, vilket i
+# skarp körning fångade en rad-brytning MITT I ett tal (HTML-tabell stripad
+# till text) och kraschade _parse_num ("2\n271", "-8\n.8"). Ett riktigt tal
+# spänner aldrig en radbrytning.
+_NBSP = " "
+_NUM = rf"-?\d[\d {_NBSP}]*(?:,\d+)?"
 _UNIT = r"Mkr|MSEK|mkr|msek|tkr|TSEK|kkr|miljoner kronor"
+_EPS_UNIT = r"kr|kronor|SEK"
+# "%" ELLER utskrivet "procent" – Saabs rapporter (och sannolikt fler) skriver
+# ut ordet i löptext-punktlistor ("minskade med 3 procent till...").
+_PCT = r"%|procent"
 # "ökade/minskade/steg/föll" tar ofta en "med X%"-klausul FÖRE "till" ("ökade
 # med 12,4% till 125,3 Mkr") – vanligare i verklig text än verbet + "till"
 # direkt (upptäckt genom selftest mot skarp cache: revenue hade en misstänkt
@@ -50,38 +57,67 @@ _UNIT = r"Mkr|MSEK|mkr|msek|tkr|TSEK|kkr|miljoner kronor"
 # – detta var orsaken, inte att siffran saknades).
 _CONNECT = (
     r"uppgick till"
-    rf"|(?:ökade|minskade|steg|föll)(?:\s+med\s+{_NUM}\s*%)?\s+till"
+    rf"|(?:ökade|minskade|steg|föll)(?:\s+med\s+{_NUM}\s*(?:{_PCT}))?\s+till"
     r"|blev|var|på"
 )
 # Etiketten följs ibland av en parentetisk förkortning ("Rörelseresultatet
-# (EBIT) uppgick till...") och/eller en periods-kvalificerare ("...för
-# perioden/kvartalet uppgick till...") innan konnektorn.
-_LABEL_TAIL = r"(?:\s*\([^)]{1,15}\))?(?:\s+för\s+(?:perioden|kvartalet|räkenskapsåret|helåret))?\s+"
+# (EBIT) uppgick till..."), en periods-kvalificerare ("...för perioden/
+# kvartalet uppgick till...") och/eller "efter/före utspädning" (resultat per
+# aktie) innan konnektorn.
+_LABEL_TAIL = (
+    r"(?:\s*\([^)]{1,15}\))?"
+    r"(?:\s+för\s+(?:perioden|kvartalet|räkenskapsåret|helåret))?"
+    r"(?:\s+(?:efter|före)\s+utspädning)?"
+    r"\s+"
+)
 
 
-def _num_pattern(label_alts: str) -> re.Pattern:
-    """'<etikett> uppgick till 125,3 (110,2) Mkr' – svensk IR-konvention: enheten
-    kommer EFTER både aktuell siffra och jämförelseperioden i parentes, inte
-    direkt efter den första siffran. Jämförelseperioden är valfri."""
+def _num_pattern_post(label_alts: str, unit: str = _UNIT) -> re.Pattern:
+    """'<etikett> uppgick till 125,3 (110,2) Mkr' – enheten kommer EFTER både
+    aktuell siffra och jämförelseperioden i parentes. Jämförelseperioden är
+    valfri."""
     return re.compile(
         rf"\b(?:{label_alts}){_LABEL_TAIL}(?:{_CONNECT})\s+"
         rf"(?P<val>{_NUM})"
         rf"(?:\s*\(\s*(?P<cmp>{_NUM})\s*\))?"
-        rf"\s*(?P<unit>{_UNIT})",
+        rf"\s*(?P<unit>{unit})",
         re.I,
     )
 
 
-_FIELD_PATTERNS: Dict[str, re.Pattern] = {
-    "revenue":     _num_pattern(r"nettoomsättning(?:en)?|omsättning(?:en)?"),
-    "ebit":        _num_pattern(r"rörelseresultat(?:et)?|EBIT(?!DA)"),
-    "ebitda":      _num_pattern(r"EBITDA"),
-    "net_profit":  _num_pattern(r"resultat(?:et)? efter skatt|periodens resultat|nettoresultat(?:et)?"),
+def _num_pattern_pre(label_alts: str, unit: str = _UNIT) -> re.Pattern:
+    """'<etikett> uppgick till MSEK 724 (871)' – enheten kommer FÖRE talen.
+    Minst lika vanligt som post-varianten i tabell-/punktlisteformat (Saabs
+    rapporter skriver konsekvent så: "Rörelseresultatet uppgick till MSEK
+    724 (871)") – upptäckt via ett skarpt exempel där post-mönstret gav noll
+    träff på ett bolag som uppenbart skriver ut alla nyckeltal."""
+    return re.compile(
+        rf"\b(?:{label_alts}){_LABEL_TAIL}(?:{_CONNECT})\s+"
+        rf"(?P<unit>{unit})\s+"
+        rf"(?P<val>{_NUM})"
+        rf"(?:\s*\(\s*(?P<cmp>{_NUM})\s*\))?",
+        re.I,
+    )
+
+
+_FIELD_LABELS: Dict[str, str] = {
+    "revenue":    r"nettoomsättning(?:en)?|omsättning(?:en)?|försäljningsintäkter(?:na)?",
+    "ebit":       r"rörelseresultat(?:et)?|EBIT(?!DA)",
+    "ebitda":     r"EBITDA",
+    "net_profit": r"resultat(?:et)? efter skatt|periodens resultat|nettoresultat(?:et)?",
 }
-_EPS_RE = re.compile(
-    rf"resultat per aktie{_LABEL_TAIL}(?:{_CONNECT})\s+(?P<val>{_NUM})\s*(?:kr|kronor)", re.I)
+# Två mönster per fält (enhet-efter, enhet-före) – första träff vinner.
+_FIELD_PATTERNS: Dict[str, List[re.Pattern]] = {
+    field: [_num_pattern_post(labels), _num_pattern_pre(labels)]
+    for field, labels in _FIELD_LABELS.items()
+}
+_EPS_PATTERNS = [
+    _num_pattern_post(r"resultat per aktie", _EPS_UNIT),
+    _num_pattern_pre(r"resultat per aktie", _EPS_UNIT),
+]
 _MARGIN_RE = re.compile(
-    rf"(?:rörelsemarginal(?:en)?|EBIT-marginal(?:en)?){_LABEL_TAIL}(?:{_CONNECT})\s+(?P<val>{_NUM})\s*%", re.I)
+    rf"(?:rörelsemarginal(?:en)?|EBIT-marginal(?:en)?){_LABEL_TAIL}(?:{_CONNECT})\s+"
+    rf"(?P<val>{_NUM})\s*(?:{_PCT})", re.I)
 
 # ── Period-detektering ur titeln (svenska IR-titlar är starkt standardiserade) ─
 _Q_RE = re.compile(r"\bQ([1-4])\b", re.I)
@@ -100,7 +136,13 @@ _MONTH_TO_Q = {"januari": "Q1", "april": "Q2", "juli": "Q3", "oktober": "Q4"}
 # (det senare är inte verifierat – se mfn_fetch.py 'types').
 _REPORT_TITLE_RE = re.compile(
     r"delårsrapport|kvartalsrapport|bokslutskommuniké|årsrapport|årsredovisning"
-    r"|niomånadersrapport|halvårsrapport|halvårsrapport", re.I)
+    r"|niomånadersrapport|halvårsrapport"
+    # "Bolag X:s resultat för januari-september 2010" – ett äldre/alternativt
+    # titelmönster (upptäckt i en riktig Saab-PM) som inte innehåller något av
+    # orden ovan alls och annars faller helt utanför nämnaren – varken hit
+    # eller miss, bara osynligt exkluderad.
+    r"|resultat för\s+(?:januari|februari|mars|april|maj|juni|juli|augusti"
+    r"|september|oktober|november|december|första|andra|tredje|fjärde)", re.I)
 # En rapport-TITEL fångar även INBJUDNINGAR till presentationen av rapporten
 # ("AAK bjuder in till presentation av delårsrapporten...") – dessa nämner
 # rapportordet men innehåller per definition ALDRIG siffrorna (upptäckt via
@@ -111,7 +153,7 @@ _INVITATION_TITLE_RE = re.compile(
 
 
 def _parse_num(s: str) -> float:
-    return float(s.replace(" ", "").replace("\xa0", "").replace(",", "."))
+    return float(s.replace(" ", "").replace(_NBSP, "").replace(",", "."))
 
 
 def is_report_pm(item: dict) -> bool:
@@ -144,14 +186,22 @@ def detect_period(title: str) -> Optional[str]:
     return None
 
 
+def _first_match(patterns: List[re.Pattern], text: str) -> Optional[re.Match]:
+    for pat in patterns:
+        m = pat.search(text)
+        if m:
+            return m
+    return None
+
+
 def extract_hard_facts(text: str) -> Dict[str, dict]:
     """{"revenue": {"value": 125.3, "unit": "Mkr", "prior_period": 110.2}, ...}
     Tomt dict om inget matchar (vanligast för PM som bara länkar en PDF)."""
     if not text:
         return {}
     out: Dict[str, dict] = {}
-    for field, pat in _FIELD_PATTERNS.items():
-        m = pat.search(text)
+    for field, patterns in _FIELD_PATTERNS.items():
+        m = _first_match(patterns, text)
         if not m:
             continue
         # Defensivt: en regex-träff garanterar inte ett parsbart tal (t.ex. ett
@@ -168,10 +218,10 @@ def extract_hard_facts(text: str) -> Dict[str, dict]:
             except ValueError:
                 pass
         out[field] = d
-    m = _EPS_RE.search(text)
+    m = _first_match(_EPS_PATTERNS, text)
     if m:
         try:
-            out["eps"] = {"value": _parse_num(m.group("val")), "unit": "kr"}
+            out["eps"] = {"value": _parse_num(m.group("val")), "unit": m.group("unit")}
         except ValueError:
             pass
     m = _MARGIN_RE.search(text)
