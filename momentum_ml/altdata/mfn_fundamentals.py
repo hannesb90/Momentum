@@ -239,6 +239,81 @@ _PCT_PATTERNS: Dict[str, re.Pattern] = {
     field: _pct_pattern(labels) for field, labels in _PCT_FIELDS.items()
 }
 
+# ── Tabellformat (resultaträkning/balansräkning/kassaflödesanalys ur PDF-
+# bilagor) – helt annat mönster än ovanstående narrativa "X uppgick till Y
+# (Z) Mkr"-meningar. Verifierat mot en riktig AAK-årsredovisnings
+# resultaträkning (sida 124 av 190, hämtad via mfn_pdf.py:s dump_page):
+#   "Nettoomsättning 26 46.021 45.052"
+#   "Rörelseresultatet (EBIT) uppgick till..." <- INTE denna stil här
+# Tabellens tal använder PUNKT som tusentalsavgränsare (annan konvention än
+# löptexten som använder mellanslag/hårt mellanslag) – därför ett separat
+# talmönster. Minustecknet varierar också (vanlig ASCII-hyphen på vissa
+# rader, en annan dash-glyf på andra – sett i samma tabell: "-33.399" och
+# "­41.678" [not\xadASCII-tecken]) – ett tecken-set täcker alla varianter.
+_TABLE_MINUS = "[-‐‑‒–—−­]"
+_TABLE_NUM = rf"{_TABLE_MINUS}?\d{{1,3}}(?:\.\d{{3}})*(?:,\d+)?"
+# Etiketten följs ofta av en eller flera not-referenser (små heltal, ev.
+# kommaseparerade: "5, 15, 26") INNAN de två faktiska kolumnvärdena – detta
+# valfria kluster hoppas över. Kritiskt: kravet på att raden SLUTAR direkt
+# efter exakt två tal (radankrat med $/re.M) gör att en femårs-
+# sammanfattningstabell (t.ex. sida 10: "Nettoomsättning 35.452 50.425
+# 46.028 45.052 46.021" – FEM kolumner) INTE matchar alls, i stället för att
+# råka plocka fel kolumnpar – bekräftat manuellt mot den riktiga sida-10-
+# texten (ingen träff, för många tal kvar efter etiketten för att mönstret
+# ska nå radslutet).
+_TABLE_NOTE = r"\d{1,3}(?:,\s*\d{1,3})*"
+_TABLE_TAIL = r"(?:\s*\([^)]{1,15}\))?"  # t.ex. "Resultat per aktie ... (kr)"
+
+
+def _table_row_pattern(label_alts: str) -> re.Pattern:
+    # OBS: INGET ^-krav på radstart – pdfplumber klistrar ofta in
+    # vänster-navigeringstext FÖRE själva raden på samma textrad
+    # ("Vår strategi Nettoomsättning 26 46.021 45.052" – bekräftat i en
+    # riktig AAK-resultaträkning). $-kravet (radslut, re.M) räcker för att
+    # utesluta femårs-sammanfattningstabeller.
+    return re.compile(
+        rf"\b(?:{label_alts})\b{_TABLE_TAIL}\s+"
+        rf"(?:{_TABLE_NOTE}\s+)?"
+        rf"(?P<val>{_TABLE_NUM})\s+(?P<cmp>{_TABLE_NUM})\s*$",
+        re.I | re.M,
+    )
+
+
+_TABLE_FIELD_PATTERNS: Dict[str, re.Pattern] = {
+    field: _table_row_pattern(labels) for field, labels in _VALUE_FIELDS.items()
+}
+_TABLE_EPS_PATTERNS: Dict[str, re.Pattern] = {
+    field: _table_row_pattern(labels) for field, labels in _EPS_FIELDS.items()
+}
+
+
+def _parse_table_num(s: str) -> float:
+    for ch in "‐‑‒–—−­":
+        s = s.replace(ch, "-")
+    return float(s.replace(".", "").replace(",", "."))
+
+
+def extract_table_facts(text: str) -> Dict[str, dict]:
+    """Samma fälttaxonomi som extract_hard_facts(), men för TABELLFORMATERAD
+    text (PDF-extraherade resultat-/balansräkningar) i stället för
+    pressmeddelande-narrativ. Avsedd att köras UTÖVER extract_hard_facts()
+    på PDF-text, inte i stället för – se mfn_pdf.py:s backfill() som slår
+    ihop båda (narrativ-träff vinner om båda hittar samma fält)."""
+    if not text:
+        return {}
+    out: Dict[str, dict] = {}
+    for field, pat in {**_TABLE_FIELD_PATTERNS, **_TABLE_EPS_PATTERNS}.items():
+        m = pat.search(text)
+        if not m:
+            continue
+        try:
+            val = _parse_table_num(m.group("val"))
+            cmp = _parse_table_num(m.group("cmp"))
+        except ValueError:
+            continue
+        out[field] = {"value": val, "prior_period": cmp}
+    return out
+
 # ── Period-detektering ur titeln (svenska IR-titlar är starkt standardiserade) ─
 _Q_RE = re.compile(r"\bQ([1-4])\b", re.I)
 _YEAR_RE = re.compile(r"\b(20\d{2})\b")
