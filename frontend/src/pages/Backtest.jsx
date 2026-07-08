@@ -102,7 +102,8 @@ export function BacktestPage() {
     <section>
       <h1>Backtest</h1>
       <p className="page-subtitle">
-        {stats.data.period.start} → {stats.data.period.end ?? 'idag'} · {stats.data.tickers.join(', ')}
+        {stats.data.period.start} → {stats.data.period.end ?? 'idag'} ·{' '}
+        {(stats.data.tickers ?? []).length} bolag
       </p>
 
       <div className="chart-card">
