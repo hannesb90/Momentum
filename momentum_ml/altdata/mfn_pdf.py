@@ -21,6 +21,7 @@ uppgraderar automatiskt gammal cache, ingen manuell radering behövs.
     python -m altdata.mfn_pdf diagnose_empty large   # varför gav vissa PDF:er noll fält? (inget nätanrop)
     python -m altdata.mfn_pdf compare_layout <pdf-url>  # standard vs layout=True mot EN känd trasig PDF
     python -m altdata.mfn_pdf scan_pages <pdf-url>       # var i dokumentet börjar siffrorna? (ingen sidkapning)
+    python -m altdata.mfn_pdf dump_page <pdf-url> <sida> # hela texten för EN sida, okapad
 """
 import csv
 import hashlib
@@ -219,6 +220,28 @@ def diagnose_empty(segment: Optional[str] = None, n: int = 5) -> None:
             print(f"  Extraherad text ({len(text)} tecken): {text[:300]!r}")
 
 
+def dump_page(url: str, page_num: int) -> None:
+    """Skriver ut HELA den extraherade texten för EN specifik sida (1-indexerad),
+    okapad. scan_pages() visar bara 80 tecken per sida – detta verktyg ger hela
+    texten så att regex-mönster kan designas mot verklig text (t.ex. en
+    tabellformaterad resultaträkning), inte gissas fram."""
+    if pdfplumber is None:
+        raise RuntimeError("paketet 'pdfplumber' saknas – pip install pdfplumber")
+    print(f"Laddar ner {url} ...")
+    pdf_bytes = _download_pdf(url)
+    if pdf_bytes is None:
+        print("Kunde inte ladda ner PDF:en.")
+        return
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        if page_num < 1 or page_num > len(pdf.pages):
+            print(f"Sida {page_num} finns inte (dokumentet har {len(pdf.pages)} sidor).")
+            return
+        page = pdf.pages[page_num - 1]
+        t = page.extract_text() or ""
+        print(f"--- sida {page_num}/{len(pdf.pages)}, {len(t)} tecken ---")
+        print(t)
+
+
 def scan_pages(url: str) -> None:
     """Sida-för-sida-diagnos: var i dokumentet börjar siffrorna? _MAX_PDF_PAGES
     kapar till de FÖRSTA 20 sidorna – men moderna årsredovisningar har ofta
@@ -397,6 +420,12 @@ def main():
             print("Användning: python -m altdata.mfn_pdf scan_pages <pdf-url>")
             return
         scan_pages(sys.argv[2])
+        return
+    if cmd == "dump_page":
+        if len(sys.argv) < 4:
+            print("Användning: python -m altdata.mfn_pdf dump_page <pdf-url> <sida>")
+            return
+        dump_page(sys.argv[2], int(sys.argv[3]))
         return
     seg = sys.argv[2] if len(sys.argv) > 2 else None
     limit = int(sys.argv[3]) if len(sys.argv) > 3 else None
