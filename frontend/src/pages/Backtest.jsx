@@ -15,7 +15,7 @@ import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { StatCard } from '../components/StatCard'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { InfoButton } from '../components/InfoButton'
-import { fmtDate } from '../format'
+import { fmtDate, fmtSek, fmtPct } from '../format'
 
 const PERIODS = [
   { value: 'overall', label: 'Hela perioden' },
@@ -76,6 +76,7 @@ function StatsRow({ title, stats }) {
 export function BacktestPage() {
   const portfolio = useApiData(() => api.portfolio(), [])
   const stats = useApiData(() => api.stats(), [])
+  const nextBuyBt = useApiData(() => api.portfolioBacktest(), [])
   const [period, setPeriod] = useState('overall')
 
   const chartData = useMemo(() => {
@@ -198,6 +199,72 @@ export function BacktestPage() {
           </div>
         </div>
       )}
+
+      <div className="stats-block">
+        <h3>
+          Nästa köp vs index
+          <InfoButton title="'Nästa köp'-allokeringen mot index">
+            <p>
+              Isolerar precis det som "Nästa köp" faktiskt styr: <b>vart nytt kapital går</b> –
+              köp-och-behåll-boken säljs aldrig. Samma startbok, tre öden för varje ny krona
+              framåt:
+            </p>
+            <p>
+              <b>A) Fyll mot mål</b> – nya insättningar riktas mot underviktade hinkar (appens
+              logik). <b>B) Allt i index</b> – samma startbok, men alla nya kronor i en global
+              indexfond i stället. <b>C) Sälj allt → index idag</b> – aggressiv referens: hela
+              boken omvandlad till index just nu.
+            </p>
+            <p>
+              A − B är hela svaret på frågan: <b>tjänar fyll-mot-mål-logiken sin plats</b>, eller
+              hade en ren indexinsättning varit lika bra? Hinkarna proxas av ETF-korgar (bred
+              kärna/Sverige-småbolag/tema), inte de enskilda aktierekommendationerna.
+            </p>
+          </InfoButton>
+        </h3>
+        {nextBuyBt.data ? (
+          <>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Strategi</th><th>Slutvärde</th><th>IRR/år</th><th>Max DD</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td>A) Fyll mot mål</td>
+                    <td>{fmtSek(nextBuyBt.data.A.final)}</td>
+                    <td className={nextBuyBt.data.A.irr_year >= 0 ? 'pos' : 'neg'}>{fmtPct(nextBuyBt.data.A.irr_year)}</td>
+                    <td className="neg">{fmtPct(nextBuyBt.data.A.maxdd)}</td>
+                  </tr>
+                  <tr>
+                    <td>B) Allt i index</td>
+                    <td>{fmtSek(nextBuyBt.data.B.final)}</td>
+                    <td className={nextBuyBt.data.B.irr_year >= 0 ? 'pos' : 'neg'}>{fmtPct(nextBuyBt.data.B.irr_year)}</td>
+                    <td className="neg">{fmtPct(nextBuyBt.data.B.maxdd)}</td>
+                  </tr>
+                  <tr>
+                    <td>C) Sälj allt → index idag</td>
+                    <td>{fmtSek(nextBuyBt.data.C.final)}</td>
+                    <td className={nextBuyBt.data.C.irr_year >= 0 ? 'pos' : 'neg'}>{fmtPct(nextBuyBt.data.C.irr_year)}</td>
+                    <td className="neg">{fmtPct(nextBuyBt.data.C.maxdd)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="footnote">
+              Startbok {fmtSek(nextBuyBt.data.start_value)} · {fmtSek(nextBuyBt.data.monthly)}/mån ·{' '}
+              {nextBuyBt.data.months} insättningar · {nextBuyBt.data.years} år · A − B:{' '}
+              <span className={nextBuyBt.data.A.final - nextBuyBt.data.B.final >= 0 ? 'pos' : 'neg'}>
+                {fmtSek(nextBuyBt.data.A.final - nextBuyBt.data.B.final)}
+              </span>
+              {nextBuyBt.data.generated && ` · beräknat ${String(nextBuyBt.data.generated).slice(0, 16).replace('T', ' ')}`}
+            </p>
+          </>
+        ) : (
+          <p className="footnote">
+            Inte beräknat än. Kör <code>python portfolio.py backtest 5000</code> på Pi:n
+            (kräver nät för ETF-prispanelen) – resultatet cachas och visas här.
+          </p>
+        )}
+      </div>
 
       <div className="filter-bar filter-bar--secondary">
         <span className="filter-bar__label">Period:</span>
