@@ -87,6 +87,11 @@ _MARGIN_RE = re.compile(
 _Q_RE = re.compile(r"\bQ([1-4])\b", re.I)
 _YEAR_RE = re.compile(r"\b(20\d{2})\b")
 _MONTHRANGE_RE = re.compile(r"\b(januari|april|juli|oktober)[\s\-–]+(mars|juni|september|december)\b", re.I)
+# Utskrivet ordningstal ("det ANDRA kvartalet 2023") – minst lika vanligt i
+# svenska rapporttitlar som "Q2" (upptäckt via ett skarpt exempel: AAK:s
+# "delårsrapport för det andra kvartalet 2023" gav tom period innan detta).
+_QORD_RE = re.compile(r"\b(första|andra|tredje|fjärde)\s+kvartalet\b", re.I)
+_QORD_TO_Q = {"första": "Q1", "andra": "Q2", "tredje": "Q3", "fjärde": "Q4"}
 _FULLYEAR_KW = re.compile(r"bokslutskommuniké|helår(?:et|srapport)?", re.I)
 _MONTH_TO_Q = {"januari": "Q1", "april": "Q2", "juli": "Q3", "oktober": "Q4"}
 
@@ -117,16 +122,25 @@ def is_report_pm(item: dict) -> bool:
 def detect_period(title: str) -> Optional[str]:
     year_m = _YEAR_RE.search(title)
     year = year_m.group(1) if year_m else None
+    # Bokslutskommuniké/helår kollas FÖRST: Q4-titlar innehåller ofta BÅDA
+    # ("...fjärde kvartalet och bokslutskommuniké 2022") – helår är den mer
+    # specifika signalen (bolaget klassar själva releasen som årssummeringen)
+    # och ska vinna, inte kvartalsordet som råkar stå bredvid.
+    if _FULLYEAR_KW.search(title):
+        return f"Helår {year}" if year else "Helår"
     q_m = _Q_RE.search(title)
     if q_m:
         return f"Q{q_m.group(1)} {year}" if year else f"Q{q_m.group(1)}"
+    qord_m = _QORD_RE.search(title)
+    if qord_m:
+        q = _QORD_TO_Q.get(qord_m.group(1).lower())
+        if q:
+            return f"{q} {year}" if year else q
     mr = _MONTHRANGE_RE.search(title)
     if mr:
         q = _MONTH_TO_Q.get(mr.group(1).lower())
         if q:
             return f"{q} {year}" if year else q
-    if _FULLYEAR_KW.search(title):
-        return f"Helår {year}" if year else "Helår"
     return None
 
 
