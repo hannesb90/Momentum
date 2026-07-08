@@ -18,6 +18,7 @@ uppgraderar automatiskt gammal cache, ingen manuell radering behövs.
 
     python -m altdata.mfn_pdf backfill large        # alla miss-PM med PDF-bilaga
     python -m altdata.mfn_pdf backfill large 20      # bara de första 20 (snabbt test)
+    python -m altdata.mfn_pdf diagnose_empty large   # varför gav vissa PDF:er noll fält? (inget nätanrop)
 """
 import csv
 import hashlib
@@ -142,6 +143,80 @@ def get_pdf_text(pm_id: str, url: str) -> Optional[str]:
     return text
 
 
+def _peek_cached(pm_id: str, url: str) -> Optional[dict]:
+    """Läser PDF-textcachen UTAN att trigga en nedladdning om den saknas –
+    för diagnos av redan körda PDF:er, inte för att köra nya."""
+    cp = _pdf_text_cache_dir() / f"{_cache_key(pm_id, url)}.json"
+    if not cp.exists():
+        return None
+    try:
+        return json.loads(cp.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def diagnose_empty(segment: Optional[str] = None, n: int = 5) -> None:
+    """Svarar EMPIRISKT på 'är de tomma PDF:erna gamla/skannade filer?' i
+    stället för att gissa. Jämför år-fördelning och extraherad textlängd
+    mellan lyckade och tomma resultat – nära-noll text = troligen en
+    skannad bild utan textlager (olösbart utan OCR); mycket text men ändå
+    noll fält = ett fras-/tabellmönster vi missar (potentiellt fixbart).
+    Läser BARA redan körd cache – triggar inga nya nedladdningar."""
+    items = _report_items(segment)
+    miss_items = [it for it in items if not extract_hard_facts(it.get("text") or "")]
+    candidates = [it for it in miss_items if it.get("attachments")]
+
+    from collections import Counter
+    by_year_empty: Counter = Counter()
+    by_year_ok: Counter = Counter()
+    textlens_empty: List[int] = []
+    empty_examples = []
+    not_yet_processed = dl_failed = 0
+
+    for it in candidates:
+        att = pick_attachment(it["attachments"])
+        cached = _peek_cached(it["id"], att["url"])
+        if cached is None:
+            not_yet_processed += 1
+            continue
+        text = cached.get("text")
+        year = str(it.get("published", ""))[:4] or "okänt"
+        if text is None:
+            dl_failed += 1
+            continue
+        if extract_hard_facts(text):
+            by_year_ok[year] += 1
+        else:
+            by_year_empty[year] += 1
+            textlens_empty.append(len(text))
+            if len(empty_examples) < n:
+                empty_examples.append((it, att, text))
+
+    print(f"[mfn_pdf diagnose_empty] {len(candidates)} kandidater totalt, "
+          f"{not_yet_processed} inte körda ännu, {dl_failed} nedladdningsfel")
+
+    print("\nÅr-fördelning, LYCKADE (fick minst 1 fält ur PDF:en):")
+    for y, c in sorted(by_year_ok.items()):
+        print(f"  {y}: {c}")
+    print("\nÅr-fördelning, TOMMA (PDF öppnades, noll fält extraherade):")
+    for y, c in sorted(by_year_empty.items()):
+        print(f"  {y}: {c}")
+
+    if textlens_empty:
+        avg_len = sum(textlens_empty) / len(textlens_empty)
+        near_zero = sum(1 for l in textlens_empty if l < 200)
+        print(f"\nTextlängd för TOMMA: snitt {avg_len:.0f} tecken, {near_zero}/{len(textlens_empty)} "
+              f"under 200 tecken (nära-noll text = troligen skannad bild, olösbart utan OCR)")
+
+    if empty_examples:
+        print(f"\nExempel på TOMMA (för manuell koll):")
+        for it, att, text in empty_examples:
+            print(f"\n  {it.get('ticker')} {str(it.get('published', ''))[:10]} "
+                  f"'{it.get('title', '')[:60]}'")
+            print(f"  PDF: {att['url']}")
+            print(f"  Extraherad text ({len(text)} tecken): {text[:300]!r}")
+
+
 def backfill(segment: Optional[str] = None, limit: Optional[int] = None) -> None:
     """Går igenom rapport-PM som INTE fick något extraherat ur press-texten
     (extract_hard_facts på item['text'] gav tomt) men SOM har minst en PDF-
@@ -212,6 +287,8 @@ def main():
     limit = int(sys.argv[3]) if len(sys.argv) > 3 else None
     if cmd == "backfill":
         backfill(seg, limit)
+    elif cmd == "diagnose_empty":
+        diagnose_empty(seg, limit or 5)
     else:
         print(__doc__)
 
