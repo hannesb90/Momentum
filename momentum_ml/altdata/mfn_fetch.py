@@ -47,7 +47,11 @@ def _http_get(url: str, params: Optional[dict] = None, retries: int = 4):
                              "Accept": "application/json"}, timeout=30)
             if r.status_code == 200:
                 return r
-            last = RuntimeError(f"HTTP {r.status_code} för {r.url}")
+            # Kroppen med (inte bara statuskoden) – annars är ett 500 för en
+            # specifik query-sträng ogenomskinligt: vi såg ~20-30 bolag 500:a i
+            # produktion (t.ex. "Re:NewCell", "Better Collective A/S") utan att
+            # veta VARFÖR förrän vi faktiskt läste svarskroppen.
+            last = RuntimeError(f"HTTP {r.status_code} för {r.url}: {r.text[:200]}")
         except Exception as e:  # noqa: BLE001
             last = e
         time.sleep(2 ** i)
@@ -184,12 +188,21 @@ def _load_map() -> Dict[str, str]:
 
 def _clean_name(name: str) -> str:
     """Kort, sökbart bolagsnamn. MFN:s /all/s ger HTTP 500 för vissa queries –
-    särskilt med 'Class A/B'-suffix och '&'. Strippa dem (och bolagsformer)."""
+    särskilt med 'Class A/B'-suffix, '&' och vissa utländska bolagsformer.
+    Strippa dem. Utökad efter en full-universum-körning där ~20-30 bolag
+    500:ade (Better Collective A/S, Subsea 7 S.A, Re:NewCell, Fenix Outdoor
+    ...AG Series B, ...) – se _http_get:s felmeddelande (nu med svarskropp)
+    för bolag som fortfarande failar efter denna lista."""
     n = name
     n = re.sub(r"\bclass\s+[a-d]\b", " ", n, flags=re.I)          # "Class B"
-    n = re.sub(r"\bser(ie|\.)?\s*[a-d]\b", " ", n, flags=re.I)    # "Ser. B"
+    n = re.sub(r"\bser(ie|ies|\.)?\s*[a-d]\b", " ", n, flags=re.I)  # "Ser./Series B"
     n = re.sub(r"\(publ\.?\)|\bAB\b|\bASA\b|\bOyj\b|\bplc\b|\bInc\b", " ", n, flags=re.I)
-    n = n.replace("&", " ")                                        # '&' bryter MFN-queryn
+    n = n.replace("&", " ").replace(":", " ")                     # bryter MFN-queryn
+    n = re.sub(r"\s+", " ", n).strip(" ,.-")
+    # Utländska bolagsformer bara i SLUTET av namnet – "AG"/"SE" mitt i en fras
+    # kan annars råka klippa ett riktigt ord av misstag.
+    n = re.sub(r"\s+(A/S|AG|SE|S\.A\.?)$", "", n, flags=re.I)
+    n = n.replace("/", " ")                                        # ev. kvarvarande "/"
     return re.sub(r"\s+", " ", n).strip(" ,.-")
 
 
