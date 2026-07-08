@@ -96,6 +96,13 @@ _MONTH_TO_Q = {"januari": "Q1", "april": "Q2", "juli": "Q3", "oktober": "Q4"}
 _REPORT_TITLE_RE = re.compile(
     r"delårsrapport|kvartalsrapport|bokslutskommuniké|årsrapport|årsredovisning"
     r"|niomånadersrapport|halvårsrapport|halvårsrapport", re.I)
+# En rapport-TITEL fångar även INBJUDNINGAR till presentationen av rapporten
+# ("AAK bjuder in till presentation av delårsrapporten...") – dessa nämner
+# rapportordet men innehåller per definition ALDRIG siffrorna (upptäckt via
+# ett skarpt miss-exempel i selftest, inte en regex-lucka att laga). Utesluts
+# explicit så nämnaren mäter faktiska rapport-PM, inte inbjudningar till dem.
+_INVITATION_TITLE_RE = re.compile(
+    r"bjuder in till|inbjuder till|inbjudan till|kallar till\s+(?:telefon|press)", re.I)
 
 
 def _parse_num(s: str) -> float:
@@ -103,7 +110,8 @@ def _parse_num(s: str) -> float:
 
 
 def is_report_pm(item: dict) -> bool:
-    return bool(_REPORT_TITLE_RE.search(str(item.get("title") or "")))
+    title = str(item.get("title") or "")
+    return bool(_REPORT_TITLE_RE.search(title)) and not _INVITATION_TITLE_RE.search(title)
 
 
 def detect_period(title: str) -> Optional[str]:
