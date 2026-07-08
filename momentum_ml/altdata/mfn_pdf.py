@@ -23,6 +23,7 @@ import csv
 import hashlib
 import io
 import json
+import logging
 import sys
 import time
 from pathlib import Path
@@ -41,6 +42,14 @@ try:
     import pdfplumber
 except ImportError:
     pdfplumber = None
+
+# pdfminer (pdfplumber:s motor) loggar varningar för lätt trasiga/icke-
+# standard PDF:er rakt till stdout ("Cannot set stroke color: 2 components
+# specified..." osv) – ofarligt (extraktionen fortsätter ändå) men
+# översvämmar output när tusentals PDF:er körs i en batch. Tysta ner till
+# ERROR – vi bryr oss bara om PDF:en gick att öppna över huvud taget, inte
+# om enstaka grafik-operatorer var lite fel formaterade.
+logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
 # Pi:n har begränsat minne/lagring (2GB RAM, se deploy/momentum-train.service) –
 # sätt konservativa tak i stället för att lita på att alla PDF:er är små.
@@ -139,13 +148,15 @@ def backfill(segment: Optional[str] = None, limit: Optional[int] = None) -> None
     bilaga. Laddar ner+extraherar+kör om parsern mot PDF-texten. Resumable –
     varje PDF cachas för alltid. Skriver <results_dir>/fundamentals_from_pdf.csv."""
     items = _report_items(segment)
-    candidates = [it for it in items
-                  if not extract_hard_facts(it.get("text") or "") and it.get("attachments")]
-    total_miss = sum(1 for it in items if not extract_hard_facts(it.get("text") or ""))
-    if limit:
-        candidates = candidates[:limit]
-    print(f"[mfn_pdf backfill] {len(candidates)}/{total_miss} miss-PM har minst en PDF-bilaga "
-          f"({total_miss - len(candidates) if not limit else '?'} saknar helt bilaga – olösbart utan)")
+    # extract_hard_facts() på press-texten körs EN gång per item (inte två,
+    # som tidigare – onödigt dubbelarbete över tiotusentals PM).
+    miss_items = [it for it in items if not extract_hard_facts(it.get("text") or "")]
+    candidates_all = [it for it in miss_items if it.get("attachments")]
+    candidates = candidates_all[:limit] if limit else candidates_all
+    print(f"[mfn_pdf backfill] {len(candidates_all)}/{len(miss_items)} miss-PM har minst en "
+          f"PDF-bilaga ({len(miss_items) - len(candidates_all)} saknar helt bilaga – olösbart utan)")
+    if limit and len(candidates) < len(candidates_all):
+        print(f"[mfn_pdf backfill] bearbetar {len(candidates)} av dem denna körning (limit={limit})")
 
     rows, ok, dl_fail, empty = [], 0, 0, 0
     for i, it in enumerate(candidates, 1):
