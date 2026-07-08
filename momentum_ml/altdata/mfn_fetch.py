@@ -189,10 +189,21 @@ def _load_map() -> Dict[str, str]:
 def _clean_name(name: str) -> str:
     """Kort, sökbart bolagsnamn. MFN:s /all/s ger HTTP 500 för vissa queries –
     särskilt med 'Class A/B'-suffix, '&' och vissa utländska bolagsformer.
-    Strippa dem. Utökad efter en full-universum-körning där ~20-30 bolag
-    500:ade (Better Collective A/S, Subsea 7 S.A, Re:NewCell, Fenix Outdoor
-    ...AG Series B, ...) – se _http_get:s felmeddelande (nu med svarskropp)
-    för bolag som fortfarande failar efter denna lista."""
+
+    En full-universum-körning (900+ bolag) avslöjade EFTER den första fixen
+    (suffix/kolon) ett andra, tydligt mönster i de kvarvarande ~19 felen: MFN:s
+    sök kraschar på en ISOLERAD ETT-TECKENS-TOKEN i queryn – bokstav ELLER
+    siffra. Alla dessa 500:ade tills tokenet togs bort:
+      "...i Norden/Sverige/Skandinavien/Dalarna" (fristående "i", 7 bolag)
+      "H M Hennes Mauritz", "L E Lundbergforetagen", "PetroNor E P"
+      "Enad Global 7", "Subsea 7" (fristående siffra sist)
+      "C-Rad", "I-Tech", "K-Fast Holding" (bindestreck → isolerad bokstav
+       efter att bindestrecket blir mellanslag)
+    18 av 19 kvarvarande fel förklarades av detta EN mönster (verifierat mot
+    hela listan innan denna kod skrevs – se konversationen/committen). Kvar
+    okänt: "Case Group", "Wall to Wall Group", "SJR in Scandinavia" – inget
+    uppenbart mönster, INTE gissat vidare (_http_get visar nu svarskropp om
+    de ska felsökas senare)."""
     n = name
     n = re.sub(r"\bclass\s+[a-d]\b", " ", n, flags=re.I)          # "Class B"
     n = re.sub(r"\bser(ie|ies|\.)?\s*[a-d]\b", " ", n, flags=re.I)  # "Ser./Series B"
@@ -203,6 +214,12 @@ def _clean_name(name: str) -> str:
     # kan annars råka klippa ett riktigt ord av misstag.
     n = re.sub(r"\s+(A/S|AG|SE|S\.A\.?)$", "", n, flags=re.I)
     n = n.replace("/", " ")                                        # ev. kvarvarande "/"
+    n = n.replace("-", " ")                                        # C-Rad, I-Tech, K-Fast
+    # Akronymer typ "M.O.B.A." -> "MOBA" (INTE "Checkin.com" – den matchar inte
+    # detta mönster eftersom "com" inte är en enskild bokstav).
+    n = re.sub(r"\b(?:[A-Z]\.){2,}", lambda m: m.group(0).replace(".", ""), n)
+    # Isolerad ett-tecken-token (bokstav/siffra) som eget "ord" – huvudfixen ovan.
+    n = re.sub(r"(?<!\S)\w(?!\S)", "", n)
     return re.sub(r"\s+", " ", n).strip(" ,.-")
 
 
