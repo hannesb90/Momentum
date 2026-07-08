@@ -17,6 +17,7 @@ VIKTIGT – körs på Pi:n (molncontainern når varken mfn.se eller Yahoo).
     python altdata/mfn_fetch.py fetch large      # hela segmentet (cachas per ticker)
     python altdata/mfn_fetch.py stats            # PM/dag mätt på redan hämtad cache (inget nätanrop)
     python altdata/mfn_fetch.py types             # PM eller även rapporter? typ-fördelning + exempel
+    python altdata/mfn_fetch.py raw "AAK"         # rå feed-dump: finns en PDF-länk vi missar?
 """
 import sys
 import re
@@ -173,6 +174,60 @@ def probe(query: str) -> None:
     out.write_text(json.dumps(coerced[:5], ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"  (5 tolkade PM sparade i {out} för granskning)")
     print("  Ser fälten rätt ut (datum/rubrik/author/tickers)? Kör 'fetch'.")
+
+
+def raw(query: str) -> None:
+    """RÅ dump av ETT feed-item – ingen _coerce()-stripning. Svarar på om det
+    finns en attachments/files-nyckel med en PDF-länk NÅGONSTANS i strukturen
+    (_coerce() plockar i dag bara id/published/title/text/type/tags/lang/url/
+    author/tickers/isins – aldrig kollat om mer finns), och om content.html
+    innehåller en '<a href="...pdf">'-länk som _strip_html() annars kastar
+    bort utan spår. Kör INNAN en fetch-PDF-pipeline byggs – annars gissar vi
+    på ett fältnamn. Ett litet, billigt nätanrop (samma som probe())."""
+    base = config.MFN_BASE_URL.rstrip("/")
+    items, _ = _feed_page(f"{base}/all/s", {"query": query, "lang": config.MFN_LANG, "limit": 5})
+    if not items:
+        print(f"[raw] inga träffar för '{query}'")
+        return
+    it = items[0]
+    c = it.get("content") or {}
+    print(f"[raw] toppnivå-nycklar: {list(it.keys())}")
+    print(f"[raw] content-nycklar:  {list(c.keys())}")
+    print(f"[raw] author-nycklar:   {list((it.get('author') or {}).keys())}")
+    print(f"[raw] properties-nycklar: {list((it.get('properties') or {}).keys())}")
+
+    def _hunt(obj, path=""):
+        hits = []
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                p = f"{path}.{k}" if path else k
+                if any(kw in k.lower() for kw in ("pdf", "attach", "file", "document", "asset")):
+                    hits.append((p, v))
+                hits.extend(_hunt(v, p))
+        elif isinstance(obj, list):
+            for i, v in enumerate(obj[:3]):
+                hits.extend(_hunt(v, f"{path}[{i}]"))
+        return hits
+
+    hits = _hunt(it)
+    if hits:
+        print("\n[raw] Fält som LUKTAR pdf/attachment/fil (troligen svaret vi letar efter):")
+        for p, v in hits:
+            print(f"  {p} = {json.dumps(v, ensure_ascii=False)[:200]}")
+    else:
+        print("\n[raw] Inget fältnamn innehåller pdf/attachment/fil/document/asset "
+              "i det rå feed-itemet.")
+
+    html = c.get("html") or ""
+    pdf_links = re.findall(r'href="([^"]*\.pdf[^"]*)"', html, re.I)
+    if pdf_links:
+        print(f"\n[raw] PDF-länk(ar) hittade INUTI content.html (som _strip_html() idag kastar "
+              f"bort helt): {pdf_links}")
+    else:
+        print("\n[raw] Ingen '.pdf'-länk hittad i content.html.")
+
+    print(f"\n[raw] Fullständigt item för '{it.get('url', '')}':")
+    print(json.dumps(it, indent=2, ensure_ascii=False)[:3000])
 
 
 def _load_map() -> Dict[str, str]:
@@ -406,6 +461,8 @@ def main():
         stats()
     elif cmd == "types":
         types()
+    elif cmd == "raw":
+        raw(sys.argv[2] if len(sys.argv) > 2 else "AAK")
     else:
         print(__doc__)
 
