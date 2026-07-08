@@ -43,10 +43,20 @@ import config
 # tal spänner aldrig en radbrytning.
 _NUM = r"-?\d[\d  ]*(?:,\d+)?"
 _UNIT = r"Mkr|MSEK|mkr|msek|tkr|TSEK|kkr|miljoner kronor"
-_CONNECT = r"uppgick till|ökade till|minskade till|steg till|föll till|blev|var|på"
-# Etiketten följs ibland av en parentetisk förkortning innan konnektorn,
-# t.ex. "Rörelseresultatet (EBIT) uppgick till ...".
-_LABEL_TAIL = r"(?:\s*\([^)]{1,15}\))?\s+"
+# "ökade/minskade/steg/föll" tar ofta en "med X%"-klausul FÖRE "till" ("ökade
+# med 12,4% till 125,3 Mkr") – vanligare i verklig text än verbet + "till"
+# direkt (upptäckt genom selftest mot skarp cache: revenue hade en misstänkt
+# LÄGRE träffgrad än net_profit/ebit trots att omsättning nästan alltid nämns
+# – detta var orsaken, inte att siffran saknades).
+_CONNECT = (
+    r"uppgick till"
+    rf"|(?:ökade|minskade|steg|föll)(?:\s+med\s+{_NUM}\s*%)?\s+till"
+    r"|blev|var|på"
+)
+# Etiketten följs ibland av en parentetisk förkortning ("Rörelseresultatet
+# (EBIT) uppgick till...") och/eller en periods-kvalificerare ("...för
+# perioden/kvartalet uppgick till...") innan konnektorn.
+_LABEL_TAIL = r"(?:\s*\([^)]{1,15}\))?(?:\s+för\s+(?:perioden|kvartalet|räkenskapsåret|helåret))?\s+"
 
 
 def _num_pattern(label_alts: str) -> re.Pattern:
