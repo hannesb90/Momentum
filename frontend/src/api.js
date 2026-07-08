@@ -89,4 +89,6 @@ export const api = {
   exitSignals: () => getJson('/exit-signals'),
   caseChanges: () => getJson('/case-changes'),
   portfolioLog: () => getJson('/portfolio-log'),
+  // "Nästa köp" (fyll-mot-mål) vs index – förberäknad på Pi:n (portfolio.py backtest).
+  portfolioBacktest: () => getJson('/portfolio-backtest'),
 }
