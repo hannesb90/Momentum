@@ -71,6 +71,87 @@ export function HoldingsPage() {
   const [addValue, setAddValue] = useState('')    // manuellt värde (utländska/fonder)
   const [editIdx, setEditIdx] = useState(null)    // rad i redigeringsläge
 
+  // Köp/sälj-flödet: räknar ut nytt vägt snittpris (köp) resp. behåller snittet
+  // oförändrat på kvarvarande andel (sälj) – i stället för att du gör det i huvudet.
+  const [tradeIdx, setTradeIdx] = useState(null)
+  const [tradeMode, setTradeMode] = useState('buy')
+  const [tradeShares, setTradeShares] = useState('')
+  const [tradePrice, setTradePrice] = useState('')
+  const [tradeAmt, setTradeAmt] = useState('')
+
+  function openTrade(i, mode) {
+    setTradeIdx(i); setTradeMode(mode)
+    setTradeShares(''); setTradePrice(''); setTradeAmt('')
+    setEditIdx(null)
+  }
+  function closeTrade() {
+    setTradeIdx(null); setTradeShares(''); setTradePrice(''); setTradeAmt('')
+  }
+  function confirmTrade() {
+    const i = tradeIdx
+    const h = holdings[i]
+    if (!h) return
+    const isShareBased = h.shares != null && h.shares !== '' && Number(h.shares) > 0
+
+    if (isShareBased) {
+      const oldShares = Number(h.shares) || 0
+      const oldBuyPrice = Number(h.buy_price) || 0
+      const oldValue = Number(h.value) || 0
+      const oldCost = h.cost != null && h.cost !== '' ? Number(h.cost) : oldShares * oldBuyPrice
+      if (tradeMode === 'buy') {
+        const addSh = Number(tradeShares) || 0
+        const addPx = Number(tradePrice) || 0
+        if (addSh <= 0 || addPx <= 0) return
+        const newShares = oldShares + addSh
+        const newCost = oldCost + addSh * addPx
+        // Grov värde-uppskattning tills nattkörningen räknar om mot senaste kurs.
+        setHoldings((hs) => hs.map((r, j) => (j === i
+          ? { ...r, shares: newShares, cost: newCost, buy_price: newCost / newShares, value: oldValue + addSh * addPx }
+          : r)))
+        setDirty(true)
+      } else {
+        const sellSh = Number(tradeShares) || 0
+        if (sellSh <= 0) return
+        if (sellSh >= oldShares) {
+          del(i)
+        } else {
+          const newShares = oldShares - sellSh
+          // Snittkostnaden per kvarvarande aktie är oförändrad – bara antal/insatt krymper.
+          const newCost = oldBuyPrice ? oldBuyPrice * newShares : oldCost * (newShares / oldShares)
+          const newValue = oldShares > 0 ? oldValue * (newShares / oldShares) : 0
+          setHoldings((hs) => hs.map((r, j) => (j === i
+            ? { ...r, shares: newShares, cost: newCost, value: newValue }
+            : r)))
+          setDirty(true)
+        }
+      }
+    } else {
+      const oldValue = Number(h.value) || 0
+      const oldCost = h.cost != null && h.cost !== '' ? Number(h.cost) : oldValue
+      if (tradeMode === 'buy') {
+        const addAmt = Number(tradeAmt) || 0
+        if (addAmt <= 0) return
+        setHoldings((hs) => hs.map((r, j) => (j === i
+          ? { ...r, value: oldValue + addAmt, cost: oldCost + addAmt }
+          : r)))
+        setDirty(true)
+      } else {
+        const sellAmt = Number(tradeAmt) || 0
+        if (sellAmt <= 0) return
+        if (sellAmt >= oldValue) {
+          del(i)
+        } else {
+          const frac = oldValue > 0 ? sellAmt / oldValue : 0
+          setHoldings((hs) => hs.map((r, j) => (j === i
+            ? { ...r, value: oldValue - sellAmt, cost: oldCost * (1 - frac) }
+            : r)))
+          setDirty(true)
+        }
+      }
+    }
+    closeTrade()
+  }
+
   const q = search.trim().toLowerCase()
   const matches = q.length < 2 ? [] : universe
     .filter((u) => u.name.toLowerCase().includes(q) || u.ticker.toLowerCase().includes(q))
@@ -330,6 +411,8 @@ export function HoldingsPage() {
           const gain = cost && cost > 0 ? val / cost - 1 : null
           const share = liveTotal > 0 ? val / liveTotal : 0
           const editing = editIdx === i
+          const trading = tradeIdx === i
+          const isShareBased = h.shares != null && h.shares !== '' && Number(h.shares) > 0
           return (
             <div key={i} className={`h-card${t ? ` exit-row-${t.tier}` : ''}`}>
               <div className="h-card__top">
@@ -345,19 +428,76 @@ export function HoldingsPage() {
                     </span>
                   )}
                 </span>
-                <button className="pf-btn pf-btn--sm" onClick={() => setEditIdx(editing ? null : i)}>
+                <button className="pf-btn pf-btn--sm" onClick={() => { setEditIdx(editing ? null : i); closeTrade() }}>
                   {editing ? 'Klar' : 'Redigera'}
                 </button>
               </div>
               {!editing ? (
-                <div className="h-card__stats">
-                  <span><i>Värde</i>{fmtKr(val)}</span>
-                  <span className={gain == null ? '' : gain >= 0 ? 'pos' : 'neg'}>
-                    <i>Vinst</i>{gain == null ? '–' : fmtPct(gain)}
-                  </span>
-                  <span><i>Andel</i>{(share * 100).toFixed(0)}%</span>
-                  <span><i>Hink</i>{BUCKET_LABEL[h.bucket] ?? h.bucket}</span>
-                </div>
+                <>
+                  <div className="h-card__stats">
+                    <span><i>Värde</i>{fmtKr(val)}</span>
+                    <span className={gain == null ? '' : gain >= 0 ? 'pos' : 'neg'}>
+                      <i>Vinst</i>{gain == null ? '–' : fmtPct(gain)}
+                    </span>
+                    <span><i>Andel</i>{(share * 100).toFixed(0)}%</span>
+                    <span><i>Hink</i>{BUCKET_LABEL[h.bucket] ?? h.bucket}</span>
+                  </div>
+                  <div className="h-card__actions">
+                    <button className="pf-btn pf-btn--sm" onClick={() => openTrade(i, 'buy')}>+ Köp</button>
+                    <button className="pf-btn pf-btn--sm" onClick={() => openTrade(i, 'sell')}>− Sälj</button>
+                  </div>
+                  {trading && (
+                    <div className="h-card__trade">
+                      <div className="h-card__trade-head">
+                        <b>{tradeMode === 'buy' ? `Köp mer ${h.name}` : `Sälj ${h.name}`}</b>
+                        <button className="pf-del" onClick={closeTrade} title="Avbryt">✕</button>
+                      </div>
+                      {isShareBased ? (
+                        <div className="h-add__fields">
+                          <label>Antal
+                            <input className="pf-in pf-num" type="number" min="0" inputMode="decimal"
+                              value={tradeShares} onChange={(e) => setTradeShares(e.target.value)} placeholder="t.ex. 20" />
+                          </label>
+                          {tradeMode === 'buy' ? (
+                            <label>Pris (kr)
+                              <input className="pf-in pf-num" type="number" min="0" step="0.01" inputMode="decimal"
+                                value={tradePrice} onChange={(e) => setTradePrice(e.target.value)} placeholder="t.ex. 12,47" />
+                            </label>
+                          ) : (
+                            <button className="pf-btn pf-btn--sm" style={{ alignSelf: 'end' }}
+                              onClick={() => setTradeShares(String(h.shares))}>
+                              Sälj allt ({h.shares} st)
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="h-add__fields">
+                          <label>{tradeMode === 'buy' ? 'Belopp att lägga till (kr)' : 'Belopp att sälja (kr)'}
+                            <input className="pf-in pf-num" type="number" min="0" inputMode="decimal"
+                              value={tradeAmt} onChange={(e) => setTradeAmt(e.target.value)} placeholder="t.ex. 5000" />
+                          </label>
+                          {tradeMode === 'sell' && (
+                            <button className="pf-btn pf-btn--sm" style={{ alignSelf: 'end' }}
+                              onClick={() => setTradeAmt(String(Math.round(Number(h.value) || 0)))}>
+                              Sälj allt ({fmtKr(h.value)})
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {tradeMode === 'buy' && (
+                        <p className="footnote" style={{ margin: '6px 0 0' }}>
+                          Nytt vägt snittpris räknas ut automatiskt av det du redan äger + det nya köpet.
+                        </p>
+                      )}
+                      <div className="pf-actions" style={{ marginTop: 8 }}>
+                        <button className="pf-btn pf-btn--primary" onClick={confirmTrade}>
+                          {tradeMode === 'buy' ? 'Bekräfta köp' : 'Bekräfta sälj'}
+                        </button>
+                        <button className="pf-btn" onClick={closeTrade}>Avbryt</button>
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="h-card__edit">
                   <label>Antal
