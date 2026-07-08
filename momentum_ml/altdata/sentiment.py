@@ -27,6 +27,7 @@ from typing import Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
+from altdata import mfn_clean
 
 try:
     import anthropic
@@ -71,9 +72,14 @@ def _client():
 
 
 def _prompt(item: dict) -> str:
+    # mfn_clean.clean_item_text() klipper bort boilerplate (MAR-informationsplikt,
+    # IR-kontaktblock, Certified Adviser-notis) INNAN texten skickas – sänker
+    # input-tokens på praktiskt taget varje PM utan att tappa signal (se
+    # altdata/mfn_clean.py). Byter INTE schema – modellen ombeds fortfarande
+    # bara om kvalitativa fält, aldrig siffror.
     return (f"PUBLICERAT: {item.get('published','')}\n"
             f"RUBRIK: {item.get('title','')}\n\n"
-            f"TEXT:\n{item.get('text','')}")
+            f"TEXT:\n{mfn_clean.clean_item_text(item)}")
 
 
 def _cache_path(pid: str) -> Path:
@@ -117,6 +123,10 @@ def score_item(item: dict, client=None) -> Optional[dict]:
     cp = _cache_path(item["id"])
     if cp.exists():
         return json.loads(cp.read_text())
+    if mfn_clean.is_routine(item):
+        parsed = mfn_clean.routine_score(item)
+        cp.write_text(json.dumps(parsed, ensure_ascii=False))
+        return parsed
     if _backend() == "ollama":
         parsed = _ollama_score(item)
         if parsed:
@@ -226,7 +236,7 @@ def score_batch(items: List[dict]) -> Dict[str, dict]:
     direkt vid skapande, varje resultat cachas vid hämtning. Avbryts processen
     (krediter slut, krasch, Ctrl+C) återansluter nästa körning till samma batch –
     ingen dubbeldebitering, inget förlorat arbete. Dedup på id (A/B-aktier)."""
-    todo, seen, cached = [], set(), {}
+    todo, seen, cached, auto_scored = [], set(), {}, 0
     for it in items:
         pid = it["id"]
         if pid in seen:
@@ -235,8 +245,17 @@ def score_batch(items: List[dict]) -> Dict[str, dict]:
         cp = _cache_path(pid)
         if cp.exists():
             cached[pid] = json.loads(cp.read_text())
+        elif mfn_clean.is_routine(it):
+            # Rutin-PM (kallelse årsstämma, finansiell kalender) – scoras med
+            # ett neutralt default UTAN modellanrop. Se altdata/mfn_clean.py.
+            parsed = mfn_clean.routine_score(it)
+            cp.write_text(json.dumps(parsed, ensure_ascii=False))
+            cached[pid] = parsed
+            auto_scored += 1
         else:
             todo.append(it)
+    if auto_scored:
+        print(f"[batch] {auto_scored} rutin-PM auto-poängsatta (inget modellanrop, se mfn_clean.py)")
     client = _client()
     pend = _pending_path()
 
@@ -340,15 +359,19 @@ def score_segment(segment: str, limit: Optional[int] = None) -> None:
 
 def estimate_cost(segment: str) -> None:
     """OFFLINE kostnadsestimat (ingen nyckel/anrop): räknar PM i OOS-fönstret och
-    projicerar batch-kostnaden. Token-heuristik: ~4 tecken/token (svensk text)."""
+    projicerar batch-kostnaden. Token-heuristik: ~4 tecken/token (svensk text).
+    Reflekterar mfn_clean.py:s besparingar (boilerplate-trim + rutin-PM-skip)
+    så estimatet visar VAD DET FAKTISKT KOSTAR att köra, inte råtextens siffra."""
     items = _load_cached_releases(segment)
     n = len(items)
     if not n:
         print(f"[estimate] inga cachade PM för '{segment}' – kör mfn_fetch.py fetch {segment} först.")
         return
+    routine = [it for it in items if mfn_clean.is_routine(it)]
+    scored = [it for it in items if not mfn_clean.is_routine(it)]
     sys_tok = len(_SYSTEM) / 4.0
-    in_tok = sum(sys_tok + len(_prompt(it)) / 4.0 for it in items)
-    out_tok = n * 70.0                       # JSON-svaret är litet (~70 tokens)
+    in_tok = sum(sys_tok + len(_prompt(it)) / 4.0 for it in scored)
+    out_tok = len(scored) * 70.0             # JSON-svaret är litet (~70 tokens)
     # Haiku 4.5: $1/1M in, $5/1M ut. Batch = -50%. (USD)
     full = in_tok / 1e6 * 1.0 + out_tok / 1e6 * 5.0
     batch = full * 0.5
@@ -356,8 +379,11 @@ def estimate_cost(segment: str) -> None:
     print("\n" + "=" * 60)
     print(f"  KOSTNADSESTIMAT ({segment}) – {config.SENTIMENT_MODEL}, OFFLINE")
     print("=" * 60)
-    print(f"  PM att poängsätta (>= {getattr(config,'SENTIMENT_SCORE_FROM','?')}):  {n:,}")
-    print(f"  Snitt input-tokens/PM:   {in_tok/n:,.0f}")
+    print(f"  PM i OOS-fönstret (>= {getattr(config,'SENTIMENT_SCORE_FROM','?')}):  {n:,}")
+    print(f"  ...varav 'routine' (gratis, inget modellanrop): {len(routine):,}")
+    print(f"  PM som faktiskt skickas till modellen:  {len(scored):,}")
+    if scored:
+        print(f"  Snitt input-tokens/PM (efter boilerplate-trim): {in_tok/len(scored):,.0f}")
     print(f"  Totalt input-tokens:     {in_tok/1e6:,.2f}M")
     print(f"  Totalt output-tokens:    {out_tok/1e6:,.2f}M")
     print("-" * 60)
@@ -365,7 +391,8 @@ def estimate_cost(segment: str) -> None:
     print(f"  Batch -50%: ${batch:,.2f}   (~{batch*usd_sek:,.0f} kr)   <- vi använder denna")
     print("-" * 60)
     print("  OBS: konservativt – promptcache (systemprompten är identisk) kan sänka")
-    print("  input-kostnaden ytterligare. Token-heuristik ±20%.")
+    print("  input-kostnaden ytterligare. Token-heuristik ±20%. Kör 'python -m")
+    print("  altdata.mfn_clean selftest' för att se boilerplate-/rutin-besparingen isolerat.")
 
 
 def batch_status() -> None:
