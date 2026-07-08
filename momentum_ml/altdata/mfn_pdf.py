@@ -1,17 +1,24 @@
 """
 altdata/mfn_pdf.py – Hämtar PDF-bilagor från MFN-cachens 'attachments'-fält
-och kör den EXISTERANDE extract_hard_facts()-parsern (mfn_fundamentals.py)
-mot PDF-texten i stället för press-releasens korta announcement-text.
+och kör BÅDE extract_hard_facts() (narrativa "X uppgick till Y (Z) Mkr"-
+meningar) och extract_table_facts() (tabellformaterade resultat-/balans-
+räkningar, mfn_fundamentals.py) mot PDF-texten i stället för press-
+releasens korta announcement-text.
 
 Byggd för de PM som bara publicerar en kort announcement + PDF-länk utan
 siffror i själva pressmeddelandet – bekräftat gång på gång via
 mfn_fundamentals.py:s 'misses'-kommando (AAK:s årsredovisning, Tre Kronor,
 ...). Fältnamnet/strukturen ('content.attachments' =
 [{file_title, content_type, url, tags}]) är VERIFIERAT mot skarp MFN-data
-via mfn_fetch.py:s 'raw'-kommando, inte gissat. Att PDF-text + samma regex-
-parser fungerar är verifierat mot ett syntetiskt testdokument (pdfplumber +
-extract_hard_facts gav alla 6 kärnfält korrekt) – men INTE ännu mot en
-riktig nedladdad MFN-PDF (kräver nät, körs på Pi:n).
+via mfn_fetch.py:s 'raw'-kommando, inte gissat.
+
+Verifierat mot en RIKTIG nedladdad AAK-årsredovisning (190 sidor, via
+scan_pages/dump_page på Pi:n): resultaträkningen låg på sida 124-135 (inte
+sista sidan – därför höjt _MAX_PDF_PAGES) och är TABELLFORMATERAD
+("Nettoomsättning 26 46.021 45.052", punkt-tusentalsavgränsare) – ett helt
+annat mönster än narrativa meningar, därav extract_table_facts() som ett
+separat, radankrat regex-läge (se mfn_fundamentals.py för detaljer och
+skydd mot falska träffar i femårs-sammanfattningstabeller).
 
 Kräver mfn_fetch.py:s attachments-fält (schema 2) – 'fetch <segment>'
 uppgraderar automatiskt gammal cache, ingen manuell radering behövs.
@@ -35,7 +42,7 @@ from typing import Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
-from altdata.mfn_fundamentals import extract_hard_facts, _report_items, detect_period
+from altdata.mfn_fundamentals import extract_hard_facts, extract_table_facts, _report_items, detect_period
 
 try:
     import requests
@@ -58,8 +65,20 @@ logging.getLogger("pdfminer").setLevel(logging.ERROR)
 # Pi:n har begränsat minne/lagring (2GB RAM, se deploy/momentum-train.service) –
 # sätt konservativa tak i stället för att lita på att alla PDF:er är små.
 _MAX_PDF_BYTES = 20 * 1024 * 1024   # 20 MB nedladdningstak
-_MAX_PDF_PAGES = 20                 # nyckeltal ligger i sammanfattningen, inte sist i en 100-sidig rapport
+# Var 20 – "nyckeltal ligger i sammanfattningen, inte sist i en 100-sidig
+# rapport". FELAKTIGT antagande, motbevisat empiriskt via scan_pages() mot
+# en riktig AAK-årsredovisning (190 sidor): resultaträkningen låg på sida
+# 124-135, långt UTANFÖR det gamla taket – moderna årsredovisningar har ofta
+# 20-30+ sidor hållbarhet/marknadsföring FÖRE de finansiella tabellerna.
+# Höjt med marginal över det observerade fallet. Detta är en engångs-
+# historisk backfill (resumable, varje PDF cachas för alltid) så extra
+# CPU-tid per PDF är en engångskostnad, inte en löpande belastning.
+_MAX_PDF_PAGES = 200
 _PDF_REQUEST_PAUSE_S = 1.0          # artigare paus än PM-textens – större filer, annan värd (storage.mfn.se/Cision)
+# Cachens textrutning – måste följa med när _MAX_PDF_PAGES höjs, annars
+# tappas nyupptäckt data (t.ex. sida 124 av 190) tyst vid nästa cache-läsning
+# även om DEN AKTUELLA körningen såg hela texten i minnet.
+_MAX_CACHED_TEXT_CHARS = 300_000
 
 
 def _pdf_text_cache_dir() -> Path:
@@ -142,7 +161,7 @@ def get_pdf_text(pm_id: str, url: str) -> Optional[str]:
     except Exception as e:  # noqa: BLE001 – trasig/krypterad PDF ska inte stoppa hela körningen
         cp.write_text(json.dumps({"text": None, "error": str(e)[:200]}), encoding="utf-8")
         return None
-    cp.write_text(json.dumps({"text": text[:50000]}, ensure_ascii=False), encoding="utf-8")
+    cp.write_text(json.dumps({"text": text[:_MAX_CACHED_TEXT_CHARS]}, ensure_ascii=False), encoding="utf-8")
     return text
 
 
@@ -187,7 +206,7 @@ def diagnose_empty(segment: Optional[str] = None, n: int = 5) -> None:
         if text is None:
             dl_failed += 1
             continue
-        if extract_hard_facts(text):
+        if extract_hard_facts(text) or extract_table_facts(text):
             by_year_ok[year] += 1
         else:
             by_year_empty[year] += 1
@@ -269,7 +288,11 @@ def scan_pages(url: str) -> None:
             except Exception:  # noqa: BLE001
                 t = ""
             has_unit = bool(unit_re.search(t))
-            facts = extract_hard_facts(t) if t else {}
+            facts = {}
+            if t:
+                facts = extract_hard_facts(t)
+                for field, d in extract_table_facts(t).items():
+                    facts.setdefault(field, d)
             flag = ""
             if i > _MAX_PDF_PAGES:
                 flag += " [UTANFÖR sidkapet]"
@@ -323,7 +346,11 @@ def compare_layout(url: str) -> None:
     text_layout = "\n".join(out_layout)
 
     facts_default = extract_hard_facts(text_default)
+    for field, d in extract_table_facts(text_default).items():
+        facts_default.setdefault(field, d)
     facts_layout = extract_hard_facts(text_layout)
+    for field, d in extract_table_facts(text_layout).items():
+        facts_layout.setdefault(field, d)
 
     print(f"\nStandard-extraktion:   {len(text_default)} tecken, "
           f"{len(facts_default)} fält funna -> {sorted(facts_default.keys())}")
@@ -366,7 +393,15 @@ def backfill(segment: Optional[str] = None, limit: Optional[int] = None) -> None
         if text is None:
             dl_fail += 1
         else:
+            # Narrativ-mönstret (samma parser som körs mot PM-textens
+            # "X uppgick till Y (Z) Mkr"-meningar) OCH tabell-mönstret
+            # (resultat-/balansräkning i tabellformat, sett djupt in i
+            # årsredovisningar) – tabellträffar fyller bara i FÄLT SOM
+            # SAKNAS, narrativa träffar vinner om båda hittar samma fält
+            # (redan validerade mot fler verkliga exempel).
             facts = extract_hard_facts(text)
+            for field, d in extract_table_facts(text).items():
+                facts.setdefault(field, d)
             if facts:
                 ok += 1
                 row = {"ticker": it.get("ticker"), "published": it.get("published"),
