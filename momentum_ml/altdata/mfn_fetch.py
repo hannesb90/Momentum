@@ -16,6 +16,7 @@ VIKTIGT – körs på Pi:n (molncontainern når varken mfn.se eller Yahoo).
     python altdata/mfn_fetch.py one  "Saab" SAAB-B.ST   # ett bolag, filtrerat på ticker
     python altdata/mfn_fetch.py fetch large      # hela segmentet (cachas per ticker)
     python altdata/mfn_fetch.py stats            # PM/dag mätt på redan hämtad cache (inget nätanrop)
+    python altdata/mfn_fetch.py types             # PM eller även rapporter? typ-fördelning + exempel
 """
 import sys
 import re
@@ -321,6 +322,70 @@ def stats() -> None:
         print(f"    {tk:<14} {c}")
 
 
+def types() -> None:
+    """Svarar EMPIRISKT på 'har vi bara PM eller även rapporter': vi hämtar bara
+    feed-itemets EGEN text (content.text/preamble/html – se _coerce()), aldrig
+    en PDF-bilaga. Kvartals-/årsrapporter publiceras ofta på MFN som en KORT
+    announcement + separat PDF-länk – då har vi bara annonsen, inte rapportens
+    fulltext/siffror (det är Börsdata-spårets jobb, inte MFN:s). Vissa bolag
+    klistrar dock in hela rapportnarrativet i själva PM:et. Denna funktion
+    grupperar cachen på MFN:s 'type'-fält och visar textlängd + ett konkret
+    exempel per rapport-liknande typ, så vi SER vilket det är i stället för
+    att anta. Läser bara redan hämtad cache – inget nätanrop."""
+    from collections import Counter
+    cache_dir = Path(config.MFN_CACHE_DIR)
+    files = [f for f in cache_dir.glob("*.json") if not f.name.startswith("_")]
+    if not files:
+        print(f"Ingen cache i {cache_dir}/ än – kör 'fetch' först.")
+        return
+
+    by_type: Counter = Counter()
+    lens_by_type: Dict[str, List[int]] = {}
+    example_by_type: Dict[str, dict] = {}
+    tag_counts: Counter = Counter()
+    for f in files:
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        for it in d.get("items", []):
+            t = it.get("type") or "(okänd)"
+            by_type[t] += 1
+            L = len(it.get("text") or "")
+            lens_by_type.setdefault(t, []).append(L)
+            if t not in example_by_type or L > len(example_by_type[t].get("text") or ""):
+                example_by_type[t] = it
+            for tag in (it.get("tags") or []):
+                tag_counts[tag] += 1
+
+    if not by_type:
+        print(f"{len(files)} bolag cachade, men ingen typ-information hittades.")
+        return
+
+    total = sum(by_type.values())
+    print(f"[mfn types] {total:,} PM, {len(by_type)} olika 'type'-värden".replace(",", " "))
+    print(f"\n{'typ':<32}{'antal':>8}{'snitt-tecken':>14}{'max-tecken':>12}")
+    for t, c in by_type.most_common():
+        lens = lens_by_type[t]
+        print(f"{t:<32}{c:>8}{sum(lens) / len(lens):>14.0f}{max(lens):>12}")
+
+    report_kw = ("report", "rapport", "interim", "annual", "year-end", "bokslut", "kvartal")
+    report_like = [t for t in by_type if any(kw in t.lower() for kw in report_kw)]
+    if report_like:
+        print("\nExempel på rapport-liknande 'type' (avgör om det är fulltext eller bara en kort annons):")
+        for t in sorted(report_like, key=lambda x: -by_type[x]):
+            ex = example_by_type[t]
+            txt = ex.get("text") or ""
+            print(f"\n  type={t!r} ({by_type[t]} st, snitt {sum(lens_by_type[t]) / len(lens_by_type[t]):.0f} tecken)")
+            print(f"  '{ex.get('title', '')[:70]}'")
+            print(f"  {txt[:300]}{'...' if len(txt) > 300 else ''}")
+    else:
+        print("\nInget 'type'-värde ser rapport-relaterat ut vid namnet. Vanligaste tags "
+              "(rapport-klassningen kan ligga där i stället):")
+        for tag, c in tag_counts.most_common(15):
+            print(f"    {tag:<28}{c:>6}")
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -339,6 +404,8 @@ def main():
         fetch_universe(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
     elif cmd == "stats":
         stats()
+    elif cmd == "types":
+        types()
     else:
         print(__doc__)
 
