@@ -20,6 +20,7 @@ uppgraderar automatiskt gammal cache, ingen manuell radering behövs.
     python -m altdata.mfn_pdf backfill large 20      # bara de första 20 (snabbt test)
     python -m altdata.mfn_pdf diagnose_empty large   # varför gav vissa PDF:er noll fält? (inget nätanrop)
     python -m altdata.mfn_pdf compare_layout <pdf-url>  # standard vs layout=True mot EN känd trasig PDF
+    python -m altdata.mfn_pdf scan_pages <pdf-url>       # var i dokumentet börjar siffrorna? (ingen sidkapning)
 """
 import csv
 import hashlib
@@ -218,6 +219,46 @@ def diagnose_empty(segment: Optional[str] = None, n: int = 5) -> None:
             print(f"  Extraherad text ({len(text)} tecken): {text[:300]!r}")
 
 
+def scan_pages(url: str) -> None:
+    """Sida-för-sida-diagnos: var i dokumentet börjar siffrorna? _MAX_PDF_PAGES
+    kapar till de FÖRSTA 20 sidorna – men moderna årsredovisningar har ofta
+    20-30 sidor hållbarhet/marknadsföring FÖRE nyckeltalen. Detta verktyg
+    öppnar HELA PDF:en (ingen sidkapning), extraherar varje sida för sig och
+    visar teckenlängd + om sidan innehåller en enhetstoken (Mkr/MSEK/tkr) +
+    om sidans EGEN text ger minst ett extraherat fält. Facit på om det är
+    sidkapet (_MAX_PDF_PAGES) eller ordordningen som är boven."""
+    import re as _re
+    if pdfplumber is None:
+        raise RuntimeError("paketet 'pdfplumber' saknas – pip install pdfplumber")
+    print(f"Laddar ner {url} ...")
+    pdf_bytes = _download_pdf(url)
+    if pdf_bytes is None:
+        print("Kunde inte ladda ner PDF:en.")
+        return
+    unit_re = _re.compile(r"\b(Mkr|MSEK|tkr|TSEK|kkr)\b", _re.IGNORECASE)
+    print("OK, skannar ALLA sidor (ingen _MAX_PDF_PAGES-kapning i detta verktyg)...")
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        total = len(pdf.pages)
+        print(f"Totalt {total} sidor i dokumentet (jämfört med _MAX_PDF_PAGES={_MAX_PDF_PAGES} som backfill() faktiskt läser)\n")
+        for i, page in enumerate(pdf.pages, 1):
+            try:
+                t = page.extract_text() or ""
+            except Exception:  # noqa: BLE001
+                t = ""
+            has_unit = bool(unit_re.search(t))
+            facts = extract_hard_facts(t) if t else {}
+            flag = ""
+            if i > _MAX_PDF_PAGES:
+                flag += " [UTANFÖR sidkapet]"
+            if has_unit:
+                flag += " [enhetstoken]"
+            if facts:
+                flag += f" [{len(facts)} FÄLT: {sorted(facts.keys())}]"
+            if has_unit or facts or i <= 3:
+                snippet = t[:80].replace("\n", " ⏎ ")
+                print(f"  sida {i}/{total}: {len(t)} tecken{flag}  {snippet!r}")
+
+
 def compare_layout(url: str) -> None:
     """Engångsjämförelse för EN given PDF-URL: standard page.extract_text()
     vs page.extract_text(layout=True). Bakgrund: diagnose_empty() visade att
@@ -350,6 +391,12 @@ def main():
             print("Användning: python -m altdata.mfn_pdf compare_layout <pdf-url>")
             return
         compare_layout(sys.argv[2])
+        return
+    if cmd == "scan_pages":
+        if len(sys.argv) < 3:
+            print("Användning: python -m altdata.mfn_pdf scan_pages <pdf-url>")
+            return
+        scan_pages(sys.argv[2])
         return
     seg = sys.argv[2] if len(sys.argv) > 2 else None
     limit = int(sys.argv[3]) if len(sys.argv) > 3 else None
