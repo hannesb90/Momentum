@@ -65,20 +65,32 @@ logging.getLogger("pdfminer").setLevel(logging.ERROR)
 # Pi:n har begränsat minne/lagring (2GB RAM, se deploy/momentum-train.service) –
 # sätt konservativa tak i stället för att lita på att alla PDF:er är små.
 _MAX_PDF_BYTES = 20 * 1024 * 1024   # 20 MB nedladdningstak
-# Var 20 – "nyckeltal ligger i sammanfattningen, inte sist i en 100-sidig
-# rapport". FELAKTIGT antagande, motbevisat empiriskt via scan_pages() mot
-# en riktig AAK-årsredovisning (190 sidor): resultaträkningen låg på sida
-# 124-135, långt UTANFÖR det gamla taket – moderna årsredovisningar har ofta
-# 20-30+ sidor hållbarhet/marknadsföring FÖRE de finansiella tabellerna.
-# Höjt med marginal över det observerade fallet. Detta är en engångs-
-# historisk backfill (resumable, varje PDF cachas för alltid) så extra
-# CPU-tid per PDF är en engångskostnad, inte en löpande belastning.
-_MAX_PDF_PAGES = 200
+# Historik: 20 -> 200 (sida 124-135 i en riktig 190-sidig AAK-årsredovisning
+# låg utanför det gamla taket på 20). Efter det höjde en full backfill-körning
+# bara träffgraden marginellt ("enstaka till, inte så många fler") – tyder på
+# att andra bolags rapporter har nyckeltalen ännu djupare in, eller att
+# strukturen skiljer sig bolag till bolag på sätt vi inte känner till ännu.
+# I stället för att gissa ett nytt magiskt tak: praktiskt taget obegränsat
+# (en säkerhetsgräns långt bortom vad en riktig årsredovisning har, bara för
+# att skydda mot en pathologisk/korrupt fil med orimligt många "sidor").
+# Detta är en engångs-historisk backfill (resumable, varje PDF cachas för
+# alltid) – en långsam körning över natten är en engångskostnad, inte en
+# löpande belastning.
+_MAX_PDF_PAGES = 5000
 _PDF_REQUEST_PAUSE_S = 1.0          # artigare paus än PM-textens – större filer, annan värd (storage.mfn.se/Cision)
 # Cachens textrutning – måste följa med när _MAX_PDF_PAGES höjs, annars
-# tappas nyupptäckt data (t.ex. sida 124 av 190) tyst vid nästa cache-läsning
-# även om DEN AKTUELLA körningen såg hela texten i minnet.
-_MAX_CACHED_TEXT_CHARS = 300_000
+# tappas nyupptäckt data tyst vid nästa cache-läsning även om DEN AKTUELLA
+# körningen såg hela texten i minnet. 2 MB räcker även för ovanligt stora
+# rapporter (en riktig 190-sidig AAK-rapport gav ~650k tecken totalt).
+_MAX_CACHED_TEXT_CHARS = 2_000_000
+# PDF-textcachen är "evig" (rapporter ändras inte i efterhand) – MEN vad som
+# extraheras beror på _MAX_PDF_PAGES, som just ändrats (20 -> 200 -> 5000).
+# Utan versionering skulle en omkörning tyst återanvända gammal, ofullständig
+# text i stället för att faktiskt extrahera fler sidor – exakt samma
+# cache-uppgraderingsproblem som mfn_fetch.py:s _SCHEMA_VERSION löser för
+# PM-cachen. Bump:a denna siffra varje gång _MAX_PDF_PAGES eller
+# extraktionslogiken ändras väsentligt.
+_PDF_TEXT_SCHEMA_VERSION = 2
 
 
 def _pdf_text_cache_dir() -> Path:
@@ -144,37 +156,50 @@ def extract_pdf_text(pdf_bytes: bytes) -> str:
 
 def get_pdf_text(pm_id: str, url: str) -> Optional[str]:
     """Evig cache (rapporter ändras inte i efterhand) – varje PDF laddas
-    ner+extraheras högst en gång, oavsett hur många gånger backfill() körs."""
+    ner+extraheras högst en gång per _PDF_TEXT_SCHEMA_VERSION, oavsett hur
+    många gånger backfill() körs. En cache-fil skriven med en ÄLDRE
+    schemaversion (t.ex. från när _MAX_PDF_PAGES var 20 eller 200)
+    behandlas som en cache-miss – annars skulle en omkörning tyst återanvända
+    gammal, ofullständig text."""
     cp = _pdf_text_cache_dir() / f"{_cache_key(pm_id, url)}.json"
     if cp.exists():
         try:
-            return json.loads(cp.read_text(encoding="utf-8")).get("text")
+            cached = json.loads(cp.read_text(encoding="utf-8"))
+            if cached.get("schema") == _PDF_TEXT_SCHEMA_VERSION:
+                return cached.get("text")
         except Exception:  # noqa: BLE001
             pass
     pdf_bytes = _download_pdf(url)
     if pdf_bytes is None:
-        cp.write_text(json.dumps({"text": None, "error": "download_failed_or_too_large"}),
-                       encoding="utf-8")
+        cp.write_text(json.dumps({"text": None, "error": "download_failed_or_too_large",
+                                   "schema": _PDF_TEXT_SCHEMA_VERSION}), encoding="utf-8")
         return None
     try:
         text = extract_pdf_text(pdf_bytes)
     except Exception as e:  # noqa: BLE001 – trasig/krypterad PDF ska inte stoppa hela körningen
-        cp.write_text(json.dumps({"text": None, "error": str(e)[:200]}), encoding="utf-8")
+        cp.write_text(json.dumps({"text": None, "error": str(e)[:200],
+                                   "schema": _PDF_TEXT_SCHEMA_VERSION}), encoding="utf-8")
         return None
-    cp.write_text(json.dumps({"text": text[:_MAX_CACHED_TEXT_CHARS]}, ensure_ascii=False), encoding="utf-8")
+    cp.write_text(json.dumps({"text": text[:_MAX_CACHED_TEXT_CHARS], "schema": _PDF_TEXT_SCHEMA_VERSION},
+                              ensure_ascii=False), encoding="utf-8")
     return text
 
 
 def _peek_cached(pm_id: str, url: str) -> Optional[dict]:
     """Läser PDF-textcachen UTAN att trigga en nedladdning om den saknas –
-    för diagnos av redan körda PDF:er, inte för att köra nya."""
+    för diagnos av redan körda PDF:er, inte för att köra nya. En post från en
+    äldre schemaversion räknas som "inte körd ännu" (samma logik som
+    get_pdf_text) så diagnose_empty inte visar stale resultat."""
     cp = _pdf_text_cache_dir() / f"{_cache_key(pm_id, url)}.json"
     if not cp.exists():
         return None
     try:
-        return json.loads(cp.read_text(encoding="utf-8"))
+        cached = json.loads(cp.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         return None
+    if cached.get("schema") != _PDF_TEXT_SCHEMA_VERSION:
+        return None
+    return cached
 
 
 def diagnose_empty(segment: Optional[str] = None, n: int = 5) -> None:
