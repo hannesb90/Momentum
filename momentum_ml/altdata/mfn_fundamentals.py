@@ -1,10 +1,13 @@
 """
 altdata/mfn_fundamentals.py – Regex-extraherar HÅRDA finansiella siffror
-direkt ur MFN-pressmeddelandenas text: nettoomsättning, EBIT, EBITDA,
-resultat efter skatt, resultat per aktie, rörelsemarginal. Ingen AI, inget
-nätanrop – bara mönstermatchning mot vanliga svenska rapporteringsfraser
-("Nettoomsättningen uppgick till 125,3 (110,2) Mkr" ELLER "Rörelseresultatet
-uppgick till MSEK 724 (871)" – båda enhet-ordningarna stöds, se nedan).
+direkt ur MFN-pressmeddelandenas text: en bred kanonisk taxonomi (revenue,
+gross_profit, ebitda/adjusted_ebitda, ebit/adjusted_ebit, ebita/adjusted_ebita,
+pbt, net_profit, eps/eps_basic/eps_diluted, kassaflödesmått, balansräknings-
+poster, marginal-/avkastningsmått, utdelning, totalresultat, jämförelse-
+störande poster). Ingen AI, inget nätanrop – bara mönstermatchning mot
+vanliga svenska OCH engelska rapporteringsfraser ("Nettoomsättningen uppgick
+till 125,3 (110,2) Mkr" ELLER "Rörelseresultatet uppgick till MSEK 724 (871)"
+– båda enhet-ordningarna stöds, se nedan).
 
 SYFTE: undersöka om vi kan täcka hela eller delar av Börsdata Pro+ GRATIS
 genom att plocka siffrorna som redan finns i MFN-texten, i stället för att
@@ -14,17 +17,28 @@ manuellt.
 ÄRLIGT (inte gissat): täckningen beror HELT på om bolaget klistrar in sin
 fulla rapportnarrativ i själva MFN-PM:et eller bara publicerar en kort
 announcement + PDF-länk (se mfn_fetch.py:s 'types'-kommando). Denna modul
-kan ALDRIG läsa en PDF-bilaga. Regelmönstren är byggda på kända svenska
-IR-rapporteringskonventioner OCH på faktiska exempel ur skarp cache (Saabs
+kan ALDRIG läsa en PDF-bilaga. Kärnfälten (revenue/ebit/ebitda/net_profit/
+eps/margin) är verifierade mot faktiska exempel ur skarp cache (Saabs
 rapporter avslöjade "enhet-FÖRE-talet"-stilen och "procent" utskrivet i
-stället för "%") – men är fortfarande inte uttömmande verifierade. Kör:
+stället för "%"). Den UTÖKADE taxonomin nedan (gross_profit, adjusted_*,
+kassaflöde, balansposter, ROE/ROA/ROCE, utdelning, ...) kommer från en
+tillhandahållen kanonisk synonymlista och är INTE ännu verifierad mot skarp
+text – kör om selftest/misses efter denna ändring för att se faktisk effekt.
+
+Två kända, medvetna avvägningar (inte buggar, men värda att känna till):
+  · "Rörelseförlust" mappas till samma fält som EBIT (ebit) trots att en
+    förlust ofta anges som ett POSITIVT tal ("Rörelseförlusten uppgick till
+    5 Mkr" = EBIT -5, inte +5) – vi negerar INTE automatiskt eftersom vi inte
+    kan skilja "förlust angiven som positivt tal" från "förlust redan angiven
+    med minustecken" utan att se fler riktiga exempel.
+  · "Justerat rörelseresultat" (adjusted_ebit) och bara "Rörelseresultat"
+    (ebit) kan båda träffa SAMMA mening om en rapport bara nämner det
+    justerade talet ("Justerat rörelseresultat uppgick till 20 Mkr" ger både
+    ebit=20 OCH adjusted_ebit=20) – ett känt överlapp, inte en krasch.
 
     python -m altdata.mfn_fundamentals selftest large   # TRÄFFGRAD mot din cache
+    python -m altdata.mfn_fundamentals misses large 2   # miss-PM med enhets-token kvar
     python -m altdata.mfn_fundamentals extract large    # bygg fundamentals_from_mfn.csv
-
-Låg träffgrad (selftest) = detta duger bara som gap-filler eller inte alls,
-kör Börsdata/manuell inmatning i stället. Hög träffgrad = kan bära en stor
-del av hård-datan gratis.
 """
 import csv
 import json
@@ -43,7 +57,7 @@ import config
 # skarp körning fångade en rad-brytning MITT I ett tal (HTML-tabell stripad
 # till text) och kraschade _parse_num ("2\n271", "-8\n.8"). Ett riktigt tal
 # spänner aldrig en radbrytning.
-_NBSP = " "
+_NBSP = "\xa0"
 _NUM = rf"-?\d[\d {_NBSP}]*(?:,\d+)?"
 _UNIT = r"Mkr|MSEK|mkr|msek|tkr|TSEK|kkr|miljoner kronor"
 _EPS_UNIT = r"kr|kronor|SEK"
@@ -100,24 +114,130 @@ def _num_pattern_pre(label_alts: str, unit: str = _UNIT) -> re.Pattern:
     )
 
 
-_FIELD_LABELS: Dict[str, str] = {
-    "revenue":    r"nettoomsättning(?:en)?|omsättning(?:en)?|försäljningsintäkter(?:na)?",
-    "ebit":       r"rörelseresultat(?:et)?|EBIT(?!DA)",
-    "ebitda":     r"EBITDA",
-    "net_profit": r"resultat(?:et)? efter skatt|periodens resultat|nettoresultat(?:et)?",
+def _flex(label: str) -> str:
+    """Svenskt substantiv(-fras) – tillåt valfri böjningssuffix på VARJE ord,
+    inte bara det sista (annars missar "Kassaflöde från..." när texten
+    faktiskt skriver "Kassaflödet från..." – upptäckt via ett misslyckat
+    testfall innan detta fanns). "Nettoomsättning" matchar alltså även
+    "Nettoomsättningen"/"Nettoomsättningens", och "Kassaflöde från den
+    löpande verksamheten" matchar även "Kassaflödet från den löpande
+    verksamheten"."""
+    return r"\s+".join(re.escape(w) + r"\w*" for w in label.split(" "))
+
+
+def _fixed(label: str) -> str:
+    """Bara den exakta frasen – används för KORTA VERSAL-AKRONYMER (EBIT,
+    EPS, PBT, ROE...) och engelska fraser. Kritiskt för akronymer: '\\w*'
+    skulle annars låta "EBIT" äta sig in i "EBITDA" och stjäla dess tal
+    (verifierat: \\bEBIT\\b matchar INTE inuti "EBITDA" utan property, men en
+    trailing \\w* bryter den garantin)."""
+    return re.escape(label)
+
+
+def _labels(flex: List[str] = (), fixed: List[str] = ()) -> str:
+    return "|".join([_flex(l) for l in flex] + [_fixed(l) for l in fixed])
+
+
+# ── Kanonisk taxonomi (svenska + engelska synonymer per fält) ──────────────
+_VALUE_FIELDS: Dict[str, str] = {
+    "revenue": _labels(
+        flex=["Nettoomsättning", "Omsättning", "Intäkter", "Rörelsens intäkter",
+              "Försäljning", "Nettoförsäljning", "Koncernens omsättning",
+              "Försäljningsintäkter"],
+        fixed=["Revenue", "Net Sales", "Sales", "Turnover", "Operating Revenue",
+               "Operating Revenues"],
+    ),
+    "gross_profit": _labels(
+        flex=["Bruttoresultat", "Bruttovinst"],
+        fixed=["Gross Profit"],
+    ),
+    "ebitda": _labels(
+        flex=["Rörelseresultat före avskrivningar",
+              "Rörelseresultat före av- och nedskrivningar"],
+        fixed=["EBITDA"],
+    ),
+    "adjusted_ebitda": _labels(
+        fixed=["Justerad EBITDA", "Adjusted EBITDA", "Adj EBITDA", "Underlying EBITDA",
+               "Underliggande EBITDA"],
+    ),
+    "ebit": _labels(
+        # Rörelseförlust: se modul-docstringens avvägning om tecken.
+        flex=["Rörelseresultat", "Rörelsens resultat", "Rörelsevinst", "Rörelseförlust"],
+        fixed=["EBIT", "Operating Profit", "Operating Income", "Operating Earnings",
+               "Earnings Before Interest and Tax"],
+    ),
+    "adjusted_ebit": _labels(
+        flex=["Justerat rörelseresultat", "Underliggande rörelseresultat"],
+        fixed=["Justerat EBIT", "Adjusted EBIT", "Underlying EBIT"],
+    ),
+    "ebita": _labels(fixed=["EBITA"]),
+    "adjusted_ebita": _labels(fixed=["Justerad EBITA", "Adjusted EBITA"]),
+    "pbt": _labels(
+        flex=["Resultat före skatt", "Vinst före skatt", "Resultat innan skatt"],
+        fixed=["Profit Before Tax", "Earnings Before Tax", "EBT"],
+    ),
+    "net_profit": _labels(
+        flex=["Årets resultat", "Periodens resultat", "Resultat efter skatt",
+              "Vinst efter skatt", "Nettoresultat", "Koncernens resultat",
+              "Resultat hänförligt till moderbolagets aktieägare",
+              "Resultat hänförligt till moderföretagets aktieägare"],
+        fixed=["Net Income", "Net Profit", "Profit for the Year", "Profit for the Period",
+               "Net Earnings", "Profit Attributable to Owners"],
+    ),
+    "cash_flow": _labels(flex=["Kassaflöde"], fixed=["Cash Flow"]),
+    "operating_cash_flow": _labels(
+        flex=["Kassaflöde från den löpande verksamheten"],
+        fixed=["Cash Flow from Operating Activities"],
+    ),
+    "free_cash_flow": _labels(flex=["Fritt kassaflöde"], fixed=["Free Cash Flow"]),
+    "equity": _labels(flex=["Eget kapital"], fixed=["Equity"]),
+    "assets": _labels(flex=["Tillgångar"], fixed=["Assets"]),
+    "liabilities": _labels(flex=["Skulder"], fixed=["Liabilities"]),
+    "net_debt": _labels(flex=["Nettoskuld"], fixed=["Net Debt"]),
+    "dividend": _labels(flex=["Utdelning"], fixed=["Dividend"]),
+    "comprehensive_income": _labels(
+        flex=["Totalresultat"],
+        fixed=["Total Comprehensive Income", "Comprehensive Income"],
+    ),
+    "special_items": _labels(
+        flex=["Jämförelsestörande poster", "Engångsposter", "Exceptionella poster"],
+        fixed=["Items Affecting Comparability", "Exceptional Items", "Non-recurring Items"],
+    ),
 }
 # Två mönster per fält (enhet-efter, enhet-före) – första träff vinner.
 _FIELD_PATTERNS: Dict[str, List[re.Pattern]] = {
     field: [_num_pattern_post(labels), _num_pattern_pre(labels)]
-    for field, labels in _FIELD_LABELS.items()
+    for field, labels in _VALUE_FIELDS.items()
 }
-_EPS_PATTERNS = [
-    _num_pattern_post(r"resultat per aktie", _EPS_UNIT),
-    _num_pattern_pre(r"resultat per aktie", _EPS_UNIT),
-]
-_MARGIN_RE = re.compile(
-    rf"(?:rörelsemarginal(?:en)?|EBIT-marginal(?:en)?){_LABEL_TAIL}(?:{_CONNECT})\s+"
-    rf"(?P<val>{_NUM})\s*(?:{_PCT})", re.I)
+
+_EPS_FIELDS: Dict[str, str] = {
+    "eps": _labels(flex=["Resultat per aktie", "Vinst per aktie"], fixed=["EPS"]),
+    "eps_basic": _labels(flex=["Resultat per aktie före utspädning"], fixed=["Basic EPS"]),
+    "eps_diluted": _labels(flex=["Resultat per aktie efter utspädning"], fixed=["Diluted EPS"]),
+}
+_EPS_PATTERNS: Dict[str, List[re.Pattern]] = {
+    field: [_num_pattern_post(labels, _EPS_UNIT), _num_pattern_pre(labels, _EPS_UNIT)]
+    for field, labels in _EPS_FIELDS.items()
+}
+
+
+def _pct_pattern(label_alts: str) -> re.Pattern:
+    return re.compile(
+        rf"\b(?:{label_alts}){_LABEL_TAIL}(?:{_CONNECT})\s+(?P<val>{_NUM})\s*(?:{_PCT})", re.I)
+
+
+_PCT_FIELDS: Dict[str, str] = {
+    "ebit_margin_pct": _labels(flex=["Rörelsemarginal", "EBIT-marginal"],
+                                fixed=["Operating Margin", "EBIT Margin"]),
+    "equity_ratio_pct": _labels(flex=["Soliditet"], fixed=["Equity Ratio"]),
+    "roe_pct": _labels(flex=["Avkastning på eget kapital"], fixed=["Return on Equity", "ROE"]),
+    "roa_pct": _labels(flex=["Avkastning på totalt kapital"], fixed=["Return on Assets", "ROA"]),
+    "roce_pct": _labels(flex=["Avkastning på sysselsatt kapital"],
+                         fixed=["Return on Capital Employed", "ROCE"]),
+}
+_PCT_PATTERNS: Dict[str, re.Pattern] = {
+    field: _pct_pattern(labels) for field, labels in _PCT_FIELDS.items()
+}
 
 # ── Period-detektering ur titeln (svenska IR-titlar är starkt standardiserade) ─
 _Q_RE = re.compile(r"\bQ([1-4])\b", re.I)
@@ -218,16 +338,27 @@ def extract_hard_facts(text: str) -> Dict[str, dict]:
             except ValueError:
                 pass
         out[field] = d
-    m = _first_match(_EPS_PATTERNS, text)
-    if m:
+    for field, patterns in _EPS_PATTERNS.items():
+        m = _first_match(patterns, text)
+        if not m:
+            continue
         try:
-            out["eps"] = {"value": _parse_num(m.group("val")), "unit": m.group("unit")}
+            val = _parse_num(m.group("val"))
         except ValueError:
-            pass
-    m = _MARGIN_RE.search(text)
-    if m:
+            continue
+        d = {"value": val, "unit": m.group("unit")}
+        if m.group("cmp"):
+            try:
+                d["prior_period"] = _parse_num(m.group("cmp"))
+            except ValueError:
+                pass
+        out[field] = d
+    for field, pat in _PCT_PATTERNS.items():
+        m = pat.search(text)
+        if not m:
+            continue
         try:
-            out["ebit_margin_pct"] = {"value": _parse_num(m.group("val"))}
+            out[field] = {"value": _parse_num(m.group("val"))}
         except ValueError:
             pass
     return out
@@ -290,7 +421,7 @@ def selftest(segment: Optional[str] = None) -> None:
           .replace(",", " "))
     print("\n  Träffar per fält:")
     for f, c in field_hits.most_common():
-        print(f"    {f:<16}{c:>6}  ({c / n:.0%})")
+        print(f"    {f:<20}{c:>6}  ({c / n:.0%})")
 
     if hit_example:
         it, facts = hit_example
