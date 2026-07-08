@@ -1025,6 +1025,34 @@ def _data_mtime() -> float:
     return m
 
 
+def _log_sweden_picks(picks: list) -> None:
+    """Punkt-i-tid-logg av 'Nästa köp'-Sverige-rekommendationerna (sammanvägd rank),
+    en rad per dag. Ingen befintlig fil har detta – _unified_rank() läser bara
+    DAGENS snapshot-CSV:er (quality/quant är inte historiskt loggade), så en
+    riktig IC/hit-rate-validering av just DESSA rekommendationer (så som
+    tune_case_tracker.py gör för caseförändringar) kräver att vi först bygger
+    upp historik framåt. Loggas max en gång per kalenderdag (näst-köp cachas
+    ändå bara om per (belopp, data_mtime), så detta körs sällan)."""
+    log_path = _results_dir() / "sweden_picks_history.csv"
+    from datetime import date
+    today = date.today().isoformat()
+    if log_path.exists():
+        try:
+            last = log_path.read_text(encoding="utf-8").strip().splitlines()[-1]
+            if last.startswith(today + ","):
+                return
+        except OSError:
+            pass
+    write_header = not log_path.exists()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(log_path, "a", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        if write_header:
+            w.writerow(["date", "ticker", "name", "score", "note"])
+        for p in picks:
+            w.writerow([today, p.get("ticker"), p.get("name"), p.get("score"), p.get("note")])
+
+
 def next_buy(rows, amount=None) -> dict:
     """
     KÄRNAN ("Nästa köp"): ETT rangordnat, konkret svar på var nästa krona ska in.
@@ -1104,6 +1132,9 @@ def next_buy(rows, amount=None) -> dict:
         # Begränsa antal Sverige-poster så VARJE post ≥ min-köp (inga 60-kr-splittar).
         max_picks = max(1, int(sweden_kr // min_trade))
         sweden_picks = sweden_picks[:min(len(sweden_picks), max_picks)]
+
+    if sweden_kr >= min_trade and sweden_picks:
+        _safe(lambda: _log_sweden_picks(sweden_picks), None, "sverige-punkt-i-tid-logg")
 
     out_rows = []
     if broad_kr > 0.5:
@@ -1313,7 +1344,19 @@ def _dca_backtest(px, targets, start_book, monthly):
             "months": contrib_months, "years": span_years}
 
 
-def backtest(monthly=5000, months=None):
+_BACKTEST_CACHE: dict = {}
+
+
+def backtest_result(monthly=5000, months=None):
+    """Ren beräkning (ingen print/IO förutom prispanelens egen cache) – används
+    av både CLI:t (backtest()) och API:t. None om prisdata saknas (kräver nät,
+    körs på Pi:n). Cachas per (belopp, fönster, data_mtime) – API:t ska ALDRIG
+    räkna om vid varje sidladdning (se api/main.py:s princip: servern läser
+    bara redan genererade resultat, kör inga backtester live)."""
+    cache_key = (round(float(monthly)), months, _data_mtime())
+    if cache_key in _BACKTEST_CACHE:
+        return _BACKTEST_CACHE[cache_key]
+
     rows = load_holdings()
     start_book = {b: 0.0 for b in BUCKETS}
     for r in rows:
@@ -1323,15 +1366,38 @@ def backtest(monthly=5000, months=None):
         px = _proxy_prices(months=months)
     except Exception as e:  # noqa: BLE001
         print(f"[backtest] kunde inte bygga prispanel: {e}\n  (kör på Pi:n – molnet saknar nät)")
-        return
+        return None
     if px.empty or "index" not in px.columns or len(px) < 30:
-        print("[backtest] för lite prisdata för proxyserierna – cachea ETF:erna först.")
-        return
+        return None
     res = _dca_backtest(px, config.PORTFOLIO_TARGET, start_book, monthly)
-    a, b, c = res["A"], res["B"], res["C"]
+    from datetime import datetime
+    out = {
+        "start_value": round(V0), "monthly": monthly,
+        "months": res["months"], "years": round(res["years"], 1),
+        "generated": datetime.now().isoformat(timespec="seconds"),
+    }
+    for k in ("A", "B", "C"):
+        s = res[k]
+        out[k] = {
+            "final": round(s["final"]), "invested": round(s["invested"]),
+            "irr_year": (round(s["irr_year"], 4) if s["irr_year"] is not None else None),
+            "maxdd": round(s["maxdd"], 4),
+        }
+    if len(_BACKTEST_CACHE) > 8:
+        _BACKTEST_CACHE.clear()
+    _BACKTEST_CACHE[cache_key] = out
+    return out
+
+
+def backtest(monthly=5000, months=None):
+    out = backtest_result(monthly, months)
+    if out is None:
+        print("[backtest] för lite prisdata för proxyserierna – cachea ETF:erna först (kör på Pi:n).")
+        return
+    a, b, c = out["A"], out["B"], out["C"]
     print(f"\n  \"NÄSTA KÖP\" (fyll-mot-mål) MOT INDEX")
-    print(f"  Startbok {V0:,.0f} kr · {monthly:,.0f} kr/mån · {res['months']} insättningar "
-          f"· {res['years']:.1f} år".replace(",", " "))
+    print(f"  Startbok {out['start_value']:,.0f} kr · {out['monthly']:,.0f} kr/mån · {out['months']} insättningar "
+          f"· {out['years']:.1f} år".replace(",", " "))
     print(f"  Totalt insatt: {a['invested']:,.0f} kr\n".replace(",", " "))
     def line(name, s):
         irr = f"{s['irr_year']:+.1%}" if s["irr_year"] is not None else "  n/a"
@@ -1350,9 +1416,10 @@ def backtest(monthly=5000, months=None):
         print("  → Att styra nytt kapital mot mål-mixen SLÅR INTE ren index-insättning här.")
     else:
         print("  → Fyll-mot-mål gav ett litet övertag mot ren index-insättning i perioden.")
-    _write_json({"backtest": {k: {kk: vv for kk, vv in res[k].items() if kk != "series"}
-                              for k in ("A", "B", "C")},
-                 "monthly": monthly, "months": res["months"], "years": res["years"]})
+    out_path = _results_dir() / "portfolio_backtest.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+    print(f"\n  Sparat: {out_path} (läses av /api/portfolio-backtest)")
 
 
 # ── Size in/out (trancher) ────────────────────────────────────────────────────
