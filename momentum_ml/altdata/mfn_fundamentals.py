@@ -247,7 +247,11 @@ def selftest(segment: Optional[str] = None) -> None:
 
 
 def extract(segment: Optional[str] = None, out_path: Optional[str] = None) -> None:
-    """Bygger results/fundamentals_from_mfn.csv av alla lyckade extraktioner."""
+    """Bygger <segmentets results_dir>/fundamentals_from_mfn.csv av alla lyckade
+    extraktioner. VIKTIGT: skriver till segmentets EGEN results_dir (samma
+    mönster som resten av pipelinen: results/ för large, results/small/ för
+    small) – en tidigare version skrev alltid till samma fil oavsett segment,
+    så 'extract small' körd efter 'extract large' skrev tyst över den."""
     items = _report_items(segment)
     rows = []
     for it in items:
@@ -274,8 +278,12 @@ def extract(segment: Optional[str] = None, out_path: Optional[str] = None) -> No
             if k not in cols:
                 cols.append(k)
 
-    out = Path(out_path) if out_path else (
-        Path(config.anchor(config.RESULTS_DIR)) / "fundamentals_from_mfn.csv")
+    if out_path:
+        out = Path(out_path)
+    else:
+        seg = config.SEGMENTS.get(segment) if segment else None
+        seg = seg or config.SEGMENTS[config.DEFAULT_SEGMENT]
+        out = Path(config.anchor(seg["results_dir"])) / "fundamentals_from_mfn.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols)
