@@ -339,6 +339,19 @@ def get_case_changes():
     return _records(_read_csv(path))
 
 
+@app.get("/api/portfolio-backtest")
+def get_portfolio_backtest():
+    """'Nästa köp' (fyll-mot-mål) mot index – DCA-simulering på din bok
+    (portfolio.py backtest). Läser bara redan genererad JSON (samma princip
+    som resten av API:t – kör aldrig backtester live, prispanelen kräver nät
+    och ska aldrig blockera en request). null om den inte körts än."""
+    path = Path(config.anchor(config.RESULTS_DIR)) / "portfolio_backtest.json"
+    if not path.exists():
+        return None
+    with open(path, encoding="utf-8") as f:
+        return _clean(json.load(f))
+
+
 @app.get("/api/paper-ledger")
 def get_paper_ledger(limit: int = 520, segment: Optional[str] = None):
     """
