@@ -357,6 +357,55 @@ def extract(segment: Optional[str] = None, out_path: Optional[str] = None) -> No
           f"{len(rows) / max(len(items), 1):.0%} träffgrad) -> {out}")
 
 
+_UNIT_HINT_RE = re.compile(rf"\b(?:{_UNIT})\b", re.I)
+
+
+def _sentences_with_unit(text: str, context: int = 90) -> List[str]:
+    """Korta textsnuttar runt varje förekomst av en enhets-token (Mkr/MSEK/...)
+    – kompakt sätt att visa VARFÖR en PM missade utan att klistra in hela
+    texten. Överlappande träffar slås ihop så samma mening inte upprepas."""
+    spans = [(max(0, m.start() - context), min(len(text), m.end() + context))
+             for m in _UNIT_HINT_RE.finditer(text)]
+    merged: List[List[int]] = []
+    for s, e in spans:
+        if merged and s <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], e)
+        else:
+            merged.append([s, e])
+    return [text[s:e].replace("\n", " ") for s, e in merged]
+
+
+def misses(segment: Optional[str] = None, n: int = 2) -> None:
+    """Hittar rapport-PM som MISSADE extraktion men som ändå innehåller en
+    enhets-token (Mkr/MSEK/...) någonstans i texten – ett starkt tecken på att
+    siffrorna FINNS men frasen inte känns igen än, till skillnad från äkta
+    PDF-only-annonser (som redan identifierats via tidigare selftest-körningar
+    och inte är värda att visa igen – de har inga enhets-token alls). Skriver
+    ut kompakta snuttar runt varje siffra i stället för hela PM:et, så
+    resultatet går att klistra tillbaka utan att svämma över."""
+    items = _report_items(segment)
+    candidates = []
+    for it in items:
+        text = it.get("text") or ""
+        if extract_hard_facts(text):
+            continue
+        if _UNIT_HINT_RE.search(text):
+            candidates.append(it)
+    if not candidates:
+        print("Inga miss-PM med enhets-token hittades – de kvarvarande missarna är "
+              "sannolikt äkta PDF-only-annonser (inga siffror i texten alls).")
+        return
+    print(f"[mfn_fundamentals misses] {len(candidates)} miss-PM innehåller en enhets-token "
+          f"(Mkr/MSEK/...) men gav noll extraherade fält – visar {min(n, len(candidates))}:\n")
+    for it in candidates[:n]:
+        print("=" * 78)
+        print(f"{it.get('ticker')}  {it.get('published', '')[:10]}  '{it.get('title', '')}'")
+        print("-" * 78)
+        for snip in _sentences_with_unit(it.get("text") or "")[:10]:
+            print(f"  ...{snip}...")
+        print()
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "selftest"
     seg = sys.argv[2] if len(sys.argv) > 2 else None
@@ -364,6 +413,8 @@ def main():
         selftest(seg)
     elif cmd == "extract":
         extract(seg)
+    elif cmd == "misses":
+        misses(seg, int(sys.argv[3]) if len(sys.argv) > 3 else 2)
     else:
         print(__doc__)
 
