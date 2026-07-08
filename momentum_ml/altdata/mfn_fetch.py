@@ -76,6 +76,16 @@ def _coerce(item: dict) -> Optional[dict]:
     if not (pid and date):
         return None
     text = c.get("text") or c.get("preamble") or _strip_html(c.get("html", ""))
+    # PDF-bilagor (t.ex. hela årsredovisningen när PM:et bara är en kort
+    # announcement) – verifierat fältnamn via 'raw'-kommandot mot skarp MFN-
+    # data: content.attachments = [{file_title, content_type, url, tags}].
+    # Filtrerar på content_type så vi inte plockar upp t.ex. en bifogad bild.
+    attachments = [
+        {"url": str(a.get("url") or ""), "title": str(a.get("file_title") or ""),
+         "tags": a.get("tags") or []}
+        for a in (c.get("attachments") or [])
+        if a.get("content_type") == "application/pdf" and a.get("url")
+    ]
     return {
         "id": str(pid),
         "published": str(date),
@@ -89,6 +99,7 @@ def _coerce(item: dict) -> Optional[dict]:
         "author_name": str(author.get("name") or ""),
         "tickers": author.get("tickers") or [],
         "isins": author.get("isins") or [],
+        "attachments": attachments,
     }
 
 
@@ -279,9 +290,29 @@ def _clean_name(name: str) -> str:
     return re.sub(r"\s+", " ", n).strip(" ,.-")
 
 
+# Höjs varje gång _coerce()'s schema växer med ett fält vi vill backfilla
+# (senast: 'attachments' för PDF-länkar). fetch_universe() jämför mot detta
+# i stället för att bara kolla "finns filen" – annars skulle en cachad fil
+# från INNAN attachments-fältet fanns aldrig hämtas om, och köraren skulle
+# behöva radera hela cachen manuellt (riskabelt, lätt att göra fel på).
+_SCHEMA_VERSION = 2
+
+
+def _needs_refetch(path: Path) -> bool:
+    if not path.exists():
+        return True
+    try:
+        cached = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 – trasig fil → hämta om
+        return True
+    return cached.get("schema") != _SCHEMA_VERSION
+
+
 def fetch_universe(target: str) -> None:
     """target = segmentnamn (large/small) ELLER 'quality' (Small/Micro/Nano för
-    fundamental-screenern). Inkrementellt – cachade bolag hoppas över."""
+    fundamental-screenern). Inkrementellt – bolag redan cachade på AKTUELLT
+    schema hoppas över; en schema-höjning (se _SCHEMA_VERSION) hämtar om
+    automatiskt utan att köraren behöver radera cachen manuellt."""
     from data.data_loader import load_sweden_universe
     if target == "quality":
         market_cap, label = config.QUALITY_MARKET_CAP, "quality (Small/Micro/Nano)"
@@ -300,16 +331,16 @@ def fetch_universe(target: str) -> None:
         if cap_tier_map.get(t) == "Fond" or sector_map.get(t) == "Fond":
             continue
         out = cache_dir / f"{t}.json"
-        if out.exists():
-            continue  # inkrementellt – ta bort filen för att hämta om
+        if not _needs_refetch(out):
+            continue  # redan cachad på aktuellt schema
         query = qmap.get(t) or _clean_name(name_map.get(t, t))
         try:
             items = fetch_company(query, ticker=t)
         except Exception as e:  # noqa: BLE001
             print(f"  [{i:>4}/{len(tickers)}] {t:<12} FEL: {e}")
             continue
-        out.write_text(json.dumps({"ticker": t, "query": query, "items": items},
-                                  ensure_ascii=False), encoding="utf-8")
+        out.write_text(json.dumps({"ticker": t, "query": query, "schema": _SCHEMA_VERSION,
+                                   "items": items}, ensure_ascii=False), encoding="utf-8")
         total += len(items)
         print(f"  [{i:>4}/{len(tickers)}] {t:<12} '{query[:28]:<28}' → {len(items)} PM")
         time.sleep(config.MFN_REQUEST_PAUSE_S)
