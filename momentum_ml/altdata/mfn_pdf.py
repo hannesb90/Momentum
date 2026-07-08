@@ -19,6 +19,7 @@ uppgraderar automatiskt gammal cache, ingen manuell radering behövs.
     python -m altdata.mfn_pdf backfill large        # alla miss-PM med PDF-bilaga
     python -m altdata.mfn_pdf backfill large 20      # bara de första 20 (snabbt test)
     python -m altdata.mfn_pdf diagnose_empty large   # varför gav vissa PDF:er noll fält? (inget nätanrop)
+    python -m altdata.mfn_pdf compare_layout <pdf-url>  # standard vs layout=True mot EN känd trasig PDF
 """
 import csv
 import hashlib
@@ -217,6 +218,67 @@ def diagnose_empty(segment: Optional[str] = None, n: int = 5) -> None:
             print(f"  Extraherad text ({len(text)} tecken): {text[:300]!r}")
 
 
+def compare_layout(url: str) -> None:
+    """Engångsjämförelse för EN given PDF-URL: standard page.extract_text()
+    vs page.extract_text(layout=True). Bakgrund: diagnose_empty() visade att
+    'tomma' PDF:er INTE är gamla/skannade filer (0/93 hade nära-noll text,
+    snitt 17 398 tecken) – i stället är texten på layout-tunga försätts-/
+    intro-sidor (t.ex. AAK:s årsredovisningar) ordkastad av pdfplumber:s
+    default-läge, som följer PDF:ens interna objektordning i stället för
+    visuell läsordning. layout=True är en kandidat-fix – detta verktyg
+    testar den mot en KÄND trasig PDF (kör mot en av URL:erna som
+    diagnose_empty skrev ut) i stället för att gissa att den hjälper.
+    Laddar alltid ner färskt (ingen cache) – avsett för enstaka manuell
+    körning, inte batch."""
+    if pdfplumber is None:
+        raise RuntimeError("paketet 'pdfplumber' saknas – pip install pdfplumber")
+    print(f"Laddar ner {url} ...")
+    pdf_bytes = _download_pdf(url)
+    if pdf_bytes is None:
+        print("Kunde inte ladda ner PDF:en (fel status eller för stor).")
+        return
+    print(f"OK, {len(pdf_bytes)} bytes. Extraherar med båda metoderna...")
+
+    out_default: List[str] = []
+    out_layout: List[str] = []
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        for page in pdf.pages[:_MAX_PDF_PAGES]:
+            try:
+                t1 = page.extract_text()
+            except Exception:  # noqa: BLE001
+                t1 = None
+            if t1:
+                out_default.append(t1)
+            try:
+                t2 = page.extract_text(layout=True)
+            except Exception:  # noqa: BLE001
+                t2 = None
+            if t2:
+                out_layout.append(t2)
+    text_default = "\n".join(out_default)
+    text_layout = "\n".join(out_layout)
+
+    facts_default = extract_hard_facts(text_default)
+    facts_layout = extract_hard_facts(text_layout)
+
+    print(f"\nStandard-extraktion:   {len(text_default)} tecken, "
+          f"{len(facts_default)} fält funna -> {sorted(facts_default.keys())}")
+    print(f"layout=True-extraktion: {len(text_layout)} tecken, "
+          f"{len(facts_layout)} fält funna -> {sorted(facts_layout.keys())}")
+
+    print("\n--- Standard, första 500 tecken ---")
+    print(text_default[:500])
+    print("\n--- layout=True, första 500 tecken ---")
+    print(text_layout[:500])
+
+    if len(facts_layout) > len(facts_default):
+        print(f"\n=> layout=True hittade {len(facts_layout) - len(facts_default)} fler fält – ser lovande ut.")
+    elif len(facts_layout) == len(facts_default):
+        print("\n=> Ingen skillnad i antal fält denna gång – kanske inte den rätta fixen (eller fel PDF att testa på).")
+    else:
+        print("\n=> layout=True hittade FÄRRE fält – inte en förbättring för denna PDF.")
+
+
 def backfill(segment: Optional[str] = None, limit: Optional[int] = None) -> None:
     """Går igenom rapport-PM som INTE fick något extraherat ur press-texten
     (extract_hard_facts på item['text'] gav tomt) men SOM har minst en PDF-
@@ -283,6 +345,12 @@ def backfill(segment: Optional[str] = None, limit: Optional[int] = None) -> None
 
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "backfill"
+    if cmd == "compare_layout":
+        if len(sys.argv) < 3:
+            print("Användning: python -m altdata.mfn_pdf compare_layout <pdf-url>")
+            return
+        compare_layout(sys.argv[2])
+        return
     seg = sys.argv[2] if len(sys.argv) > 2 else None
     limit = int(sys.argv[3]) if len(sys.argv) > 3 else None
     if cmd == "backfill":
