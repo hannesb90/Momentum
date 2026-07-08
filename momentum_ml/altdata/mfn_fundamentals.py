@@ -37,7 +37,11 @@ import config
 
 # ── Nummer/enhet-mönster (svensk notation: komma decimal, ev. mellanslag som
 # tusentalsavgränsare, ev. minustecken) ────────────────────────────────────
-_NUM = r"-?\d[\d\s]*(?:,\d+)?"
+# OBS: [  ] (mellanslag/hårt mellanslag) – INTE \s. \s matchar även \n/\t,
+# vilket i skarp körning fångade en rad-brytning MITT I ett tal (HTML-tabell
+# stripad till text) och kraschade _parse_num ("2\n271", "-8\n.8"). Ett riktigt
+# tal spänner aldrig en radbrytning.
+_NUM = r"-?\d[\d  ]*(?:,\d+)?"
 _UNIT = r"Mkr|MSEK|mkr|msek|tkr|TSEK|kkr|miljoner kronor"
 _CONNECT = r"uppgick till|ökade till|minskade till|steg till|föll till|blev|var|på"
 # Etiketten följs ibland av en parentetisk förkortning innan konnektorn,
@@ -118,7 +122,14 @@ def extract_hard_facts(text: str) -> Dict[str, dict]:
         m = pat.search(text)
         if not m:
             continue
-        d = {"value": _parse_num(m.group("val")), "unit": m.group("unit")}
+        # Defensivt: en regex-träff garanterar inte ett parsbart tal (t.ex. ett
+        # okänt HTML-strippnings-artefakt vi inte förutsett) – ett fält som inte
+        # går att tolka ska hoppas över, aldrig krascha hela extraktionen.
+        try:
+            val = _parse_num(m.group("val"))
+        except ValueError:
+            continue
+        d = {"value": val, "unit": m.group("unit")}
         if m.group("cmp"):
             try:
                 d["prior_period"] = _parse_num(m.group("cmp"))
@@ -127,10 +138,16 @@ def extract_hard_facts(text: str) -> Dict[str, dict]:
         out[field] = d
     m = _EPS_RE.search(text)
     if m:
-        out["eps"] = {"value": _parse_num(m.group("val")), "unit": "kr"}
+        try:
+            out["eps"] = {"value": _parse_num(m.group("val")), "unit": "kr"}
+        except ValueError:
+            pass
     m = _MARGIN_RE.search(text)
     if m:
-        out["ebit_margin_pct"] = {"value": _parse_num(m.group("val"))}
+        try:
+            out["ebit_margin_pct"] = {"value": _parse_num(m.group("val"))}
+        except ValueError:
+            pass
     return out
 
 
