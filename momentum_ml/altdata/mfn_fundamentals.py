@@ -344,7 +344,15 @@ _REPORT_TITLE_RE = re.compile(
 # ett skarpt miss-exempel i selftest, inte en regex-lucka att laga). Utesluts
 # explicit så nämnaren mäter faktiska rapport-PM, inte inbjudningar till dem.
 _INVITATION_TITLE_RE = re.compile(
-    r"bjuder in till|inbjuder till|inbjudan till|kallar till\s+(?:telefon|press)", re.I)
+    r"bjuder in till|inbjuder till|inbjudan till|kallar till\s+(?:telefon|press)"
+    # "Press- och analytikerkonferens i samband med publiceringen/offentlig-
+    # görandet av X:s delårsrapport..." – en annan, minst lika vanlig
+    # inbjudningsformulering (upptäckt via tre riktiga AAK-exempel ur
+    # diagnose_empty som felaktigt räknades som missade rapporter, trots att
+    # de per definition ALDRIG innehåller siffror – bara datum/tid för en
+    # telefonkonferens).
+    r"|press-?\s*(?:och\s+)?analytikerkonferens|telefonkonferens\s+i\s+samband\s+med",
+    re.I)
 
 
 def _parse_num(s: str) -> float:
