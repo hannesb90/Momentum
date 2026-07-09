@@ -4,6 +4,12 @@ config.py – Alla parametrar för momentum ML-systemet.
 """
 import os as _os   # för env-styrda knoppar nedan (A/B utan filredigering)
 
+# Flyttad hit (var tidigare under "Misc" längre ner) – måste definieras FÖRE
+# LGBM_PARAMS för att kunna användas där. Var tidigare bara kopplad till
+# LLM-samplingskod (sentiment.py), ALDRIG till LGBM-träningen – en falsk
+# känsla av reproducerbarhet, se LGBM_PARAMS nedan.
+RANDOM_SEED = 42
+
 # ── Data ─────────────────────────────────────────────────────────────────────
 DEFAULT_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META", "JPM"]
 START_DATE      = "2010-01-01"
@@ -142,6 +148,16 @@ def anchor(rel):
     return rel
 
 # ── LightGBM ─────────────────────────────────────────────────────────────────
+# seed/deterministic SAKNADES tidigare helt här – varje natts fulla omträning
+# (ALLA walk-forward-fönster sedan 2010, inte bara det senaste) gav därför en
+# genuint annorlunda modell varje gång, vilket ändrade prob_up för HELA
+# signalhistoriken och kaskaderade genom ~60 ombalanseringar till
+# miljonbelopp i "End Capital"-skillnad mellan två i övrigt identiska
+# körningar (bekräftat: subsample/colsample_bytree <1.0 gör träningen
+# stokastisk, och LightGBM är INTE bit-reproducerbart över trådar utan
+# deterministic=True även med ett fast seed – se LightGBM:s egen
+# dokumentation). RANDOM_SEED fanns redan i config men kopplades aldrig hit
+# (bara till orelaterad LLM-samplingskod i sentiment.py).
 LGBM_PARAMS = {
     "objective":        "binary",
     "metric":           ["binary_logloss", "auc"],
@@ -156,6 +172,12 @@ LGBM_PARAMS = {
     "early_stopping_rounds": 50,
     "verbose":          -1,
     "num_threads":      NUM_TRAINING_THREADS or 0,  # 0 = LightGBM väljer själv
+    "seed":                  RANDOM_SEED,
+    "bagging_seed":          RANDOM_SEED,
+    "feature_fraction_seed": RANDOM_SEED,
+    "data_random_seed":      RANDOM_SEED,
+    "deterministic":         True,  # krävs för bit-reproducerbarhet över trådar, inte bara ett seed
+    "force_row_wise":        True,  # deterministic=True kräver detta (LightGBM-varning annars)
 }
 
 # ── LSTM ─────────────────────────────────────────────────────────────────────
@@ -419,7 +441,6 @@ PAPER_MISSING_LIQUIDATE_STEPS = 4
 HOLDOUT_WEEKS = 104         # ~2 år som modellen aldrig tränas på
 
 # ── Misc ─────────────────────────────────────────────────────────────────────
-RANDOM_SEED        = 42
 CACHE_DIR          = "cache"
 RESULTS_DIR        = "results"
 

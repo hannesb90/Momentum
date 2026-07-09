@@ -16,6 +16,7 @@ DataFrame] med kolumnerna Open/High/Low/Close/Volume).
 import os
 import pickle
 import hashlib
+import datetime as dt
 import pandas as pd
 import yfinance as yf
 from pathlib import Path
@@ -42,9 +43,18 @@ def fetch_weekly_data(
     Hämtar OHLCV-veckodata för en lista tickers.
     Returnerar dict {ticker: DataFrame med kolumner Open/High/Low/Close/Volume}.
     """
+    # BUGG (fixad): end=None ("idag", se config.END_DATE) blev tidigare
+    # BOKSTAVLIGEN strängen "None" i cache-nyckeln f-strängen – identisk
+    # nyckel varje dag, så en gång cachad returnerades samma frusna
+    # kursdata dag efter dag i stället för att hämtas på nytt "idag",
+    # trots kommentaren "None = idag". Löst genom att slå upp dagens datum
+    # EN gång och använda det UPPLÖSTA värdet (inte den råa None) både i
+    # cache-nyckeln och i själva yf.download-anropet, så nyckeln faktiskt
+    # ändras dag för dag och en ny hämtning triggas.
+    resolved_end = end or dt.date.today().isoformat()
     # min_history ingår i nyckeln: cachen lagrar data EFTER historikfiltret, så
     # en ändrad tröskel måste ge en ny cache (annars returneras gamla survivors).
-    cache_key = f"{','.join(sorted(tickers))}_{start}_{end}_h{config.MIN_HISTORY_WEEKS}"
+    cache_key = f"{','.join(sorted(tickers))}_{start}_{resolved_end}_h{config.MIN_HISTORY_WEEKS}"
     cp = _cache_path(cache_key)
 
     if use_cache and cp.exists():
@@ -56,7 +66,7 @@ def fetch_weekly_data(
     raw = yf.download(
         tickers,
         start=start,
-        end=end,
+        end=resolved_end,
         interval="1wk",
         auto_adjust=True,
         progress=True,

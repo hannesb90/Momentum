@@ -18,6 +18,7 @@ import csv
 import json
 import re
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent))
 import config
@@ -115,18 +116,24 @@ def _latest_closes(include_quotes: bool = True) -> dict:
     return out
 
 
-def fetch_holding_quotes() -> dict:
+def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
     """
     Hämtar senaste kurs (omräknad till SEK) för innehav vars ticker INTE täcks
     av modellens prices.csv: utländska ETF:er (EUR/USD/GBp) och svenska bolag
     utanför segmentens universum (micro caps). Direkt från samma kurskälla som
-    resten av pipelinen (Yahoo) – kräver nät, körs nattligt via main.py STEG 5.
+    resten av pipelinen (Yahoo) – kräver nät. Körs dels nattligt via main.py
+    STEG 5 (tickers=None → läser load_holdings() från disk), dels direkt från
+    save_holdings() med en explicit ticker-lista – det senare täcker fallet
+    "nyss tillagt innehav" vars ticker ÄNNU inte finns på disk (raden har inte
+    skrivits än) och som annars inte fått något pris förrän nästa nattkörning.
     Skriver results/holdings_quotes.csv som _latest_closes() plockar upp.
     Valutor: fast_info.currency; GBp (pence) → /100 → GBP; växlas via <CUR>SEK=X.
     """
-    rows = load_holdings(refresh=False)
+    if tickers is None:
+        rows = load_holdings(refresh=False)
+        tickers = [(r.get("ticker") or "").upper() for r in rows]
     have = _latest_closes(include_quotes=False)
-    need = sorted({(r.get("ticker") or "").upper() for r in rows} - set(have) - {""})
+    need = sorted({(t or "").upper() for t in tickers} - set(have) - {""})
     if not need:
         return {}
     import yfinance as yf
@@ -156,12 +163,23 @@ def fetch_holding_quotes() -> dict:
                 cur = fi.get("currency") if hasattr(fi, "get") else getattr(fi, "currency", None)
             except Exception:  # noqa: BLE001
                 cur = None
-            cur = cur or "SEK"
+            # BUGG (fixad): föll tidigare tyst tillbaka till "SEK" när
+            # valutan inte gick att slå upp – för en icke-svensk ticker
+            # (exakt fallet detta ska hantera) ger det ett TYST FEL värde,
+            # inte bara ett saknat: en $150-aktie visades som 150 kr i
+            # stället för ~1500 kr, en 10x undervärdering utan varning.
+            # Bättre att hoppa över tickern helt (behåller manuellt/
+            # inköpsvärde) än att spara ett säkert felaktigt pris.
+            if not cur:
+                print(f"[quotes] {tk}: kunde inte slå upp valuta, hoppar (ingen SEK-gissning)")
+                continue
             if cur == "GBp":                      # London-notering i pence
                 px, cur = px / 100.0, "GBP"
             rate = fx(cur)
-            if rate:
-                out[tk] = round(px * rate, 4)
+            if not rate:
+                print(f"[quotes] {tk}: kunde inte hämta växelkurs för {cur}, hoppar")
+                continue
+            out[tk] = round(px * rate, 4)
         except Exception as e:  # noqa: BLE001
             print(f"[quotes] {tk}: {e}")
     if out:
@@ -267,6 +285,21 @@ def save_target(d: dict) -> dict:
 def save_holdings(rows) -> None:
     p = holdings_path()
     p.parent.mkdir(parents=True, exist_ok=True)
+    # Hämta färsk kurs direkt för ev. NYA/okända tickers i denna sparning –
+    # annars syns inget marknadspris förrän nästa nattkörning (kan vara
+    # timmar bort). Bygger ticker-listan från de INKOMMANDE raderna, inte
+    # load_holdings() (disk-versionen känner ännu inte till en nyss
+    # tillagd rad). fetch_holding_quotes() filtrerar själv bort tickers som
+    # redan är kända (prices.csv/holdings_quotes.csv) – kostar bara ett
+    # nätanrop för det som faktiskt är nytt, inte varje sparning.
+    incoming_tickers = [
+        (r.get("ticker") or "").strip().upper() or _resolve_ticker(r.get("name", ""))
+        for r in rows
+    ]
+    try:
+        fetch_holding_quotes(incoming_tickers)
+    except Exception as e:  # noqa: BLE001 – nätfel ska aldrig blocka en sparning
+        print(f"[save_holdings] direkt kurshämtning misslyckades (icke-kritiskt): {e}")
     closes = _latest_closes()
     with open(p, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["name", "value_sek", "bucket", "ticker",
@@ -1502,7 +1535,11 @@ def _tech_signal(close):
 def exitscan():
     """Skannar innehaven: flaggar RÖTT ('end this now') när sektorn är svag OCH kursen
     tekniskt brutet, GULT när en av dem slår till. Skriver results/exit_signals.json.
-    Kräver prisdata (körs på Pi:n)."""
+    Kräver prisdata (körs på Pi:n). Körs numera automatiskt varje natt via
+    main.py:s portfölj-uppdateringsblock (tidigare bara CLI, aldrig
+    schemalagd – exit_signals.json kunde bli stale utan att någon märkte
+    det) – fortfarande körbar manuellt (`python portfolio.py exitscan`) för
+    en direktuppdatering mellan nattkörningarna."""
     import json as _json
     from datetime import datetime, timezone
     rows = load_holdings()
