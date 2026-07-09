@@ -66,17 +66,17 @@ logging.getLogger("pdfminer").setLevel(logging.ERROR)
 # sätt konservativa tak i stället för att lita på att alla PDF:er är små.
 _MAX_PDF_BYTES = 20 * 1024 * 1024   # 20 MB nedladdningstak
 # Historik: 20 -> 200 (sida 124-135 i en riktig 190-sidig AAK-årsredovisning
-# låg utanför det gamla taket på 20). Efter det höjde en full backfill-körning
-# bara träffgraden marginellt ("enstaka till, inte så många fler") – tyder på
-# att andra bolags rapporter har nyckeltalen ännu djupare in, eller att
-# strukturen skiljer sig bolag till bolag på sätt vi inte känner till ännu.
-# I stället för att gissa ett nytt magiskt tak: praktiskt taget obegränsat
-# (en säkerhetsgräns långt bortom vad en riktig årsredovisning har, bara för
-# att skydda mot en pathologisk/korrupt fil med orimligt många "sidor").
-# Detta är en engångs-historisk backfill (resumable, varje PDF cachas för
-# alltid) – en långsam körning över natten är en engångskostnad, inte en
-# löpande belastning.
-_MAX_PDF_PAGES = 5000
+# låg utanför det gamla taket på 20) -> 5000 ("praktiskt obegränsat") -> 300.
+# 5000 drogs tillbaka: Pi:n (2GB RAM, redan 362 MB i swap i vila) startade om
+# oväntat under en backfill-körning över natten. Ingen beständig logg fanns
+# kvar för att bevisa OOM, men vi har samtidigt INGEN evidens för att 5000
+# behövdes – 200 räckte redan för att hitta alla 16 fält i AAK-exemplet
+# (compare_layout), och en full backfill vid 200 gav bara marginell extra
+# träffgrad över hela batchen ("enstaka till, inte så många fler"). Att då
+# riskera ett jättetak för en obekräftad, sannolikt liten vinst är fel
+# avvägning på en minnessvag maskin. 300 ger god marginal över det vi
+# FAKTISKT sett behövas (190 sidor) utan att öppna för pathologiska fall.
+_MAX_PDF_PAGES = 300
 _PDF_REQUEST_PAUSE_S = 1.0          # artigare paus än PM-textens – större filer, annan värd (storage.mfn.se/Cision)
 # Cachens textrutning – måste följa med när _MAX_PDF_PAGES höjs, annars
 # tappas nyupptäckt data tyst vid nästa cache-läsning även om DEN AKTUELLA
