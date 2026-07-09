@@ -505,6 +505,21 @@ QUALITY_MULT_FAIR      = 18
 QUALITY_PS_CHEAP       = 1.5       # P/S <= billig
 QUALITY_PS_FAIR        = 4.0       # P/S <= rimlig, över = dyr
 
+# ── Buffett-inspirerad värdeskreener (altdata/value_screener.py) ──────────────
+# Token-fri, ur EGEN MFN-hårddata (mfn_fundamentals.py/mfn_pdf.py) – till
+# skillnad från quality_screener (LLM) och quant_screener (TradingView).
+# Trösklar grundade i väldokumenterade, publikt citerade Buffett-kriterier
+# (inte gissade): ROE > 15% konsekvent, Debt/Equity < 0.5 konservativt.
+VALUE_ROE_GOOD         = 0.15      # ROE-tröskel (15%) för "kvalitetsbolag"-flaggan
+VALUE_DEBT_EQUITY_SAFE = 0.5       # Debt/Equity under detta = konservativt skuldsatt
+# "Owner earnings"-multipel (börsvärde/owner earnings) – EGNA trösklar, inte
+# samma som QUALITY_MULT_* (owner earnings är lägre än EBITDA eftersom
+# avskrivningar redan är kvar i det, så samma multipel motsvarar INTE samma
+# verkliga värdering) – en första, justerbar gissning tills selftest/verklig
+# data visar var trösklarna faktiskt bör ligga.
+VALUE_MULT_CHEAP       = 15
+VALUE_MULT_FAIR        = 22
+
 # ── ETF/sektor-rotation (D-spåret: dual momentum – "trend, inte bolag") ───────
 # Rankar sektor-ETF:ernas EGNA kurser (inte svenska aktier per sektor). Håller de
 # hetaste K (relativ momentum) MEN bara om de har egen positiv trend (absolut
