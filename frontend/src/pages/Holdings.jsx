@@ -14,6 +14,14 @@ const BUCKET_LABEL = Object.fromEntries(BUCKETS.map((b) => [b.value, b.label]))
 const fmtKr = (v) => (v == null ? '–' : `${Math.round(v).toLocaleString('sv-SE')} kr`)
 const fmtPct = (v) => (v == null ? '–' : `${v >= 0 ? '+' : ''}${(v * 100).toFixed(0)}%`)
 
+// Rank-modeller för "nästa köp" (speglar portfolio._MODEL_WEIGHTS).
+const MODEL_LABELS = { balanced: 'Balanserad', buffett: 'Buffett', momentum: 'Momentum' }
+const MODEL_HINTS = {
+  balanced: 'Kvalitet tyngst, momentum som timing – standardmixen.',
+  buffett: 'Långsiktigt ägande: värde + kvalitet styr, hård grind på ROE/skuld.',
+  momentum: 'Prismomentum (P(upp)) väger tyngst – den ursprungliga andan.',
+}
+
 // Klient-sida trancher (speglar portfolio.size_in): lika + dip-viktat, −5%/steg.
 function sizeIn(amount, n) {
   n = Math.max(1, n | 0)
@@ -48,6 +56,9 @@ export function HoldingsPage() {
   const [saving, setSaving] = useState(false)
   const [universe, setUniverse] = useState([])
   const [search, setSearch] = useState('')
+  const [model, setModel] = useState('balanced')
+  const [models, setModels] = useState(['balanced'])
+  const [modelBusy, setModelBusy] = useState(false)
 
   useEffect(() => {
     api.holdings(amount)
@@ -60,8 +71,27 @@ export function HoldingsPage() {
     api.exitSignals().then(setExit).catch(() => {})
     api.universe().then(setUniverse).catch(() => {})
     api.caseChanges().then(setCaseChanges).catch(() => {})
+    api.portfolioModel().then((d) => {
+      setModel(d.model ?? 'balanced')
+      setModels(d.available ?? ['balanced'])
+    }).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Byt rank-modell (balanced/buffett/momentum) → persistera + hämta om
+  // köp-planen (rankningen räknas om server-side, ingen sid-omladdning).
+  function switchModel(next) {
+    if (next === model || modelBusy) return
+    setModelBusy(true)
+    api.setPortfolioModel(next)
+      .then((d) => {
+        setModel(d.model ?? next)
+        return api.holdings(amount)
+      })
+      .then((d) => { if (d) { setAnalysis(d); setHoldings((d.holdings ?? []).map((h) => ({ ...h }))) } })
+      .catch(setError)
+      .finally(() => setModelBusy(false))
+  }
 
   // Lägg till-flödet: sök i universumet → välj → ange antal + inköpskurs.
   const [addOpen, setAddOpen] = useState(false)
@@ -592,6 +622,24 @@ export function HoldingsPage() {
           </button>
         </span>
       </h3>
+
+      {/* Rank-modell: HUR nästa-köp-kandidaterna vägs. Ren vy-inställning,
+          växlar server-side utan omkörning. */}
+      <div className="model-picker">
+        <span className="model-picker__label">Modell</span>
+        {models.map((m) => (
+          <button
+            key={m}
+            type="button"
+            disabled={modelBusy}
+            className={`model-picker__btn${model === m ? ' model-picker__btn--active' : ''}`}
+            onClick={() => switchModel(m)}
+          >
+            {MODEL_LABELS[m] ?? m}
+          </button>
+        ))}
+        <span className="model-picker__hint">{MODEL_HINTS[model] ?? ''}</span>
+      </div>
       <div className="newcap__input">
         <label>Belopp</label>
         <input type="number" min="0" step="500" value={amount}
