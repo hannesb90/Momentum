@@ -154,6 +154,65 @@ def extract_pdf_text(pdf_bytes: bytes) -> str:
     return "\n".join(out)
 
 
+# Två oväntade Pi-omstarter i rad under backfill-körningar (2026-07-09),
+# utan bevis för OOM/underspänning i den logg vi lyckats fånga (vare sig
+# minne eller vcgencmd-throttling var förhöjt i de senaste avläsningarna
+# innan kraschen) – men mönstret (död efter samma typ av arbete, alltid
+# under just PDF-extraktion) pekar mot en ENSKILD pathologisk PDF (extremt
+# layout-/grafiktung, hundratals sidor) som får pdfplumber att svälla
+# minnesanvändningen på under 5 sekunder – snabbare än övervakningsloopens
+# pollintervall hinner fånga, och möjligen snabbt nog för att ta ner hela
+# Pi:n (2GB RAM) innan Linux-OOM-killern ens hinner välja ett offer själv.
+# I stället för att fortsätta gissa på ännu en sidkaps-konstant: isolera
+# den riskabla operationen i en EGEN subprocess med ett HÅRT minnestak
+# (resource.RLIMIT_AS). Ett enskilt dokument som slår i taket kraschar då
+# bara sin egen subprocess (räknas som "kunde inte extraheras", precis som
+# en trasig PDF) – aldrig förälderprocessen eller resten av systemet.
+_EXTRACT_MEM_LIMIT_BYTES = 400 * 1024 * 1024   # 400 MB hårt tak per enskild PDF-extraktion
+_EXTRACT_TIMEOUT_S = 120
+
+
+def _extract_worker(pdf_bytes: bytes, q) -> None:
+    try:
+        try:
+            import resource
+            resource.setrlimit(resource.RLIMIT_AS,
+                                (_EXTRACT_MEM_LIMIT_BYTES, _EXTRACT_MEM_LIMIT_BYTES))
+        except Exception:  # noqa: BLE001 – t.ex. plattform utan RLIMIT_AS-stöd
+            pass
+        text = extract_pdf_text(pdf_bytes)
+        q.put(("ok", text))
+    except BaseException as e:  # noqa: BLE001 – inkl. MemoryError vid taket
+        try:
+            q.put(("error", str(e)[:200]))
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def extract_pdf_text_isolated(pdf_bytes: bytes) -> Optional[str]:
+    """extract_pdf_text() körd i en isolerad subprocess med minnestak+timeout
+    (se motivering ovan). Returnerar None om subprocessen kraschar, dödas av
+    minnestaket, eller hänger längre än _EXTRACT_TIMEOUT_S – anropande kod
+    (get_pdf_text) behandlar det precis som ett nedladdnings-/öppningsfel."""
+    import multiprocessing as mp
+    ctx = mp.get_context("fork")   # fork = pdf_bytes ärvs direkt, ingen pickling av stora bytes
+    q = ctx.Queue()
+    p = ctx.Process(target=_extract_worker, args=(pdf_bytes, q))
+    p.start()
+    p.join(_EXTRACT_TIMEOUT_S)
+    if p.is_alive():
+        p.terminate()
+        p.join(5)
+        return None
+    if p.exitcode != 0:
+        return None   # minnestak, segfault eller annan onormal krasch i subprocessen
+    try:
+        status, payload = q.get_nowait()
+    except Exception:  # noqa: BLE001
+        return None
+    return payload if status == "ok" else None
+
+
 def get_pdf_text(pm_id: str, url: str) -> Optional[str]:
     """Evig cache (rapporter ändras inte i efterhand) – varje PDF laddas
     ner+extraheras högst en gång per _PDF_TEXT_SCHEMA_VERSION, oavsett hur
@@ -174,10 +233,12 @@ def get_pdf_text(pm_id: str, url: str) -> Optional[str]:
         cp.write_text(json.dumps({"text": None, "error": "download_failed_or_too_large",
                                    "schema": _PDF_TEXT_SCHEMA_VERSION}), encoding="utf-8")
         return None
-    try:
-        text = extract_pdf_text(pdf_bytes)
-    except Exception as e:  # noqa: BLE001 – trasig/krypterad PDF ska inte stoppa hela körningen
-        cp.write_text(json.dumps({"text": None, "error": str(e)[:200],
+    # Isolerad subprocess (minnestak+timeout) i stället för direktanrop – se
+    # extract_pdf_text_isolated()-motiveringen ovan. Returnerar None om
+    # subprocessen krascha/dödas/hänger, precis som ett extraktionsfel.
+    text = extract_pdf_text_isolated(pdf_bytes)
+    if text is None:
+        cp.write_text(json.dumps({"text": None, "error": "extraction_crashed_or_oom_or_timeout",
                                    "schema": _PDF_TEXT_SCHEMA_VERSION}), encoding="utf-8")
         return None
     cp.write_text(json.dumps({"text": text[:_MAX_CACHED_TEXT_CHARS], "schema": _PDF_TEXT_SCHEMA_VERSION},
