@@ -11,6 +11,7 @@ Användning:
 import argparse
 import gc
 import json
+import shutil
 import subprocess
 import sys
 import os
@@ -531,6 +532,16 @@ def main():
             _tot = sum(r.get("value", 0.0) for r in _rows)
             _pf.log_value(_tot)
             print(f"  Portfölj-logg uppdaterad: {_tot:,.0f} kr ({len(_rows)} innehav)".replace(",", " "))
+        # exitscan() (sektor+teknisk "END THIS NOW"-alarm) var tidigare ENDAST
+        # CLI-kommando, aldrig schemalagt av någon systemd-timer – resultatet
+        # (results/exit_signals.json, "Exit-alarm"-panelen på innehavssidan)
+        # gick tyst stale om ingen körde det manuellt. Körs nu här varje natt,
+        # samma icke-kritiska try/except-mönster som resten av blocket.
+        try:
+            _pf.exitscan()
+            print("  Exit-alarm uppdaterat: results/exit_signals.json")
+        except Exception as ee:  # noqa: BLE001
+            print(f"  [WARN] exitscan misslyckades (icke-kritiskt): {ee}")
     except Exception as e:
         print(f"  [WARN] Portfölj-logg misslyckades (icke-kritiskt): {e}")
 
@@ -710,6 +721,32 @@ def main():
     with open(f"{config.RESULTS_DIR}/stats.json", "w") as f:
         json.dump(summary, f, indent=2, default=str)
     print(f"  Sammanfattning sparad: {config.RESULTS_DIR}/stats.json")
+
+    # ── 8b. Historik-snapshot (för att kunna diffa körning mot körning) ────────
+    # results/ skrivs över varje natt (gitignorat, ingen historik sparas
+    # någonstans) – utan detta kan man i efterhand ALDRIG se vad som faktiskt
+    # ändrades mellan två körningar (t.ex. för att diagnostisera varför
+    # "End Capital" hoppade mellan nätter). Sparar en daterad kopia; städar
+    # bort kopior äldre än 30 dagar så det inte växer obegränsat på Pi:ns
+    # begränsade lagring. Icke-kritiskt – ett fel här ska aldrig få hela
+    # nattkörningen att se ut som misslyckad.
+    try:
+        hist_dir = Path(config.RESULTS_DIR) / "history"
+        hist_dir.mkdir(parents=True, exist_ok=True)
+        today_str = pd.Timestamp.now("UTC").date().isoformat()
+        shutil.copy(f"{config.RESULTS_DIR}/stats.json", hist_dir / f"stats_{today_str}.json")
+        shutil.copy(f"{config.RESULTS_DIR}/portfolio.csv", hist_dir / f"portfolio_{today_str}.csv")
+        cutoff = pd.Timestamp.now("UTC") - pd.Timedelta(days=30)
+        for old_f in hist_dir.glob("*_20*"):
+            try:
+                date_part = old_f.stem.rsplit("_", 1)[-1]
+                if pd.Timestamp(date_part, tz="UTC") < cutoff:
+                    old_f.unlink()
+            except Exception:
+                pass
+        print(f"  Historik-snapshot sparad: {hist_dir}/*_{today_str}.*")
+    except Exception as e:
+        print(f"  Historik-snapshot misslyckades (icke-kritiskt): {e}")
 
     print("\nKLAR!\n")
 
