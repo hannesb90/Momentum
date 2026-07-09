@@ -24,7 +24,8 @@ from data.data_loader import (
     filter_active_universe, load_sweden_universe,
 )
 from features.feature_engineering import (
-    build_all_features, to_model_df, attach_categorical_features, FEATURE_COLS,
+    build_all_features, to_model_df, attach_categorical_features,
+    attach_fundamentals_features, FEATURE_COLS,
 )
 from models.lgbm_model import MomentumLGBM
 from models.lstm_model import MomentumLSTM
@@ -199,6 +200,14 @@ def main():
     all_features = attach_categorical_features(
         all_features, sector_map=config.SECTOR_MAP, cap_tier_map=cap_tier_map,
     )
+    # Tillväxt (rev_growth_yoy/eps_growth_yoy) ur MFN-rapporternas hårddata –
+    # första gången altdata/-data faktiskt matas in i den tränade modellen
+    # (inte bara ett separat CSV-/IC-diagnostik-spår). Point-in-time-säkert
+    # (se attach_fundamentals_features()-docstring). Kräver att
+    # fundamentals_from_mfn.csv/fundamentals_from_pdf.csv redan genererats
+    # (altdata/mfn_fundamentals.py extract / altdata/mfn_pdf.py backfill) –
+    # saknas de blir kolumnerna bara NaN, ingen krasch.
+    all_features = attach_fundamentals_features(all_features, segment=args.segment)
     model_df     = to_model_df(all_features)
     print(f"  Dataset: {len(model_df):,} samples × {model_df[FEATURE_COLS].shape[1]} features")
     gc.collect()
