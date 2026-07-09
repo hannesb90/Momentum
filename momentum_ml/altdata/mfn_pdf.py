@@ -237,24 +237,57 @@ def extract_pdf_text_isolated(pdf_bytes: bytes):
     (se motivering ovan). Returnerar (text, n_pages), eller (None, None) om
     subprocessen kraschar, dödas av minnestaket, eller hänger längre än
     _EXTRACT_TIMEOUT_S – anropande kod (get_pdf_text) behandlar det precis
-    som ett nedladdnings-/öppningsfel."""
+    som ett nedladdnings-/öppningsfel.
+
+    RESURS-DISCIPLIN (avgörande på 2GB-Pi:n): varje Queue startar en
+    matartråd + pipe-fildeskriptorer som INTE frigörs automatiskt. Utan
+    explicit close()/join_thread() läckte de per iteration → efter några
+    hundra PDF:er var minnet slut och ALLT därefter (även nedladdningar)
+    misslyckades ('ok'-räknaren frös på samma tal varje körning). Vi läser
+    dessutom kön FÖRE join – en stor payload får annars matartråden att
+    blockera tills den lästs, vilket kunde få join att timeouta och döda en
+    subprocess som faktiskt LYCKATS (tappad extraktion)."""
     import multiprocessing as mp
+    import queue as _queue
     ctx = mp.get_context("fork")   # fork = pdf_bytes ärvs direkt, ingen pickling av stora bytes
     q = ctx.Queue()
     p = ctx.Process(target=_extract_worker, args=(pdf_bytes, q))
     p.start()
-    p.join(_EXTRACT_TIMEOUT_S)
-    if p.is_alive():
-        p.terminate()
-        p.join(5)
-        return None, None
-    if p.exitcode != 0:
-        return None, None   # minnestak, segfault eller annan onormal krasch i subprocessen
+    result = (None, None)
     try:
-        status, payload = q.get_nowait()
+        # Poll-loop: läs kön i korta intervall (dränerar matartråden så en
+        # STOR payload inte deadlockar) OCH upptäck tidig processdöd. En hård
+        # OOM-död kan döda subprocessen INNAN den hinner lägga ens ett
+        # felmeddelande (minnesbomben kan inte allokera för q.put) – då ska
+        # vi bryta direkt när processen är död, inte vänta ut hela timeouten.
+        deadline = time.time() + _EXTRACT_TIMEOUT_S
+        while time.time() < deadline:
+            try:
+                status, payload = q.get(timeout=0.5)
+                if status == "ok":
+                    result = payload
+                break
+            except _queue.Empty:
+                if not p.is_alive():
+                    break   # dog utan att lägga ett svar (OOM-kill etc.)
     except Exception:  # noqa: BLE001
-        return None, None
-    return payload if status == "ok" else (None, None)
+        result = (None, None)
+    finally:
+        if p.is_alive():
+            p.terminate()
+        p.join(5)
+        # Frigör Queue-resurserna (matartråd + pipe-FD:er) EXPLICIT – annars
+        # ackumuleras de över tusentals iterationer.
+        try:
+            q.close()
+            q.join_thread()
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            p.close()
+        except Exception:  # noqa: BLE001
+            pass
+    return result
 
 
 def get_pdf_text(pm_id: str, url: str) -> Optional[str]:
@@ -594,6 +627,10 @@ def _backfill_inner(segment: Optional[str] = None, limit: Optional[int] = None) 
         if i % 20 == 0:
             print(f"  ...{i}/{len(candidates)} ({ok} ok, {dl_fail} nedladdningsfel, "
                   f"{empty} tomma efter extraktion)")
+            # Extra försäkran mot minnesfragmentering på 2GB-Pi:n – tvinga en
+            # gc-cykel var 20:e PDF (billigt jämfört med _PDF_REQUEST_PAUSE_S).
+            import gc
+            gc.collect()
         time.sleep(_PDF_REQUEST_PAUSE_S)
 
     print(f"\n[mfn_pdf backfill] klart: {ok} PM fick nya fält ur PDF, {dl_fail} kunde inte laddas "
