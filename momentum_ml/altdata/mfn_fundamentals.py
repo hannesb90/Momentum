@@ -4,7 +4,9 @@ direkt ur MFN-pressmeddelandenas text: en bred kanonisk taxonomi (revenue,
 gross_profit, ebitda/adjusted_ebitda, ebit/adjusted_ebit, ebita/adjusted_ebita,
 pbt, net_profit, eps/eps_basic/eps_diluted, kassaflödesmått, balansräknings-
 poster, marginal-/avkastningsmått, utdelning, totalresultat, jämförelse-
-störande poster). Ingen AI, inget nätanrop – bara mönstermatchning mot
+störande poster, avskrivningar (för "owner earnings"), utestående aktier
+(för P/E och P/B) – de två sistnämnda lagda till för Buffett-inspirerad
+värderingsscreening). Ingen AI, inget nätanrop – bara mönstermatchning mot
 vanliga svenska OCH engelska rapporteringsfraser ("Nettoomsättningen uppgick
 till 125,3 (110,2) Mkr" ELLER "Rörelseresultatet uppgick till MSEK 724 (871)"
 – båda enhet-ordningarna stöds, se nedan).
@@ -70,7 +72,13 @@ _PCT = r"%|procent"
 # LÄGRE träffgrad än net_profit/ebit trots att omsättning nästan alltid nämns
 # – detta var orsaken, inte att siffran saknades).
 _CONNECT = (
-    r"uppgick till"
+    r"uppgick till|uppgår till"
+    # "uppgår till" (presens) – balansräkningsposter (Eget kapital, Skulder,
+    # Antal aktier, ...) är en ÖGONBLICKSBILD vid periodens slut, inte ett
+    # avslutat periodresultat, och skrivs därför ofta i presens ("Eget
+    # kapital uppgår till...") snarare än perfekt/imperfekt ("uppgick
+    # till..."). Lades till när shares_outstanding (nästan alltid presens)
+    # byggdes – gynnar även övriga balansposter som redan fanns i taxonomin.
     rf"|(?:ökade|minskade|steg|föll)(?:\s+med\s+{_NUM}\s*(?:{_PCT}))?\s+till"
     r"|blev|var|på"
 )
@@ -86,15 +94,21 @@ _LABEL_TAIL = (
 )
 
 
-def _num_pattern_post(label_alts: str, unit: str = _UNIT) -> re.Pattern:
+def _num_pattern_post(label_alts: str, unit: str = _UNIT, unit_optional: bool = False) -> re.Pattern:
     """'<etikett> uppgick till 125,3 (110,2) Mkr' – enheten kommer EFTER både
     aktuell siffra och jämförelseperioden i parentes. Jämförelseperioden är
-    valfri."""
+    valfri. unit_optional=True för fält där etiketten SJÄLV redan säger vad
+    som räknas (t.ex. "Antal aktier uppgår till 12 500 000" – "aktier"
+    upprepas normalt aldrig efter talet, till skillnad från Mkr/kr som
+    nästan alltid står ut skrivna). Görs ENDAST valfritt i post-varianten –
+    i pre-varianten (_num_pattern_pre) är enheten det enda ankaret för VAR
+    talet börjar, för riskabelt att göra valfritt där."""
+    unit_group = rf"\s*(?P<unit>{unit})" + ("?" if unit_optional else "")
     return re.compile(
         rf"\b(?:{label_alts}){_LABEL_TAIL}(?:{_CONNECT})\s+"
         rf"(?P<val>{_NUM})"
         rf"(?:\s*\(\s*(?P<cmp>{_NUM})\s*\))?"
-        rf"\s*(?P<unit>{unit})",
+        rf"{unit_group}",
         re.I,
     )
 
@@ -203,6 +217,19 @@ _VALUE_FIELDS: Dict[str, str] = {
         flex=["Jämförelsestörande poster", "Engångsposter", "Exceptionella poster"],
         fixed=["Items Affecting Comparability", "Exceptional Items", "Non-recurring Items"],
     ),
+    # Lagt till för "owner earnings" (Buffett-modellen: nettoresultat +
+    # avskrivningar − investeringar ± rörelsekapitalförändring) – utan
+    # avskrivningar går owner earnings inte att räkna ur den redan
+    # extraherade hårddatan. "Avskrivningar och nedskrivningar"/
+    # "Av- och nedskrivningar" inkluderar teknisk sett även nedskrivningar
+    # (impairment), inte bara ren avskrivning – en medveten förenkling
+    # (samma post används ändå oftast SOM D&A-raden i svenska resultat-
+    # räkningar, se AAK-exemplet i extract_table_facts-dokumentationen).
+    "depreciation_amortization": _labels(
+        flex=["Avskrivningar", "Avskrivningar och nedskrivningar", "Av- och nedskrivningar",
+              "Avskrivningar på materiella och immateriella anläggningstillgångar"],
+        fixed=["Depreciation and Amortization", "Depreciation", "Amortization", "D&A"],
+    ),
 }
 # Två mönster per fält (enhet-efter, enhet-före) – första träff vinner.
 _FIELD_PATTERNS: Dict[str, List[re.Pattern]] = {
@@ -218,6 +245,35 @@ _EPS_FIELDS: Dict[str, str] = {
 _EPS_PATTERNS: Dict[str, List[re.Pattern]] = {
     field: [_num_pattern_post(labels, _EPS_UNIT), _num_pattern_pre(labels, _EPS_UNIT)]
     for field, labels in _EPS_FIELDS.items()
+}
+
+# Utestående aktier – för P/E och P/B (Buffett-modellen). EGET fält, INTE
+# _VALUE_FIELDS: ett aktieantal är inget penningvärde och har aldrig ett
+# Mkr/MSEK-liknande enhetsord, bara "aktier"/"shares" – kräver därför sitt
+# eget enhetsmönster, precis som EPS har _EPS_UNIT i stället för _UNIT.
+# OVERIFIERAT ännu mot skarp text (samma status som modulens övriga
+# utökade taxonomi tills selftest/misses körts om) – "Genomsnittligt antal
+# aktier" (används för EPS-beräkning) och "Antal aktier vid periodens
+# utgång" (faktiskt utestående, rätt för P/E-jämförelse mot ett aktuellt
+# pris) särskiljs INTE här, en medveten förenkling: de skiljer sig bara
+# marginellt om inga nyemissioner/återköp skett under perioden.
+_SHARE_UNIT = r"aktier|shares"
+_SHARE_FIELDS: Dict[str, str] = {
+    "shares_outstanding": _labels(
+        flex=["Antal aktier", "Antal utestående aktier", "Totalt antal aktier",
+              "Antal registrerade aktier", "Genomsnittligt antal aktier"],
+        fixed=["Number of Shares", "Shares Outstanding", "Outstanding Shares",
+               "Total Number of Shares", "Weighted Average Number of Shares"],
+    ),
+}
+_SHARE_PATTERNS: Dict[str, List[re.Pattern]] = {
+    # unit_optional=True i post-varianten: "Antal aktier uppgår till
+    # 12 500 000" upprepar aldrig "aktier" efter talet – etiketten säger
+    # redan vad som räknas. Pre-varianten ("aktier 12 500 000", ovanligt i
+    # svensk text) behåller kravet på enhetsordet som ankare.
+    field: [_num_pattern_post(labels, _SHARE_UNIT, unit_optional=True),
+            _num_pattern_pre(labels, _SHARE_UNIT)]
+    for field, labels in _SHARE_FIELDS.items()
 }
 
 
@@ -285,6 +341,9 @@ _TABLE_FIELD_PATTERNS: Dict[str, re.Pattern] = {
 _TABLE_EPS_PATTERNS: Dict[str, re.Pattern] = {
     field: _table_row_pattern(labels) for field, labels in _EPS_FIELDS.items()
 }
+_TABLE_SHARE_PATTERNS: Dict[str, re.Pattern] = {
+    field: _table_row_pattern(labels) for field, labels in _SHARE_FIELDS.items()
+}
 
 
 def _parse_table_num(s: str) -> float:
@@ -302,7 +361,7 @@ def extract_table_facts(text: str) -> Dict[str, dict]:
     if not text:
         return {}
     out: Dict[str, dict] = {}
-    for field, pat in {**_TABLE_FIELD_PATTERNS, **_TABLE_EPS_PATTERNS}.items():
+    for field, pat in {**_TABLE_FIELD_PATTERNS, **_TABLE_EPS_PATTERNS, **_TABLE_SHARE_PATTERNS}.items():
         m = pat.search(text)
         if not m:
             continue
@@ -397,13 +456,10 @@ def _first_match(patterns: List[re.Pattern], text: str) -> Optional[re.Match]:
     return None
 
 
-def extract_hard_facts(text: str) -> Dict[str, dict]:
-    """{"revenue": {"value": 125.3, "unit": "Mkr", "prior_period": 110.2}, ...}
-    Tomt dict om inget matchar (vanligast för PM som bara länkar en PDF)."""
-    if not text:
-        return {}
-    out: Dict[str, dict] = {}
-    for field, patterns in _FIELD_PATTERNS.items():
+def _apply_patterns(out: Dict[str, dict], patterns_by_field: Dict[str, List[re.Pattern]], text: str) -> None:
+    """Delad loop-kropp för _FIELD_PATTERNS/_EPS_PATTERNS/_SHARE_PATTERNS –
+    samma post/pre-mönsterpar, samma defensiva _parse_num-hantering."""
+    for field, patterns in patterns_by_field.items():
         m = _first_match(patterns, text)
         if not m:
             continue
@@ -421,21 +477,17 @@ def extract_hard_facts(text: str) -> Dict[str, dict]:
             except ValueError:
                 pass
         out[field] = d
-    for field, patterns in _EPS_PATTERNS.items():
-        m = _first_match(patterns, text)
-        if not m:
-            continue
-        try:
-            val = _parse_num(m.group("val"))
-        except ValueError:
-            continue
-        d = {"value": val, "unit": m.group("unit")}
-        if m.group("cmp"):
-            try:
-                d["prior_period"] = _parse_num(m.group("cmp"))
-            except ValueError:
-                pass
-        out[field] = d
+
+
+def extract_hard_facts(text: str) -> Dict[str, dict]:
+    """{"revenue": {"value": 125.3, "unit": "Mkr", "prior_period": 110.2}, ...}
+    Tomt dict om inget matchar (vanligast för PM som bara länkar en PDF)."""
+    if not text:
+        return {}
+    out: Dict[str, dict] = {}
+    _apply_patterns(out, _FIELD_PATTERNS, text)
+    _apply_patterns(out, _EPS_PATTERNS, text)
+    _apply_patterns(out, _SHARE_PATTERNS, text)
     for field, pat in _PCT_PATTERNS.items():
         m = pat.search(text)
         if not m:
