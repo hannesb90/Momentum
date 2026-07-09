@@ -1443,6 +1443,46 @@ h2 {
 .riskon-btn--fire.riskon-btn--active {
   background: linear-gradient(135deg, #f59e0b, #ef4444);
 }
+/* Rank-modellväljaren (Balanserad/Buffett/Momentum) – speglar riskon-toggle:n. */
+.model-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.model-picker__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 2px;
+}
+.model-picker__btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.model-picker__btn--active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: #fff;
+}
+.model-picker__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.model-picker__hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  flex-basis: 100%;
+}
 .riskon-warn {
   margin: 8px 0 12px;
   padding: 9px 12px;
