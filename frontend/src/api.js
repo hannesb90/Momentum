@@ -84,6 +84,10 @@ export const api = {
   nextBuy: (amount) => getJson(`/next-buy${amount ? `?amount=${amount}` : ''}`),
   portfolioTarget: () => getJson('/portfolio-target'),
   saveTarget: (target) => postJson('/portfolio-target', target),
+  // Rank-modell för "nästa köp" (balanced/buffett/momentum). Ren vy-inställning
+  // – ingen omkörning krävs vid växling (all data laddas alltid).
+  portfolioModel: () => getJson('/portfolio-model'),
+  setPortfolioModel: (model) => postJson('/portfolio-model', { model }),
   universe: () => getJson('/universe'),   // sökbara värdepapper (sök/filtrera vid innehav)
   saveHoldings: (holdings, amount) => postJson('/holdings', { holdings, amount }),
   exitSignals: () => getJson('/exit-signals'),

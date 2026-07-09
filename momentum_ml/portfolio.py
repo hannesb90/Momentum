@@ -83,6 +83,16 @@ def _num(v):
         return None
 
 
+def _signed_num(v):
+    """Som _num men BEHÅLLER negativa/noll-värden – för storheter där ett
+    negativt tal är meningsfullt (ROE, tillväxt), till skillnad från kurser/
+    värden där _num:s 'kasta ≤0' är rätt."""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
 def _latest_closes(include_quotes: bool = True) -> dict:
     """{ticker: senaste stängningskurs i SEK}. Källor i ordning:
       1. Segmentens prices.csv (modellens universum, skrivs nattligt).
@@ -673,6 +683,12 @@ def _load_scores() -> dict:
                 e["value_zone"] = (r.get("zone") or "").strip()
                 e["meets_roe_bar"] = str(r.get("meets_roe_bar")).strip().lower() == "true"
                 e["meets_debt_bar"] = str(r.get("meets_debt_bar")).strip().lower() == "true"
+                # OBS: _num() slänger negativa tal (den är byggd för kurser/
+                # värden) – ROE och tillväxt KAN vara negativa och är då just
+                # det säljvakten bryr sig om, så parsa dem direkt med float().
+                e["roe"] = _signed_num(r.get("roe"))
+                e["rev_growth_yoy"] = _signed_num(r.get("rev_growth_yoy"))
+                e["has_value_data"] = True
         except Exception:  # noqa: BLE001
             pass
 
@@ -1008,6 +1024,27 @@ def _takeprofit(rows) -> list:
             sc = scores.get(tk, {})
             if sc.get("zone") == "dyr":
                 confirms.append("värdering: zon 'dyr'")
+            # ── CASET HAR ÄNDRATS (fundamenta) – Buffett-säljvaktens kärna ────
+            # "Sälj när caset ändras": ett bolag man köpt för dess kvalitet ska
+            # säljas när kvaliteten FALLER, inte bara när kursen rusat. Kräver
+            # value_screener-data (has_value_data) – utan den är dessa triggers
+            # tysta (påverkar inte innehav vi ännu inte kunnat värdera). ÄRLIGT:
+            # vi jämför mot BARREN idag, inte mot bolagets skick när du köpte
+            # (vi sparar inte ingångs-fundamenta) – så detta fångar "klarar inte
+            # längre kvalitetskraven", vilket är den relevanta säljsignalen även
+            # om vi inte kan säga exakt när övergången skedde.
+            if sc.get("has_value_data"):
+                if sc.get("value_zone") == "dyr":
+                    confirms.append("caset: owner-earnings-värdering nu 'dyr'")
+                if sc.get("meets_roe_bar") is False:
+                    roe = sc.get("roe")
+                    confirms.append(f"caset: ROE {roe:.0%} under kvalitetsbarren"
+                                    if roe is not None else "caset: ROE under kvalitetsbarren")
+                if sc.get("meets_debt_bar") is False:
+                    confirms.append("caset: skuldsättning över trygghetsbarren")
+                g = sc.get("rev_growth_yoy")
+                if g is not None and g < 0:
+                    confirms.append(f"caset: intäkterna krymper ({g:+.0%} YoY)")
             fl = flows.get(tk, {})
             try:
                 cmf = float(fl.get("cmf_13w"))   # _num duger inte: den slänger negativa tal
