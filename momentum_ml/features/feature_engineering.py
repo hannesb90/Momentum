@@ -347,6 +347,111 @@ def attach_categorical_features(
     return all_features
 
 
+def _load_fundamentals_growth(segment: Optional[str] = None) -> pd.DataFrame:
+    """
+    Läser results*/fundamentals_from_mfn.csv + fundamentals_from_pdf.csv
+    (byggda av altdata/mfn_fundamentals.py resp. altdata/mfn_pdf.py) och
+    räknar ut YoY-tillväxt per rapport. _prior-kolumnen är enligt svensk
+    IR-konvention SAMMA PERIOD FÖREGÅENDE ÅR (t.ex. Q1 2024:s revenue_prior
+    = Q1 2023:s revenue) – tillväxten går alltså att räkna direkt ur en
+    enskild rapportrad, ingen historisk hopslagning mot en tidigare rapport
+    krävs.
+
+    De två CSV:erna är disjunkta by construction: fundamentals_from_pdf.csv
+    innehåller BARA PM där extract_hard_facts() gav NOLL fält på press-
+    texten (annars hade PDF-backfillen aldrig körts för det PM:et) – ingen
+    dubblettrisk vid sammanslagning.
+
+    Saknas filerna (inte genererade ännu, eller körs i en miljö utan
+    altdata-pipelinen) returneras en tom DataFrame – growth-featuresen blir
+    då bara NaN för alla tickers i stället för en krasch.
+    """
+    seg = config.SEGMENTS.get(segment) if segment else None
+    seg = seg or config.SEGMENTS[config.DEFAULT_SEGMENT]
+    results_dir = Path(config.anchor(seg["results_dir"]))
+
+    frames = []
+    for fname in ("fundamentals_from_mfn.csv", "fundamentals_from_pdf.csv"):
+        p = results_dir / fname
+        if p.exists():
+            try:
+                frames.append(pd.read_csv(p))
+            except Exception:  # noqa: BLE001
+                pass
+    cols = ["ticker", "published", "rev_growth_yoy", "eps_growth_yoy"]
+    if not frames:
+        return pd.DataFrame(columns=cols)
+
+    df = pd.concat(frames, ignore_index=True)
+    if "ticker" not in df.columns or "published" not in df.columns:
+        return pd.DataFrame(columns=cols)
+    df["published"] = pd.to_datetime(df["published"], errors="coerce", utc=True).dt.tz_localize(None)
+    df = df.dropna(subset=["ticker", "published"])
+
+    def _growth(value_col: str, prior_col: str) -> pd.Series:
+        if value_col not in df.columns or prior_col not in df.columns:
+            return pd.Series(np.nan, index=df.index)
+        val, prior = df[value_col], df[prior_col]
+        g = (val - prior) / prior.abs()
+        g[(prior == 0) | prior.isna() | val.isna()] = np.nan
+        return g
+
+    df["rev_growth_yoy"] = _growth("revenue", "revenue_prior")
+    # EPS: olika bolag rapporterar olika varianter (eps/eps_basic/eps_diluted)
+    # – ta det som faktiskt finns, prioritetsordning eps > eps_basic > eps_diluted.
+    eps_g = _growth("eps", "eps_prior")
+    for value_col, prior_col in (("eps_basic", "eps_basic_prior"), ("eps_diluted", "eps_diluted_prior")):
+        eps_g = eps_g.where(eps_g.notna(), _growth(value_col, prior_col))
+    df["eps_growth_yoy"] = eps_g
+
+    out = df[cols].dropna(subset=["rev_growth_yoy", "eps_growth_yoy"], how="all")
+    return out.sort_values(["ticker", "published"])
+
+
+def attach_fundamentals_features(
+    all_features: Dict[str, pd.DataFrame],
+    segment: Optional[str] = None,
+) -> Dict[str, pd.DataFrame]:
+    """
+    Kopplar in tillväxt-features (rev_growth_yoy, eps_growth_yoy) från MFN-
+    rapporternas hårddata, samma mönster som attach_categorical_features()
+    för sector/cap_tier – anropas EFTER build_all_features(), FÖRE
+    to_model_df(), så samma all_features-dict används av både träning och
+    live-prediktion.
+
+    POINT-IN-TIME-KRITISKT: en given vecka får bara känna till rapporter
+    som FAKTISKT var publicerade senast den veckan (backward as-of-join på
+    'published', pd.merge_asof direction='backward') – annars läcker
+    framtida rapportsiffror in i backtestet. 'published' är MFN:s faktiska
+    publiceringstidsstämpel (inte räkenskapsårets slutdatum), så ingen
+    extra säkerhetsmarginal behövs (till skillnad från den äldre, årsvisa
+    results/fundamentals.csv i tune_fundamentals.py, som bara har
+    räkenskapsår och därför måste GISSA ett publiceringsdatum).
+
+    Saknar en ticker helt rapportdata (inga träffar, eller filerna saknas)
+    blir kolumnerna NaN genom hela historiken – konsekvent med hur alla
+    andra FEATURE_COLS hanterar saknade värden (fillna(0) sker centralt i
+    models/lgbm_model.py/lstm_model.py vid X-uppbyggnad, inte här).
+    """
+    fund = _load_fundamentals_growth(segment)
+    by_ticker = ({tk: g.drop(columns="ticker") for tk, g in fund.groupby("ticker")}
+                 if len(fund) else {})
+
+    for ticker, feat in all_features.items():
+        g = by_ticker.get(ticker)
+        if g is None or g.empty:
+            feat["rev_growth_yoy"] = np.nan
+            feat["eps_growth_yoy"] = np.nan
+            continue
+        left = feat.index.to_frame(index=False, name="Date").sort_values("Date")
+        joined = pd.merge_asof(left, g.sort_values("published"),
+                                left_on="Date", right_on="published", direction="backward")
+        joined = joined.set_index("Date")
+        feat["rev_growth_yoy"] = joined["rev_growth_yoy"].reindex(feat.index)
+        feat["eps_growth_yoy"] = joined["eps_growth_yoy"].reindex(feat.index)
+    return all_features
+
+
 def to_model_df(all_features: Dict[str, pd.DataFrame]) -> pd.DataFrame:
     """
     Slår ihop alla tickers till ett long-format df med 'ticker'-kolumn.
@@ -397,6 +502,10 @@ FEATURE_COLS = [
     "rank_change_4w", "resid_mom",
     # Klassificering (ordinal-kodad, fast lista i config.py)
     "sector_code", "cap_tier_code",
+    # Fundamenta (YoY-tillväxt ur MFN-rapporternas hårddata, point-in-time
+    # as-of-kopplad – se attach_fundamentals_features()). NaN tills bolagets
+    # första kända rapport, fillna(0) sker centralt i models/lgbm_model.py.
+    "rev_growth_yoy", "eps_growth_yoy",
 ]
 
 # Ablation: släpp namngivna features ur modellens INDATA genom HELA pipelinen
