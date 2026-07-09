@@ -137,13 +137,20 @@ def _download_pdf(url: str) -> Optional[bytes]:
         return None
 
 
-def extract_pdf_text(pdf_bytes: bytes) -> str:
-    """Text ur de första _MAX_PDF_PAGES sidorna. En enskild trasig sida ska
-    inte stoppa hela dokumentet – hoppa över den och fortsätt."""
+def extract_pdf_text(pdf_bytes: bytes):
+    """Text ur de första _MAX_PDF_PAGES sidorna + TOTALT sidantal i
+    dokumentet (oavsett sidkapet). En enskild trasig sida ska inte stoppa
+    hela dokumentet – hoppa över den och fortsätt. Sidantalet används av
+    diagnose_empty() för att skilja "för kort för att någonsin ha varit en
+    riktig rapport" (t.ex. bara en duplicerad presstext utan bilaga, en
+    riktig rapport är i praktiken aldrig 1 sida) från "tillräckligt lång
+    men ändå inget extraherat" (ett fras-/tabellmönster värt att undersöka
+    vidare) – kolla ett riktigt AAK-exempel som ledde fram till detta."""
     if pdfplumber is None:
         raise RuntimeError("paketet 'pdfplumber' saknas – pip install pdfplumber")
     out = []
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        n_pages = len(pdf.pages)
         for page in pdf.pages[:_MAX_PDF_PAGES]:
             try:
                 t = page.extract_text()
@@ -151,7 +158,7 @@ def extract_pdf_text(pdf_bytes: bytes) -> str:
                 t = None
             if t:
                 out.append(t)
-    return "\n".join(out)
+    return "\n".join(out), n_pages
 
 
 # Två oväntade Pi-omstarter i rad under backfill-körningar (2026-07-09),
@@ -180,8 +187,8 @@ def _extract_worker(pdf_bytes: bytes, q) -> None:
                                 (_EXTRACT_MEM_LIMIT_BYTES, _EXTRACT_MEM_LIMIT_BYTES))
         except Exception:  # noqa: BLE001 – t.ex. plattform utan RLIMIT_AS-stöd
             pass
-        text = extract_pdf_text(pdf_bytes)
-        q.put(("ok", text))
+        text, n_pages = extract_pdf_text(pdf_bytes)
+        q.put(("ok", (text, n_pages)))
     except BaseException as e:  # noqa: BLE001 – inkl. MemoryError vid taket
         try:
             q.put(("error", str(e)[:200]))
@@ -189,11 +196,12 @@ def _extract_worker(pdf_bytes: bytes, q) -> None:
             pass
 
 
-def extract_pdf_text_isolated(pdf_bytes: bytes) -> Optional[str]:
+def extract_pdf_text_isolated(pdf_bytes: bytes):
     """extract_pdf_text() körd i en isolerad subprocess med minnestak+timeout
-    (se motivering ovan). Returnerar None om subprocessen kraschar, dödas av
-    minnestaket, eller hänger längre än _EXTRACT_TIMEOUT_S – anropande kod
-    (get_pdf_text) behandlar det precis som ett nedladdnings-/öppningsfel."""
+    (se motivering ovan). Returnerar (text, n_pages), eller (None, None) om
+    subprocessen kraschar, dödas av minnestaket, eller hänger längre än
+    _EXTRACT_TIMEOUT_S – anropande kod (get_pdf_text) behandlar det precis
+    som ett nedladdnings-/öppningsfel."""
     import multiprocessing as mp
     ctx = mp.get_context("fork")   # fork = pdf_bytes ärvs direkt, ingen pickling av stora bytes
     q = ctx.Queue()
@@ -203,14 +211,14 @@ def extract_pdf_text_isolated(pdf_bytes: bytes) -> Optional[str]:
     if p.is_alive():
         p.terminate()
         p.join(5)
-        return None
+        return None, None
     if p.exitcode != 0:
-        return None   # minnestak, segfault eller annan onormal krasch i subprocessen
+        return None, None   # minnestak, segfault eller annan onormal krasch i subprocessen
     try:
         status, payload = q.get_nowait()
     except Exception:  # noqa: BLE001
-        return None
-    return payload if status == "ok" else None
+        return None, None
+    return payload if status == "ok" else (None, None)
 
 
 def get_pdf_text(pm_id: str, url: str) -> Optional[str]:
@@ -234,15 +242,19 @@ def get_pdf_text(pm_id: str, url: str) -> Optional[str]:
                                    "schema": _PDF_TEXT_SCHEMA_VERSION}), encoding="utf-8")
         return None
     # Isolerad subprocess (minnestak+timeout) i stället för direktanrop – se
-    # extract_pdf_text_isolated()-motiveringen ovan. Returnerar None om
-    # subprocessen krascha/dödas/hänger, precis som ett extraktionsfel.
-    text = extract_pdf_text_isolated(pdf_bytes)
+    # extract_pdf_text_isolated()-motiveringen ovan. Returnerar (None, None)
+    # om subprocessen krascha/dödas/hänger, precis som ett extraktionsfel.
+    text, n_pages = extract_pdf_text_isolated(pdf_bytes)
     if text is None:
         cp.write_text(json.dumps({"text": None, "error": "extraction_crashed_or_oom_or_timeout",
                                    "schema": _PDF_TEXT_SCHEMA_VERSION}), encoding="utf-8")
         return None
-    cp.write_text(json.dumps({"text": text[:_MAX_CACHED_TEXT_CHARS], "schema": _PDF_TEXT_SCHEMA_VERSION},
-                              ensure_ascii=False), encoding="utf-8")
+    # page_count cachas UTÖVER schema-fältet, inte som en del av det – en
+    # ändring här ska inte tvinga fram en ny omkörning av redan lyckade
+    # extraktioner (bara nya poster får sidantalet med sig, se
+    # diagnose_empty() som hanterar att äldre poster kan sakna det).
+    cp.write_text(json.dumps({"text": text[:_MAX_CACHED_TEXT_CHARS], "schema": _PDF_TEXT_SCHEMA_VERSION,
+                               "page_count": n_pages}, ensure_ascii=False), encoding="utf-8")
     return text
 
 
@@ -269,6 +281,17 @@ def diagnose_empty(segment: Optional[str] = None, n: int = 5) -> None:
     mellan lyckade och tomma resultat – nära-noll text = troligen en
     skannad bild utan textlager (olösbart utan OCR); mycket text men ändå
     noll fält = ett fras-/tabellmönster vi missar (potentiellt fixbart).
+
+    Delar även upp TOMMA efter PDF:ens sidantal: en riktig rapport är i
+    praktiken aldrig 1 sida (bekräftade exempel: en PDF som bara duplicerar
+    presstexten, ingen faktisk rapport bifogad) – <2 sidor räknas därför
+    som sannolikt olösbart via just det PM:et, i stället för ett regex-/
+    tabellmönster värt att jaga. Manuella exempel visas bara för de som ÄR
+    tillräckligt långa, så du inte slösar tid på att kolla en PDF som
+    aldrig innehöll siffror. Sidantal saknas för poster extraherade före
+    denna ändring (ingen omkörning tvingas fram bara för detta) – syns som
+    "okänt sidantal".
+
     Läser BARA redan körd cache – triggar inga nya nedladdningar."""
     items = _report_items(segment)
     miss_items = [it for it in items if not extract_hard_facts(it.get("text") or "")]
@@ -280,6 +303,7 @@ def diagnose_empty(segment: Optional[str] = None, n: int = 5) -> None:
     textlens_empty: List[int] = []
     empty_examples = []
     not_yet_processed = dl_failed = 0
+    short_pdf = long_pdf = unknown_pages = 0
 
     for it in candidates:
         att = pick_attachment(it["attachments"])
@@ -294,11 +318,20 @@ def diagnose_empty(segment: Optional[str] = None, n: int = 5) -> None:
             continue
         if extract_hard_facts(text) or extract_table_facts(text):
             by_year_ok[year] += 1
-        else:
-            by_year_empty[year] += 1
-            textlens_empty.append(len(text))
+            continue
+        by_year_empty[year] += 1
+        textlens_empty.append(len(text))
+        n_pages = cached.get("page_count")
+        if n_pages is None:
+            unknown_pages += 1
             if len(empty_examples) < n:
-                empty_examples.append((it, att, text))
+                empty_examples.append((it, att, text, None))
+        elif n_pages < 2:
+            short_pdf += 1   # sannolikt aldrig en riktig rapport - visas inte som exempel
+        else:
+            long_pdf += 1
+            if len(empty_examples) < n:
+                empty_examples.append((it, att, text, n_pages))
 
     print(f"[mfn_pdf diagnose_empty] {len(candidates)} kandidater totalt, "
           f"{not_yet_processed} inte körda ännu, {dl_failed} nedladdningsfel")
@@ -315,12 +348,18 @@ def diagnose_empty(segment: Optional[str] = None, n: int = 5) -> None:
         near_zero = sum(1 for l in textlens_empty if l < 200)
         print(f"\nTextlängd för TOMMA: snitt {avg_len:.0f} tecken, {near_zero}/{len(textlens_empty)} "
               f"under 200 tecken (nära-noll text = troligen skannad bild, olösbart utan OCR)")
+        print(f"\nAv {len(textlens_empty)} TOMMA efter sidantal: {short_pdf} har <2 sidor (sannolikt "
+              f"ALDRIG en riktig rapport, olösbart via just det PM:et), {long_pdf} har >=2 sidor "
+              f"(potentiellt ett regex-/tabellmönster värt att jaga), {unknown_pages} okänt sidantal "
+              f"(äldre cache-post från före sidantals-spårningen)")
 
     if empty_examples:
-        print(f"\nExempel på TOMMA (för manuell koll):")
-        for it, att, text in empty_examples:
+        print(f"\nExempel på TOMMA (bara >=2 sidor eller okänt sidantal – "
+              f"<2-siders-fall visas inte, sannolikt olösbara):")
+        for it, att, text, n_pages in empty_examples:
+            pages_str = f"{n_pages} sidor" if n_pages is not None else "okänt sidantal"
             print(f"\n  {it.get('ticker')} {str(it.get('published', ''))[:10]} "
-                  f"'{it.get('title', '')[:60]}'")
+                  f"'{it.get('title', '')[:60]}' ({pages_str})")
             print(f"  PDF: {att['url']}")
             print(f"  Extraherad text ({len(text)} tecken): {text[:300]!r}")
 
