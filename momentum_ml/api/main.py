@@ -279,6 +279,24 @@ async def set_portfolio_target(request: Request):
     return _clean({"target": pf.save_target(body)})
 
 
+@app.get("/api/portfolio-model")
+def get_portfolio_model():
+    """Vald rank-modell för 'nästa köp' (balanced/buffett/momentum) + valbara.
+    Ren vy-inställning: ALL underliggande data laddas alltid, så växling kräver
+    ingen omkörning."""
+    import portfolio as pf
+    return _clean({"model": pf.active_model(), "available": list(pf._MODEL_WEIGHTS.keys())})
+
+
+@app.post("/api/portfolio-model")
+async def set_portfolio_model(request: Request):
+    """Sätter vald rank-modell. Body: {model: 'balanced'|'buffett'|'momentum'}.
+    Okänt namn ignoreras (behåller nuvarande)."""
+    import portfolio as pf
+    body = await request.json()
+    return _clean({"model": pf.set_active_model(str(body.get("model", "")))})
+
+
 @app.post("/api/holdings")
 async def save_portfolio_holdings(request: Request):
     """Sparar hela innehavslistan (skriver cache/portfolio_holdings.csv) och

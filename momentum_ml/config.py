@@ -570,6 +570,17 @@ PORTFOLIO_TARGET_FILE = "cache/portfolio_target.json"
 # vyn; frontend kan skicka valfritt belopp.
 PORTFOLIO_CORE_ETF = ("IUSQ.DE", "iShares MSCI ACWI (hela världen)")
 NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
+# Aktiv rank-modell för "nästa köp" (köp-vakten). Väljer bara viktprofilen i
+# _unified_rank() – ALL underliggande data (kvalitet/kvant/value/momentum)
+# laddas alltid, så man kan växla fram och tillbaka utan omkörning. Sätts av
+# frontend via GET/POST /api/portfolio-model, persisteras i cache/.
+#   "balanced" – köp-och-behåll-mixen som gällde innan modellvalet fanns
+#                (kvalitet 45% tyngst, momentum bara timing-tiebreak)
+#   "buffett"  – långsiktigt ägande: value_screener + kvalitet dominerar,
+#                momentum nedviktat, hård grind på ROE/skuld-barren
+#   "momentum" – momentum-modellens P(upp) tyngst (den ursprungliga andan)
+PORTFOLIO_MODEL_DEFAULT = "balanced"
+PORTFOLIO_MODEL_FILE = "cache/portfolio_model.json"
 # Min-köp: en enskild post under detta är inte värd courtage/spread. Sådana
 # satellit-poster viks in i kärnan denna månad och byggs nästa månad när gapet
 # blivit stort nog för en vettig affär (fyll-mot-mål ackumulerar ändå).
