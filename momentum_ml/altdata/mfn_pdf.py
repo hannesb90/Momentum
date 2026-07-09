@@ -243,6 +243,18 @@ def _fetch_extract_worker(url: str, q) -> None:
     stället för att fragmentera den långlivade förälderns heap iteration efter
     iteration tills 2GB-Pi:n är slut (det var därför även NEDLADDNINGAR – som
     förr skedde i föräldern – började misslyckas och 'ok' frös)."""
+    # Tysta subprocessens stderr: en krypterad/trasig PDF som slår i
+    # minnestaket ger pdfminer-tracebacks + en Rust-panik ("PyObject pointer
+    # is null" från cryptography:s AES-avkodare) rakt till stderr NÄR barnet
+    # dör – ofarligt (felet fångas ändå via kön nedan) men översvämmar
+    # föräldern-loggen så framstegsraderna drunknar. Omdirigera till /dev/null;
+    # den strukturerade felorsaken går fortfarande via q.put nedan.
+    try:
+        import os as _os
+        _devnull = _os.open(_os.devnull, _os.O_WRONLY)
+        _os.dup2(_devnull, 2)   # fd 2 = stderr
+    except Exception:  # noqa: BLE001
+        pass
     try:
         try:
             import resource
