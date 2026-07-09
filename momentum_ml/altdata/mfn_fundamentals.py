@@ -257,7 +257,12 @@ _EPS_PATTERNS: Dict[str, List[re.Pattern]] = {
 # utgång" (faktiskt utestående, rätt för P/E-jämförelse mot ett aktuellt
 # pris) särskiljs INTE här, en medveten förenkling: de skiljer sig bara
 # marginellt om inga nyemissioner/återköp skett under perioden.
-_SHARE_UNIT = r"aktier|shares"
+# "miljoner aktier"/"million shares"-varianterna MÅSTE stå FÖRE de bara
+# "aktier"/"shares" i alternationen – re provar alternativ vänster-till-
+# höger och tar den FÖRSTA som matchar, inte den längsta, så utan denna
+# ordning skulle "aktier" i "12,5 miljoner aktier" matchas isolerat och
+# "miljoner" aldrig upptäckas (se skalningen i extract_hard_facts()).
+_SHARE_UNIT = r"miljoner\s+aktier|miljoner\s+shares|million\s+shares|aktier|shares"
 _SHARE_FIELDS: Dict[str, str] = {
     "shares_outstanding": _labels(
         flex=["Antal aktier", "Antal utestående aktier", "Totalt antal aktier",
@@ -488,6 +493,17 @@ def extract_hard_facts(text: str) -> Dict[str, dict]:
     _apply_patterns(out, _FIELD_PATTERNS, text)
     _apply_patterns(out, _EPS_PATTERNS, text)
     _apply_patterns(out, _SHARE_PATTERNS, text)
+    # "12,5 miljoner aktier" – skala upp x1e6 (regexen fångade bara den råa
+    # 12,5:an, "miljoner" satt i enhetsgruppen). Görs här, inte i den delade
+    # _apply_patterns(), eftersom bara aktiefält har den här skalfrågan.
+    for field in _SHARE_FIELDS:
+        d = out.get(field)
+        unit = str(d.get("unit") or "").lower() if d else ""
+        if d and ("miljon" in unit or "million" in unit):
+            d["value"] *= 1_000_000
+            if "prior_period" in d:
+                d["prior_period"] *= 1_000_000
+            d["unit"] = "aktier"
     for field, pat in _PCT_PATTERNS.items():
         m = pat.search(text)
         if not m:
