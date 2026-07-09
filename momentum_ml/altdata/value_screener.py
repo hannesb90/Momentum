@@ -37,8 +37,8 @@ Kräver att fundamentals_from_mfn.csv/fundamentals_from_pdf.csv redan
 genererats för segmentet (mfn_fundamentals.py extract / mfn_pdf.py
 backfill) – annars blir kortlistan tom, ingen krasch.
 
-    python altdata/value_screener.py score large
-    python altdata/value_screener.py score small
+    python altdata/value_screener.py score large       # bygg value_shortlist.csv
+    python altdata/value_screener.py coverage large     # vilka bolag saknar vi värde för?
 """
 import sys
 import csv
@@ -59,7 +59,12 @@ def _num(v):
     try:
         if v is None or v == "":
             return None
-        return float(v)
+        f = float(v)
+        # pandas fyller saknade kolumner med NaN (float('nan') är INTE None
+        # och passerar annars som ett "värde" → ett bolag utan equity såg
+        # felaktigt komplett ut i coverage, och NaN skulle poisona ROE/owner
+        # earnings). NaN != NaN → detta fångar det.
+        return None if f != f else f
     except (TypeError, ValueError):
         return None
 
@@ -259,11 +264,104 @@ def score(segment: Optional[str] = None) -> None:
           f"okänd för dem tills fler perioder finns i fundamentals-CSV:erna.")
 
 
+# Nyckelfält per härlett mått – för coverage-rapporten. Ett bolag kan inte
+# få ett value_score på ett mått vars indata saknas, så vi listar exakt
+# vad som fattas per bolag (så du vet vad du ev. behöver fylla manuellt).
+_METRIC_INPUTS = {
+    "ROE": ["net_profit", "equity"],
+    "Skuld/EK": ["liabilities", "equity"],
+    "Owner earnings": ["net_profit"],            # avskrivningar valfria (default 0)
+    "Tillväxt": ["revenue", "revenue_prior"],
+    "P/E-underlag": ["shares_outstanding"],
+}
+
+
+def coverage(segment: Optional[str] = None) -> None:
+    """Korsar HELA segmentets universum mot den extraherade fundamentals-datan
+    och visar VILKA BOLAG vi saknar värde för – så du vet vad som ev. måste
+    fyllas manuellt eller hämtas om (mfn_fetch/backfill). Tre kategorier:
+      1. INGEN rapportdata alls (inte i fundamentals-CSV:erna) – troligen
+         PM som bara länkat en PDF vi inte lyckats extrahera, eller bolag
+         utan MFN-cache.
+      2. HAR data men saknar ett nyckelfält för ett mått (t.ex. har
+         net_profit men inte equity → ingen ROE).
+    Skriver results*/value_coverage.csv med per-bolag-status. Inget nätanrop."""
+    from data.data_loader import load_sweden_universe
+
+    seg_name = segment or config.DEFAULT_SEGMENT
+    seg_cfg = config.SEGMENTS.get(seg_name, config.SEGMENTS[config.DEFAULT_SEGMENT])
+    tickers, sector_map, cap_map, name_map = load_sweden_universe(min_market_cap=seg_cfg["market_cap"])
+    # Fonder har inga bolagsfundamenta – exkludera (samma logik som quality_screener).
+    universe = [t for t in tickers
+                if cap_map.get(t) != "Fond" and sector_map.get(t) != "Fond"]
+
+    fund = _load_fundamentals(seg_name)
+
+    def _present(latest: dict, field: str) -> bool:
+        return _num(latest.get(field)) is not None
+
+    rows = []
+    no_data, partial, full = [], [], []
+    from collections import Counter
+    missing_field_counts: Counter = Counter()
+
+    for t in universe:
+        name = name_map.get(t, t)
+        entry = fund.get(t)
+        if entry is None:
+            no_data.append((t, name))
+            rows.append({"ticker": t, "name": name, "status": "ingen data",
+                         "n_reports": 0, "missing": "ALLT"})
+            continue
+        latest = entry["latest"]
+        missing_metrics = []
+        for metric, fields in _METRIC_INPUTS.items():
+            miss = [f for f in fields if not _present(latest, f)]
+            if miss:
+                missing_metrics.append(f"{metric} (saknar {', '.join(miss)})")
+                for f in miss:
+                    missing_field_counts[f] += 1
+        status = "komplett" if not missing_metrics else "delvis"
+        (full if not missing_metrics else partial).append((t, name))
+        rows.append({"ticker": t, "name": name, "status": status,
+                     "n_reports": entry["n_reports"], "missing": "; ".join(missing_metrics)})
+
+    out = Path(config.anchor(seg_cfg["results_dir"])) / "value_coverage.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    import csv as _csv
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=["ticker", "name", "status", "n_reports", "missing"])
+        w.writeheader()
+        w.writerows(rows)
+
+    n = len(universe)
+    print(f"[value_screener coverage] segment '{seg_name}': {n} bolag (ex fonder)")
+    print(f"  komplett (alla mått beräkningsbara): {len(full)} ({len(full)/max(n,1):.0%})")
+    print(f"  delvis (data finns men något mått saknar indata): {len(partial)} ({len(partial)/max(n,1):.0%})")
+    print(f"  INGEN data alls: {len(no_data)} ({len(no_data)/max(n,1):.0%})")
+
+    if missing_field_counts:
+        print("\n  Vanligast saknade fält (bland dem som HAR någon data):")
+        for field, c in missing_field_counts.most_common():
+            print(f"    {field:<24} saknas för {c} bolag")
+
+    if no_data:
+        print(f"\n  BOLAG UTAN NÅGON VÄRDE-DATA ({len(no_data)} st – manuell koll/omhämtning):")
+        for t, name in sorted(no_data)[:40]:
+            print(f"    {t:<14} {str(name)[:40]}")
+        if len(no_data) > 40:
+            print(f"    ... och {len(no_data) - 40} till (se {out})")
+
+    print(f"\n  Full per-bolag-status skriven till: {out}")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "score"
     seg = sys.argv[2] if len(sys.argv) > 2 else None
     if cmd == "score":
         score(seg)
+    elif cmd == "coverage":
+        coverage(seg)
     else:
         print(__doc__)
 
