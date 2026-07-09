@@ -236,7 +236,13 @@ def _current_address_space_bytes() -> int:
         return 0
 
 
-def _extract_worker(pdf_bytes: bytes, q) -> None:
+def _fetch_extract_worker(url: str, q) -> None:
+    """Kör i subprocessen: BÅDE nedladdning och extraktion. Avgörande att BÅDA
+    ligger här – den 20 MB stora PDF-bufferten + pdfplumbers strukturer lever
+    och dör då i den KORTLIVADE barnprocessen (allt frigörs vid exit), i
+    stället för att fragmentera den långlivade förälderns heap iteration efter
+    iteration tills 2GB-Pi:n är slut (det var därför även NEDLADDNINGAR – som
+    förr skedde i föräldern – började misslyckas och 'ok' frös)."""
     try:
         try:
             import resource
@@ -246,7 +252,12 @@ def _extract_worker(pdf_bytes: bytes, q) -> None:
                 resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
         except Exception:  # noqa: BLE001 – t.ex. plattform utan RLIMIT_AS-stöd
             pass
+        pdf_bytes = _download_pdf(url)
+        if pdf_bytes is None:
+            q.put(("download_failed", None))
+            return
         text, n_pages = extract_pdf_text(pdf_bytes)
+        del pdf_bytes                     # släpp bufferten före put (barnet dör ändå strax)
         q.put(("ok", (text, n_pages)))
     except BaseException as e:  # noqa: BLE001 – inkl. MemoryError vid taket
         try:
@@ -255,52 +266,47 @@ def _extract_worker(pdf_bytes: bytes, q) -> None:
             pass
 
 
-def extract_pdf_text_isolated(pdf_bytes: bytes):
-    """extract_pdf_text() körd i en isolerad subprocess med minnestak+timeout
-    (se motivering ovan). Returnerar (text, n_pages), eller (None, None) om
-    subprocessen kraschar, dödas av minnestaket, eller hänger längre än
-    _EXTRACT_TIMEOUT_S – anropande kod (get_pdf_text) behandlar det precis
-    som ett nedladdnings-/öppningsfel.
+def fetch_extract_isolated(url: str):
+    """Laddar ner + extraherar i en isolerad subprocess (minnestak+timeout).
+    Returnerar (status, text, n_pages) där status ∈ {'ok','download_failed',
+    'error'} – anropande get_pdf_text skiljer nedladdningsfel från
+    extraktionsfel för cache-taggningen. Allt tungt minne (PDF-bytes,
+    pdfplumber) hålls i barnet som frigör det helt vid exit → föräldern
+    förblir lean över tiotusentals iterationer.
 
-    RESURS-DISCIPLIN (avgörande på 2GB-Pi:n): varje Queue startar en
-    matartråd + pipe-fildeskriptorer som INTE frigörs automatiskt. Utan
-    explicit close()/join_thread() läckte de per iteration → efter några
-    hundra PDF:er var minnet slut och ALLT därefter (även nedladdningar)
-    misslyckades ('ok'-räknaren frös på samma tal varje körning). Vi läser
-    dessutom kön FÖRE join – en stor payload får annars matartråden att
-    blockera tills den lästs, vilket kunde få join att timeouta och döda en
-    subprocess som faktiskt LYCKATS (tappad extraktion)."""
+    RESURS-DISCIPLIN: varje Queue startar en matartråd + pipe-FD:er som INTE
+    frigörs automatiskt – utan explicit close()/join_thread() läckte de per
+    iteration. Vi läser dessutom kön via en poll-loop (dränerar matartråden så
+    en stor payload inte deadlockar) OCH upptäcker tidig processdöd (en hård
+    OOM-kill hinner inte ens lägga ett felmeddelande)."""
     import multiprocessing as mp
     import queue as _queue
-    ctx = mp.get_context("fork")   # fork = pdf_bytes ärvs direkt, ingen pickling av stora bytes
+    ctx = mp.get_context("fork")
     q = ctx.Queue()
-    p = ctx.Process(target=_extract_worker, args=(pdf_bytes, q))
+    p = ctx.Process(target=_fetch_extract_worker, args=(url, q))
     p.start()
-    result = (None, None)
+    result = ("error", None, None)
     try:
-        # Poll-loop: läs kön i korta intervall (dränerar matartråden så en
-        # STOR payload inte deadlockar) OCH upptäck tidig processdöd. En hård
-        # OOM-död kan döda subprocessen INNAN den hinner lägga ens ett
-        # felmeddelande (minnesbomben kan inte allokera för q.put) – då ska
-        # vi bryta direkt när processen är död, inte vänta ut hela timeouten.
         deadline = time.time() + _EXTRACT_TIMEOUT_S
         while time.time() < deadline:
             try:
                 status, payload = q.get(timeout=0.5)
                 if status == "ok":
-                    result = payload
+                    result = ("ok", payload[0], payload[1])
+                elif status == "download_failed":
+                    result = ("download_failed", None, None)
+                else:
+                    result = ("error", None, None)
                 break
             except _queue.Empty:
                 if not p.is_alive():
                     break   # dog utan att lägga ett svar (OOM-kill etc.)
     except Exception:  # noqa: BLE001
-        result = (None, None)
+        result = ("error", None, None)
     finally:
         if p.is_alive():
             p.terminate()
         p.join(5)
-        # Frigör Queue-resurserna (matartråd + pipe-FD:er) EXPLICIT – annars
-        # ackumuleras de över tusentals iterationer.
         try:
             q.close()
             q.join_thread()
@@ -328,17 +334,13 @@ def get_pdf_text(pm_id: str, url: str) -> Optional[str]:
                 return cached.get("text")
         except Exception:  # noqa: BLE001
             pass
-    pdf_bytes = _download_pdf(url)
-    if pdf_bytes is None:
-        cp.write_text(json.dumps({"text": None, "error": "download_failed_or_too_large",
-                                   "schema": _PDF_TEXT_SCHEMA_VERSION}), encoding="utf-8")
-        return None
-    # Isolerad subprocess (minnestak+timeout) i stället för direktanrop – se
-    # extract_pdf_text_isolated()-motiveringen ovan. Returnerar (None, None)
-    # om subprocessen krascha/dödas/hänger, precis som ett extraktionsfel.
-    text, n_pages = extract_pdf_text_isolated(pdf_bytes)
-    if text is None:
-        cp.write_text(json.dumps({"text": None, "error": "extraction_crashed_or_oom_or_timeout",
+    # Nedladdning OCH extraktion sker i EN isolerad subprocess (se
+    # fetch_extract_isolated) – föräldern rör aldrig den 20 MB stora
+    # PDF-bufferten, så dess heap växer inte iteration för iteration.
+    status, text, n_pages = fetch_extract_isolated(url)
+    if status != "ok" or text is None:
+        err = "download_failed_or_too_large" if status == "download_failed" else "extraction_crashed_or_oom_or_timeout"
+        cp.write_text(json.dumps({"text": None, "error": err,
                                    "schema": _PDF_TEXT_SCHEMA_VERSION}), encoding="utf-8")
         return None
     # page_count cachas UTÖVER schema-fältet, inte som en del av det – en
