@@ -332,18 +332,20 @@ def fetch_extract_isolated(url: str):
 
 
 def get_pdf_text(pm_id: str, url: str) -> Optional[str]:
-    """Evig cache (rapporter ändras inte i efterhand) – varje PDF laddas
-    ner+extraheras högst en gång per _PDF_TEXT_SCHEMA_VERSION, oavsett hur
-    många gånger backfill() körs. En cache-fil skriven med en ÄLDRE
-    schemaversion (t.ex. från när _MAX_PDF_PAGES var 20 eller 200)
-    behandlas som en cache-miss – annars skulle en omkörning tyst återanvända
-    gammal, ofullständig text."""
+    """Cache med ASYMMETRISK tillit: en LYCKAD extraktion (text != None) är
+    permanent (rapporttext ändras aldrig i efterhand) och serveras alltid ur
+    cachen. Ett cachat MISSLYCKANDE (text == None) görs däremot ALLTID om –
+    ett fel kan vara transient (minne, nät, rate-limit), och konkret: de
+    tidigare körningarna med minnesbuggen cachade hundratals bugg-inducerade
+    'download_failed'/'oom'-poster som annars skulle serveras för evigt trots
+    att koden nu är fixad. En post från en äldre schemaversion behandlas också
+    som cache-miss (annars återanvänds ofullständig text från ett lägre sidkap)."""
     cp = _pdf_text_cache_dir() / f"{_cache_key(pm_id, url)}.json"
     if cp.exists():
         try:
             cached = json.loads(cp.read_text(encoding="utf-8"))
-            if cached.get("schema") == _PDF_TEXT_SCHEMA_VERSION:
-                return cached.get("text")
+            if cached.get("schema") == _PDF_TEXT_SCHEMA_VERSION and cached.get("text") is not None:
+                return cached.get("text")   # bara LYCKADE poster serveras ur cachen
         except Exception:  # noqa: BLE001
             pass
     # Nedladdning OCH extraktion sker i EN isolerad subprocess (se
