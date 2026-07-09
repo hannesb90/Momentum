@@ -211,16 +211,39 @@ def extract_pdf_text(pdf_bytes: bytes):
 # (resource.RLIMIT_AS). Ett enskilt dokument som slår i taket kraschar då
 # bara sin egen subprocess (räknas som "kunde inte extraheras", precis som
 # en trasig PDF) – aldrig förälderprocessen eller resten av systemet.
-_EXTRACT_MEM_LIMIT_BYTES = 400 * 1024 * 1024   # 400 MB hårt tak per enskild PDF-extraktion
+#
+# VIKTIGT (rättat): RLIMIT_AS är TOTALT virtuellt adressrum, och en fork:ad
+# barnprocess ÄRVER förälderns hela adressrum. Ett ABSOLUT tak (t.ex. 400 MB)
+# blev därför fel så fort föräldern själv växte förbi taket: barnet var då
+# redan över gränsen innan det ens börjat, och MemoryError:ade direkt →
+# 'ok'-räknaren frös vid exakt den punkt där föräldern korsade taket
+# (bekräftat mönster: frös på samma tal varje körning). Vi sätter i stället
+# taket RELATIVT: barnets ärvda adressrum + ett fast extraktionsutrymme, så
+# extraktionen alltid får sin fulla budget oavsett hur stor föräldern hunnit bli.
+_EXTRACT_MEM_HEADROOM_BYTES = 500 * 1024 * 1024   # extraktionsbudget UTÖVER ärvt adressrum
 _EXTRACT_TIMEOUT_S = 120
+
+
+def _current_address_space_bytes() -> int:
+    """Processens nuvarande virtuella adressrum (bytes) via /proc/self/statm.
+    0 om det inte går att läsa (t.ex. icke-Linux) → anropar hoppar taket då."""
+    try:
+        import resource
+        with open("/proc/self/statm") as f:
+            vsize_pages = int(f.read().split()[0])
+        return vsize_pages * resource.getpagesize()
+    except Exception:  # noqa: BLE001
+        return 0
 
 
 def _extract_worker(pdf_bytes: bytes, q) -> None:
     try:
         try:
             import resource
-            resource.setrlimit(resource.RLIMIT_AS,
-                                (_EXTRACT_MEM_LIMIT_BYTES, _EXTRACT_MEM_LIMIT_BYTES))
+            current = _current_address_space_bytes()
+            if current > 0:   # bara sätt taket om vi vet vad barnet redan ärvt
+                limit = current + _EXTRACT_MEM_HEADROOM_BYTES
+                resource.setrlimit(resource.RLIMIT_AS, (limit, limit))
         except Exception:  # noqa: BLE001 – t.ex. plattform utan RLIMIT_AS-stöd
             pass
         text, n_pages = extract_pdf_text(pdf_bytes)
