@@ -656,6 +656,26 @@ def _load_scores() -> dict:
         except Exception:  # noqa: BLE001
             pass
 
+    # Buffett-värdeskreenern (value_screener.py). Egen zon-kolumn ('billig'/
+    # 'rimlig'/'dyr'/'förlust') SEPARAT från quality-screenerns 'zone' –
+    # olika värderingsbaser (owner earnings vs EBITDA/P/S) – så den lagras
+    # som 'value_zone', inte skriver över 'zone'. Buffett-barren
+    # (meets_roe_bar/meets_debt_bar) tas med för köp-vaktens hårda grind.
+    vp = _results_dir() / "value_shortlist.csv"
+    if vp.exists():
+        try:
+            for r in csv.DictReader(open(vp, encoding="utf-8")):
+                tk = (r.get("ticker") or "").strip().upper()
+                if not tk:
+                    continue
+                e = ent(tk, r.get("name"))
+                e["value_score"] = _num(r.get("value_score"))
+                e["value_zone"] = (r.get("zone") or "").strip()
+                e["meets_roe_bar"] = str(r.get("meets_roe_bar")).strip().lower() == "true"
+                e["meets_debt_bar"] = str(r.get("meets_debt_bar")).strip().lower() == "true"
+        except Exception:  # noqa: BLE001
+            pass
+
     for seg in config.SEGMENTS.values():
         sp = Path(seg.get("results_dir", "")) / "signals.csv"
         if not sp.exists():
@@ -770,19 +790,66 @@ def _pct_rank(values, v):
     return sum(1 for x in vals if x <= v) / len(vals)
 
 
-def _unified_rank(rows, top_n=3) -> list:
+# Viktprofiler per rank-modell (köp-vakten). Nycklar: quality/quant/value/
+# momentum + research-bonus. "balanced" är IDENTISK med den mix som gällde
+# innan modellvalet fanns (value=0), så default-beteendet är oförändrat.
+_MODEL_WEIGHTS = {
+    "balanced": {"quality": 0.45, "quant": 0.20, "value": 0.00, "momentum": 0.25, "research": 0.10},
+    "buffett":  {"quality": 0.30, "quant": 0.10, "value": 0.40, "momentum": 0.05, "research": 0.15},
+    "momentum": {"quality": 0.15, "quant": 0.10, "value": 0.00, "momentum": 0.70, "research": 0.05},
+}
+
+
+def _model_file() -> Path:
+    return Path(config.anchor(getattr(config, "PORTFOLIO_MODEL_FILE", "cache/portfolio_model.json")))
+
+
+def active_model() -> str:
+    """Vald rank-modell ('balanced'/'buffett'/'momentum'), persisterad i cache/.
+    Okänt/trasigt värde faller tillbaka på default."""
+    default = getattr(config, "PORTFOLIO_MODEL_DEFAULT", "balanced")
+    p = _model_file()
+    if p.exists():
+        try:
+            m = json.loads(p.read_text(encoding="utf-8")).get("model")
+            if m in _MODEL_WEIGHTS:
+                return m
+        except Exception:  # noqa: BLE001
+            pass
+    return default if default in _MODEL_WEIGHTS else "balanced"
+
+
+def set_active_model(model: str) -> str:
+    """Persisterar vald modell. Okänt namn ignoreras (behåller nuvarande)."""
+    if model not in _MODEL_WEIGHTS:
+        return active_model()
+    p = _model_file()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"model": model}, ensure_ascii=False), encoding="utf-8")
+    return model
+
+
+def _unified_rank(rows, top_n=3, model=None) -> list:
     """
     'Absolut bästa nästa köp' bland svenska aktier: EN rankning som väger ihop
-    alla modeller, med KÖP-OCH-BEHÅLL-vikter (kvalitet tyngst – det man ska äga
-    i åratal; momentum är bara timing-tiebreak) och PORTFÖLJ-MEDVETENHET:
-      · zon 'dyr' utesluts (betala inte upp för att momentum lyser)
+    alla modeller enligt den VALDA viktprofilen (se _MODEL_WEIGHTS / active_model)
+    och PORTFÖLJ-MEDVETENHET:
+      · zon 'dyr' utesluts (betala inte upp för att momentum lyser) – för
+        buffett-modellen gäller value_screenerns egen owner-earnings-zon
+      · buffett-modellen har dessutom en HÅRD grind: klarar bolaget inte
+        ROE- och skuld-barren (meets_roe_bar/meets_debt_bar) kvalificerar det
+        inte alls, oavsett momentum ("köp inte skräp bara för att det är billigt")
       · innehav som redan är >8% av portföljen utesluts (koncentrera inte mer)
       · samma sektor som portföljens största (>25%) straffas
-      · ren momentum-punt utan kvalitets-/kvantbetyg kvalificerar inte
+      · kräver minst ETT fundament-betyg (kvalitet/kvant/value) – inte bara fart
     """
     scores = _load_scores()
     if not scores:
         return []
+    model = model or active_model()
+    w = _MODEL_WEIGHTS.get(model, _MODEL_WEIGHTS["balanced"])
+    is_buffett = (model == "buffett")
+
     total = sum(r["value"] for r in rows) or 0.0
     owned_frac, sector_frac = {}, {}
     for r in rows:
@@ -796,27 +863,51 @@ def _unified_rank(rows, top_n=3) -> list:
 
     q_all = [e.get("quality") for e in scores.values()]
     k_all = [e.get("quant") for e in scores.values()]
+    v_all = [e.get("value_score") for e in scores.values()]
     ranked = []
     for tk, e in scores.items():
-        if e.get("zone") == "dyr":
+        # Dyr-uteslutning: buffett tittar på owner-earnings-zonen (value_zone),
+        # övriga på quality-screenerns EBITDA/P/S-zon.
+        dyr_zone = e.get("value_zone") if is_buffett else e.get("zone")
+        if dyr_zone == "dyr":
             continue
         if owned_frac.get(tk, 0.0) > 0.08:
             continue
+        # Buffett-grind: kräver att BÅDA hårda barren klaras (om value-data
+        # finns för bolaget alls; saknas den helt får bolaget inte passera
+        # buffett-grinden – köp bara det vi faktiskt kunnat värdera).
+        if is_buffett:
+            if e.get("value_score") is None:
+                continue
+            if not (e.get("meets_roe_bar") and e.get("meets_debt_bar")):
+                continue
         qn = _pct_rank(q_all, e.get("quality"))
         kn = _pct_rank(k_all, e.get("quant"))
-        if qn is None and kn is None:
+        vn = _pct_rank(v_all, e.get("value_score"))
+        if qn is None and kn is None and vn is None:
             continue                     # köp-och-behåll: kräver fundament, inte bara fart
         pn = e.get("prob_up")
-        score = (0.45 * (qn if qn is not None else kn)
-                 + 0.20 * (kn if kn is not None else qn)
-                 + 0.25 * (pn if pn is not None else 0.5)
-                 + (0.10 if e.get("research") else 0.0))
+        # Coalesce: en modell ska inte straffa ett bolag för att EN datakälla
+        # saknas – fall tillbaka på de andra fundament-betygen. Bara signaler
+        # som modellen FAKTISKT viktar (>0) räknas in i fallbacken, så
+        # 'balanced' (value-vikt 0) ger exakt samma resultat som innan
+        # value-screenern fanns – bekräftat identiskt via test.
+        weighted_present = [x for x, wname in ((qn, "quality"), (kn, "quant"), (vn, "value"))
+                            if x is not None and w[wname] > 0]
+        fb = (sum(weighted_present) / len(weighted_present)) if weighted_present else 0.5
+        score = (w["quality"] * (qn if qn is not None else fb)
+                 + w["quant"] * (kn if kn is not None else fb)
+                 + w["value"] * (vn if vn is not None else fb)
+                 + w["momentum"] * (pn if pn is not None else 0.5)
+                 + (w["research"] if e.get("research") else 0.0))
         sec = _sector_of(tk)
         if sec in big_sectors:
             score -= 0.15
         why = []
         if e.get("quality") is not None:
             why.append(f"kvalitet {e['quality']:.1f}/5" + (f" · {e['zone']}" if e.get("zone") else ""))
+        if is_buffett and e.get("value_score") is not None:
+            why.append(f"value {e['value_score']:.0f}" + (f" · {e['value_zone']}" if e.get("value_zone") else ""))
         if e.get("quant") is not None:
             why.append(f"kvant {e['quant']:.0f}")
         if pn is not None:
@@ -824,7 +915,8 @@ def _unified_rank(rows, top_n=3) -> list:
         if e.get("research"):
             why.append("uppdragsanalys ✓")
         ranked.append({"ticker": tk, "name": e.get("name") or tk,
-                       "score": round(score, 3), "note": " · ".join(why), "source": "sammanvägd"})
+                       "score": round(score, 3), "note": " · ".join(why),
+                       "source": f"sammanvägd ({model})"})
     ranked.sort(key=lambda x: -x["score"])
     return ranked[:top_n]
 
