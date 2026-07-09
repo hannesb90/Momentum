@@ -99,6 +99,42 @@ def _pdf_text_cache_dir() -> Path:
     return d
 
 
+# Enkel-instans-lås: två samtidiga backfill-processer har gång på gång
+# uttömt Pi:ns 2GB RAM (varje process håller hela universumet + kör PDF-
+# extraktion) → MemoryError-svärm och frusen 'ok'-räknare. Ett PID-baserat
+# lås förhindrar dubbelstart HELT (importos.kill(pid, 0) verifierar att en
+# lås-fil pekar på en LEVANDE process – en stale låsfil efter en krasch
+# städas bort automatiskt, inget manuellt ingrepp behövs).
+def _lock_path() -> Path:
+    return _pdf_text_cache_dir().parent / "mfn_pdf_backfill.lock"
+
+
+def _acquire_lock() -> bool:
+    import os
+    lp = _lock_path()
+    if lp.exists():
+        try:
+            old_pid = int(lp.read_text().strip())
+            os.kill(old_pid, 0)          # kastar OSError om processen inte finns
+            return False                 # levande process håller låset
+        except (ValueError, ProcessLookupError):
+            pass                         # trasig/stale låsfil – ta över
+        except PermissionError:
+            return False                 # processen finns (men ägs av annan) – respektera
+    lp.write_text(str(os.getpid()))
+    return True
+
+
+def _release_lock() -> None:
+    import os
+    lp = _lock_path()
+    try:
+        if lp.exists() and int(lp.read_text().strip()) == os.getpid():
+            lp.unlink()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _cache_key(pm_id: str, url: str) -> str:
     h = hashlib.sha1(url.encode("utf-8")).hexdigest()[:16]
     safe_id = "".join(ch if ch.isalnum() else "_" for ch in pm_id)[:60]
@@ -499,7 +535,22 @@ def backfill(segment: Optional[str] = None, limit: Optional[int] = None) -> None
     """Går igenom rapport-PM som INTE fick något extraherat ur press-texten
     (extract_hard_facts på item['text'] gav tomt) men SOM har minst en PDF-
     bilaga. Laddar ner+extraherar+kör om parsern mot PDF-texten. Resumable –
-    varje PDF cachas för alltid. Skriver <results_dir>/fundamentals_from_pdf.csv."""
+    varje PDF cachas för alltid. Skriver <results_dir>/fundamentals_from_pdf.csv.
+
+    Enkel-instans: vägrar starta om en annan backfill redan kör (skyddar
+    Pi:ns minne mot att två processer krokar ihop – har hänt upprepat)."""
+    if not _acquire_lock():
+        print("[mfn_pdf backfill] En annan backfill-process kör redan (se "
+              f"{_lock_path()}). Avbryter för att inte uttömma minnet – "
+              "vänta tills den är klar eller döda den först.")
+        return
+    try:
+        _backfill_inner(segment, limit)
+    finally:
+        _release_lock()
+
+
+def _backfill_inner(segment: Optional[str] = None, limit: Optional[int] = None) -> None:
     items = _report_items(segment)
     # extract_hard_facts() på press-texten körs EN gång per item (inte två,
     # som tidigare – onödigt dubbelarbete över tiotusentals PM).
