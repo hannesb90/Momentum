@@ -584,6 +584,31 @@ def compute(rows, amount=None) -> dict:
             warnings.append(f"Störst enskilt innehav: {big['name']} ({big['value']/total:.0%}).")
 
     tgt = load_target()
+
+    # Steg 3 i modellen ("bevaka innehavens framsteg och utsikter"): varje
+    # innehav får sin FUNDAMENTA-status ur poängkartan (value_screener +
+    # quality) – inte bara pris/vinst. Frontend visar detta per innehavskort,
+    # så bevakningen inte enbart vilar på TA-baserade exit-alarm.
+    scores = _safe(_load_scores, {}, "poängkarta")
+
+    def _fund_status(tk: str):
+        sc = scores.get((tk or "").upper())
+        if not sc or not sc.get("has_value_data"):
+            return None
+        issues = []
+        if sc.get("meets_roe_bar") is False:
+            issues.append("ROE under barren")
+        if sc.get("meets_debt_bar") is False:
+            issues.append("skuld över barren")
+        g = sc.get("rev_growth_yoy")
+        if g is not None and g < 0:
+            issues.append("krympande intäkter")
+        if sc.get("value_zone") == "dyr":
+            issues.append("värdering dyr")
+        return {"roe": sc.get("roe"), "rev_growth_yoy": g,
+                "value_zone": sc.get("value_zone") or None,
+                "ok": not issues, "issues": issues}
+
     out = {"total": round(total, 0),
            "buckets": {b: (round(buckets[b] / total, 4) if total else 0.0) for b in BUCKETS},
            "buckets_sek": {b: round(buckets[b], 0) for b in BUCKETS},
@@ -592,10 +617,11 @@ def compute(rows, amount=None) -> dict:
            "candidates": _candidates(),
            "housemoney": _house_money(rows),
            "holdings": [{"name": r["name"], "value": round(r["value"], 0), "bucket": r["bucket"],
-                         "ticker": r.get("ticker") or _resolve_ticker(r["name"]),
+                         "ticker": (tk := (r.get("ticker") or _resolve_ticker(r["name"]))),
                          "cost": (round(r["cost"]) if r.get("cost") else None),
                          "shares": r.get("shares"), "buy_price": r.get("buy_price"),
-                         "auto": bool(r.get("auto"))} for r in rows]}
+                         "auto": bool(r.get("auto")),
+                         "fundamentals": _fund_status(tk)} for r in rows]}
 
     if amount:
         after = total + amount
@@ -752,6 +778,14 @@ def _opportunity(rows, amount) -> dict:
     scores = _load_scores()
     flows = _load_flows()
     cap = round(float(amount) * float(getattr(config, "OPPORTUNITY_MAX_SHARE", 0.5)))
+    # Värderings-spärren följer vald modells bas: buffett-läget zonar på
+    # owner earnings (value_zone, samma som _unified_rank:s dyr-uteslutning),
+    # övriga på quality-screenerns EBITDA/P/S-zon. TIMING-signalerna (CMF/
+    # SMA20) är däremot avsiktligt kvar i ALLA lägen – det är köp-vaktens
+    # uttalade roll ("köp inte just här idag – nästa månad ser bättre ut"),
+    # TA som timing-grind, inte som rankningsvikt.
+    model = _safe(active_model, "balanced", "aktiv modell")
+    zone_key = "value_zone" if model == "buffett" else "zone"
 
     def evaluate(c):
         tk = c["ticker"]
@@ -761,7 +795,7 @@ def _opportunity(rows, amount) -> dict:
         except (TypeError, ValueError):
             cmf = None
         below = str(fl.get("below_sma20")) == "1"
-        zone = scores.get(tk, {}).get("zone")
+        zone = scores.get(tk, {}).get(zone_key)
         blocks = []
         if cmf is not None and cmf < 0:
             blocks.append(f"distribution (CMF {cmf:+.2f} – flöden ut)")
@@ -1170,11 +1204,18 @@ _NEXTBUY_CACHE: dict = {}
 def _data_mtime() -> float:
     """Senaste ändringstid bland alla filer Nästa köp läser. Datan skrivs nattligt
     (kl 02) + när du sparar innehav – så länge inget ändrats är resultatet
-    identiskt och kan cachas i stället för att räknas om vid varje appstart."""
-    paths = [holdings_path(), target_path()]
+    identiskt och kan cachas i stället för att räknas om vid varje appstart.
+
+    MÅSTE inkludera ALLT som påverkar svaret – annars serveras en inaktuell
+    plan. Två poster lades till i efterhand efter en verklig bugg: modellvals-
+    filen (utan den gjorde ett modellbyte i appen INGENTING – cache-nyckeln
+    ändrades inte, gamla planen serverades) och value_shortlist.csv (ny
+    Buffett-data invaliderade inte cachen)."""
+    paths = [holdings_path(), target_path(), _model_file()]
     for seg in config.SEGMENTS.values():
         rd = Path(seg.get("results_dir", ""))
         for f in ("signals.csv", "quality_shortlist.csv", "quant_shortlist.csv",
+                  "value_shortlist.csv",
                   "flow_snapshot.csv", "prices.csv", "portfolio.csv",
                   "etf_rotation.csv", "etf_rotation_meta.json"):
             paths.append(rd / f)
@@ -1229,7 +1270,7 @@ def next_buy(rows, amount=None) -> dict:
     En satellit utan kandidat/regim-stöd skickar sina kronor till kärnan i
     stället – planen blir alltid ett komplett "så här placeras hela beloppet".
     """
-    amount = float(amount or getattr(config, "NEXT_BUY_DEFAULT_AMOUNT", 5000))
+    amount = float(amount or getattr(config, "NEXT_BUY_DEFAULT_AMOUNT", 10000))
 
     # Cache: datan laddas nattligt (kl 02) + vid innehavssparning. Så länge inga
     # av filerna ändrats är svaret identiskt → räkna INTE om vid varje appstart.
@@ -1276,13 +1317,23 @@ def next_buy(rows, amount=None) -> dict:
         theme_kr = 0.0
 
     sweden_kr = plan.get("sweden", 0.0)
-    # Sverige-slotten fylls av den SAMMANVÄGDA rankningen (kvalitet+kvant+momentum+
-    # research, portfölj-medveten) – inte en enskild modells lista. Faller tillbaka
-    # på de gamla per-modell-kandidaterna om poängkartan saknas.
-    sweden_picks = (_safe(lambda: _unified_rank(rows, top_n=2), [], "sammanvägd rank")
-                    or (cands.get("sweden") or [])[:2])
+    # Sverige-slotten fylls av den SAMMANVÄGDA rankningen (viktprofil enligt
+    # vald modell, portfölj-medveten). Fallbacken till de gamla per-modell-
+    # kandidaterna (kvalitet + RENA MOMENTUM-picks) gäller BARA utanför
+    # buffett-läget: i buffett är en tom rankning inte "data saknas" utan
+    # grindens AVSIKTLIGA svar ("inget bolag klarar ROE/skuld-barren just nu →
+    # håll disciplinen, kronorna går till kärnan") – att då punta på momentum-
+    # kandidater vore att kringgå exakt den grind modellen finns för.
+    model = _safe(active_model, "balanced", "aktiv modell")
+    sweden_picks = _safe(lambda: _unified_rank(rows, top_n=2), [], "sammanvägd rank")
+    if not sweden_picks and model != "buffett":
+        sweden_picks = (cands.get("sweden") or [])[:2]
     if sweden_kr > 0 and not sweden_picks:
-        skipped.append({"bucket": "sweden", "reason": "inga svenska kandidater just nu → kronorna går till kärnan"})
+        reason = ("inga bolag klarar Buffett-barren (ROE/skuld/värdering) just nu → "
+                  "håll disciplinen, kronorna går till kärnan"
+                  if model == "buffett" else
+                  "inga svenska kandidater just nu → kronorna går till kärnan")
+        skipped.append({"bucket": "sweden", "reason": reason})
         broad_kr += sweden_kr
         sweden_kr = 0.0
     elif 0 < sweden_kr < min_trade:
@@ -1308,7 +1359,8 @@ def next_buy(rows, amount=None) -> dict:
     if sweden_kr >= min_trade and sweden_picks:
         per = sweden_kr / len(sweden_picks)
         for c in sweden_picks:
-            unified = c.get("source") == "sammanvägd"
+            # source är "sammanvägd (<modell>)" sedan modellvalet infördes.
+            unified = str(c.get("source") or "").startswith("sammanvägd")
             out_rows.append({
                 "kr": round(per), "ticker": c.get("ticker"), "name": c.get("name"), "bucket": "sweden",
                 "why": ((f"Bästa köp enligt ALLA modeller sammanvägt: {c.get('note')}. "
