@@ -123,6 +123,8 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
 
 
 def _metrics(entry: dict, price: Optional[float]) -> dict:
+    from altdata.mfn_fundamentals import annualization_factor
+
     latest = entry["latest"]
     net_profit = _to_msek(latest.get("net_profit"), latest.get("net_profit_unit"))
     equity = _to_msek(latest.get("equity"), latest.get("equity_unit"))
@@ -132,12 +134,27 @@ def _metrics(entry: dict, price: Optional[float]) -> dict:
     revenue = _to_msek(latest.get("revenue"), latest.get("revenue_unit"))
     revenue_prior = _to_msek(latest.get("revenue_prior"), latest.get("revenue_unit"))
 
-    roe = (net_profit / equity) if (net_profit is not None and equity not in (None, 0)) else None
-    debt_equity = (liabilities / equity) if (liabilities is not None and equity not in (None, 0)) else None
+    # ÅRSJUSTERING (verifierad matematik-bugg innan detta fanns): resultat/
+    # avskrivningar från en DELÅRSrapport är flödesmått för en del av året –
+    # dividerat rakt av mot eget kapital (stock) gav ett Q1-bolag ~4x för låg
+    # ROE (nästan inget klarade 15%-barren) och ~4x för dyr owner-earnings-
+    # multipel (allt zonades 'dyr'). Skala till årstakt via periodspann ur
+    # rapporttiteln (Q→x4, H1→x2, 9M→x4/3, Helår/okänd→x1 – okänd är
+    # konservativt åt köpsidan). Balansposter (equity/liabilities) och
+    # YoY-tillväxt (kvot av SAMMA period) skalas INTE.
+    factor = annualization_factor(latest.get("period"))
+    np_annual = net_profit * factor if net_profit is not None else None
+    da_annual = da * factor if da is not None else None
+
+    # Negativt eget kapital gör både ROE och Skuld/EK meningslösa (tecknet
+    # vänder, ett katastrofbolag kan se ut att ha "positiv" ROE på negativt
+    # kapital) → kräver equity > 0, inte bara != 0.
+    roe = (np_annual / equity) if (np_annual is not None and equity is not None and equity > 0) else None
+    debt_equity = (liabilities / equity) if (liabilities is not None and equity is not None and equity > 0) else None
 
     owner_earnings = None
-    if net_profit is not None:
-        owner_earnings = net_profit + (da or 0.0)   # da saknas ofta -> 0, konservativ underskattning
+    if np_annual is not None:
+        owner_earnings = np_annual + (da_annual or 0.0)   # da saknas ofta -> 0, konservativ underskattning
 
     rev_growth = None
     if revenue is not None and revenue_prior not in (None, 0):
@@ -166,6 +183,10 @@ def _metrics(entry: dict, price: Optional[float]) -> dict:
         "rev_growth_yoy": rev_growth, "mcap_msek": mcap_msek,
         "n_reports": entry["n_reports"], "growth_consistency": entry["growth_consistency"],
         "published": latest.get("published"),
+        # Transparens: vilken rapportperiod och årsfaktor som låg bakom talen –
+        # så en manuell koll av value_shortlist.csv kan se om ett bolag är
+        # helårs- eller uppskalad kvartalsdata.
+        "period": latest.get("period"), "annual_factor": round(factor, 2),
     }
 
 
@@ -236,7 +257,7 @@ def score(segment: Optional[str] = None) -> None:
     cols = ["ticker", "name", "value_score", "zone", "mult", "roe", "debt_equity",
             "owner_earnings_msek", "owner_earnings_yield", "rev_growth_yoy",
             "growth_consistency", "n_reports", "mcap_msek", "meets_roe_bar",
-            "meets_debt_bar", "published"]
+            "meets_debt_bar", "period", "annual_factor", "published"]
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
