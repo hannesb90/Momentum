@@ -1483,6 +1483,16 @@ h2 {
   color: var(--text-muted);
   flex-basis: 100%;
 }
+/* Fundamenta-status per innehav (caset intakt / caset-varningar). */
+.h-card__fund {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.h-card__fund--warn {
+  color: var(--bad);
+  font-weight: 600;
+}
 .riskon-warn {
   margin: 8px 0 12px;
   padding: 9px 12px;

@@ -472,6 +472,18 @@ export function HoldingsPage() {
                     <span><i>Andel</i>{(share * 100).toFixed(0)}%</span>
                     <span><i>Hink</i>{BUCKET_LABEL[h.bucket] ?? h.bucket}</span>
                   </div>
+                  {/* Fundamenta-bevakning (steg 3 i modellen): caset intakt eller inte,
+                      ur value_screener-datan – inte bara pris/TA. Visas bara för
+                      innehav vi faktiskt har värde-data för. */}
+                  {h.fundamentals && (
+                    <div className={`h-card__fund${h.fundamentals.ok ? '' : ' h-card__fund--warn'}`}>
+                      {h.fundamentals.ok
+                        ? <>Caset intakt{h.fundamentals.roe != null && <> · ROE {fmtPct(h.fundamentals.roe)}</>}
+                            {h.fundamentals.rev_growth_yoy != null && <> · tillväxt {fmtPct(h.fundamentals.rev_growth_yoy)}</>}
+                            {h.fundamentals.value_zone && <> · {h.fundamentals.value_zone}</>}</>
+                        : <>Caset: {h.fundamentals.issues.join(' · ')}</>}
+                    </div>
+                  )}
                   <div className="h-card__actions">
                     <button className="pf-btn pf-btn--sm" onClick={() => openTrade(i, 'buy')}>+ Köp</button>
                     <button className="pf-btn pf-btn--sm" onClick={() => openTrade(i, 'sell')}>− Sälj</button>
