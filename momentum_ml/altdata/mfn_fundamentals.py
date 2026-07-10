@@ -387,8 +387,25 @@ _MONTHRANGE_RE = re.compile(r"\b(januari|april|juli|oktober)[\s\-–]+(mars|juni
 # "delårsrapport för det andra kvartalet 2023" gav tom period innan detta).
 _QORD_RE = re.compile(r"\b(första|andra|tredje|fjärde)\s+kvartalet\b", re.I)
 _QORD_TO_Q = {"första": "Q1", "andra": "Q2", "tredje": "Q3", "fjärde": "Q4"}
-_FULLYEAR_KW = re.compile(r"bokslutskommuniké|helår(?:et|srapport)?", re.I)
-_MONTH_TO_Q = {"januari": "Q1", "april": "Q2", "juli": "Q3", "oktober": "Q4"}
+# årsredovisning/årsrapport tillkom efter en verifierad matematik-bugg: de
+# saknades här, så "AAK:s årsredovisning för 2019..." fick period None i
+# stället för Helår – och nedströms årsjustering (value_screener) kunde då
+# inte veta att siffrorna redan var helårssiffror. OBS lookbehinds:
+# "delÅRSRAPPORT" och "halvÅRSRAPPORT" innehåller "årsrapport" som delsträng
+# och får INTE klassas som helår (fångades av testet, inte i produktion).
+_FULLYEAR_KW = re.compile(
+    r"bokslutskommuniké|helår(?:et|srapport)?|årsredovisning|(?<!del)(?<!halv)årsrapport", re.I)
+# Månadsintervall → periodSPANN, mappat på BÅDA månaderna. Den gamla varianten
+# tittade bara på STARTmånaden ("januari→Q1"), vilket felklassade
+# "januari–september" (9 månader ackumulerat, standardformat i svenska
+# delårsrapporter) som Q1 – ett rent matematikfel så fort perioden används
+# för årsjustering (ett 9-månaderresultat är inte ett kvartalsresultat).
+_MONTHSPAN_TO_PERIOD = {
+    ("januari", "mars"): "Q1", ("april", "juni"): "Q2",
+    ("juli", "september"): "Q3", ("oktober", "december"): "Q4",
+    ("januari", "juni"): "H1", ("januari", "september"): "9M",
+    ("januari", "december"): "Helår",
+}
 
 # Rapport-liknande PM (för att inte slösa regex-sökningar på ordernyheter etc.
 # och för att selftest ska mäta rätt nämnare). Titlar, inte MFN:s 'type'-fält
@@ -447,10 +464,29 @@ def detect_period(title: str) -> Optional[str]:
             return f"{q} {year}" if year else q
     mr = _MONTHRANGE_RE.search(title)
     if mr:
-        q = _MONTH_TO_Q.get(mr.group(1).lower())
-        if q:
-            return f"{q} {year}" if year else q
+        span = _MONTHSPAN_TO_PERIOD.get((mr.group(1).lower(), mr.group(2).lower()))
+        if span:
+            return f"{span} {year}" if year else span
     return None
+
+
+# Årsjusteringsfaktor per periodspann: flödesmått (resultat, avskrivningar,
+# kassaflöde) från en delperiod måste skalas till årstakt innan de jämförs
+# mot balansposter (ROE = resultat/eget kapital) eller börsvärde (owner
+# earnings-multipel) – annars ser ett Q1-bolag ut att ha ~4x för låg ROE och
+# ~4x för dyr multipel. Approximation: antar jämn intjäning över året (ingen
+# säsongsjustering – dokumenterad förenkling, inte en bugg). Okänd period →
+# 1.0 (ingen skalning): KONSERVATIVT åt köpsidan (en verklig kvartalssiffra
+# oskalad ger för LÅG ROE → bolaget nekas snarare än släpps in felaktigt).
+def annualization_factor(period) -> float:
+    p = str(period or "").strip().upper()
+    if p.startswith("Q"):
+        return 4.0
+    if p.startswith("H1"):
+        return 2.0
+    if p.startswith("9M"):
+        return 4.0 / 3.0
+    return 1.0   # Helår eller okänd
 
 
 def _first_match(patterns: List[re.Pattern], text: str) -> Optional[re.Match]:
