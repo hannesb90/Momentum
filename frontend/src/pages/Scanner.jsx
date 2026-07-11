@@ -43,10 +43,41 @@ export function ScannerPage() {
     .filter((u) => u.name.toLowerCase().includes(q) || u.ticker.toLowerCase().includes(q))
     .slice(0, 8)
 
-  function selectTicker(u) {
+  async function doScan(ticker, overridesObj) {
+    if (!ticker || loading) return null
+    setLoading(true)
+    setError(null)
+    try {
+      const r = await api.scannerScan(ticker, overridesObj)
+      setResult(r)
+      return r
+    } catch (err) {
+      setError(err.message)
+      setResult(null)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Val av ticker ur sökträffarna: hämta DIREKT vad vi redan känner till (tom
+  // overrides = ren förfyllnad) och lägg in det i formulärfälten, så du SER
+  // vad som redan är känt i st.f. att bara ana det efter en full skanning.
+  // Fyller aldrig över fält du redan skrivit i manuellt.
+  async function selectTicker(u) {
     setTickerSel(u)
     setTickerQuery('')
-    if (u.name && !values.name) setField('name', u.name)
+    const r = await doScan(u.ticker, {})
+    setValues((prev) => {
+      const next = { ...prev }
+      for (const [k, info] of Object.entries(r?.fields ?? {})) {
+        if (info?.value != null && (next[k] === undefined || next[k] === '' || next[k] == null)) {
+          next[k] = info.value
+        }
+      }
+      if (!next.name && u.name) next.name = u.name
+      return next
+    })
   }
 
   function clearTicker() {
@@ -58,24 +89,13 @@ export function ScannerPage() {
     setValues((prev) => ({ ...prev, [k]: v }))
   }
 
-  async function runScan(e) {
+  function runScan(e) {
     e.preventDefault()
     const ticker = (tickerSel?.ticker || tickerQuery).trim().toUpperCase()
-    if (!ticker || loading) return
-    setLoading(true)
-    setError(null)
-    try {
-      const overrides = Object.fromEntries(
-        Object.entries(values).filter(([, v]) => v !== '' && v != null),
-      )
-      const r = await api.scannerScan(ticker, overrides)
-      setResult(r)
-    } catch (err) {
-      setError(err.message)
-      setResult(null)
-    } finally {
-      setLoading(false)
-    }
+    const overrides = Object.fromEntries(
+      Object.entries(values).filter(([, v]) => v !== '' && v != null),
+    )
+    doScan(ticker, overrides)
   }
 
   return (
