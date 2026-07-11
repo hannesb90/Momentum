@@ -102,6 +102,47 @@ def _signed_num(v):
         return None
 
 
+_CLOSES_CACHE: dict = {}
+
+
+def _latest_close_map(path, col) -> dict:
+    """{TICKER: sista giltiga <col>-värde per ticker} ur en prices-CSV, via
+    pandas groupby (C-fart) i stället för en Python-csv-radloop.
+
+    prices.csv har ALLA tickers × ALLA dagar (stor fil); den gamla radloopen
+    med csv.DictReader tog ~2,9s på Pi:n (338 000 rader). Läser BARA ticker +
+    den efterfrågade kolumnen (usecols) och tar sista GILTIGA raden per ticker
+    med dropna + groupby().tail(1) – exakt samma semantik som radloopens
+    'sista raden med giltig kurs vinner', oberoende av filordning (så ingen
+    kronologi-antagande behövs här, till skillnad från signals-svansen).
+    Memoiserad per (fil, mtime)."""
+    try:
+        mt = Path(path).stat().st_mtime
+    except OSError:
+        return {}
+    key = f"{path}::{col}"
+    hit = _CLOSES_CACHE.get(key)
+    if hit is not None and hit[0] == mt:
+        return hit[1]
+    import pandas as pd
+    out: dict = {}
+    try:
+        header = pd.read_csv(path, nrows=0)
+        if "ticker" in header.columns and col in header.columns:
+            df = pd.read_csv(path, usecols=["ticker", col]).dropna(subset=[col])
+            if not df.empty:
+                last = df.groupby("ticker", sort=False).tail(1)
+                for _, row in last.iterrows():
+                    tk = str(row.get("ticker") or "").upper()
+                    v = _num(row.get(col))
+                    if tk and v:
+                        out[tk] = v
+    except Exception:  # noqa: BLE001
+        out = {}
+    _CLOSES_CACHE[key] = (mt, out)
+    return out
+
+
 def _latest_closes(include_quotes: bool = True) -> dict:
     """{ticker: senaste stängningskurs i SEK}. Källor i ordning:
       1. Segmentens prices.csv (modellens universum, skrivs nattligt).
@@ -111,16 +152,8 @@ def _latest_closes(include_quotes: bool = True) -> dict:
     out = {}
     for seg in config.SEGMENTS.values():
         pp = Path(seg.get("results_dir", "")) / "prices.csv"
-        if not pp.exists():
-            continue
-        try:
-            for r in csv.DictReader(open(pp, encoding="utf-8")):
-                tk = (r.get("ticker") or "").upper()
-                v = _num(r.get("close"))
-                if tk and v:
-                    out[tk] = v            # sista raden per ticker vinner = senaste
-        except Exception:  # noqa: BLE001
-            pass
+        if pp.exists():
+            out.update(_latest_close_map(pp, "close"))   # sista giltiga per ticker
     if include_quotes:
         qp = _results_dir() / "holdings_quotes.csv"
         if qp.exists():
