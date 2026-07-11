@@ -27,7 +27,7 @@ kassaflöde, balansposter, ROE/ROA/ROCE, utdelning, ...) kommer från en
 tillhandahållen kanonisk synonymlista och är INTE ännu verifierad mot skarp
 text – kör om selftest/misses efter denna ändring för att se faktisk effekt.
 
-Två kända, medvetna avvägningar (inte buggar, men värda att känna till):
+Tre kända, medvetna avvägningar (inte buggar, men värda att känna till):
   · "Rörelseförlust" mappas till samma fält som EBIT (ebit) trots att en
     förlust ofta anges som ett POSITIVT tal ("Rörelseförlusten uppgick till
     5 Mkr" = EBIT -5, inte +5) – vi negerar INTE automatiskt eftersom vi inte
@@ -37,6 +37,16 @@ Två kända, medvetna avvägningar (inte buggar, men värda att känna till):
     (ebit) kan båda träffa SAMMA mening om en rapport bara nämner det
     justerade talet ("Justerat rörelseresultat uppgick till 20 Mkr" ger både
     ebit=20 OCH adjusted_ebit=20) – ett känt överlapp, inte en krasch.
+  · ENDAST SEK-enheter stöds (Mkr/MSEK/tkr/TSEK/kkr) – bolag som rapporterar
+    i utländsk valuta (t.ex. ABB i USD: "830 miljoner dollar", "1,6 miljarder
+    dollar") extraheras MEDVETET INTE. Det är frestande att bara lägga till
+    "dollar"/"miljarder" i enhetslistan, men nedströms (value_screener.py:s
+    _to_msek) antar okänd enhet redan-Mkr-SEK – att blint lägga till
+    utländsk valuta skulle TYST behandla t.ex. 830 miljoner dollar som 830
+    Mkr SEK, en underskattning på ~8-10x (USD/SEK-kursen) rakt in i ROE-/
+    värderingsberäkningen. Mycket värre än att bara missa datan. Kräver
+    valuta-medveten extraktion + FX-konvertering VID RAPPORTDATUMET (inte
+    dagens kurs) för att göras rätt – ej byggt.
 
     python -m altdata.mfn_fundamentals selftest large   # TRÄFFGRAD mot din cache
     python -m altdata.mfn_fundamentals misses large 2   # miss-PM med enhets-token kvar
@@ -84,11 +94,15 @@ _CONNECT = (
 )
 # Etiketten följs ibland av en parentetisk förkortning ("Rörelseresultatet
 # (EBIT) uppgick till..."), en periods-kvalificerare ("...för perioden/
-# kvartalet uppgick till...") och/eller "efter/före utspädning" (resultat per
-# aktie) innan konnektorn.
+# kvartalet uppgick till..." – ibland med ETT ORDNINGSTAL + ÅRTAL inklämt:
+# "EBIT för fjärde kvartalet 2011 uppgick till..." (upptäckt i ett riktigt
+# ABB-exempel; kvalificeraren fastnade tidigare bara på den nakna formen
+# "för kvartalet", inte "för fjärde kvartalet 2011")) och/eller "efter/före
+# utspädning" (resultat per aktie) innan konnektorn.
 _LABEL_TAIL = (
     r"(?:\s*\([^)]{1,15}\))?"
-    r"(?:\s+för\s+(?:perioden|kvartalet|räkenskapsåret|helåret))?"
+    r"(?:\s+för\s+(?:(?:första|andra|tredje|fjärde)\s+)?"
+    r"(?:perioden|kvartalet|räkenskapsåret|helåret)(?:\s+20\d{2})?)?"
     r"(?:\s+(?:efter|före)\s+utspädning)?"
     r"\s+"
 )
