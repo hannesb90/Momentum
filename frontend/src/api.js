@@ -95,4 +95,9 @@ export const api = {
   portfolioLog: () => getJson('/portfolio-log'),
   // "Nästa köp" (fyll-mot-mål) vs index – förberäknad på Pi:n (portfolio.py backtest).
   portfolioBacktest: () => getJson('/portfolio-backtest'),
+  // Manuell scenario-skanner: valfri aktie + manuell data → värde ur modellerna.
+  // Görs ALDRIG mot nätet och sparas ALDRIG (se altdata/manual_scan.py).
+  scannerFields: () => getJson('/scanner/fields'),
+  scannerScan: (ticker, overrides, segment) =>
+    postJson('/scanner/scan', { ticker, overrides, segment }),
 }

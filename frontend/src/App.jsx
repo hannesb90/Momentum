@@ -11,6 +11,7 @@ import { RotationPage } from './pages/Rotation'
 import { MarketPage } from './pages/Market'
 import { HoldingsPage } from './pages/Holdings'
 import { StockDetailPage } from './pages/StockDetail'
+import { ScannerPage } from './pages/Scanner'
 import { setApiSegment } from './api'
 
 const SEGMENTS = [
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="/kvalitet" element={<QualityPage />} />
           <Route path="/innehav" element={<HoldingsPage />} />
           <Route path="/analys" element={<AnalysisPage />} />
+          <Route path="/skanner" element={<ScannerPage />} />
           {/* Deep-link-vägar (nås via sub-flikar men behåller egna URL:er) */}
           <Route path="/sektorer" element={<SectorsPage />} />
           <Route path="/rotation" element={<RotationPage />} />
