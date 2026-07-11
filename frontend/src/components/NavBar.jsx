@@ -43,6 +43,12 @@ const ICONS = {
       <path d="M3 10h18M8 15h3" />
     </>
   ),
+  scanner: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3M8 11h6M11 8v6" />
+    </>
+  ),
 }
 
 const links = [
@@ -52,6 +58,7 @@ const links = [
   { to: '/kvalitet', label: 'Kvalitet', icon: 'quality' },
   { to: '/marknad', label: 'Marknad', icon: 'sectors' },
   { to: '/analys', label: 'Analys', icon: 'analysis' },
+  { to: '/skanner', label: 'Skanner', icon: 'scanner' },
 ]
 
 function Icon({ name }) {
