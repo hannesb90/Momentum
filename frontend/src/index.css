@@ -1542,6 +1542,86 @@ h2 {
   padding-top: 14px;
   border-top: 1px solid var(--border);
 }
+/* Helhetsbetyg – hastighetsmätare (röd→grön) för Skannerns resultatsida. */
+.gauge {
+  margin: 4px 0 16px;
+}
+.gauge__track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, hsl(0, 75%, 50%), hsl(50, 85%, 52%), hsl(120, 65%, 42%));
+}
+.gauge__marker {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 3px solid var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  transform: translate(-50%, -50%);
+}
+.gauge--unknown .gauge__marker {
+  background: var(--text-muted);
+  opacity: 0.5;
+}
+.gauge--unknown .gauge__track {
+  background: var(--border);
+}
+.gauge__readout {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 10px;
+}
+.gauge__value {
+  font-size: 1.7rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.gauge__caption {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+.verdict-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.verdict-col {
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.verdict-col h4 {
+  margin: 0 0 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.verdict-col ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.verdict-col li {
+  margin-bottom: 3px;
+}
+.verdict-col--pos {
+  background: var(--good-soft);
+}
+.verdict-col--pos h4 {
+  color: var(--good);
+}
+.verdict-col--neg {
+  background: var(--bad-soft);
+}
+.verdict-col--neg h4 {
+  color: var(--bad);
+}
 /* Fundamenta-status per innehav (caset intakt / caset-varningar). */
 .h-card__fund {
   margin-top: 4px;
