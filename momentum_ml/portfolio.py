@@ -438,13 +438,34 @@ _RESEARCH_FIRMS = ("analyst group", "redeye", "emergers", "carlsquare", "erik pe
 _RIKTKURS = re.compile(r"riktkurs\D{0,25}(\d[\d\s.,]*)\s*(kr|sek)", re.I)
 
 
+_RESEARCH_CACHE: dict = {}
+
+
 def _research_note(ticker):
     """Token-fri skanning av MFN-cachen: senaste uppdragsanalys-PM + ev. riktkurs.
     OBS: uppdragsanalys är BETALD av bolaget → positivt biased. Visas som narrativ,
-    inte signal."""
+    inte signal.
+
+    Memoiserad på filens mtime: att öppna+json-parsa+fulltextsöka en MFN-fil är
+    DYRT (de riktiga filerna är stora – hela PM-historiken med fulltext), och
+    profilering på Pi:n visade 14,5s spenderat här när det kördes en gång per
+    bolag i universumet. Anropas numera bara LAT för topp-kandidaterna
+    (_unified_rank), och den här cachen gör upprepade anrop gratis tills filen
+    ändras."""
     p = Path(config.MFN_CACHE_DIR) / f"{ticker}.json"
-    if not p.exists():
+    try:
+        mt = p.stat().st_mtime
+    except OSError:
         return None
+    hit = _RESEARCH_CACHE.get(ticker)
+    if hit is not None and hit[0] == mt:
+        return hit[1]
+    result = _research_note_uncached(p)
+    _RESEARCH_CACHE[ticker] = (mt, result)
+    return result
+
+
+def _research_note_uncached(p):
     try:
         items = json.loads(p.read_text(encoding="utf-8")).get("items", [])
     except Exception:  # noqa: BLE001
@@ -460,6 +481,80 @@ def _research_note(ticker):
     return None
 
 
+_SIGNALS_CACHE: dict = {}
+
+
+def _latest_signals(path) -> dict:
+    """{TICKER: {prob_up, pred_signal, name}} – senaste raden per ticker ur en
+    signals.csv. Memoiserad per (fil, mtime): samma fil läses annars flera
+    gånger per next_buy (_load_scores för båda segmenten + _momentum_picks)."""
+    try:
+        mt = Path(path).stat().st_mtime
+    except OSError:
+        return {}
+    key = str(path)
+    hit = _SIGNALS_CACHE.get(key)
+    if hit is not None and hit[0] == mt:
+        return hit[1]
+    out = _latest_signals_uncached(path)
+    _SIGNALS_CACHE[key] = (mt, out)
+    return out
+
+
+_SIGNALS_TAIL_BYTES = 8 * 1024 * 1024   # 8 MB ≈ ~1 år av veckosignaler för hela universumet
+
+
+def _latest_signals_uncached(path) -> dict:
+    """Senaste raden per ticker – läser BARA slutet av filen, inte hela historiken.
+
+    signals.csv innehåller ALLA tickers × ALLA veckor MED alla feature-kolumner
+    (100+ MB på storsegmentet). Att skanna hela filen bara för sista raden per
+    ticker var flaskhalsen (~12s i den gamla csv-radloopen; även pandas med
+    usecols måste läsa varje byte). Men filen är KRONOLOGISK → de senaste
+    raderna ligger sist. Vi seek:ar därför till de sista _SIGNALS_TAIL_BYTES,
+    kastar en trolig halv rad, och parsar bara svansen med pandas (usecols för
+    de fyra kolumner vi behöver). groupby().tail(1) ger sista raden per ticker.
+
+    Följd: en ticker som inte handlats på ~1 år saknas – men den är per
+    definition ingen aktuell köpkandidat, så det är korrekt att utelämna dess
+    inaktuella signal. Liten fil (< svansen) läses i sin helhet."""
+    import io
+    import pandas as pd
+
+    p = Path(path)
+    try:
+        with open(p, "rb") as f:
+            header_line = f.readline()
+            size = p.stat().st_size
+            if size > _SIGNALS_TAIL_BYTES + len(header_line):
+                f.seek(-_SIGNALS_TAIL_BYTES, io.SEEK_END)
+                f.readline()          # kasta en sannolikt partiell första rad
+            chunk = f.read()
+    except OSError:
+        return {}
+    if not header_line:
+        return {}
+    cols = header_line.decode("utf-8", "replace").rstrip("\r\n").split(",")
+    want = [c for c in ("ticker", "name", "prob_up", "pred_signal") if c in cols]
+    if "ticker" not in want or not chunk:
+        return {}
+    try:
+        df = pd.read_csv(io.BytesIO(header_line + chunk), usecols=want)
+    except Exception:  # noqa: BLE001
+        return {}
+    if df.empty:
+        return {}
+    last = df.groupby("ticker", sort=False).tail(1)
+    out = {}
+    for _, row in last.iterrows():
+        tk = str(row.get("ticker") or "").strip().upper()
+        if tk:
+            out[tk] = {"prob_up": row.get("prob_up"),
+                       "pred_signal": row.get("pred_signal"),
+                       "name": row.get("name")}
+    return out
+
+
 def _momentum_picks():
     """Momentum-köpsignaler för svenska småbolag (Signaler-vyn). Loser mot index –
     idéer, inte edge."""
@@ -467,22 +562,16 @@ def _momentum_picks():
     sp = Path(seg.get("results_dir", "")) / "signals.csv"
     if not sp.exists():
         return []
-    last = {}
-    try:
-        for r in csv.DictReader(open(sp, encoding="utf-8")):
-            if r.get("ticker"):
-                last[r["ticker"]] = r         # sista raden per ticker = senaste vecka
-    except Exception:  # noqa: BLE001
-        return []
+    latest = _latest_signals(sp)   # pandas-snabb, delad med _load_scores
     def pu(r):
         try:
             return float(r.get("prob_up") or 0)
-        except ValueError:
+        except (ValueError, TypeError):
             return 0.0
-    buys = [r for r in last.values() if str(r.get("pred_signal")) in ("1", "1.0")]
-    buys.sort(key=pu, reverse=True)
-    return [{"name": r.get("name") or r.get("ticker"), "ticker": r.get("ticker"),
-             "note": f"momentum P(upp) {pu(r):.0%}", "source": "momentum"} for r in buys[:5]]
+    buys = [(tk, r) for tk, r in latest.items() if str(r.get("pred_signal")) in ("1", "1.0", "1")]
+    buys.sort(key=lambda x: pu(x[1]), reverse=True)
+    return [{"name": r.get("name") or tk, "ticker": tk,
+             "note": f"momentum P(upp) {pu(r):.0%}", "source": "momentum"} for tk, r in buys[:5]]
 
 
 def _candidates() -> dict:
@@ -788,22 +877,19 @@ def _load_scores_uncached() -> dict:
         sp = Path(seg.get("results_dir", "")) / "signals.csv"
         if not sp.exists():
             continue
-        try:
-            last = {}
-            for r in csv.DictReader(open(sp, encoding="utf-8")):
-                if r.get("ticker"):
-                    last[r["ticker"].strip().upper()] = r    # sista raden per ticker = senaste vecka
-            for tk, r in last.items():
-                p = _num(r.get("prob_up"))
-                if p is not None:
-                    e = ent(tk, r.get("name"))
-                    e["prob_up"] = max(p, e.get("prob_up") or 0.0)
-                    e["pred_signal"] = str(r.get("pred_signal"))
-        except Exception:  # noqa: BLE001
-            pass
+        for tk, r in _latest_signals(sp).items():   # pandas-snabb (var ~12s i en radloop)
+            p = _num(r.get("prob_up"))
+            if p is not None:
+                e = ent(tk, r.get("name"))
+                e["prob_up"] = max(p, e.get("prob_up") or 0.0)
+                e["pred_signal"] = str(r.get("pred_signal"))
 
-    for tk, e in out.items():
-        e["research"] = bool(_research_note(tk))
+    # OBS: 'research' (uppdragsanalys-flaggan) sätts INTE eagert här längre.
+    # _research_note() fulltext-skannar en stor MFN-fil per bolag (~14,5s för
+    # hela universumet i profileringen) → beräknas numera LAT i _unified_rank,
+    # bara för topp-kandidaterna. Konsumenter (bara _unified_rank via
+    # _composite_score) tål att flaggan saknas = ingen bonus (verifierat att
+    # inga andra läsare finns).
     return out
 
 
@@ -952,18 +1038,25 @@ def set_active_model(model: str) -> str:
     return model
 
 
-def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted):
+def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted, research=None):
     """Sammanvägd poäng + 'why'-etiketter för ETT bolag under viktprofilen
     `w`, mot en given universums-fördelning (redan sorterade quality/quant/
     value-listor – se _pct_rank:s docstring). Utbruten ur _unified_rank:s
     loop så SAMMA formel kan återanvändas av altdata/manual_scan.py (testar
     en enskild scenario-aktie mot samma fördelning som resten av
-    universumet) – en ren refaktorering, ingen beteendeändring (verifierat
-    bit-identiskt mot tidigare inline-version via test_unified_rank.py).
+    universumet).
     Returnerar None om bolaget saknar alla tre fundament-betyg (kräver
     minst ett – köp-och-behåll, inte bara fart). OBS: score är RÅ (oavrundad,
     ingen sektor-/koncentrations-justering) – det portfölj-medvetna påslaget
-    (sektorstraff m.m.) hör hemma hos anroparen, inte här."""
+    (sektorstraff m.m.) hör hemma hos anroparen, inte här.
+
+    research: uppdragsanalys-bonus. None (default) = läs e['research'] (bakåt-
+    kompatibelt för manual_scan som sätter den själv). _unified_rank kör i två
+    pass och skickar EXPLICIT False i pass 1 (bas-poäng utan att läsa någon
+    MFN-fil) och True bara för topp-kandidaterna i pass 2 – så den dyra
+    fulltextskanningen sker bara för en handfull bolag, inte hela universumet."""
+    if research is None:
+        research = bool(e.get("research"))
     is_buffett = (model == "buffett")
     qn = _pct_rank(q_sorted, e.get("quality"))
     kn = _pct_rank(k_sorted, e.get("quant"))
@@ -983,7 +1076,7 @@ def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted)
              + w["quant"] * (kn if kn is not None else fb)
              + w["value"] * (vn if vn is not None else fb)
              + w["momentum"] * (pn if pn is not None else 0.5)
-             + (w["research"] if e.get("research") else 0.0))
+             + (w["research"] if research else 0.0))
     why = []
     if e.get("quality") is not None:
         why.append(f"kvalitet {e['quality']:.1f}/5" + (f" · {e['zone']}" if e.get("zone") else ""))
@@ -993,7 +1086,7 @@ def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted)
         why.append(f"kvant {e['quant']:.0f}")
     if pn is not None:
         why.append(f"P(upp) {pn:.0%}")
-    if e.get("research"):
+    if research:
         why.append("uppdragsanalys ✓")
     return score, why, {"quality_pctl": qn, "quant_pctl": kn, "value_pctl": vn}
 
@@ -1038,6 +1131,9 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
     q_sorted = sorted(x for x in q_all if x is not None)
     k_sorted = sorted(x for x in k_all if x is not None)
     v_sorted = sorted(x for x in v_all if x is not None)
+    # PASS 1 – bas-poäng UTAN uppdragsanalys-bonus (research=False → läser INGEN
+    # MFN-fil). Att läsa research eagert för varje bolag i universumet var ~14,5s
+    # (profilerat). Bonusen läggs på lat i pass 2 nedan, bara för topp-kandidaterna.
     ranked = []
     for tk, e in scores.items():
         # Dyr-uteslutning: buffett tittar på owner-earnings-zonen (value_zone),
@@ -1055,7 +1151,7 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
                 continue
             if not (e.get("meets_roe_bar") and e.get("meets_debt_bar")):
                 continue
-        res = _composite_score(e, model, w, q_sorted, k_sorted, v_sorted)
+        res = _composite_score(e, model, w, q_sorted, k_sorted, v_sorted, research=False)
         if res is None:
             continue
         score, why, _pctls = res
@@ -1066,6 +1162,20 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
                        "score": round(score, 3), "note": " · ".join(why),
                        "source": f"sammanvägd ({model})"})
     ranked.sort(key=lambda x: -x["score"])
+
+    # PASS 2 – lägg på uppdragsanalys-bonusen LAT, bara för topp-K kandidaterna.
+    # Bonusen är liten (≤0.15) och ADDERAS bara → en generös marginal (K) räcker
+    # för att fånga alla som den skulle kunna putta upp i topp-N, utan att läsa
+    # en MFN-fil per bolag i hela universumet (bara ~dussintal svenska småbolag
+    # har betald analys ändå). research-vikt 0 (ingen modell har det) skulle
+    # göra pass 2 meningslös → hoppa då direkt.
+    if w["research"] > 0 and ranked:
+        K = max(top_n * 5, 20)
+        for cand in ranked[:K]:
+            if _research_note(cand["ticker"]):
+                cand["score"] = round(cand["score"] + w["research"], 3)
+                cand["note"] = (cand["note"] + " · uppdragsanalys ✓") if cand["note"] else "uppdragsanalys ✓"
+        ranked.sort(key=lambda x: -x["score"])
     return ranked[:top_n]
 
 
