@@ -14,10 +14,18 @@ const GROUPS = [
 
 const PERIOD_OPTIONS = ['', 'Q1', 'Q2', 'Q3', 'Q4', 'H1', '9M', 'Helår']
 const MODEL_LABELS = { balanced: 'Balanserad', buffett: 'Buffett', momentum: 'Momentum' }
+const BUCKET_LABEL = { broad: 'Bred kärna', sweden: 'Sverige', theme: 'Tematiskt', leverage: 'Hävstång' }
 
 export function ScannerPage() {
   const [fieldMeta, setFieldMeta] = useState(null)
-  const [ticker, setTicker] = useState('')
+  const [universe, setUniverse] = useState([])
+  // Sök-och-välj (namn ELLER ticker), samma mönster som Innehav-sidans
+  // "lägg till innehav"-sök. tickerSel = valt kandidat ur universumet;
+  // saknas en träff (t.ex. en utländsk aktie vi inte spårar) kan man ändå
+  // fortsätta med den fritt skrivna texten som ticker – Skannern stödjer
+  // uttryckligen bolag utanför vårt universum.
+  const [tickerSel, setTickerSel] = useState(null)
+  const [tickerQuery, setTickerQuery] = useState('')
   const [values, setValues] = useState({})
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -27,7 +35,24 @@ export function ScannerPage() {
     api.scannerFields()
       .then((d) => setFieldMeta(Object.fromEntries((d.fields ?? []).map((f) => [f.key, f]))))
       .catch(() => {})
+    api.universe().then(setUniverse).catch(() => {})
   }, [])
+
+  const q = tickerQuery.trim().toLowerCase()
+  const matches = tickerSel || q.length < 2 ? [] : universe
+    .filter((u) => u.name.toLowerCase().includes(q) || u.ticker.toLowerCase().includes(q))
+    .slice(0, 8)
+
+  function selectTicker(u) {
+    setTickerSel(u)
+    setTickerQuery('')
+    if (u.name && !values.name) setField('name', u.name)
+  }
+
+  function clearTicker() {
+    setTickerSel(null)
+    setTickerQuery('')
+  }
 
   function setField(k, v) {
     setValues((prev) => ({ ...prev, [k]: v }))
@@ -35,14 +60,15 @@ export function ScannerPage() {
 
   async function runScan(e) {
     e.preventDefault()
-    if (!ticker.trim() || loading) return
+    const ticker = (tickerSel?.ticker || tickerQuery).trim().toUpperCase()
+    if (!ticker || loading) return
     setLoading(true)
     setError(null)
     try {
       const overrides = Object.fromEntries(
         Object.entries(values).filter(([, v]) => v !== '' && v != null),
       )
-      const r = await api.scannerScan(ticker.trim().toUpperCase(), overrides)
+      const r = await api.scannerScan(ticker, overrides)
       setResult(r)
     } catch (err) {
       setError(err.message)
@@ -75,11 +101,47 @@ export function ScannerPage() {
 
       <form className="scan-form" onSubmit={runScan}>
         <div className="scan-form__field scan-form__field--ticker">
-          <span>Ticker</span>
-          <input
-            className="pf-in" type="text" placeholder="t.ex. NVDA.US eller AAA.ST"
-            value={ticker} onChange={(e) => setTicker(e.target.value)} required
-          />
+          <span>Aktie</span>
+          {tickerSel ? (
+            <div className="h-add__sel">
+              <b>{tickerSel.name}</b>
+              <span className="mono">{tickerSel.ticker}</span>
+              <button type="button" className="pf-del" title="Byt" onClick={clearTicker}>✕</button>
+            </div>
+          ) : (
+            <div className="pf-search">
+              <input
+                className="pf-in pf-search__input" type="text"
+                placeholder="Sök namn eller ticker – t.ex. Volvo, NVDA.US, AAA.ST…"
+                value={tickerQuery}
+                onChange={(e) => setTickerQuery(e.target.value)}
+              />
+              {matches.length > 0 && (
+                <div className="pf-search__drop">
+                  {matches.map((u) => (
+                    <button key={u.ticker} type="button" className="pf-search__item" onClick={() => selectTicker(u)}>
+                      <span className="pf-search__name">{u.name}</span>
+                      <span className="pf-search__meta">
+                        <span className="mono">{u.ticker}</span>
+                        <span className={`cand-src cand-src--${u.bucket}`}>{BUCKET_LABEL[u.bucket] ?? u.bucket}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {q.length >= 2 && matches.length === 0 && (
+                <div className="pf-search__drop">
+                  <button
+                    type="button" className="pf-search__item"
+                    onClick={() => selectTicker({ ticker: tickerQuery.trim().toUpperCase(), name: tickerQuery.trim() })}
+                  >
+                    <span className="pf-search__name">Fortsätt med "{tickerQuery.trim()}" som ticker</span>
+                    <span className="pf-search__meta"><span className="mono">utanför vårt universum</span></span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {GROUPS.map((g) => (
           <fieldset key={g.title} className="scan-form__group">

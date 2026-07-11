@@ -1496,9 +1496,9 @@ h2 {
   flex-direction: column;
   gap: 4px;
   margin-bottom: 14px;
-  max-width: 320px;
+  max-width: 440px;
 }
-.scan-form__field--ticker span {
+.scan-form__field--ticker > span {
   font-size: 0.82rem;
   color: var(--text-muted);
 }
