@@ -25,6 +25,7 @@ import sys
 import csv
 import json
 import re
+import bisect
 from pathlib import Path
 from typing import Optional
 
@@ -840,12 +841,19 @@ def _opportunity(rows, amount) -> dict:
     }
 
 
-def _pct_rank(values, v):
-    """Percentil av v bland values (0..1). Skalfri normalisering mellan modeller."""
-    vals = sorted(x for x in values if x is not None)
-    if not vals or v is None:
+def _pct_rank(sorted_vals, v):
+    """Percentil av v bland sorted_vals (0..1). Skalfri normalisering mellan modeller.
+
+    sorted_vals MÅSTE redan vara sorterad (stigande, None borttaget) av anroparen –
+    _unified_rank sorterar en gång per rankningsomgång och återanvänder listan för
+    varje bolag. Sorterade man om här per anrop (som tidigare) blev hela
+    _unified_rank O(n² log n) i antal bolag – obemärkt med en handfull test-
+    tickers, men en verklig hängning (30s+ timeout) med hela Sverige-universumet
+    (~2600+ bolag) efter att value_shortlist.csv gjorde 'scores' mycket större.
+    bisect ger O(log n) per uppslag istället."""
+    if not sorted_vals or v is None:
         return None
-    return sum(1 for x in vals if x <= v) / len(vals)
+    return bisect.bisect_right(sorted_vals, v) / len(sorted_vals)
 
 
 # Viktprofiler per rank-modell (köp-vakten). Nycklar: quality/quant/value/
@@ -922,6 +930,11 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
     q_all = [e.get("quality") for e in scores.values()]
     k_all = [e.get("quant") for e in scores.values()]
     v_all = [e.get("value_score") for e in scores.values()]
+    # Sorteras EN gång här och återanvänds för varje bolag i loopen nedan
+    # (_pct_rank kräver redan sorterad indata) – se _pct_rank:s docstring.
+    q_sorted = sorted(x for x in q_all if x is not None)
+    k_sorted = sorted(x for x in k_all if x is not None)
+    v_sorted = sorted(x for x in v_all if x is not None)
     ranked = []
     for tk, e in scores.items():
         # Dyr-uteslutning: buffett tittar på owner-earnings-zonen (value_zone),
@@ -939,9 +952,9 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
                 continue
             if not (e.get("meets_roe_bar") and e.get("meets_debt_bar")):
                 continue
-        qn = _pct_rank(q_all, e.get("quality"))
-        kn = _pct_rank(k_all, e.get("quant"))
-        vn = _pct_rank(v_all, e.get("value_score"))
+        qn = _pct_rank(q_sorted, e.get("quality"))
+        kn = _pct_rank(k_sorted, e.get("quant"))
+        vn = _pct_rank(v_sorted, e.get("value_score"))
         if qn is None and kn is None and vn is None:
             continue                     # köp-och-behåll: kräver fundament, inte bara fart
         pn = e.get("prob_up")
