@@ -407,12 +407,20 @@ def _resolve_ticker(name) -> str:
     return ""
 
 
+_SECTOR_MAP = None
+
+
 def _sector_of(ticker) -> str:
-    tk = (ticker or "").upper()
-    for t, _, sec in _universe():
-        if t == tk:
-            return sec
-    return ""
+    # Tidigare en LINJÄR scan av HELA universumet per anrop – och _unified_rank
+    # anropar detta en gång per bolag i sin loop (×2 rankningsomgångar per
+    # next_buy), vilket blev O(n²) i universumstorlek. Osynligt förr men en
+    # verklig bidragande orsak till 30s-hängningen sedan value_shortlist.csv
+    # gjorde poängkartan universumsstor. Bygg en dict EN gång (universumet är
+    # redan cachat i _universe()) → O(1)-uppslag.
+    global _SECTOR_MAP
+    if _SECTOR_MAP is None:
+        _SECTOR_MAP = {t: sec for t, _, sec in _universe()}
+    return _SECTOR_MAP.get((ticker or "").upper(), "")
 
 
 def _kinds():
@@ -656,7 +664,56 @@ def compute(rows, amount=None) -> dict:
     return out
 
 
+_SCORES_CACHE: dict = {}
+
+
+def _scores_mtime() -> float:
+    """Senaste mtime bland ENBART de filer _load_scores faktiskt läser
+    (kvalitet/kvant/value-shortlists + signals per segment). MEDVETET utan
+    modellvals-/innehavs-/målfilerna som _data_mtime tar med – poängkartan
+    beror INTE på dem, så ett modellbyte eller en innehavssparning ska INTE
+    tvinga en (dyr) ombyggnad av kartan. (_research_note läser MFN-cachen per
+    ticker; dess sällsynta ändringar plockas upp när någon score-CSV ändras
+    nattligt eller vid API-omstart – lågriskavvägning för en liten
+    ranknings-bonus.)"""
+    paths = [_results_dir() / "quality_shortlist.csv",
+             _results_dir() / "quant_shortlist.csv",
+             _results_dir() / "value_shortlist.csv"]
+    for seg in config.SEGMENTS.values():
+        paths.append(Path(seg.get("results_dir", "")) / "signals.csv")
+    m = 0.0
+    for p in paths:
+        try:
+            m = max(m, p.stat().st_mtime)
+        except OSError:
+            pass
+    return m
+
+
 def _load_scores() -> dict:
+    """Memoiserad omslag runt _load_scores_uncached, nycklad på _scores_mtime().
+
+    KRITISKT för prestanda: next_buy anropar _load_scores FYRA gånger
+    (_unified_rank för sverige-slotten, _opportunity → _unified_rank + direkt,
+    _takeprofit) och varje bygge probar _research_note() – en JSON-fil per
+    ticker från MFN-cachen – för VARJE bolag i poängkartan (~2600 sedan
+    value_shortlist.csv). Fyra gånger 2600 långsamma SD-kort-läsningar var en
+    huvudorsak till 30s-hängningen. Kartan är en ren funktion av score-filerna
+    på disk → cacha den på deras mtime, så den byggs EN gång per
+    datauppdatering, inte per anrop (och INTE om vid varje modellbyte).
+    Nattjobbet som skriver om CSV:erna ändrar mtime → cachen ogiltigförklaras
+    automatiskt. Alla anropare är läs-only (verifierat) → att dela objektet
+    är säkert."""
+    key = _scores_mtime()
+    hit = _SCORES_CACHE.get("entry")
+    if hit is not None and hit[0] == key:
+        return hit[1]
+    out = _load_scores_uncached()
+    _SCORES_CACHE["entry"] = (key, out)
+    return out
+
+
+def _load_scores_uncached() -> dict:
     """
     SAMMANSLAGNINGEN: en per-ticker-poängkarta ur ALLA modellers output.
       quality  – Kvalitet-vyns composite (LLM+kvant-merged, 0–5) + värderingszon
