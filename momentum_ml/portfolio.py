@@ -12,6 +12,14 @@ timing. Innehav läggs in manuellt (CLI eller i appen, som skriver samma fil).
     python portfolio.py backtest 5000 36    # "nästa köp" mot index: 5000 kr/mån, 36 mån
     python portfolio.py exitscan            # "end this now": sektor+teknik → exit_signals.json
     python portfolio.py sizein 10000 4      # dela ett köp i 4 trancher (lika + dip-viktat)
+
+    # Modellval (balanced/buffett/momentum) vs index – backtest() ovan testar bara
+    # HINK-fördelningen, inte vilka aktier modellen faktiskt väljer. Riktig
+    # bakåtblick omöjlig (bara dagens kvalitets-/kvant-/värde-data finns) – därför
+    # framåt-spårning (ärligt) + illustrativ bakåtblick (snabbt men ogiltigt):
+    python portfolio.py snapshot_model              # frys DAGENS plockningar (aktiv modell) + kurs
+    python portfolio.py track_model                 # avkastning per modell-snapshot vs index hittills
+    python portfolio.py lookback_model 6             # ⚠ ILLUSTRATIV bakåtblick, 6 månader, alla 3 modeller
 """
 import sys
 import csv
@@ -1636,6 +1644,195 @@ def backtest(monthly=5000, months=None):
     print(f"\n  Sparat: {out_path} (läses av /api/portfolio-backtest)")
 
 
+# ── Modellval vs index (balanced/buffett/momentum) ─────────────────────────
+# OVANSTÅENDE backtest()/backtest_result() testar bara HINK-fördelningen
+# (fyll-mot-mål vs index) med breda ETF-korgar som proxy för Sverige-hinken –
+# den simulerar ALDRIG vilka enskilda aktier _unified_rank faktiskt väljer,
+# så den kan inte svara på "blev Buffett-läget bättre eller sämre än
+# momentum/balanced". En RIKTIG bakåtblickande backtest av modellvalet är
+# dessutom omöjlig: vi har bara DAGENS kvalitets-/kvant-/värde-poäng, ingen
+# historik över hur de såg ut för N månader sedan (quality/quant-CSV:erna är
+# ögonblicksbilder, inte tidsserier). Samma mönster som quality_screener.py:s
+# snapshot/track/lookback (ärligt sätt att hantera en icke-backtestbar,
+# diskretionär tratt): frys dagens plockningar PER MODELL med ingångskurs,
+# jämför framåt när tid gått – plus en explicit ILLUSTRATIV bakåtblick för
+# en omedelbar (men vetenskapligt ogiltig) fingervisning.
+
+def _model_bench_ticker() -> str:
+    return config.SEGMENTS.get("large", {}).get("index_ticker", "XACT-SVERIGE.ST")
+
+
+def snapshot_model_picks(label: Optional[str] = None) -> None:
+    """Fryser dagens topp-plockningar (unified_rank, AKTIV modell) med
+    ingångskurs → results/model_picks_ledger.csv. Kör detta separat under
+    varje modell (byt med set_active_model/frontend-väljaren mellan
+    körningarna) för att bygga upp jämförbara snapshots. Kör 'track_model_picks'
+    om några veckor/månader för det ärliga svaret."""
+    import datetime
+    from data.data_loader import fetch_weekly_data
+
+    model = active_model()
+    rows = load_holdings()
+    ranked = _unified_rank(rows, top_n=5, model=model)
+    if not ranked:
+        print(f"[snapshot_model_picks] inga kandidater i '{model}'-läget just nu "
+              "(t.ex. kan buffett-grinden ge tomt om inget bolag klarar ROE/skuld-barren) "
+              "– inget att frysa. Det är i sig ett giltigt resultat: håll kapital i kärnan.")
+        return
+    bench = _model_bench_ticker()
+    tickers = list(dict.fromkeys([r["ticker"] for r in ranked] + [bench]))
+    data = fetch_weekly_data(tickers, use_cache=True)
+
+    def last_close(t):
+        d = data.get(t)
+        if d is None:
+            return None
+        s = d["Close"].dropna()
+        return round(float(s.iloc[-1]), 4) if len(s) else None
+
+    bench_px = last_close(bench)
+    today = datetime.date.today().isoformat()
+    label = label or today
+    out_rows = []
+    for r in ranked:
+        px = last_close(r["ticker"])
+        if px is None:
+            continue
+        out_rows.append({"snapshot": label, "date": today, "model": model,
+                         "ticker": r["ticker"], "name": r["name"], "score": r["score"],
+                         "entry_price": px, "bench_ticker": bench, "bench_entry": bench_px})
+    if not out_rows:
+        print("[snapshot_model_picks] inga ingångskurser (Yahoo?) – avbryter.")
+        return
+    ledger = _results_dir() / "model_picks_ledger.csv"
+    exists = ledger.exists()
+    with open(ledger, "a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(out_rows[0].keys()))
+        if not exists:
+            w.writeheader()
+        for row in out_rows:
+            w.writerow(row)
+    print(f"[snapshot_model_picks] '{model}'/'{label}': frös {len(out_rows)} plockningar @ {today} "
+          f"(index {bench}) → {ledger}")
+    print("  Byt modell och kör igen för att jämföra – kör 'track_model_picks' om några veckor/månader.")
+
+
+def track_model_picks() -> None:
+    """Läser model_picks_ledger.csv, visar avkastning PER MODELL vs index till
+    dags dato (likaviktad, ingen ombalansering). Modellvalets riktiga scorecard –
+    kräver att snapshot_model_picks körts minst en gång (helst under flera
+    modeller, på samma eller olika dagar) för att ge något att jämföra."""
+    import pandas as pd
+    from data.data_loader import fetch_weekly_data
+
+    ledger = _results_dir() / "model_picks_ledger.csv"
+    if not ledger.exists():
+        print("[track_model_picks] ingen ledger än – kör 'snapshot_model_picks' först "
+              "(gärna under flera modeller för att kunna jämföra).")
+        return
+    led = pd.read_csv(ledger)
+    tickers = list(dict.fromkeys(list(led["ticker"]) + list(led["bench_ticker"].dropna().unique())))
+    data = fetch_weekly_data(tickers, use_cache=True)
+
+    def cur(t):
+        d = data.get(t)
+        if d is None:
+            return None
+        s = d["Close"].dropna()
+        return float(s.iloc[-1]) if len(s) else None
+
+    print("\n  MODELLVAL vs INDEX (framåt-spårning, likaviktad, ingen ombalansering)\n")
+    for (model, label), g in led.groupby(["model", "snapshot"]):
+        rets = [cur(r["ticker"]) / r["entry_price"] - 1
+                for _, r in g.iterrows()
+                if cur(r["ticker"]) and r["entry_price"]]
+        if not rets:
+            continue
+        port = sum(rets) / len(rets)
+        be = g["bench_entry"].dropna()
+        bt = g["bench_ticker"].dropna()
+        bench_ret = None
+        if len(be) and len(bt):
+            bc = cur(bt.iloc[0])
+            if bc:
+                bench_ret = bc / float(be.iloc[0]) - 1
+        line = f"  {model:<10} {str(label):<12} {len(rets):>2} bolag   portfölj {port:+.1%}"
+        if bench_ret is not None:
+            line += f"   index {bench_ret:+.1%}   alfa {port - bench_ret:+.1%}"
+        print(line)
+    print("\n  (Enkel framåt-scorecard – ingen ombalansering. Fler snapshots över tid = mer robust,\n"
+          "   och framför allt: fler DAGAR med snapshots under respektive modell, inte bara en.)")
+
+
+def lookback_model_picks(months: int = 6) -> None:
+    """ILLUSTRATIV bakåtblick (EJ giltig backtest): visar hur DAGENS topp-
+    plockningar under VARJE modell (balanced/buffett/momentum) hade utvecklats
+    de senaste `months` månaderna, sida vid sida med index. VARNING:
+    look-ahead + survivorship – vi väljer dagens kandidater (rankade med
+    DAGENS kvalitets-/kvant-/värde-data) och tittar bakåt, exakt samma
+    begränsning som quality_screener.py:s lookback(). En snabb, grov
+    fingervisning – inte bevis. Använd snapshot_model_picks/track_model_picks
+    för det ärliga, framåtblickande testet."""
+    import pandas as pd
+    import datetime
+    from data.data_loader import fetch_weekly_data
+
+    rows = load_holdings()
+    bench = _model_bench_ticker()
+    per_model = {m: _unified_rank(rows, top_n=5, model=m) for m in _MODEL_WEIGHTS}
+    if not any(per_model.values()):
+        print("[lookback_model_picks] ingen modell gav några kandidater – kör "
+              "quality_screener/quant_screener/value_screener på Pi:n först.")
+        return
+    all_tickers = {bench}
+    for ranked in per_model.values():
+        all_tickers.update(r["ticker"] for r in ranked)
+    data = fetch_weekly_data(list(all_tickers), use_cache=True)
+    cutoff = pd.Timestamp(datetime.date.today()) - pd.Timedelta(days=int(months * 30.4))
+
+    def window(t):
+        d = data.get(t)
+        if d is None:
+            return None
+        s = d["Close"].dropna()
+        if s.empty:
+            return None
+        s.index = pd.to_datetime(s.index)
+        past = s[s.index <= cutoff]
+        p0 = float(past.iloc[-1]) if len(past) else float(s.iloc[0])
+        p1 = float(s.iloc[-1])
+        return p0, p1, (p1 / p0 - 1), len(past) > 0
+
+    bw = window(bench)
+    print(f"\n  BAKÅTBLICK {months}m – dagens topp-plockningar PER MODELL, likaviktad")
+    print("  ⚠ EJ giltig backtest: look-ahead + survivorship (dagens kandidater rankade med DAGENS")
+    print("  data, inte den historiska rankningen från för N månader sedan)\n")
+    for model, ranked in per_model.items():
+        if not ranked:
+            print(f"  {model:<10} (inga kandidater just nu – t.ex. buffett-grinden gav tomt)")
+            continue
+        rets, short_hist = [], 0
+        for r in ranked:
+            w = window(r["ticker"])
+            if not w:
+                continue
+            p0, p1, ret, full = w
+            rets.append(ret)
+            if not full:
+                short_hist += 1
+        if not rets:
+            print(f"  {model:<10} (ingen kursdata)")
+            continue
+        port = sum(rets) / len(rets)
+        line = f"  {model:<10} {len(rets)} bolag   snitt {port:+.1%}"
+        if bw:
+            line += f"   index {bw[2]:+.1%}   alfa {port - bw[2]:+.1%}"
+        if short_hist:
+            line += f"   ({short_hist} med kortare historik än {months}m)"
+        print(line)
+    print("\n  Enda ärliga testet: 'snapshot_model_picks' idag → 'track_model_picks' framåt.")
+
+
 # ── Size in/out (trancher) ────────────────────────────────────────────────────
 def size_in(amount, tranches=4, dip_step=0.05):
     """Dela ett köp i trancher istället för allt på en gång. Två scheman:
@@ -1826,6 +2023,12 @@ def main():
         backtest(monthly, months)
     elif cmd == "exitscan":
         exitscan()
+    elif cmd == "snapshot_model":
+        snapshot_model_picks(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif cmd == "track_model":
+        track_model_picks()
+    elif cmd == "lookback_model":
+        lookback_model_picks(int(sys.argv[2]) if len(sys.argv) > 2 else 6)
     elif cmd == "quotes":
         fetch_holding_quotes()
     elif cmd == "sizein":
