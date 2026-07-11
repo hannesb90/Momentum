@@ -29,6 +29,7 @@ uppgraderar automatiskt gammal cache, ingen manuell radering behövs.
     python -m altdata.mfn_pdf compare_layout <pdf-url>  # standard vs layout=True mot EN känd trasig PDF
     python -m altdata.mfn_pdf scan_pages <pdf-url>       # var i dokumentet börjar siffrorna? (ingen sidkapning)
     python -m altdata.mfn_pdf dump_page <pdf-url> <sida> # hela texten för EN sida, okapad
+    python -m altdata.mfn_pdf dump_cached <pdf-url>       # hela REDAN CACHAD text, inget nätanrop
 """
 import csv
 import hashlib
@@ -383,6 +384,32 @@ def _peek_cached(pm_id: str, url: str) -> Optional[dict]:
     return cached
 
 
+def dump_cached_text(url: str) -> None:
+    """Skriver ut HELA den redan cachade texten för en given PDF-URL, UTAN att
+    ladda ner igen – för att verifiera en riktig regex-lucka (t.ex. ett
+    diagnose_empty-exempel) mot fullständig text innan man designar ett fix.
+    Cache-nyckeln = sanitized_pm_id + sha1(url)[:16]; pm_id är okänt här (bara
+    URL:en finns i diagnose_empty-utskriften) så vi globbar på hash-suffixet
+    i stället för att räkna ut exakt filnamn."""
+    h = hashlib.sha1(url.encode("utf-8")).hexdigest()[:16]
+    matches = list(_pdf_text_cache_dir().glob(f"*_{h}.json"))
+    if not matches:
+        print(f"Ingen cache-post för denna URL hittades (sha1-suffix {h}). "
+              "Kör diagnose_empty igen för att bekräfta URL:en, eller är PM:et inte processat ännu.")
+        return
+    try:
+        cached = json.loads(matches[0].read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001
+        print(f"Kunde inte läsa cache-filen {matches[0]}: {e}")
+        return
+    text = cached.get("text")
+    if text is None:
+        print(f"Cache-posten finns men text=None (fel: {cached.get('error')}) – inget att visa.")
+        return
+    print(f"--- {matches[0].name}, {len(text)} tecken, sidantal={cached.get('page_count')} ---")
+    print(text)
+
+
 def diagnose_empty(segment: Optional[str] = None, n: int = 5) -> None:
     """Svarar EMPIRISKT på 'är de tomma PDF:erna gamla/skannade filer?' i
     stället för att gissa. Jämför år-fördelning och extraherad textlängd
@@ -713,6 +740,12 @@ def main():
             print("Användning: python -m altdata.mfn_pdf dump_page <pdf-url> <sida>")
             return
         dump_page(sys.argv[2], int(sys.argv[3]))
+        return
+    if cmd == "dump_cached":
+        if len(sys.argv) < 3:
+            print("Användning: python -m altdata.mfn_pdf dump_cached <pdf-url>")
+            return
+        dump_cached_text(sys.argv[2])
         return
     seg = sys.argv[2] if len(sys.argv) > 2 else None
     limit = int(sys.argv[3]) if len(sys.argv) > 3 else None
