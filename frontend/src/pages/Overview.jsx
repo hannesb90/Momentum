@@ -18,6 +18,15 @@ const NEXTBUY_AMOUNTS = [
 
 const BUCKET_LABEL = { broad: 'Bred kärna', sweden: 'Sverige', theme: 'Tematiskt' }
 
+// Rank-modeller för "Nästa köp" (speglar portfolio._MODEL_WEIGHTS). Styr HUR
+// Sverige-kandidaten i planen nedan väljs (kvalitet/kvant/value/momentum-mix).
+const MODEL_LABELS = { balanced: 'Balanserad', buffett: 'Buffett', momentum: 'Momentum' }
+const MODEL_HINTS = {
+  balanced: 'Kvalitet tyngst, momentum som timing – standardmixen.',
+  buffett: 'Långsiktigt ägande: värde + kvalitet styr, hård grind på ROE/skuld.',
+  momentum: 'Prismomentum (P(upp)) väger tyngst – den ursprungliga andan.',
+}
+
 function AllocationEditor({ initial, onSaved }) {
   const [vals, setVals] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -93,6 +102,26 @@ export function OverviewPage() {
   const [reloadKey, setReloadKey] = useState(0)
   const nextBuy = useApiData(() => api.nextBuy(buyAmount), [buyAmount, reloadKey])
   const targetData = useApiData(() => api.portfolioTarget(), [reloadKey])
+  const [model, setModel] = useState('balanced')
+  const [models, setModels] = useState(['balanced'])
+  const [modelBusy, setModelBusy] = useState(false)
+
+  useEffect(() => {
+    api.portfolioModel().then((d) => {
+      setModel(d.model ?? 'balanced')
+      setModels(d.available ?? ['balanced'])
+    }).catch(() => {})
+  }, [])
+
+  // Byt rank-modell (balanced/buffett/momentum) → persistera + räkna om
+  // Sverige-kandidaten i "Nästa köp" (reloadKey triggar nextBuy att hämta om).
+  function switchModel(next) {
+    if (next === model || modelBusy) return
+    setModelBusy(true)
+    api.setPortfolioModel(next)
+      .then((d) => { setModel(d.model ?? next); setReloadKey((k) => k + 1) })
+      .finally(() => setModelBusy(false))
+  }
 
   const mySeries = useMemo(
     () => (myLog.data ?? []).map((r) => ({ date: r.date, value: r.value })),
@@ -140,6 +169,23 @@ export function OverviewPage() {
           </InfoButton>
         </h2>
         <SegmentedControl options={NEXTBUY_AMOUNTS} value={buyAmount} onChange={setBuyAmount} size="sm" />
+      </div>
+      {/* Rank-modell: HUR Sverige-kandidaten ovan väljs. Ren vy-inställning,
+          växlar server-side (persisteras) utan att köra om något nattligt. */}
+      <div className="model-picker">
+        <span className="model-picker__label">Modell</span>
+        {models.map((m) => (
+          <button
+            key={m}
+            type="button"
+            disabled={modelBusy}
+            className={`model-picker__btn${model === m ? ' model-picker__btn--active' : ''}`}
+            onClick={() => switchModel(m)}
+          >
+            {MODEL_LABELS[m] ?? m}
+          </button>
+        ))}
+        <span className="model-picker__hint">{MODEL_HINTS[model] ?? ''}</span>
       </div>
       {nextBuy.refreshing && <p className="footnote" style={{ margin: '-4px 0 6px' }}>Uppdaterar…</p>}
       <div className="list-card">
