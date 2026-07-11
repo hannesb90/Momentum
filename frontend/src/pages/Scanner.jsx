@@ -211,6 +211,32 @@ export function ScannerPage() {
   )
 }
 
+function Gauge({ score }) {
+  if (score == null) {
+    return (
+      <div className="gauge gauge--unknown">
+        <div className="gauge__track"><div className="gauge__marker" style={{ left: '50%' }} /></div>
+        <div className="gauge__readout">
+          <span className="gauge__value">?</span>
+          <span className="gauge__caption">Otillräcklig data för ett helhetsbetyg</span>
+        </div>
+      </div>
+    )
+  }
+  const hue = Math.max(0, Math.min(120, (score / 100) * 120))   // 0=röd, 60=gul, 120=grön
+  return (
+    <div className="gauge">
+      <div className="gauge__track">
+        <div className="gauge__marker" style={{ left: `${score}%`, background: `hsl(${hue}, 75%, 42%)` }} />
+      </div>
+      <div className="gauge__readout">
+        <span className="gauge__value" style={{ color: `hsl(${hue}, 75%, 36%)` }}>{score}%</span>
+        <span className="gauge__caption">Helhetsbetyg – snitt av de modeller som kunde poängsätta scenariot</span>
+      </div>
+    </div>
+  )
+}
+
 function ScanResult({ result }) {
   const vm = result.value_metrics
   const anyExcludedButScored = Object.values(result.models)
@@ -219,6 +245,25 @@ function ScanResult({ result }) {
   return (
     <div className="scan-result">
       <h3 className="section-title">{result.ticker} – {result.name}</h3>
+
+      <Gauge score={result.overall_score} />
+
+      {(result.positives?.length > 0 || result.negatives?.length > 0) && (
+        <div className="verdict-grid">
+          {result.positives?.length > 0 && (
+            <div className="verdict-col verdict-col--pos">
+              <h4>Gynnar aktien</h4>
+              <ul>{result.positives.map((p, i) => <li key={i}>{p}</li>)}</ul>
+            </div>
+          )}
+          {result.negatives?.length > 0 && (
+            <div className="verdict-col verdict-col--neg">
+              <h4>Sänker betyget</h4>
+              <ul>{result.negatives.map((n, i) => <li key={i}>{n}</li>)}</ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {result.warnings?.length > 0 && (
         <div className="list-card" style={{ marginBottom: 12 }}>

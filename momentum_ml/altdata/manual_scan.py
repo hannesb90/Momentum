@@ -177,6 +177,77 @@ def _warnings(merged: dict, vmetrics: dict) -> list:
     return w
 
 
+def _verdict(vmetrics: dict, equity_sek, qn, kn, prob_up, models_out: dict) -> dict:
+    """Ett samlat, transparent betyg för resultatsidans 'hastighetsmätare':
+    overall_score (0-100, snitt av de rank-modeller som faktiskt kunde
+    poängsätta scenariot) + två listor – positives ('vad gynnar aktien') och
+    negatives ('vad sänker betyget') – byggda ur SAMMA trösklar som resten av
+    Buffett-screenern (config.VALUE_ROE_GOOD/VALUE_DEBT_EQUITY_SAFE/
+    VALUE_MULT_CHEAP/FAIR), inte nya påhittade gränser. Varje delfaktor
+    hamnar i EXAKT en av listorna (aldrig båda, aldrig tyst utelämnad om
+    data finns) så resultatet är begripligt utan att dubbelräkna."""
+    pos, neg = [], []
+
+    roe = vmetrics.get("roe")
+    if roe is not None:
+        if roe >= config.VALUE_ROE_GOOD:
+            pos.append(f"ROE {roe:.0%} klarar kvalitetsbarren (≥{config.VALUE_ROE_GOOD:.0%})")
+        else:
+            neg.append(f"ROE {roe:.0%} under kvalitetsbarren (≥{config.VALUE_ROE_GOOD:.0%})")
+    elif equity_sek is not None and float(equity_sek) <= 0:
+        neg.append("Negativt eget kapital gör ROE och skuldsättning obestämbara – finansiell varningssignal")
+    else:
+        neg.append("ROE går inte att beräkna (saknar nettoresultat och/eller eget kapital)")
+
+    de = vmetrics.get("debt_equity")
+    if de is not None:
+        if de <= config.VALUE_DEBT_EQUITY_SAFE:
+            pos.append(f"Skuldsättning {de:.2f} är konservativ (≤{config.VALUE_DEBT_EQUITY_SAFE})")
+        else:
+            neg.append(f"Skuldsättning {de:.2f} över trygghetsbarren (≤{config.VALUE_DEBT_EQUITY_SAFE})")
+
+    if vmetrics.get("meets_roe_bar") and vmetrics.get("meets_debt_bar"):
+        pos.append("Klarar Buffett-modellens hårda grind (ROE OCH skuldsättning samtidigt)")
+
+    zone, mult = vmetrics.get("zone"), vmetrics.get("mult")
+    if zone == "billig":
+        pos.append(f"Värderas billigt: {mult}x owner earnings (≤{config.VALUE_MULT_CHEAP}x)")
+    elif zone == "rimlig":
+        pos.append(f"Värderas rimligt: {mult}x owner earnings (≤{config.VALUE_MULT_FAIR}x)")
+    elif zone == "dyr":
+        neg.append(f"Värderas dyrt: {mult}x owner earnings (>{config.VALUE_MULT_FAIR}x)")
+    elif zone == "förlust":
+        neg.append("Går med förlust (negativa owner earnings) – ingen värderings-multipel meningsfull")
+
+    rg = vmetrics.get("rev_growth_yoy")
+    if rg is not None:
+        if rg > 0:
+            pos.append(f"Intäkterna växer {rg:+.0%} mot samma period föregående år")
+        else:
+            neg.append(f"Intäkterna krymper {rg:+.0%} mot samma period föregående år")
+
+    if qn is not None:
+        if qn >= 0.6:
+            pos.append(f"Kvalitetsbetyg i övre delen av universumet (percentil {qn:.0%})")
+        elif qn < 0.4:
+            neg.append(f"Kvalitetsbetyg i nedre delen av universumet (percentil {qn:.0%})")
+    if kn is not None:
+        if kn >= 0.6:
+            pos.append(f"Kvantbetyg i övre delen av universumet (percentil {kn:.0%})")
+        elif kn < 0.4:
+            neg.append(f"Kvantbetyg i nedre delen av universumet (percentil {kn:.0%})")
+    if prob_up is not None:
+        if prob_up >= 0.55:
+            pos.append(f"Modellens P(upp) pekar uppåt ({prob_up:.0%})")
+        elif prob_up < 0.45:
+            neg.append(f"Modellens P(upp) pekar nedåt ({prob_up:.0%})")
+
+    scores = [mo["score"] for mo in models_out.values() if mo.get("score") is not None]
+    overall = round(max(0.0, min(1.0, sum(scores) / len(scores))) * 100) if scores else None
+
+    return {"overall_score": overall, "positives": pos, "negatives": neg}
+
+
 def scan(ticker: str, overrides: Optional[dict] = None, segment: Optional[str] = None) -> dict:
     """Kärnan: slå ihop förfyllnad + manuella overrides, kör SAMMA
     value_screener._metrics()-beräkning som den riktiga pipelinen, och
@@ -276,6 +347,13 @@ def scan(ticker: str, overrides: Optional[dict] = None, segment: Optional[str] =
             "value_percentile": pctls["value_pctl"],
         }
 
+    # Percentilerna är delade mellan modellerna (samma q_sorted/k_sorted –
+    # bara VIKTEN skiljer per modell), så en enda beräkning här räcker för
+    # verdikten i stället för att gräva i models_out efter första träffen.
+    qn = pf._pct_rank(q_sorted, quality)
+    kn = pf._pct_rank(k_sorted, quant)
+    verdict = _verdict(vmetrics, latest.get("equity"), qn, kn, prob_up, models_out)
+
     return {
         "ticker": ticker, "name": scenario_entry["name"],
         "currency": currency, "fx_rate": fx_rate,
@@ -283,12 +361,25 @@ def scan(ticker: str, overrides: Optional[dict] = None, segment: Optional[str] =
         "value_metrics": vmetrics,
         "value_score": value_score,
         "models": models_out,
+        "overall_score": verdict["overall_score"],
+        "positives": verdict["positives"],
+        "negatives": verdict["negatives"],
         "warnings": _warnings(merged, vmetrics),
     }
 
 
 def _print_report(r: dict) -> None:
     print(f"\n=== {r['ticker']} – {r['name']} ===")
+    os = r.get("overall_score")
+    print(f"HELHETSBETYG: {os}/100" if os is not None else "HELHETSBETYG: otillräcklig data")
+    if r.get("positives"):
+        print("  Gynnar aktien:")
+        for p in r["positives"]:
+            print(f"    + {p}")
+    if r.get("negatives"):
+        print("  Sänker betyget:")
+        for n in r["negatives"]:
+            print(f"    - {n}")
     if r.get("warnings"):
         print("VARNINGAR:")
         for w in r["warnings"]:
