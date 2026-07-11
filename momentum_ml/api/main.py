@@ -297,6 +297,40 @@ async def set_portfolio_model(request: Request):
     return _clean({"model": pf.set_active_model(str(body.get("model", "")))})
 
 
+@app.get("/api/scanner/fields")
+def get_scanner_fields():
+    """Fältlista + hjälptext för scenario-skannerns formulär (frontend bygger
+    formuläret ur denna, så en ny fält-typ i manual_scan.py syns automatiskt
+    utan en frontend-ändring)."""
+    from altdata import manual_scan as ms
+    return _clean({
+        "fields": [{"key": k, "help": v, "type": (
+                        "bool" if k in ms._BOOL_FIELDS else
+                        "number" if k in ms._FLOAT_FIELDS else "text")}
+                   for k, v in ms._FIELD_HELP.items()],
+    })
+
+
+@app.post("/api/scanner/scan")
+async def post_scanner_scan(request: Request):
+    """Manuell scenario-skanning: {ticker, overrides: {fält: värde, ...}, segment?}.
+    Görs ALDRIG mot nätet och sparas ALDRIG – ett engångs 'vad om'-svar (se
+    altdata/manual_scan.py:s docstring). Ogiltig indata (t.ex. tom ticker) ger
+    400, inte en opak 500."""
+    from altdata import manual_scan as ms
+    body = await request.json()
+    ticker = str(body.get("ticker") or "").strip()
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker saknas.")
+    overrides = body.get("overrides") or {}
+    segment = body.get("segment")
+    try:
+        result = ms.scan(ticker, overrides, segment=segment)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return _clean(result)
+
+
 @app.post("/api/holdings")
 async def save_portfolio_holdings(request: Request):
     """Sparar hela innehavslistan (skriver cache/portfolio_holdings.csv) och

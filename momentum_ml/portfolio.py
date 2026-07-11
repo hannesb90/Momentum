@@ -895,6 +895,52 @@ def set_active_model(model: str) -> str:
     return model
 
 
+def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted):
+    """Sammanvägd poäng + 'why'-etiketter för ETT bolag under viktprofilen
+    `w`, mot en given universums-fördelning (redan sorterade quality/quant/
+    value-listor – se _pct_rank:s docstring). Utbruten ur _unified_rank:s
+    loop så SAMMA formel kan återanvändas av altdata/manual_scan.py (testar
+    en enskild scenario-aktie mot samma fördelning som resten av
+    universumet) – en ren refaktorering, ingen beteendeändring (verifierat
+    bit-identiskt mot tidigare inline-version via test_unified_rank.py).
+    Returnerar None om bolaget saknar alla tre fundament-betyg (kräver
+    minst ett – köp-och-behåll, inte bara fart). OBS: score är RÅ (oavrundad,
+    ingen sektor-/koncentrations-justering) – det portfölj-medvetna påslaget
+    (sektorstraff m.m.) hör hemma hos anroparen, inte här."""
+    is_buffett = (model == "buffett")
+    qn = _pct_rank(q_sorted, e.get("quality"))
+    kn = _pct_rank(k_sorted, e.get("quant"))
+    vn = _pct_rank(v_sorted, e.get("value_score"))
+    if qn is None and kn is None and vn is None:
+        return None                      # köp-och-behåll: kräver fundament, inte bara fart
+    pn = e.get("prob_up")
+    # Coalesce: en modell ska inte straffa ett bolag för att EN datakälla
+    # saknas – fall tillbaka på de andra fundament-betygen. Bara signaler
+    # som modellen FAKTISKT viktar (>0) räknas in i fallbacken, så
+    # 'balanced' (value-vikt 0) ger exakt samma resultat som innan
+    # value-screenern fanns – bekräftat identiskt via test.
+    weighted_present = [x for x, wname in ((qn, "quality"), (kn, "quant"), (vn, "value"))
+                        if x is not None and w[wname] > 0]
+    fb = (sum(weighted_present) / len(weighted_present)) if weighted_present else 0.5
+    score = (w["quality"] * (qn if qn is not None else fb)
+             + w["quant"] * (kn if kn is not None else fb)
+             + w["value"] * (vn if vn is not None else fb)
+             + w["momentum"] * (pn if pn is not None else 0.5)
+             + (w["research"] if e.get("research") else 0.0))
+    why = []
+    if e.get("quality") is not None:
+        why.append(f"kvalitet {e['quality']:.1f}/5" + (f" · {e['zone']}" if e.get("zone") else ""))
+    if is_buffett and e.get("value_score") is not None:
+        why.append(f"value {e['value_score']:.0f}" + (f" · {e['value_zone']}" if e.get("value_zone") else ""))
+    if e.get("quant") is not None:
+        why.append(f"kvant {e['quant']:.0f}")
+    if pn is not None:
+        why.append(f"P(upp) {pn:.0%}")
+    if e.get("research"):
+        why.append("uppdragsanalys ✓")
+    return score, why, {"quality_pctl": qn, "quant_pctl": kn, "value_pctl": vn}
+
+
 def _unified_rank(rows, top_n=3, model=None) -> list:
     """
     'Absolut bästa nästa köp' bland svenska aktier: EN rankning som väger ihop
@@ -952,39 +998,13 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
                 continue
             if not (e.get("meets_roe_bar") and e.get("meets_debt_bar")):
                 continue
-        qn = _pct_rank(q_sorted, e.get("quality"))
-        kn = _pct_rank(k_sorted, e.get("quant"))
-        vn = _pct_rank(v_sorted, e.get("value_score"))
-        if qn is None and kn is None and vn is None:
-            continue                     # köp-och-behåll: kräver fundament, inte bara fart
-        pn = e.get("prob_up")
-        # Coalesce: en modell ska inte straffa ett bolag för att EN datakälla
-        # saknas – fall tillbaka på de andra fundament-betygen. Bara signaler
-        # som modellen FAKTISKT viktar (>0) räknas in i fallbacken, så
-        # 'balanced' (value-vikt 0) ger exakt samma resultat som innan
-        # value-screenern fanns – bekräftat identiskt via test.
-        weighted_present = [x for x, wname in ((qn, "quality"), (kn, "quant"), (vn, "value"))
-                            if x is not None and w[wname] > 0]
-        fb = (sum(weighted_present) / len(weighted_present)) if weighted_present else 0.5
-        score = (w["quality"] * (qn if qn is not None else fb)
-                 + w["quant"] * (kn if kn is not None else fb)
-                 + w["value"] * (vn if vn is not None else fb)
-                 + w["momentum"] * (pn if pn is not None else 0.5)
-                 + (w["research"] if e.get("research") else 0.0))
+        res = _composite_score(e, model, w, q_sorted, k_sorted, v_sorted)
+        if res is None:
+            continue
+        score, why, _pctls = res
         sec = _sector_of(tk)
         if sec in big_sectors:
             score -= 0.15
-        why = []
-        if e.get("quality") is not None:
-            why.append(f"kvalitet {e['quality']:.1f}/5" + (f" · {e['zone']}" if e.get("zone") else ""))
-        if is_buffett and e.get("value_score") is not None:
-            why.append(f"value {e['value_score']:.0f}" + (f" · {e['value_zone']}" if e.get("value_zone") else ""))
-        if e.get("quant") is not None:
-            why.append(f"kvant {e['quant']:.0f}")
-        if pn is not None:
-            why.append(f"P(upp) {pn:.0%}")
-        if e.get("research"):
-            why.append("uppdragsanalys ✓")
         ranked.append({"ticker": tk, "name": e.get("name") or tk,
                        "score": round(score, 3), "note": " · ".join(why),
                        "source": f"sammanvägd ({model})"})
