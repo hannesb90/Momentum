@@ -432,7 +432,13 @@ _INVITATION_TITLE_RE = re.compile(
     # diagnose_empty som felaktigt räknades som missade rapporter, trots att
     # de per definition ALDRIG innehåller siffror – bara datum/tid för en
     # telefonkonferens).
-    r"|press-?\s*(?:och\s+)?analytikerkonferens|telefonkonferens\s+i\s+samband\s+med",
+    r"|press-?\s*(?:och\s+)?analytikerkonferens|telefonkonferens\s+i\s+samband\s+med"
+    # "Prestigefullt förstapris till Karlshamns – Bästa årsredovisningen" – en
+    # PRISUTMÄRKELSE-notis (bolaget vann ett pris FÖR sin årsredovisning), inte
+    # en rapport. Fångades felaktigt av "årsredovisning"-nyckelordet ovan
+    # (upptäckt via ett riktigt Karlshamns-exempel ur diagnose_empty, 19 år
+    # gammalt PM men samma mönster kan förekomma i nyare pris-/utmärkelse-PM).
+    r"|förstapris|pris till\s+\S+\s*[–-]\s*bästa|utmärkelsen? för",
     re.I)
 
 
