@@ -1497,6 +1497,118 @@ def _log_sweden_picks(picks: list) -> None:
             w.writerow([today, p.get("ticker"), p.get("name"), p.get("score"), p.get("note")])
 
 
+def _clamp01(x) -> float:
+    try:
+        return max(0.0, min(1.0, float(x)))
+    except (TypeError, ValueError):
+        return 0.5
+
+
+def _ta_confirm(ticker) -> float:
+    """TA-timing i [0,1] för en ticker ur flödesdatan (samma signaler som
+    _opportunity/säljvakten använder): CMF 13v ≥ 0 (inflöden) och kurs ≥ SMA20
+    (intakt trend) → nära 1; utflöden + trendbrott → nära 0. 0.5 = neutral/okänd.
+    Detta är TA:s AVSIKTLIGA roll – timing, inte rankningsvikt."""
+    fl = _load_flows().get((ticker or "").upper(), {})
+    score = 0.5
+    try:
+        cmf = float(fl.get("cmf_13w"))
+        score += 0.25 if cmf >= 0 else -0.25
+    except (TypeError, ValueError):
+        pass
+    below = str(fl.get("below_sma20"))
+    if below == "1":
+        score -= 0.25
+    elif below == "0":
+        score += 0.25
+    return _clamp01(score)
+
+
+def _bucket_attractiveness(rows, model, risk_on) -> dict:
+    """Attraktivitets-poäng i [0,1] per hink för NÄSTA krona – hur bra är det
+    bästa tillgängliga köpet där just nu (framåtblickande).
+
+      · broad (kärnan): en REGIM-baserad baslinje. Kärnan är den evidensbackade
+        defaulten → mer attraktiv i svag marknad (bear), mindre i stark (bull)
+        där satelliterna får mer utrymme att förtjäna kapital.
+      · sweden: 70% AKTIV modells rank-score för bästa svenska aktien + 30%
+        (snitt av de ANDRA modellernas rank + TA-timing) – så andra modeller och
+        teknisk timing ges lite inflytande (config DYNAMIC_ALLOC_MODEL_WEIGHT).
+        Ingen kvalificerad kandidat (t.ex. tom buffett-grind) → 0 = ingen tilt.
+      · theme: rotationsstyrka gate:ad på risk-on-regim (+ TA). Rotationen slog
+        aldrig index netto → hålls modest, aldrig kärnersättare.
+      · leverage: 0 (målvikt 0, tiltas aldrig mot).
+    """
+    regime_base = {True: 0.45, False: 0.68, None: 0.55}.get(risk_on, 0.55)
+    attr = {"broad": regime_base, "sweden": 0.0, "theme": 0.0, "leverage": 0.0}
+
+    mw = float(getattr(config, "DYNAMIC_ALLOC_MODEL_WEIGHT", 0.70))
+    active = _safe(lambda: _unified_rank(rows, top_n=1, model=model), [], "attraktivitet aktiv")
+    if active:
+        s_active = _clamp01(active[0].get("score"))
+        others = [m for m in _MODEL_WEIGHTS if m != model]
+        oscores = []
+        for m in others:
+            p = _safe(lambda m=m: _unified_rank(rows, top_n=1, model=m), [], "attraktivitet övrig")
+            if p:
+                oscores.append(_clamp01(p[0].get("score")))
+        s_other = (sum(oscores) / len(oscores)) if oscores else s_active
+        ta = _ta_confirm(active[0].get("ticker"))
+        attr["sweden"] = _clamp01(mw * s_active + (1 - mw) * (0.5 * s_other + 0.5 * ta))
+
+    if risk_on:                    # tema bara relevant i risk-on (annars 0)
+        cands = _safe(_candidates, {"theme": []}, "attraktivitet tema")
+        tpick = (cands.get("theme") or [None])[0]
+        if tpick:
+            attr["theme"] = _clamp01(0.5 * 0.55 + 0.5 * _ta_confirm(tpick.get("ticker")) + 0.1)
+    return attr
+
+
+def _dynamic_fill_split(bucket_vals, amount, targets, attr, meta_out=None):
+    """Fyll-mot-mål (bas) + BUNDEN, attraktivitets-driven tilt + KÄRNGOLV.
+
+    Basen är _fill_split (framåtblickande mot målvikten). Ovanpå den får
+    satelliter som är MER attraktiva än kärnans baslinje dra en TAKAD andel av
+    insättningen från kärnan, proportionellt mot hur mycket mer attraktiva de
+    är. Kärngolvet skyddar den evidensbackade kärnan. Slår inget satelliterna
+    kärnan (attraktivitet ≤ kärnans) → ingen tilt, målvikten avgör (tiebreaker).
+
+    STRENGTH 0 → returnerar EXAKT _fill_split (bevisat identiskt) – en säker
+    reträtt och regressionsgaranti."""
+    base = _fill_split(bucket_vals, amount, targets)
+    strength = float(getattr(config, "DYNAMIC_ALLOC_TILT_STRENGTH", 0.0) or 0.0)
+    if strength <= 0 or amount <= 0 or not attr:
+        return base
+    core_attr = attr.get("broad", 0.55)
+    excess = {b: max(0.0, attr.get(b, 0.0) - core_attr) for b in ("sweden", "theme")}
+    esum = sum(excess.values())
+    if esum <= 0:                    # inget slår kärnan → mål-gap styr (tiebreaker)
+        return base
+    max_share = float(getattr(config, "DYNAMIC_ALLOC_MAX_SHARE", 0.40))
+    floor_share = float(getattr(config, "DYNAMIC_ALLOC_CORE_FLOOR", 0.30))
+    # Hur stor andel som får divergera mot satelliterna: skalas av tilt-styrkan
+    # och av hur mycket mer attraktiva de är (esum), takad av max_share.
+    tilt_frac = min(max_share, strength * min(1.0, esum))
+    pull = amount * tilt_frac
+    # Kärngolvet: kärnan behåller minst floor_share OM den är underviktad (har
+    # mål-gap). Är kärnan redan på/över mål (base broad ~0) finns inget golv att
+    # skydda – då tas tilten inte från kärnan (inget att ta) och basen står.
+    core_base = base.get("broad", 0.0) + base.get("leverage", 0.0)
+    core_floor = floor_share * amount if core_base > 0 else 0.0
+    pull = min(pull, max(0.0, core_base - core_floor))
+    if pull <= 0:
+        return base
+    final = dict(base)
+    # dra från kärnan (broad; hävstångs-kronor räknas som kärna nedströms ändå)
+    final["broad"] = final.get("broad", 0.0) - pull
+    for b in ("sweden", "theme"):
+        final[b] = final.get(b, 0.0) + pull * excess[b] / esum
+    if meta_out is not None:
+        meta_out.update({"tilt_frac": round(pull / amount, 4), "attr": {k: round(v, 3) for k, v in attr.items()},
+                         "pulled_to": {b: round(pull * excess[b] / esum) for b in ("sweden", "theme") if excess[b] > 0}})
+    return final
+
+
 def next_buy(rows, amount=None) -> dict:
     """
     KÄRNAN ("Nästa köp"): ETT rangordnat, konkret svar på var nästa krona ska in.
@@ -1523,7 +1635,6 @@ def next_buy(rows, amount=None) -> dict:
     buckets = {b: 0.0 for b in BUCKETS}
     for r in rows:
         buckets[r["bucket"] if r["bucket"] in buckets else "theme"] += r.get("value", 0.0)
-    plan = _fill_split(buckets, amount, tgt)
 
     core_tk, core_name = getattr(config, "PORTFOLIO_CORE_ETF",
                                  ("IUSQ.DE", "iShares MSCI ACWI (hela världen)"))
@@ -1533,6 +1644,15 @@ def next_buy(rows, amount=None) -> dict:
         risk_on = bool(meta.get("risk_on"))
     except Exception:  # noqa: BLE001 – rotation ej körd → gate:a inte på regim
         risk_on = None
+
+    # Dynamisk, framåtblickande fördelning: fyll-mot-mål (bas) + bunden,
+    # attraktivitets-driven tilt + kärngolv (se _dynamic_fill_split). Med
+    # DYNAMIC_ALLOC_TILT_STRENGTH=0 blir detta EXAKT dagens _fill_split.
+    model = _safe(active_model, "balanced", "aktiv modell")
+    attr = _safe(lambda: _bucket_attractiveness(rows, model, risk_on), {}, "attraktivitet")
+    tilt_meta: dict = {}
+    plan = _dynamic_fill_split(buckets, amount, tgt, attr, meta_out=tilt_meta)
+
     cands = _safe(_candidates, {"sweden": [], "theme": []}, "kandidater")
 
     skipped = []
@@ -1565,7 +1685,6 @@ def next_buy(rows, amount=None) -> dict:
     # grindens AVSIKTLIGA svar ("inget bolag klarar ROE/skuld-barren just nu →
     # håll disciplinen, kronorna går till kärnan") – att då punta på momentum-
     # kandidater vore att kringgå exakt den grind modellen finns för.
-    model = _safe(active_model, "balanced", "aktiv modell")
     sweden_picks = _safe(lambda: _unified_rank(rows, top_n=2), [], "sammanvägd rank")
     if not sweden_picks and model != "buffett":
         sweden_picks = (cands.get("sweden") or [])[:2]
@@ -1630,6 +1749,7 @@ def next_buy(rows, amount=None) -> dict:
         "sell_watch": _safe(lambda: _takeprofit(rows), [], "säljvakt"),
         "isk": sum(r.get("value", 0.0) for r in rows) <= float(getattr(config, "PORTFOLIO_ISK_LIMIT", 300000)),
         "skipped": skipped,
+        "tilt": (tilt_meta or None),   # dynamisk fördelning: hur mycket som tiltats mot satelliterna
         "buckets": {b: (round(buckets[b] / total, 4) if total else 0.0) for b in BUCKETS},
         "target": tgt,
         "has_holdings": bool(rows),

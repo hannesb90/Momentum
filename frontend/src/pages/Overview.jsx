@@ -220,6 +220,16 @@ export function OverviewPage() {
           </div>
         )}
       </div>
+      {nextBuy.data?.tilt?.tilt_frac > 0 && (
+        <p className="footnote tilt-note">
+          ⇄ <b>Dynamisk fördelning:</b> {Math.round(nextBuy.data.tilt.tilt_frac * 100)}% av insättningen
+          tiltad från kärnan mot{' '}
+          {Object.entries(nextBuy.data.tilt.pulled_to ?? {})
+            .map(([b]) => ({ sweden: 'Sverige', theme: 'Tema' }[b] ?? b)).join(' + ') || 'satelliter'}
+          {' '}– ett attraktivt läge väger tyngre än ren mål-ifyllnad just nu. Kärngolvet skyddar kärnan;
+          är lägena likvärdiga avgör målvikten.
+        </p>
+      )}
       {nextBuy.data?.note && <p className="footnote">{nextBuy.data.note}</p>}
 
       {targetData.data?.target && (
