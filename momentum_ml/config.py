@@ -581,6 +581,20 @@ NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
 #   "momentum" – momentum-modellens P(upp) tyngst (den ursprungliga andan)
 PORTFOLIO_MODEL_DEFAULT = "balanced"
 PORTFOLIO_MODEL_FILE = "cache/portfolio_model.json"
+# ── Dynamisk, framåtblickande fördelning ─────────────────────────────────────
+# Fyll-mot-mål är basen (framåtblickande MOT målvikten). Ovanpå den läggs en
+# BUNDEN tilt: när en satellit har ett genuint attraktivt läge (mer attraktivt
+# än kärnans baslinje) får den dra en TAKAD andel av insättningen från kärnan –
+# men ett KÄRNGOLV skyddar mot att svälta den evidensbackade kärnan. Är alla
+# lägen likvärdiga gör tilten ingenting → målvikten avgör (tiebreaker).
+#   STRENGTH 0 = ren mål-ifyllnad (exakt tidigare beteende, bevisat identiskt).
+DYNAMIC_ALLOC_TILT_STRENGTH = 0.40   # hur hårt attraktivitet får böja fördelningen (0..1)
+DYNAMIC_ALLOC_MAX_SHARE     = 0.40   # tak: max andel av insättningen som får tiltas från kärnan
+DYNAMIC_ALLOC_CORE_FLOOR    = 0.30   # kärngolv: kärnan behåller minst denna andel när den är underviktad
+# Sverige-hinkens attraktivitet: 70% AKTIV modells rank-score, 30% övrigt
+# (snitt av de ANDRA modellernas rank + TA-timing) – så andra modeller och
+# teknisk timing ges lite inflytande, inte bara den valda modellen.
+DYNAMIC_ALLOC_MODEL_WEIGHT  = 0.70
 # Min-köp: en enskild post under detta är inte värd courtage/spread. Sådana
 # satellit-poster viks in i kärnan denna månad och byggs nästa månad när gapet
 # blivit stort nog för en vettig affär (fyll-mot-mål ackumulerar ändå).
