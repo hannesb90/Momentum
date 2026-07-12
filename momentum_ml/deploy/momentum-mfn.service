@@ -1,0 +1,46 @@
+[Unit]
+Description=Momentum ML – nattlig MFN-prenumeration (refresh, events, fundamentals, value)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=PATH=/opt/momentum/venv/bin
+Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
+Environment=PYTHONUNBUFFERED=1
+# Kedjan i beroendeordning (Type=oneshot kör raderna i tur och ordning):
+#  1. refresh  – inkrementellt PM-delta från MFN (utan denna FRYSER cachen vid
+#     hämtningsögonblicket; 90d-insynsfönstret och PEAD-rapportdatumen sinar).
+#  2. events   – insynshandel + rapportdatum → mfn_events.csv (insynskluster,
+#     PEAD-blackout/färsk-bekräftelse i köp-vakten, säljvaktens sälj-kluster).
+#  3. extract  – hårda nyckeltal ur PM-texterna → fundamentals_from_mfn.csv.
+#  4. value    – Buffett-screenern räknar om ROE/skuld/owner earnings-ranken.
+# Fel i ETT steg ska inte stoppa resten (t.ex. nätfel i refresh men events/
+# extract/score kan ändå köras på befintlig cache) → "-"-prefix på alla rader.
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.mfn_fetch refresh large
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.mfn_fetch refresh small
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.mfn_events scan large
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.mfn_events scan small
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.mfn_fundamentals extract large
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.mfn_fundamentals extract small
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.value_screener score large
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.value_screener score small
+#  5. soft_signals – token-fria mjuka värden: destillerar LLM-kvalitetsbetygen
+#     (train är sekundsnabb och no-op:ar ärligt om labels är för få/modellen
+#     inte slår baselinen) och poängsätter sedan HELA universumet utan tokens.
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.soft_signals train
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.soft_signals score large
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.soft_signals score small
+
+# Låg prioritet – API:t/dashboarden får inte bli lidande.
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=20
+# Textbearbetning, inte träning – behöver långt mindre än train-jobbet.
+MemoryMax=900M
+MemorySwapMax=256M
+
+# refresh gör ~1 nätanrop/bolag med paus – ge gott om tid, men häng aldrig för evigt.
+TimeoutStartSec=3h
