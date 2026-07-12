@@ -14,7 +14,8 @@ VIKTIGT – körs på Pi:n (molncontainern når varken mfn.se eller Yahoo).
 
     python altdata/mfn_fetch.py probe "Saab"     # rök-test mot feeden (gratis)
     python altdata/mfn_fetch.py one  "Saab" SAAB-B.ST   # ett bolag, filtrerat på ticker
-    python altdata/mfn_fetch.py fetch large      # hela segmentet (cachas per ticker)
+    python altdata/mfn_fetch.py fetch large      # hela segmentet (cachas per ticker, förstagångs)
+    python altdata/mfn_fetch.py refresh large    # PRENUMERATION: inkrementellt delta (nattligt/veckovis)
     python altdata/mfn_fetch.py stats            # PM/dag mätt på redan hämtad cache (inget nätanrop)
     python altdata/mfn_fetch.py types             # PM eller även rapporter? typ-fördelning + exempel
     python altdata/mfn_fetch.py raw "AAK"         # rå feed-dump: finns en PDF-länk vi missar?
@@ -112,10 +113,13 @@ def _feed_page(url: str, params: Optional[dict]) -> Tuple[List[dict], Optional[s
     return (data.get("items") or []), data.get("next_url")
 
 
-def _fetch_feed(query: str) -> List[dict]:
-    """Följer next_url-pagineringen tills vi nått historik-golvet eller slut."""
+def _fetch_feed(query: str, max_pages: Optional[int] = None) -> List[dict]:
+    """Följer next_url-pagineringen tills vi nått historik-golvet eller slut.
+    max_pages=1 för inkrementell refresh (500 senaste PM räcker gott för
+    varje tänkbart natt-/vecko-delta – full historik behövs bara första gången)."""
     base = config.MFN_BASE_URL.rstrip("/")
-    max_pages = int(getattr(config, "MFN_MAX_PAGES", 20))
+    if max_pages is None:
+        max_pages = int(getattr(config, "MFN_MAX_PAGES", 20))
     hstart = config.START_DATE  # sluta paginera när posterna är äldre än så
     url, params = f"{base}/all/s", {"query": query, "lang": config.MFN_LANG, "limit": 500}
     raw: List[dict] = []
@@ -157,8 +161,9 @@ def _author_match(c: dict, query: str, ticker: Optional[str]) -> bool:
 
 
 # ── Hämtning + cache ──────────────────────────────────────────────────────────
-def fetch_company(query: str, ticker: Optional[str] = None) -> List[dict]:
-    raw = _fetch_feed(query)
+def fetch_company(query: str, ticker: Optional[str] = None,
+                  max_pages: Optional[int] = None) -> List[dict]:
+    raw = _fetch_feed(query, max_pages=max_pages)
     out, seen = [], set()
     for it in raw:
         c = _coerce(it)
@@ -347,6 +352,81 @@ def fetch_universe(target: str) -> None:
     print(f"[fetch] klart – {total} PM cachade i {cache_dir}/")
 
 
+def refresh_universe(target: str) -> None:
+    """PRENUMERATIONEN: inkrementell uppdatering av redan cachade bolag.
+
+    fetch_universe hoppar över allt som redan är cachat (rätt för förstagångs-
+    hämtningen, men cachen FRYSER då vid hämtningsögonblicket – nya rapporter
+    och insyns-PM kom ALDRIG in efteråt, vilket gör 90d-insynsfönstret och
+    PEAD-rapportdatumen stumma med tiden). refresh hämtar EN feed-sida per
+    bolag (500 senaste PM – långt mer än varje tänkbart natt-/vecko-delta),
+    author-matchar som vanligt och lägger till PM vars id inte redan finns.
+    Bolag som saknar cachefil helt (nynoteringar) full-hämtas i stället.
+
+    Körs regelbundet på Pi:n (nattligt/veckovis, före mfn_events/extract):
+        python -m altdata.mfn_fetch refresh large
+        python -m altdata.mfn_fetch refresh small
+    """
+    from data.data_loader import load_sweden_universe
+    if target == "quality":
+        market_cap, label = config.QUALITY_MARKET_CAP, "quality (Small/Micro/Nano)"
+    else:
+        seg = config.SEGMENTS.get(target) or config.SEGMENTS[config.DEFAULT_SEGMENT]
+        market_cap, label = seg["market_cap"], seg["label"]
+    tickers, sector_map, cap_tier_map, name_map = load_sweden_universe(min_market_cap=market_cap)
+    qmap = _load_map()
+    cache_dir = Path(config.MFN_CACHE_DIR)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"[refresh] {target} ({label}) – {len(tickers)} bolag (inkrementellt)")
+    new_total = full_fetched = 0
+    for i, t in enumerate(tickers, 1):
+        if cap_tier_map.get(t) == "Fond" or sector_map.get(t) == "Fond":
+            continue
+        out = cache_dir / f"{t}.json"
+        query = qmap.get(t) or _clean_name(name_map.get(t, t))
+        if _needs_refetch(out):
+            # Ny/trasig/gammalt schema → full förstagångs-hämtning i stället.
+            try:
+                items = fetch_company(query, ticker=t)
+            except Exception as e:  # noqa: BLE001
+                print(f"  [{i:>4}/{len(tickers)}] {t:<12} FEL (full): {e}")
+                continue
+            out.write_text(json.dumps({"ticker": t, "query": query, "schema": _SCHEMA_VERSION,
+                                       "items": items}, ensure_ascii=False), encoding="utf-8")
+            full_fetched += 1
+            print(f"  [{i:>4}/{len(tickers)}] {t:<12} NY → full hämtning, {len(items)} PM")
+            time.sleep(config.MFN_REQUEST_PAUSE_S)
+            continue
+        try:
+            cached = json.loads(out.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001 – trasig fil fångas av _needs_refetch, men hängslen
+            continue
+        old_items = cached.get("items") or []
+        known = {it.get("id") for it in old_items}
+        try:
+            fresh = fetch_company(query, ticker=t, max_pages=1)
+        except Exception as e:  # noqa: BLE001
+            print(f"  [{i:>4}/{len(tickers)}] {t:<12} FEL (delta): {e}")
+            continue
+        new_items = [it for it in fresh if it.get("id") not in known]
+        if new_items:
+            # Nyaste först (feed-ordning) + befintlig historik. Konsumenterna
+            # (mfn_events/_research_note/fundamentals) sorterar själva på
+            # published, så ordningen är bekvämlighet, inte ett kontrakt.
+            cached["items"] = new_items + old_items
+            out.write_text(json.dumps(cached, ensure_ascii=False), encoding="utf-8")
+            new_total += len(new_items)
+            print(f"  [{i:>4}/{len(tickers)}] {t:<12} +{len(new_items)} nya PM")
+        time.sleep(config.MFN_REQUEST_PAUSE_S)
+    print(f"[refresh] klart – {new_total} nya PM inlagda, {full_fetched} nynoteringar full-hämtade.")
+    if new_total or full_fetched:
+        print("  Kör nu efterbearbetningen så det nya syns i modellerna:")
+        print(f"    python -m altdata.mfn_events scan {target}")
+        print(f"    python -m altdata.mfn_fundamentals extract {target}")
+        print(f"    python -m altdata.value_screener score {target}")
+
+
 def stats() -> None:
     """Statistik ur REDAN HÄMTAD cache (inget nätanrop) – ärligt svar, mätt på
     vårt eget universum, på 'hur många PM kommer det ut per dag från MFN'.
@@ -488,6 +568,8 @@ def main():
               f"{f' (ticker {tk})' if tk else ''}")
     elif cmd == "fetch":
         fetch_universe(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
+    elif cmd == "refresh":
+        refresh_universe(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
     elif cmd == "stats":
         stats()
     elif cmd == "types":
