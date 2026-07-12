@@ -1,0 +1,16 @@
+[Unit]
+Description=Kör momentum-mfn.service varje natt (MFN-prenumerationen)
+
+[Timer]
+# 04:30 lokal tid – EFTER tränings-jobbet (02:00, TimeoutStartSec=4h ger i
+# praktiken klart långt innan) men före morgonen, så insyns-/PEAD-/fundamenta-
+# datan är färsk när appen används. De två jobben delar inte filer på skriv-
+# sidan (train skriver signals/prices, mfn skriver mfn-cache/events/value) så
+# en överlappning är ofarlig – tiden är vald för Pi-resursernas skull.
+OnCalendar=*-*-* 04:30:00
+# Om Pi:n var av/sov vid 04:30, kör så snart den är uppe igen istället.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
