@@ -804,6 +804,7 @@ def _scores_mtime() -> float:
     for seg in config.SEGMENTS.values():
         paths.append(Path(seg.get("results_dir", "")) / "signals.csv")
         paths.append(Path(seg.get("results_dir", "")) / "mfn_events.csv")
+        paths.append(Path(seg.get("results_dir", "")) / "soft_signals.csv")
     m = 0.0
     for p in paths:
         try:
@@ -917,6 +918,34 @@ def _load_scores_uncached() -> dict:
                 e = ent(tk, r.get("name"))
                 e["prob_up"] = max(p, e.get("prob_up") or 0.0)
                 e["pred_signal"] = str(r.get("pred_signal"))
+
+    # Mjuka värden TOKEN-FRITT (altdata/soft_signals.py, nattligt): destillerad
+    # LLM-elev (eller lexikon-läge). Används som KVALITETS-FALLBACK enbart där
+    # LLM-betyget saknas – LLM:en vinner ALLTID när den finns – och märks med
+    # quality_source="soft" så why-etiketten aldrig kan förväxla källorna.
+    # Röda flaggor (going concern, vinstvarning...) följer med till säljvakten.
+    for seg in config.SEGMENTS.values():
+        sfp = Path(seg.get("results_dir", "")) / "soft_signals.csv"
+        if not sfp.exists():
+            continue
+        try:
+            for r in csv.DictReader(open(sfp, encoding="utf-8")):
+                tk = (r.get("ticker") or "").strip().upper()
+                if not tk:
+                    continue
+                soft = _num(r.get("soft_score"))
+                e = ent(tk, r.get("name"))
+                if soft is not None and e.get("quality") is None:
+                    e["quality"] = soft
+                    e["quality_source"] = "soft"
+                try:
+                    e["red_flag_count"] = int(r.get("red_flag_count") or 0)
+                except (TypeError, ValueError):
+                    pass
+                if r.get("red_flags"):
+                    e["soft_red_flags"] = r["red_flags"]
+        except Exception:  # noqa: BLE001
+            pass
 
     # MFN-händelser (insynshandel + senaste rapportdatum, altdata/mfn_events.py,
     # nattligt genererad). BERIKAR bara befintliga poster – en ticker med enbart
@@ -1174,7 +1203,10 @@ def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted,
         score += ins_bonus
     why = []
     if e.get("quality") is not None:
-        why.append(f"kvalitet {e['quality']:.1f}/5" + (f" · {e['zone']}" if e.get("zone") else ""))
+        # "mjuk-kvalitet" = token-fri destillerad/lexikon-poäng (soft_signals),
+        # bara använd när LLM-betyg saknas – källan ska aldrig gå att förväxla.
+        qlabel = "mjuk-kvalitet" if e.get("quality_source") == "soft" else "kvalitet"
+        why.append(f"{qlabel} {e['quality']:.1f}/5" + (f" · {e['zone']}" if e.get("zone") else ""))
     if is_buffett and e.get("value_score") is not None:
         why.append(f"value {e['value_score']:.0f}" + (f" · {e['value_zone']}" if e.get("value_zone") else ""))
     if e.get("quant") is not None:
@@ -1390,6 +1422,11 @@ def _takeprofit(rows) -> list:
             ins_net = (sc.get("insider_buys_90d") or 0) - (sc.get("insider_sells_90d") or 0)
             if ins_net <= -2:
                 confirms.append(f"insynsförsäljningar ({sc.get('insider_sells_90d')} sälj-PM 90d)")
+            # Regelbaserade röda flaggor ur senaste 12m PM-text (soft_signals):
+            # going concern/vinstvarning/kontrollbalansräkning m.fl. – allvarliga
+            # HÄNDELSER, inte ton, och aldrig modellberoende.
+            if int(sc.get("red_flag_count") or 0) > 0:
+                confirms.append(f"röda flaggor i PM: {sc.get('soft_red_flags') or sc.get('red_flag_count')}")
             fl = flows.get(tk, {})
             try:
                 cmf = float(fl.get("cmf_13w"))   # _num duger inte: den slänger negativa tal
@@ -1526,7 +1563,7 @@ def _data_mtime() -> float:
     for seg in config.SEGMENTS.values():
         rd = Path(seg.get("results_dir", ""))
         for f in ("signals.csv", "quality_shortlist.csv", "quant_shortlist.csv",
-                  "value_shortlist.csv", "mfn_events.csv",
+                  "value_shortlist.csv", "mfn_events.csv", "soft_signals.csv",
                   "flow_snapshot.csv", "prices.csv", "portfolio.csv",
                   "etf_rotation.csv", "etf_rotation_meta.json"):
             paths.append(rd / f)
