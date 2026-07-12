@@ -127,11 +127,36 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
             if np_i is not None and eq_i is not None and eq_i > 0:
                 roe_i = (np_i * annualization_factor(r.get("period"))) / eq_i
                 roe_flags.append(roe_i >= config.VALUE_ROE_GOOD)
+        # KRAVLISTE-underlag (OT-stil) ur ALLT vi extraherat, över rapporterna:
+        # EBIT-marginal + trend, EPS-trend, nettoskuld, operativt kassaflöde,
+        # utdelning. Allt enhets-normaliserat; saknat = None (ärligt obedömbart).
+        margins, eps_vals = [], []
+        dividend_any = False
+        for _, r in recent.iterrows():
+            ebit_i = _to_msek(r.get("ebit"), r.get("ebit_unit"))
+            rev_i = _to_msek(r.get("revenue"), r.get("revenue_unit"))
+            if ebit_i is not None and rev_i not in (None, 0.0):
+                margins.append(ebit_i / rev_i)
+            e_i = _num(r.get("eps"))
+            if e_i is None:
+                e_i = _num(r.get("eps_basic"))
+            if e_i is not None:
+                eps_vals.append(e_i)
+            d_i = _num(r.get("dividend"))
+            if d_i is not None and d_i > 0:
+                dividend_any = True
         out[t] = {
             "latest": latest,
             "n_reports": len(g),
             "growth_consistency": (sum(flags) / len(flags)) if flags else None,
             "roe_consistency": (sum(roe_flags) / len(roe_flags)) if len(roe_flags) >= 2 else None,
+            "ebit_margin": margins[-1] if margins else None,
+            "ebit_margin_trend": (margins[-1] - margins[0]) if len(margins) >= 2 else None,
+            "eps_trend": (eps_vals[-1] - eps_vals[0]) if len(eps_vals) >= 2 else None,
+            "net_debt_msek": _to_msek(latest.get("net_debt"), latest.get("net_debt_unit")),
+            "op_cf_msek": _to_msek(latest.get("operating_cash_flow"),
+                                   latest.get("operating_cash_flow_unit")),
+            "dividend_any": dividend_any,
         }
     return out
 
@@ -239,6 +264,37 @@ def _ranks(vals: Dict[str, Optional[float]]) -> Dict[str, float]:
     return out
 
 
+def _checklist(r: dict):
+    """KVALITETSKRAVLISTAN (OT-analytics-inspirerad): tio binära krav prövade
+    mot ALLT vi extraherat ur rapporterna. Varje krav är uppfyllt (True),
+    underkänt (False) eller obedömbart (None – data saknas, räknas ALDRIG som
+    vare sig plus eller minus). checklist_score = andel uppfyllda av de
+    BEDÖMBARA, i procent; kräver ≥ 4 bedömbara för att alls ge en siffra
+    (två gröna bockar av två bedömbara är inte "100% kvalitet").
+    Returnerar (score_0_100|None, "uppfyllda/bedömbara", missade-krav-namn)."""
+    crit = {
+        "tillväxt": (r["rev_growth_yoy"] > 0) if r.get("rev_growth_yoy") is not None else None,
+        "tillväxt-konsistens": (r["growth_consistency"] >= 0.75)
+                               if r.get("growth_consistency") is not None else None,
+        "ROE≥15%": r["meets_roe_bar"] if r.get("roe") is not None else None,
+        "ROE-konsistens": (r["roe_consistency"] >= 0.75)
+                          if r.get("roe_consistency") is not None else None,
+        "EBIT-marginal≥10%": (r["ebit_margin"] >= 0.10) if r.get("ebit_margin") is not None else None,
+        "marginaltrend": (r["ebit_margin_trend"] > 0) if r.get("ebit_margin_trend") is not None else None,
+        # Balans: nettokassa (net_debt < 0) uppfyller direkt, annars skuld-barren.
+        "balans": (True if (r.get("net_debt_msek") is not None and r["net_debt_msek"] < 0)
+                   else (r["meets_debt_bar"] if r.get("debt_equity") is not None else None)),
+        "kassaflöde+": (r["op_cf_msek"] > 0) if r.get("op_cf_msek") is not None else None,
+        "EPS-trend": (r["eps_trend"] > 0) if r.get("eps_trend") is not None else None,
+        "värdering": (r["zone"] in ("billig", "rimlig")) if r.get("zone") not in (None, "okänd") else None,
+    }
+    passed = [k for k, v in crit.items() if v is True]
+    failed = [k for k, v in crit.items() if v is False]
+    n_ass = len(passed) + len(failed)
+    score100 = round(100 * len(passed) / n_ass) if n_ass >= 4 else None
+    return score100, f"{len(passed)}/{n_ass}", ";".join(failed)
+
+
 # Faktor-grupper, samma vikt-mönster som quant_screener.py – men egna vikter
 # som lutar mer mot Buffetts uttalade prioritering (varaktig hög avkastning +
 # konservativ skuldsättning + rimligt pris) än quant_screener.py:s bredare
@@ -269,6 +325,11 @@ def score(segment: Optional[str] = None) -> None:
         m = _metrics(fund[t], price)
         m["ticker"] = t
         m["name"] = name_map.get(t, t)
+        # Kravliste-underlaget (marginal/EPS/nettoskuld/kassaflöde/utdelning)
+        # följer med från _load_fundamentals till radnivån.
+        for k in ("ebit_margin", "ebit_margin_trend", "eps_trend",
+                  "net_debt_msek", "op_cf_msek", "dividend_any"):
+            m[k] = fund[t].get(k)
         rows.append(m)
 
     roe_vals = {r["ticker"]: r["roe"] for r in rows}
@@ -293,6 +354,7 @@ def score(segment: Optional[str] = None) -> None:
         r["value_score"] = round(comp * 100, 1)
         r["meets_roe_bar"] = bool(r["roe"] is not None and r["roe"] >= config.VALUE_ROE_GOOD)
         r["meets_debt_bar"] = bool(r["debt_equity"] is not None and r["debt_equity"] <= config.VALUE_DEBT_EQUITY_SAFE)
+        r["checklist_score"], r["checklist"], r["checklist_miss"] = _checklist(r)
 
     rows.sort(key=lambda r: r["value_score"], reverse=True)
 
@@ -301,6 +363,8 @@ def score(segment: Optional[str] = None) -> None:
     cols = ["ticker", "name", "value_score", "zone", "mult", "roe", "debt_equity",
             "owner_earnings_msek", "owner_earnings_yield", "rev_growth_yoy",
             "growth_consistency", "roe_consistency", "capex_included",
+            "checklist_score", "checklist", "checklist_miss",
+            "ebit_margin", "ebit_margin_trend", "eps_trend", "net_debt_msek", "op_cf_msek",
             "n_reports", "mcap_msek", "meets_roe_bar",
             "meets_debt_bar", "period", "annual_factor", "published"]
     with open(out, "w", newline="", encoding="utf-8") as f:
@@ -328,6 +392,15 @@ def score(segment: Optional[str] = None) -> None:
     n_thin = sum(1 for r in rows if r["n_reports"] < 2)
     print(f"\n  OBS: {n_thin}/{len(rows)} bolag har bara 1 känd rapport – tillväxtkonsistens "
           f"okänd för dem tills fler perioder finns i fundamentals-CSV:erna.")
+
+    ck = [r for r in rows if r.get("checklist_score") is not None]
+    strong = sorted([r for r in ck if r["checklist_score"] >= 70],
+                    key=lambda r: -r["checklist_score"])
+    print(f"\n  KVALITETSKRAVLISTAN (OT-stil, 10 krav): {len(ck)} bolag bedömbara "
+          f"(≥4 prövbara krav), {len(strong)} klarar ≥70%:")
+    for r in strong[:15]:
+        print(f"   {r['checklist_score']:>3}%  {r['checklist']:<6} {r['ticker']:<12} "
+              f"{str(r['name'])[:22]:<22} missar: {r['checklist_miss'] or '–'}")
 
 
 # Nyckelfält per härlett mått – för coverage-rapporten. Ett bolag kan inte
