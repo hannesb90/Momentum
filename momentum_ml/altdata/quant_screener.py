@@ -61,6 +61,12 @@ def _num(v):
     return v if isinstance(v, (int, float)) else None
 
 
+def _finite(v):
+    """Som _num men slänger även ±inf (sanerings-sentinel i ranken, se score())."""
+    import math
+    return v if isinstance(v, (int, float)) and math.isfinite(v) else None
+
+
 def _fetch_all() -> dict:
     """Scanner: alla svenska aktier (type=stock) med nyckeltals-kolumnerna. Returnerar
     {vår_ticker: {kolumn: värde}} för Nasdaq Stockholm-noteringar i SEK."""
@@ -137,11 +143,23 @@ def fetch() -> None:
 
 
 def _ranks(vals: dict) -> dict:
-    """ticker→percentil [0,1] bland de som HAR värdet; saknat = 0.5 (neutralt)."""
+    """ticker→percentil [0,1] bland de som HAR värdet; saknat = 0.5 (neutralt).
+    LIKA värden får MEDELRANKEN (annars avgjorde godtycklig sorteringsordning –
+    dict-ordning – vilka av dem som fick 0.3 vs 0.7: icke-deterministiskt betyg
+    för bolag med identiska nyckeltal, upptäckt i matematik-granskning)."""
     present = sorted(((t, v) for t, v in vals.items() if isinstance(v, (int, float))),
                      key=lambda x: x[1])
     n = len(present)
-    out = {t: (i + 0.5) / n for i, (t, _) in enumerate(present)} if n else {}
+    out = {}
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and present[j + 1][1] == present[i][1]:
+            j += 1
+        pct = ((i + j) / 2 + 0.5) / n          # medelrank för alla med samma värde
+        for k in range(i, j + 1):
+            out[present[k][0]] = pct
+        i = j + 1
     for t in vals:
         out.setdefault(t, 0.5)
     return out
@@ -183,6 +201,30 @@ def score(min_rev_msek=100) -> None:
             continue
         rec["_growth"] = next((rec[f] for f in _GROWTH_FIELDS
                                if isinstance(rec.get(f), (int, float))), None)
+        # ── Matematisk sanering av inverterade kvoter (hittad i granskning) ──
+        # · Negativ D/E = NEGATIVT eget kapital. Efter -1-inverteringen i _SAFETY
+        #   rankades det som SÄKRAST i universumet (dubbel-negation: -(-5) = +5,
+        #   sorterar högst) – i verkligheten är negativt EK värre än varje positiv
+        #   skuldsättning → +inf (sämst i ranken). Och ROE på negativt EK är
+        #   teckenvänt nonsens (förlust/negativt = "positiv" kvot) → None (neutral),
+        #   samma regel som value_screener._metrics kräver equity > 0.
+        de = _num(rec.get("debt_to_equity"))
+        if de is not None and de < 0:
+            rec["debt_to_equity"] = float("inf")
+            rec["return_on_equity"] = None
+        # · Negativ EV/EBITDA har TVÅ orsaker med MOTSATT innebörd: negativ EBITDA
+        #   (förlustbolag → -1-inverteringen rankade det som BILLIGAST – fel) eller
+        #   negativt EV (kassa > börsvärde → genuint extremt billigt – rätt).
+        #   Disambiguera via EBITDA-marginalen: marginal < 0 → förlust → sämst
+        #   (+inf); marginal okänd → None (gissa inte); marginal > 0 → negativt EV,
+        #   äkta billig → behåll (inverteras korrekt till toppen).
+        ev = _num(rec.get("enterprise_value_ebitda_ttm"))
+        if ev is not None and ev < 0:
+            margin = _num(rec.get("ebitda_margin_ttm"))
+            if margin is not None and margin < 0:
+                rec["enterprise_value_ebitda_ttm"] = float("inf")
+            elif margin is None:
+                rec["enterprise_value_ebitda_ttm"] = None
         data[t] = rec
     if not data:
         print("[score] inga bolag kvar efter filter.")
@@ -205,9 +247,10 @@ def score(min_rev_msek=100) -> None:
                           if _num(rec.get("market_cap_basic")) else None),
             "ebitda_margin": _num(rec.get("ebitda_margin_ttm")),
             "rev_growth": _num(rec.get("_growth")),
-            "roe": _num(rec.get("return_on_equity")),
-            "ps": _num(rec.get("price_sales_ratio")),
-            "ev_ebitda": _num(rec.get("enterprise_value_ebitda_ttm")),
+            # inf är sanerings-sentinel för ranken (se ovan) – skriv None i CSV:n.
+            "roe": _finite(rec.get("return_on_equity")),
+            "ps": _finite(rec.get("price_sales_ratio")),
+            "ev_ebitda": _finite(rec.get("enterprise_value_ebitda_ttm")),
         })
     rows.sort(key=lambda r: r["quant_score"], reverse=True)
     out = Path(config.anchor(config.RESULTS_DIR)) / "quant_shortlist.csv"

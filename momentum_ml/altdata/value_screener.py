@@ -192,11 +192,23 @@ def _metrics(entry: dict, price: Optional[float]) -> dict:
 
 def _ranks(vals: Dict[str, Optional[float]]) -> Dict[str, float]:
     """ticker→percentil [0,1] bland de som HAR värdet; saknat = 0.5 (neutralt).
-    Samma mönster som quant_screener.py – tål saknad data/olika skalor."""
+    Samma mönster som quant_screener.py – tål saknad data/olika skalor.
+    LIKA värden får MEDELRANKEN (annars avgjorde godtycklig sorteringsordning
+    vilka av dem som hamnade högre – icke-deterministiskt betyg för bolag med
+    identiska nyckeltal, upptäckt i matematik-granskning)."""
     present = sorted(((t, v) for t, v in vals.items() if isinstance(v, (int, float))),
                       key=lambda x: x[1])
     n = len(present)
-    out = {t: (i + 0.5) / n for i, (t, _) in enumerate(present)} if n else {}
+    out: Dict[str, float] = {}
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and present[j + 1][1] == present[i][1]:
+            j += 1
+        pct = ((i + j) / 2 + 0.5) / n          # medelrank för alla med samma värde
+        for k in range(i, j + 1):
+            out[present[k][0]] = pct
+        i = j + 1
     for t in vals:
         out.setdefault(t, 0.5)
     return out
