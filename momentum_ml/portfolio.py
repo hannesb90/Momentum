@@ -934,10 +934,18 @@ def _load_scores_uncached() -> dict:
                 if not tk:
                     continue
                 soft = _num(r.get("soft_score"))
+                llm = _num(r.get("llm_composite"))   # LLM-facit ur quality-CACHEN
                 e = ent(tk, r.get("name"))
-                if soft is not None and e.get("quality") is None:
-                    e["quality"] = soft
-                    e["quality_source"] = "soft"
+                if e.get("quality") is None:
+                    # LLM vinner ÄVEN här: llm_composite täcker bolag som är
+                    # LLM-betygsatta i cachen men inte (längre) står i
+                    # quality_shortlist.csv (t.ex. äldre screen-körning) –
+                    # elevens gissning går aldrig före lärarens faktiska svar.
+                    if llm is not None:
+                        e["quality"] = llm
+                    elif soft is not None:
+                        e["quality"] = soft
+                        e["quality_source"] = "soft"
                 try:
                     e["red_flag_count"] = int(r.get("red_flag_count") or 0)
                 except (TypeError, ValueError):
