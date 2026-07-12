@@ -98,6 +98,10 @@ export const api = {
   // Manuell scenario-skanner: valfri aktie + manuell data → värde ur modellerna.
   // Görs ALDRIG mot nätet och sparas ALDRIG (se altdata/manual_scan.py).
   scannerFields: () => getJson('/scanner/fields'),
+  // Segment default:ar till appens globala val (Storbolag/Småbolag-toggeln) –
+  // styr vilket universum scenariot percentilrankas mot och var förfyllnaden
+  // letar först. postJson bifogar inte segment automatiskt (bara getJson gör
+  // det via query-param), så det måste in i body:n explicit.
   scannerScan: (ticker, overrides, segment) =>
-    postJson('/scanner/scan', { ticker, overrides, segment }),
+    postJson('/scanner/scan', { ticker, overrides, segment: segment ?? currentSegment }),
 }
