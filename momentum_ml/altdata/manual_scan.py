@@ -40,7 +40,7 @@ from altdata import value_screener
 
 _FLOAT_FIELDS = {
     "price", "fx_rate", "revenue", "revenue_prior", "net_profit", "equity",
-    "liabilities", "depreciation_amortization", "shares_outstanding",
+    "liabilities", "depreciation_amortization", "capex", "shares_outstanding",
     "quality", "quant", "prob_up",
 }
 _BOOL_FIELDS = {"research"}
@@ -58,6 +58,7 @@ _FIELD_HELP = {
     "equity": "Eget kapital, Mkr",
     "liabilities": "Summa skulder, Mkr",
     "depreciation_amortization": "Av- och nedskrivningar, Mkr (valfritt, default 0 – konservativt lågt)",
+    "capex": "Investeringar i anläggningstillgångar, Mkr (valfritt – dras av från owner earnings; utan den blir OE en övre gräns)",
     "shares_outstanding": "Antal utestående aktier (RÅTT antal, INTE i miljoner)",
     "period": "Rapportperiod: Q1/Q2/Q3/Q4/H1/9M/Helår (styr årstakts-skalning av flödesmått)",
     "quality": "Kvalitetsbetyg manuellt (0-5) om bolaget inte redan finns i kvalitet-vyn",
@@ -104,7 +105,7 @@ def _prefill(ticker: str, segment: Optional[str] = None) -> dict:
         # det RÅA värdet kan vara i tkr/kkr, och nedströms behandlar scan()
         # alla belopp som Mkr → utan konvertering blev ett tkr-bolag 1000x fel.
         for f in ("revenue", "net_profit", "equity",
-                  "liabilities", "depreciation_amortization"):
+                  "liabilities", "depreciation_amortization", "capex"):
             v = value_screener._to_msek(latest.get(f), latest.get(f + "_unit"))
             if v is not None:
                 out[f] = round(v, 2)
@@ -303,6 +304,7 @@ def scan(ticker: str, overrides: Optional[dict] = None, segment: Optional[str] =
         "equity": money("equity"), "equity_unit": "Mkr",
         "liabilities": money("liabilities"), "liabilities_unit": "Mkr",
         "depreciation_amortization": money("depreciation_amortization"), "depreciation_amortization_unit": "Mkr",
+        "capex": money("capex"), "capex_unit": "Mkr",
         "shares_outstanding": merged.get("shares_outstanding"),
         "revenue": money("revenue"), "revenue_unit": "Mkr",
         "revenue_prior": money("revenue_prior"),

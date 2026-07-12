@@ -7,7 +7,7 @@ const GROUPS = [
   { title: 'Grunduppgifter', fields: ['name', 'price', 'currency', 'fx_rate'] },
   { title: 'Resultat & balans (Mkr, bolagets egen valuta)',
     fields: ['revenue', 'revenue_prior', 'net_profit', 'equity', 'liabilities',
-             'depreciation_amortization', 'shares_outstanding', 'period'] },
+             'depreciation_amortization', 'capex', 'shares_outstanding', 'period'] },
   { title: 'Manuella betyg (bara om bolaget inte redan är spårat hos oss)',
     fields: ['quality', 'quant', 'prob_up', 'research'] },
 ]
