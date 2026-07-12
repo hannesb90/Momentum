@@ -77,14 +77,29 @@ _LEXICON: Dict[str, str] = {
 }
 # RÖDA FLAGGOR – regelbaserade, ALDRIG modellberoende. Var och en är en
 # dokumenterad, allvarlig händelse (inte ton) → listas med namn i utdata.
+# PRECISION FÖRE TÄCKNING: en flagga eskalerar säljvakten och sänker mjuk-
+# poängen hårt, så en falsk träff på standard-boilerplate är mycket värre än
+# en missad ovanlig formulering. Varje mönster är verifierat mot vanliga
+# godartade fraser (se test_soft_signals): "av- och nedskrivningar" (D&A-raden
+# i VARJE resultaträkning), "VD lämnar sina kommentarer", "nyemission för att
+# finansiera förvärvet" (offensiv, inte nöd) får INTE flagga.
 _RED_FLAGS: Dict[str, str] = {
     "going_concern": r"going\s+concern|väsentlig\w*\s+osäkerhet\w*\s+(?:om|kring|avseende)\s+fortsatt\s+drift|fortsatt\s+drift\s+är\s+osäker",
     "kontrollbalansräkning": r"kontrollbalansräkning",
-    "nyemission_nöd": r"(?:företrädes|riktad)?\s*nyemission\s+för\s+att\s+(?:säkra|stärka|finansiera\s+(?:fortsatt|löpande))|likviditetsbrist|behov\s+av\s+ytterligare\s+finansiering",
+    # företrädesemission/nyemission är ETT ord; "riktad emission" två.
+    "nyemission_nöd": r"(?:nyemission|företrädesemission|riktad\s+(?:ny)?emission)\s+för\s+att\s+(?:säkra|stärka|finansiera\s+(?:fortsatt|löpande))|likviditetsbrist|behov\s+av\s+ytterligare\s+finansiering",
     "vinstvarning": r"vinstvarning|sänker\s+(?:prognos|utsikter|sina?\s+mål)|profit\s+warning|lowers\s+(?:guidance|outlook)",
     "revisor": r"revisor\w*\s+(?:anmärkning|reservation|avstyrk\w*)|oren\s+revisionsberättelse",
-    "ledningsavhopp": r"(?:vd|verkställande\s+direktör\w*|cfo|finanschef\w*)\s+(?:avgår|lämnar|entledigas|har\s+avgått)(?:\s+med\s+omedelbar\s+verkan)?",
-    "nedskrivning": r"nedskrivning\w*\s+(?:av|om|på)|impairment",
+    # "lämnar" kräver post/tjänst/bolag-objekt ("VD lämnar sina kommentarer" är
+    # standard-PM-språk); "avgår som VD" fångar omvänd ordföljd.
+    "ledningsavhopp": (r"(?:vd|verkställande\s+direktör\w*|cfo|finanschef\w*)\s+"
+                       r"(?:avgår|entledigas|har\s+avgått|lämnar\s+(?:sin\s+(?:post|tjänst|roll)|bolaget|sitt\s+uppdrag))"
+                       r"|avgår\s+som\s+(?:vd|verkställande\s+direktör|cfo|finanschef)"),
+    # Bara ny-annonserade nedskrivningar av substans (goodwill/belopp) – INTE
+    # resultaträkningens stående "av- och nedskrivningar"-rad.
+    "nedskrivning": (r"nedskrivning\w*\s+av\s+goodwill|goodwillnedskrivning|nedskrivningsbehov"
+                     r"|(?:gör|redovisar|beslutat\s+om)\s+(?:en\s+)?nedskrivning"
+                     r"|impairment\s+(?:charge|loss|of\s+goodwill)"),
 }
 _LEX_RE = {k: re.compile(v, re.I) for k, v in _LEXICON.items()}
 _FLAG_RE = {k: re.compile(v, re.I) for k, v in _RED_FLAGS.items()}
@@ -126,16 +141,29 @@ def _company_text(ticker: str, months: int = 12) -> Tuple[str, int, int]:
     return "\n\n".join(texts), n_pm, n_rep
 
 
+_MIN_WORDS = 300         # mindre 12-månaders-text än så → för tunt för en mjuk bedömning
+_RATE_CAP = 10.0         # winsorisering av lexikon-frekvenser (träffar per 1000 ord)
+
+
 def extract_features(ticker: str) -> Optional[Dict[str, float]]:
-    """Token-fria drag för ETT bolag. None om ingen MFN-text finns."""
+    """Token-fria drag för ETT bolag. None om MFN-texten saknas ELLER är för
+    tunn (< _MIN_WORDS ord på 12 månader) – hellre ärligt obedömd än en
+    "mjuk poäng" byggd på en enda mening.
+
+    Frekvenserna winsoriseras vid _RATE_CAP: utan taket exploderade per-1000-
+    ord-talen för korta texter (EN kort bullish PM gav moat ≈ 79/1k mot ~1-3
+    för normala bolag) och förvred både ML-features och lexikon-kompositen –
+    upptäckt i granskning, inte hypotetiskt."""
     text, n_pm, n_rep = _company_text(ticker)
     if not text:
         return None
-    n_words = max(len(text.split()), 1)
+    n_words = len(text.split())
+    if n_words < _MIN_WORDS:
+        return None
     per_k = 1000.0 / n_words
     feats: Dict[str, float] = {}
     for k, rx in _LEX_RE.items():
-        feats[k] = len(rx.findall(text)) * per_k
+        feats[k] = min(len(rx.findall(text)) * per_k, _RATE_CAP)
     pos, neg = feats.get("tone_pos", 0.0), feats.get("tone_neg", 0.0)
     feats["tone_score"] = (pos - neg) / (pos + neg + 0.5)
     feats["n_pm_12m"] = float(n_pm)
