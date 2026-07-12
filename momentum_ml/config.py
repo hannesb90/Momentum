@@ -595,6 +595,16 @@ DYNAMIC_ALLOC_CORE_FLOOR    = 0.30   # kärngolv: kärnan behåller minst denna 
 # (snitt av de ANDRA modellernas rank + TA-timing) – så andra modeller och
 # teknisk timing ges lite inflytande, inte bara den valda modellen.
 DYNAMIC_ALLOC_MODEL_WEIGHT  = 0.70
+# ── Insynshandel + PEAD (altdata/mfn_events.py, nattlig skanning) ────────────
+# Kluster av insynsköp (netto ≥ 2 PDMR-köp-PM på 90d) ger en liten additiv
+# rank-bonus (som research-bonusen). 0 stänger av helt.
+PORTFOLIO_INSIDER_BONUS = 0.05
+# PEAD-fönster: rapport ≤ FRESH dagar sedan + bekräftade flöden = köp driften.
+# BLACKOUT: ~kvartalsrytm (91d) sedan senaste rapporten → nästa väntas strax →
+# köp-vakten blockar ("köp inte ryktet före en rapport").
+PEAD_FRESH_DAYS = 42
+PEAD_BLACKOUT_MIN_DAYS = 77
+PEAD_BLACKOUT_MAX_DAYS = 104
 # Min-köp: en enskild post under detta är inte värd courtage/spread. Sådana
 # satellit-poster viks in i kärnan denna månad och byggs nästa månad när gapet
 # blivit stort nog för en vettig affär (fyll-mot-mål ackumulerar ändå).
