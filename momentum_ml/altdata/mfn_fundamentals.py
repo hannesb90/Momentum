@@ -244,6 +244,21 @@ _VALUE_FIELDS: Dict[str, str] = {
               "Avskrivningar på materiella och immateriella anläggningstillgångar"],
         fixed=["Depreciation and Amortization", "Depreciation", "Amortization", "D&A"],
     ),
+    # Investeringar (capex) – gör owner earnings-approximationen ETT steg
+    # närmare Buffetts formel (nettoresultat + avskrivningar − INVESTERINGAR).
+    # MEDVETET bara direkta investeringsformuleringar – INTE "kassaflöde från
+    # investeringsverksamheten" (den inkluderar förvärv/M&A och skulle göra
+    # owner earnings systematiskt för låg för förvärvande bolag). Saknas capex
+    # behåller value_screener den gamla övre-gräns-approximationen (dokumenterad).
+    "capex": _labels(
+        flex=["Investeringar i materiella anläggningstillgångar",
+              "Investeringar i materiella och immateriella anläggningstillgångar",
+              "Investeringar i anläggningstillgångar",
+              "Periodens investeringar", "Årets investeringar",
+              "Kvartalets investeringar", "Investeringar"],
+        fixed=["Capex", "Capital Expenditure", "Capital Expenditures",
+               "Investments in Tangible Assets"],
+    ),
 }
 # Två mönster per fält (enhet-efter, enhet-före) – första träff vinner.
 _FIELD_PATTERNS: Dict[str, List[re.Pattern]] = {

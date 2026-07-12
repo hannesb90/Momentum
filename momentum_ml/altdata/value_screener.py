@@ -104,20 +104,34 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
     df["published"] = pd.to_datetime(df["published"], errors="coerce", utc=True)
     df = df.dropna(subset=["ticker", "published"]).sort_values("published")
 
+    from altdata.mfn_fundamentals import annualization_factor
+
     out: Dict[str, dict] = {}
     for t, g in df.groupby("ticker"):
         g = g.sort_values("published")
         latest = g.iloc[-1].to_dict()
         recent = g.tail(4)
         flags = []
+        roe_flags = []
         for _, r in recent.iterrows():
             rev, rev_prior = _num(r.get("revenue")), _num(r.get("revenue_prior"))
             if rev is not None and rev_prior not in (None, 0):
                 flags.append(rev > rev_prior)
+            # ROE-KONSISTENS över rapporterna (Buffetts krav är "konsekvent hög
+            # ROE över tid", inte en punktmätning): räkna ROE per historisk
+            # rapport med SAMMA matematik som _metrics (enhetskonvertering +
+            # årsuppräkning av flödesmåttet, equity > 0-regeln). Kräver ≥ 2
+            # beräkningsbara rapporter, annars None (säger inget om konsistens).
+            np_i = _to_msek(r.get("net_profit"), r.get("net_profit_unit"))
+            eq_i = _to_msek(r.get("equity"), r.get("equity_unit"))
+            if np_i is not None and eq_i is not None and eq_i > 0:
+                roe_i = (np_i * annualization_factor(r.get("period"))) / eq_i
+                roe_flags.append(roe_i >= config.VALUE_ROE_GOOD)
         out[t] = {
             "latest": latest,
             "n_reports": len(g),
             "growth_consistency": (sum(flags) / len(flags)) if flags else None,
+            "roe_consistency": (sum(roe_flags) / len(roe_flags)) if len(roe_flags) >= 2 else None,
         }
     return out
 
@@ -145,6 +159,13 @@ def _metrics(entry: dict, price: Optional[float]) -> dict:
     factor = annualization_factor(latest.get("period"))
     np_annual = net_profit * factor if net_profit is not None else None
     da_annual = da * factor if da is not None else None
+    # Capex (om extraherad): gör owner earnings ETT steg närmare Buffetts
+    # formel (np + D&A − capex). abs() eftersom investeringar ibland anges med
+    # minustecken (kassaflödeskonvention) – de är alltid ett AVDRAG här; ett
+    # teckenfel får aldrig ÖKA owner earnings. Saknas capex → gamla övre-
+    # gräns-approximationen (dokumenterad i modulens docstring).
+    capex = _to_msek(latest.get("capex"), latest.get("capex_unit"))
+    capex_annual = abs(capex) * factor if capex is not None else None
 
     # Negativt eget kapital gör både ROE och Skuld/EK meningslösa (tecknet
     # vänder, ett katastrofbolag kan se ut att ha "positiv" ROE på negativt
@@ -154,7 +175,9 @@ def _metrics(entry: dict, price: Optional[float]) -> dict:
 
     owner_earnings = None
     if np_annual is not None:
-        owner_earnings = np_annual + (da_annual or 0.0)   # da saknas ofta -> 0, konservativ underskattning
+        owner_earnings = np_annual + (da_annual or 0.0) - (capex_annual or 0.0)
+        # da saknas ofta -> 0 (konservativ underskattning); capex saknas ofta -> 0
+        # (då blir OE en övre gräns – dokumenterad approximation)
 
     rev_growth = None
     if revenue is not None and revenue_prior not in (None, 0):
@@ -182,6 +205,8 @@ def _metrics(entry: dict, price: Optional[float]) -> dict:
         "owner_earnings_yield": oe_yield, "mult": mult, "zone": zone,
         "rev_growth_yoy": rev_growth, "mcap_msek": mcap_msek,
         "n_reports": entry["n_reports"], "growth_consistency": entry["growth_consistency"],
+        "roe_consistency": entry.get("roe_consistency"),
+        "capex_included": capex is not None,   # transparens: äkta OE eller övre gräns?
         "published": latest.get("published"),
         # Transparens: vilken rapportperiod och årsfaktor som låg bakom talen –
         # så en manuell koll av value_shortlist.csv kan se om ett bolag är
@@ -247,16 +272,23 @@ def score(segment: Optional[str] = None) -> None:
         rows.append(m)
 
     roe_vals = {r["ticker"]: r["roe"] for r in rows}
+    # ROE-konsistens (andel av senaste rapporterna som klarade barren) rankas
+    # SOM EN EGEN kvalitetsfaktor och snittas med punkt-ROE:n – Buffetts krav
+    # är VARAKTIGT hög avkastning, inte en bra period. Saknad konsistens
+    # (< 2 beräkningsbara rapporter) = 0.5 neutral, straffar inte tunn historik.
+    cons_vals = {r["ticker"]: r.get("roe_consistency") for r in rows}
     debt_vals = {r["ticker"]: (-r["debt_equity"] if r["debt_equity"] is not None else None) for r in rows}
     growth_vals = {r["ticker"]: r["rev_growth_yoy"] for r in rows}
     value_vals = {r["ticker"]: r["owner_earnings_yield"] for r in rows}   # högre yield = billigare
 
-    roe_rank, debt_rank = _ranks(roe_vals), _ranks(debt_vals)
+    roe_rank, cons_rank = _ranks(roe_vals), _ranks(cons_vals)
+    debt_rank = _ranks(debt_vals)
     growth_rank, value_rank = _ranks(growth_vals), _ranks(value_vals)
 
     for r in rows:
         t = r["ticker"]
-        comp = (_WEIGHTS["quality"] * roe_rank[t] + _WEIGHTS["safety"] * debt_rank[t]
+        quality_component = (roe_rank[t] + cons_rank[t]) / 2
+        comp = (_WEIGHTS["quality"] * quality_component + _WEIGHTS["safety"] * debt_rank[t]
                 + _WEIGHTS["growth"] * growth_rank[t] + _WEIGHTS["value"] * value_rank[t])
         r["value_score"] = round(comp * 100, 1)
         r["meets_roe_bar"] = bool(r["roe"] is not None and r["roe"] >= config.VALUE_ROE_GOOD)
@@ -268,7 +300,8 @@ def score(segment: Optional[str] = None) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     cols = ["ticker", "name", "value_score", "zone", "mult", "roe", "debt_equity",
             "owner_earnings_msek", "owner_earnings_yield", "rev_growth_yoy",
-            "growth_consistency", "n_reports", "mcap_msek", "meets_roe_bar",
+            "growth_consistency", "roe_consistency", "capex_included",
+            "n_reports", "mcap_msek", "meets_roe_bar",
             "meets_debt_bar", "period", "annual_factor", "published"]
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")

@@ -803,6 +803,7 @@ def _scores_mtime() -> float:
              _results_dir() / "value_shortlist.csv"]
     for seg in config.SEGMENTS.values():
         paths.append(Path(seg.get("results_dir", "")) / "signals.csv")
+        paths.append(Path(seg.get("results_dir", "")) / "mfn_events.csv")
     m = 0.0
     for p in paths:
         try:
@@ -917,6 +918,29 @@ def _load_scores_uncached() -> dict:
                 e["prob_up"] = max(p, e.get("prob_up") or 0.0)
                 e["pred_signal"] = str(r.get("pred_signal"))
 
+    # MFN-händelser (insynshandel + senaste rapportdatum, altdata/mfn_events.py,
+    # nattligt genererad). BERIKAR bara befintliga poster – en ticker med enbart
+    # insynsdata kan ändå aldrig rankas (kräver minst ett fundament-betyg).
+    for seg in config.SEGMENTS.values():
+        evp = Path(seg.get("results_dir", "")) / "mfn_events.csv"
+        if not evp.exists():
+            continue
+        try:
+            for r in csv.DictReader(open(evp, encoding="utf-8")):
+                tk = (r.get("ticker") or "").strip().upper()
+                e = out.get(tk)
+                if e is None:
+                    continue
+                try:
+                    e["insider_buys_90d"] = int(r.get("insider_buys_90d") or 0)
+                    e["insider_sells_90d"] = int(r.get("insider_sells_90d") or 0)
+                except (TypeError, ValueError):
+                    pass
+                if r.get("last_report_date"):
+                    e["last_report_date"] = r["last_report_date"]
+        except Exception:  # noqa: BLE001
+            pass
+
     # OBS: 'research' (uppdragsanalys-flaggan) sätts INTE eagert här längre.
     # _research_note() fulltext-skannar en stor MFN-fil per bolag (~14,5s för
     # hela universumet i profileringen) → beräknas numera LAT i _unified_rank,
@@ -975,12 +999,13 @@ def _opportunity(rows, amount) -> dict:
     def evaluate(c):
         tk = c["ticker"]
         fl = flows.get(tk, {})
+        sc = scores.get(tk, {})
         try:
             cmf = float(fl.get("cmf_13w"))
         except (TypeError, ValueError):
             cmf = None
         below = str(fl.get("below_sma20")) == "1"
-        zone = scores.get(tk, {}).get(zone_key)
+        zone = sc.get(zone_key)
         blocks = []
         if cmf is not None and cmf < 0:
             blocks.append(f"distribution (CMF {cmf:+.2f} – flöden ut)")
@@ -988,7 +1013,34 @@ def _opportunity(rows, amount) -> dict:
             blocks.append("trendbrott (kurs < SMA20)")
         if zone == "dyr":
             blocks.append("värdering 'dyr' (förbi fundamenta)")
+        # PEAD på RIKTIGA rapportdatum (mfn_events.csv). Kvartalsrytm ≈ 91 dagar:
+        #  · BLACKOUT strax före väntad nästa rapport (est. sista rapport + 91d):
+        #    "köp inte ryktet" – exakt den disciplin docstringen beskriver, nu
+        #    med faktiskt datum i stället för enbart flödes-approximationen.
+        #  · Färsk rapport (≤ PEAD_FRESH_DAYS) + redan passerade flödes-/trend-
+        #    grindar = bekräftad drift → uttrycklig PEAD-bekräftelse.
+        days_since = None
+        lr = sc.get("last_report_date")
+        if lr:
+            try:
+                import datetime as _dt
+                days_since = (_dt.date.today() - _dt.date.fromisoformat(str(lr)[:10])).days
+            except (TypeError, ValueError):
+                days_since = None
         confirm = []
+        if days_since is not None:
+            lo = int(getattr(config, "PEAD_BLACKOUT_MIN_DAYS", 77))
+            hi = int(getattr(config, "PEAD_BLACKOUT_MAX_DAYS", 104))
+            fresh = int(getattr(config, "PEAD_FRESH_DAYS", 42))
+            if lo <= days_since <= hi:
+                blocks.append(f"rapport väntas snart (senaste för {days_since}d sedan, "
+                              f"kvartalsrytm) – köp inte ryktet (PEAD)")
+            elif days_since <= fresh:
+                confirm.append(f"PEAD: rapport för {days_since}d sedan – driften bekräftad")
+        # Kluster av insynsköp (netto ≥ 2 på 90d) – stark oberoende bekräftelse.
+        ins_net = (sc.get("insider_buys_90d") or 0) - (sc.get("insider_sells_90d") or 0)
+        if ins_net >= 2:
+            confirm.append(f"insynsköp-kluster ({sc.get('insider_buys_90d')} köp 90d)")
         if cmf is not None and cmf >= 0.03:
             confirm.append(f"ackumulation (CMF {cmf:+.2f})")
         if not below and fl:
@@ -1110,6 +1162,16 @@ def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted,
              + w["value"] * (vn if vn is not None else fb)
              + w["momentum"] * (pn if pn is not None else 0.5)
              + (w["research"] if research else 0.0))
+    # Insynsköp-bonus (mfn_events.csv): NETTO-kluster av PDMR-köp senaste 90d –
+    # en av de mest robust dokumenterade positiva signalerna. Kräver netto ≥ 2
+    # (enstaka köp är ofta program-brus, kluster är den belagda signalen).
+    # Additiv liten bonus som research – config 0 stänger av. Data kommer ur
+    # den redan lästa poängkartan (INGA fil-läsningar här, till skillnad från
+    # research-bonusen som därför körs lat i pass 2).
+    ins_net = (e.get("insider_buys_90d") or 0) - (e.get("insider_sells_90d") or 0)
+    ins_bonus = float(getattr(config, "PORTFOLIO_INSIDER_BONUS", 0.05))
+    if ins_net >= 2 and ins_bonus > 0:
+        score += ins_bonus
     why = []
     if e.get("quality") is not None:
         why.append(f"kvalitet {e['quality']:.1f}/5" + (f" · {e['zone']}" if e.get("zone") else ""))
@@ -1121,6 +1183,8 @@ def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted,
         why.append(f"P(upp) {pn:.0%}")
     if research:
         why.append("uppdragsanalys ✓")
+    if ins_net >= 2 and ins_bonus > 0:
+        why.append(f"insynsköp-kluster ({e.get('insider_buys_90d')} köp 90d)")
     return score, why, {"quality_pctl": qn, "quant_pctl": kn, "value_pctl": vn}
 
 
@@ -1320,6 +1384,12 @@ def _takeprofit(rows) -> list:
                 g = sc.get("rev_growth_yoy")
                 if g is not None and g < 0:
                     confirms.append(f"caset: intäkterna krymper ({g:+.0%} YoY)")
+            # Insynsförsäljningar (oberoende av value-data): NETTO-kluster av
+            # PDMR-sälj på 90d. Enstaka sälj är ofta diversifiering/privatekonomi
+            # (svag signal) → kräver netto ≤ -2 precis som köp-klustret kräver ≥ 2.
+            ins_net = (sc.get("insider_buys_90d") or 0) - (sc.get("insider_sells_90d") or 0)
+            if ins_net <= -2:
+                confirms.append(f"insynsförsäljningar ({sc.get('insider_sells_90d')} sälj-PM 90d)")
             fl = flows.get(tk, {})
             try:
                 cmf = float(fl.get("cmf_13w"))   # _num duger inte: den slänger negativa tal
@@ -1456,7 +1526,7 @@ def _data_mtime() -> float:
     for seg in config.SEGMENTS.values():
         rd = Path(seg.get("results_dir", ""))
         for f in ("signals.csv", "quality_shortlist.csv", "quant_shortlist.csv",
-                  "value_shortlist.csv",
+                  "value_shortlist.csv", "mfn_events.csv",
                   "flow_snapshot.csv", "prices.csv", "portfolio.csv",
                   "etf_rotation.csv", "etf_rotation_meta.json"):
             paths.append(rd / f)
