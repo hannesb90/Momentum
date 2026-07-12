@@ -108,11 +108,17 @@ def _prefill(ticker: str, segment: Optional[str] = None) -> tuple:
     seg_names += [s for s in config.SEGMENTS if s not in seg_names]
 
     from altdata.soft_signals import _fund_rows
-    rows = []
+    # SLÅ IHOP historiken från ALLA segment (dedup på pm_id, sortera på
+    # published). Tidigare vann första segmentet med träff → ett bolag som
+    # BYTT lista (t.ex. Smart Eye) hade rader i BÅDA results-dirs och fick
+    # OLIKA förfyllnad beroende på Storbolag/Småbolag-toggeln (-8.64 från
+    # gamla small-raden vs -49.5 från färska large-raden – verifierad bugg).
+    merged_rows: Dict[str, dict] = {}
     for s in seg_names:
-        rows = _fund_rows(s).get(ticker) or []
-        if rows:
-            break
+        for r in (_fund_rows(s).get(ticker) or []):
+            key = str(r.get("pm_id") or "") or f"{r.get('published')}|{r.get('title')}"
+            merged_rows.setdefault(key, r)
+    rows = sorted(merged_rows.values(), key=lambda r: str(r.get("published") or ""))
     if rows:
         latest = rows[-1]
 
@@ -130,6 +136,22 @@ def _prefill(ticker: str, segment: Optional[str] = None) -> tuple:
         if vp is not None:
             out["revenue_prior"] = round(vp, 2)
             src["revenue_prior"] = _label(latest)
+        elif "revenue" in out:
+            # HÄRLEDD revenue_prior: rapporten angav ingen jämförelsesiffra,
+            # men FJOLÅRETS rapport för SAMMA period finns i historiken – dess
+            # revenue ÄR jämförelseperioden (samma bas som en "(föreg. år)"-
+            # parentes). Kräver exakt samma periodetikett med årtalet −1.
+            import re as _re
+            m = _re.match(r"^(.*\S)\s+(20\d{2})$", str(latest.get("period") or "").strip())
+            if m:
+                want = f"{m.group(1)} {int(m.group(2)) - 1}"
+                for r in reversed(rows[:-1]):
+                    if str(r.get("period") or "").strip() == want:
+                        v_prior = value_screener._to_msek(r.get("revenue"), r.get("revenue_unit"))
+                        if v_prior is not None:
+                            out["revenue_prior"] = round(v_prior, 2)
+                            src["revenue_prior"] = f"härledd (fjolårets {want}-rapport)"
+                        break
         # BALANSPOSTER + AKTIEANTAL: coalesce bakåt – senaste rad som HAR fältet.
         # (Stock-mått ändras långsamt; Q3:s egna kapital är långt bättre än inget
         # när bokslutskommunikén inte upprepar det. Källraden märks tydligt.)
