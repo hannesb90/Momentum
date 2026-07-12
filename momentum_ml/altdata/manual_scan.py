@@ -31,6 +31,8 @@ MEDVETET sätta för utländska bolag, aldrig en gissning från vår sida).
 """
 import sys
 import csv
+import re
+import json
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -82,49 +84,97 @@ def _cast_field(key: str, v):
     return str(v).strip()
 
 
-def _prefill(ticker: str, segment: Optional[str] = None) -> dict:
-    """Lokal (nätfri) förfyllning: läser samma CSV:er som resten av
-    pipelinen om tickern redan är spårad hos oss – annars tomt dict (allt
-    fylls då manuellt). Görs ALDRIG mot nätet (ingen Yahoo-kurs hämtas –
-    pris är alltid ett manuellt fält, se modulens docstring)."""
+def _prefill(ticker: str, segment: Optional[str] = None) -> tuple:
+    """Lokal (nätfri) förfyllning ur ALLT vi redan har på disk. Returnerar
+    (värden, källa-per-fält). Fyra källor i prioritetsordning:
+
+      1. FUNDAMENTALS-RADERNA – per fält tas SENASTE raden som HAR fältet
+         (coalesce bakåt över rapporterna): en bokslutskommuniké nämner ofta
+         bara omsättning/resultat medan balansposterna (eget kapital, skulder,
+         aktieantal) stod i en TIDIGARE delårsrapport – att kräva allt ur
+         senaste raden lämnade dem tomma i onödan (upptäckt via Smart Eye).
+         Flödesmått (resultat/omsättning) tas dock ENDAST ur senaste raden –
+         de hör ihop med perioden och får inte blandas över rapporter.
+      2. LOKAL KURS – results*/prices.csv + holdings_quotes.csv (nattligt
+         skrivna, SEK). Ingen Yahoo-hämtning i skanningsögonblicket – datan
+         ligger redan på disk.
+      3. HÄRLETT AKTIEANTAL – quant-cachens börsvärde (TradingView, SEK) / kurs
+         när extraherat antal saknas. Märkt "härledd" så källan syns.
+      4. POÄNGKARTAN – kvalitet/kvant/P(upp)/research som förut.
+    """
     out: Dict[str, object] = {}
-    # Fundamentals kan ligga i VILKET segments results_dir som helst (ett bolag
-    # hör till exakt ett segment: large ELLER small) – sök i det begärda
-    # segmentet först, sedan övriga (en small-cap förfylldes tidigare aldrig
-    # eftersom bara default-segmentet lästes).
+    src: Dict[str, str] = {}
     seg_names = [segment] if segment in config.SEGMENTS else []
     seg_names += [s for s in config.SEGMENTS if s not in seg_names]
-    entry = None
+
+    from altdata.soft_signals import _fund_rows
+    rows = []
     for s in seg_names:
-        entry = value_screener._load_fundamentals(s).get(ticker)
-        if entry:
+        rows = _fund_rows(s).get(ticker) or []
+        if rows:
             break
-    if entry:
-        latest = entry["latest"]
-        # PENGAFÄLT konverteras till Mkr via sina enhetskolumner (_to_msek) –
-        # det RÅA värdet kan vara i tkr/kkr, och nedströms behandlar scan()
-        # alla belopp som Mkr → utan konvertering blev ett tkr-bolag 1000x fel.
-        for f in ("revenue", "net_profit", "equity",
-                  "liabilities", "depreciation_amortization", "capex"):
+    if rows:
+        latest = rows[-1]
+
+        def _label(r):
+            per = str(r.get("period") or "").strip()
+            return f"cachad ({per})" if per and per != "nan" else "cachad"
+
+        # FLÖDESMÅTT: bara senaste raden (hör ihop med sin period).
+        for f in ("revenue", "net_profit", "depreciation_amortization", "capex"):
             v = value_screener._to_msek(latest.get(f), latest.get(f + "_unit"))
             if v is not None:
                 out[f] = round(v, 2)
-        # revenue_prior delar revenue-fältets enhet (samma mening i rapporten).
+                src[f] = _label(latest)
         vp = value_screener._to_msek(latest.get("revenue_prior"), latest.get("revenue_unit"))
         if vp is not None:
             out["revenue_prior"] = round(vp, 2)
-        sh = value_screener._num(latest.get("shares_outstanding"))
-        if sh is not None:
-            out["shares_outstanding"] = sh
-        # PERIOD är en STRÄNG ("Q1"/"Helår") – den gick tidigare genom _num()
-        # och blev därför ALLTID None → förfyllda skanningar tappade perioden →
-        # årsfaktor 1.0 på kvartalsdata (≈4x fel ROE/multipel) + en falsk
-        # "ange period"-varning. Ta den som sträng.
-        per = latest.get("period")
-        if per and str(per) != "nan":
-            out["period"] = str(per)
+            src["revenue_prior"] = _label(latest)
+        # BALANSPOSTER + AKTIEANTAL: coalesce bakåt – senaste rad som HAR fältet.
+        # (Stock-mått ändras långsamt; Q3:s egna kapital är långt bättre än inget
+        # när bokslutskommunikén inte upprepar det. Källraden märks tydligt.)
+        for f in ("equity", "liabilities"):
+            for r in reversed(rows):
+                v = value_screener._to_msek(r.get(f), r.get(f + "_unit"))
+                if v is not None:
+                    out[f] = round(v, 2)
+                    src[f] = _label(r)
+                    break
+        for r in reversed(rows):
+            sh = value_screener._num(r.get("shares_outstanding"))
+            if sh is not None:
+                out["shares_outstanding"] = sh
+                src["shares_outstanding"] = _label(r)
+                break
+        # Period: basetiketten utan årtal ("Helår 2025" → "Helår") – års-
+        # suffixet gjorde att appens periodval inte kände igen värdet (visade
+        # "(okänd)" trots känd period). annualization_factor är tolerant åt
+        # båda hållen (startswith), så detta är ren presentations-hygien.
+        per = str(latest.get("period") or "").strip()
+        if per and per != "nan":
+            out["period"] = re.sub(r"\s+20\d{2}$", "", per)
+            src["period"] = _label(latest)
 
+    # LOKAL KURS (SEK, nattligt skriven) – gör börsvärde/multipel/zon beräkningsbara.
     import portfolio as pf
+    if "price" not in out:
+        px = pf._latest_closes().get(ticker)
+        if px:
+            out["price"] = px
+            src["price"] = "kurs (lokal prisdata)"
+    # HÄRLETT AKTIEANTAL ur quant-cachens börsvärde / kurs.
+    if "shares_outstanding" not in out and out.get("price"):
+        qc = Path(config.QUALITY_CACHE_DIR) / "_quant.json"
+        if qc.exists():
+            try:
+                mcap = (json.loads(qc.read_text(encoding="utf-8"))
+                        .get(ticker, {}).get("market_cap_basic"))
+                if isinstance(mcap, (int, float)) and mcap > 0:
+                    out["shares_outstanding"] = round(mcap / float(out["price"]))
+                    src["shares_outstanding"] = "härledd (börsvärde/kurs)"
+            except Exception:  # noqa: BLE001
+                pass
+
     scores = pf._load_scores()
     e = scores.get(ticker)
     if e:
@@ -132,13 +182,15 @@ def _prefill(ticker: str, segment: Optional[str] = None) -> dict:
             out["name"] = e["name"]
         if e.get("quality") is not None:
             out["quality"] = e["quality"]
+            if e.get("quality_source") == "soft":
+                src["quality"] = "mjuk-kvalitet (destillerad, token-fri)"
         if e.get("quant") is not None:
             out["quant"] = e["quant"]
         if e.get("prob_up") is not None:
             out["prob_up"] = e["prob_up"]
         if e.get("research"):
             out["research"] = True
-    return out
+    return out, src
 
 
 def _rank_value_against_universe(vmetrics: dict, segment: Optional[str] = None) -> Optional[float]:
@@ -280,9 +332,9 @@ def scan(ticker: str, overrides: Optional[dict] = None, segment: Optional[str] =
     if not ticker:
         raise ValueError("ticker saknas")
 
-    pre = _prefill(ticker, segment)
+    pre, pre_src = _prefill(ticker, segment)
     merged: Dict[str, object] = dict(pre)
-    field_source = {k: "cachad (redan spårad hos oss)" for k in pre}
+    field_source = {k: pre_src.get(k, "cachad (redan spårad hos oss)") for k in pre}
     for k, v in (overrides or {}).items():
         if k not in _ALL_FIELDS:
             continue
