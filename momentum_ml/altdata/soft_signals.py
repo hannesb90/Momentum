@@ -160,15 +160,25 @@ def extract_features(ticker: str) -> Optional[Dict[str, float]]:
     n_words = len(text.split())
     if n_words < _MIN_WORDS:
         return None
+    feats = _text_features(text)
+    feats["n_pm_12m"] = float(n_pm)
+    feats["n_reports_12m"] = float(n_rep)
+    feats["avg_pm_len"] = n_words / max(n_pm, 1)
+    return feats
+
+
+def _text_features(text: str) -> Dict[str, float]:
+    """Lexikon-drag för EN godtycklig text (winsoriserade per-1000-ord-
+    frekvenser + ton + flaggor). Delas av 12-månaders-bedömningen
+    (extract_features), korskontrollen och den bakåtblickande utfalls-
+    modellen (per enskild rapport-text)."""
+    n_words = max(len(text.split()), 1)
     per_k = 1000.0 / n_words
     feats: Dict[str, float] = {}
     for k, rx in _LEX_RE.items():
         feats[k] = min(len(rx.findall(text)) * per_k, _RATE_CAP)
     pos, neg = feats.get("tone_pos", 0.0), feats.get("tone_neg", 0.0)
     feats["tone_score"] = (pos - neg) / (pos + neg + 0.5)
-    feats["n_pm_12m"] = float(n_pm)
-    feats["n_reports_12m"] = float(n_rep)
-    feats["avg_pm_len"] = n_words / max(n_pm, 1)
     flags = [name for name, rx in _FLAG_RE.items() if rx.search(text)]
     feats["red_flag_count"] = float(len(flags))
     feats["_flags"] = flags          # metadata, inte modell-input (prefix _)
@@ -186,6 +196,201 @@ def _lexicon_score(feats: Dict[str, float]) -> float:
     base = 2.5 + min(core, 5.0) * 0.35 + feats.get("tone_score", 0.0) * 0.75
     base -= 1.2 * feats.get("red_flag_count", 0.0)
     return round(max(0.0, min(5.0, base)), 2)
+
+
+_OUTCOME_FEATURES = list(_LEXICON.keys()) + ["tone_score", "red_flag_count"]
+_OUTCOME_MODEL_PATH = "cache/soft_outcome_model.txt"
+_OUTCOME_META_PATH = "cache/soft_outcome_meta.json"
+MIN_PAIRS = 150          # färre historiska (rapport → nästa rapport)-par → ingen utfallsmodell
+
+
+def _outcome_model_file() -> Path:
+    return Path(config.anchor(_OUTCOME_MODEL_PATH))
+
+
+def _outcome_meta_file() -> Path:
+    return Path(config.anchor(_OUTCOME_META_PATH))
+
+
+def _fund_rows(segment: str) -> Dict[str, list]:
+    """{ticker: [fundamentals-rader sorterade på published]} ur samma CSV:er
+    som value_screener läser – ger de HÅRDA facit-siffrorna per rapport."""
+    import pandas as pd
+    seg = config.SEGMENTS.get(segment) or config.SEGMENTS[config.DEFAULT_SEGMENT]
+    rd = Path(config.anchor(seg["results_dir"]))
+    frames = []
+    for fname in ("fundamentals_from_mfn.csv", "fundamentals_from_pdf.csv"):
+        p = rd / fname
+        if p.exists():
+            try:
+                frames.append(pd.read_csv(p))
+            except Exception:  # noqa: BLE001
+                pass
+    if not frames:
+        return {}
+    df = pd.concat(frames, ignore_index=True)
+    if "ticker" not in df.columns:
+        return {}
+    df = df.dropna(subset=["ticker"]).sort_values("published")
+    return {t: g.to_dict("records") for t, g in df.groupby("ticker")}
+
+
+def _report_texts(ticker: str) -> Dict[str, str]:
+    """{pm_id: rapporttext} ur MFN-cachen – kopplar mjuk text till hård rad."""
+    from altdata.mfn_fundamentals import is_report_pm
+    p = Path(config.MFN_CACHE_DIR) / f"{ticker}.json"
+    if not p.exists():
+        return {}
+    try:
+        items = json.loads(p.read_text(encoding="utf-8")).get("items", [])
+    except Exception:  # noqa: BLE001
+        return {}
+    return {str(it.get("id")): (str(it.get("title") or "") + "\n" + str(it.get("text") or ""))
+            for it in items if is_report_pm(it) and it.get("text")}
+
+
+def _latest_report_text(ticker: str) -> Optional[str]:
+    """Texten för bolagets SENASTE rapport-PM (per published-datum – pm-id:n
+    är godtyckliga strängar och får ALDRIG användas för kronologi)."""
+    from altdata.mfn_fundamentals import is_report_pm
+    p = Path(config.MFN_CACHE_DIR) / f"{ticker}.json"
+    if not p.exists():
+        return None
+    try:
+        items = json.loads(p.read_text(encoding="utf-8")).get("items", [])
+    except Exception:  # noqa: BLE001
+        return None
+    reps = [it for it in items if is_report_pm(it) and it.get("text")]
+    if not reps:
+        return None
+    latest = max(reps, key=lambda it: str(it.get("published") or ""))
+    return str(latest.get("title") or "") + "\n" + str(latest.get("text") or "")
+
+
+def _fnum(v):
+    try:
+        f = float(v)
+        return None if f != f else f
+    except (TypeError, ValueError):
+        return None
+
+
+def crosscheck(feats: Dict[str, float], latest_row: dict):
+    """KORSKONTROLL mjukt-mot-hårt ("walk the talk"): håller bolagets PRAT
+    (lexikon-anspråk i texten) när det möter bolagets SIFFROR (extraherade
+    hårda fält ur samma rapportflöde)?
+
+    Returnerar (walk_score, flagga): walk_score i [0,1] = andel anspråk som
+    bekräftas av siffrorna (None om inga bedömbara anspråk – tyst bolag är
+    inte lögnaktigt bolag). Flaggan "prat_utan_täckning" sätts när minst två
+    anspråk kan prövas och högst en tredjedel håller – den rider sedan på
+    samma röda-flagg-bana som going concern m.fl. (säljvakt + poängavdrag).
+    Kvoterna är enhets-oberoende (tecken/kvot av samma rads fält)."""
+    if not latest_row:
+        return None, None
+    rev, rev_prior = _fnum(latest_row.get("revenue")), _fnum(latest_row.get("revenue_prior"))
+    npf = _fnum(latest_row.get("net_profit"))
+    rev_growth = ((rev - rev_prior) / abs(rev_prior)
+                  if (rev is not None and rev_prior not in (None, 0.0)) else None)
+    confirms = contradicts = 0
+    # Anspråk 1: säljmomentum-språk ("rekordorder", "ökad försäljning"...)
+    if feats.get("sales_momentum", 0) >= 1.0 and rev_growth is not None:
+        confirms, contradicts = (confirms + 1, contradicts) if rev_growth > 0 else (confirms, contradicts + 1)
+    # Anspråk 2: lönsamhets-språk ("förbättrad marginal", "positivt kassaflöde"...)
+    if feats.get("profit_path", 0) >= 1.0 and npf is not None:
+        confirms, contradicts = (confirms + 1, contradicts) if npf > 0 else (confirms, contradicts + 1)
+    # Anspråk 3: starkt positiv ton överlag
+    if feats.get("tone_score", 0) >= 0.3 and (rev_growth is not None or npf is not None):
+        ok = (rev_growth is not None and rev_growth > 0) or (npf is not None and npf > 0)
+        confirms, contradicts = (confirms + 1, contradicts) if ok else (confirms, contradicts + 1)
+    total = confirms + contradicts
+    if total == 0:
+        return None, None
+    walk = round(confirms / total, 2)
+    flag = "prat_utan_täckning" if (total >= 2 and walk <= 0.34) else None
+    return walk, flag
+
+
+def validate() -> None:
+    """BAKÅTBLICKANDE VALIDERING: förutsäger de mjuka dragen i rapport N det
+    HÅRDA utfallet i rapport N+1 (intäkterna växer YoY)? Bygger (text_N →
+    utfall_N+1)-par ur hela historiken, rapporterar per-dimension-diagnostik
+    ärligt, och tränar en utfallsmodell BARA om den slår majoritets-baselinen
+    i 5-fold CV. Sparad modell blandas in i soft_score av score()
+    (config.SOFT_OUTCOME_BLEND) – då lär sig modellen av FACIT, inte bara av
+    LLM-lärarens åsikt."""
+    import numpy as np
+    X_rows, y = [], []
+    for seg_name in config.SEGMENTS:
+        for t, rows in _fund_rows(seg_name).items():
+            texts = _report_texts(t)
+            for i in range(len(rows) - 1):
+                nxt = rows[i + 1]
+                rev, prior = _fnum(nxt.get("revenue")), _fnum(nxt.get("revenue_prior"))
+                if rev is None or prior in (None, 0.0):
+                    continue
+                txt = texts.get(str(rows[i].get("pm_id")))
+                if not txt or len(txt.split()) < 60:
+                    continue
+                f = _text_features(txt)
+                X_rows.append([f.get(k, 0.0) for k in _OUTCOME_FEATURES])
+                y.append(1 if rev > prior else 0)
+    n = len(y)
+    print(f"[soft_signals validate] {n} historiska (rapport → nästa rapport)-par")
+    if n == 0:
+        return
+    X, y = np.array(X_rows), np.array(y)
+    base = max(y.mean(), 1 - y.mean())
+    print(f"  basnivå (majoritetsklass): {base:.1%} – tillväxt nästa rapport i {y.mean():.1%} av paren")
+    # Ärlig per-dimension-diagnostik: medelvärde i tillväxt- vs krymp-gruppen.
+    for j, name in enumerate(_OUTCOME_FEATURES):
+        up, dn = X[y == 1, j].mean(), X[y == 0, j].mean()
+        mark = "→" if abs(up - dn) < 0.05 else ("↑" if up > dn else "↓")
+        print(f"    {name:<16} tillväxt {up:6.2f}  krymper {dn:6.2f}  {mark}")
+    if n < MIN_PAIRS:
+        print(f"  Under {MIN_PAIRS} par – ingen utfallsmodell tränas (diagnostiken ovan gäller ändå).")
+        _outcome_model_file().unlink(missing_ok=True)
+        _outcome_meta_file().unlink(missing_ok=True)
+        return
+    import lightgbm as lgb
+    from sklearn.model_selection import KFold
+    params = dict(objective="binary", metric="binary_logloss", verbosity=-1,
+                  num_leaves=7, min_data_in_leaf=max(5, n // 20),
+                  learning_rate=0.06, feature_fraction=0.8, seed=42)
+    accs = []
+    for tr, te in KFold(5, shuffle=True, random_state=42).split(X):
+        m = lgb.train(params, lgb.Dataset(X[tr], y[tr]), num_boost_round=150)
+        accs.append(float(((m.predict(X[te]) >= 0.5).astype(int) == y[te]).mean()))
+    cv_acc = float(np.mean(accs))
+    print(f"  CV-träffsäkerhet {cv_acc:.1%} vs baseline {base:.1%}")
+    if cv_acc <= base:
+        print("  Slår inte baselinen – ingen modell sparas (mjuk text har då inget mätbart "
+              "prediktivt värde på nästa rapports hårda utfall – ärligt konstaterat).")
+        _outcome_model_file().unlink(missing_ok=True)
+        _outcome_meta_file().unlink(missing_ok=True)
+        return
+    booster = lgb.train(params, lgb.Dataset(X, y), num_boost_round=150)
+    _outcome_model_file().parent.mkdir(parents=True, exist_ok=True)
+    booster.save_model(str(_outcome_model_file()))
+    _outcome_meta_file().write_text(json.dumps({
+        "features": _OUTCOME_FEATURES, "n_pairs": n,
+        "cv_acc": round(cv_acc, 4), "baseline": round(base, 4),
+        "trained": dt.date.today().isoformat()}, ensure_ascii=False), encoding="utf-8")
+    print(f"  Utfallsmodell sparad → {_outcome_model_file()} (blandas in av score, "
+          f"vikt {getattr(config, 'SOFT_OUTCOME_BLEND', 0.30)})")
+
+
+def _load_outcome_model():
+    if not (_outcome_model_file().exists() and _outcome_meta_file().exists()):
+        return None, None
+    try:
+        import lightgbm as lgb
+        meta = json.loads(_outcome_meta_file().read_text(encoding="utf-8"))
+        if meta.get("features") != _OUTCOME_FEATURES:
+            return None, None
+        return lgb.Booster(model_file=str(_outcome_model_file())), meta
+    except Exception:  # noqa: BLE001
+        return None, None
 
 
 def _load_labels() -> Dict[str, float]:
@@ -316,15 +521,41 @@ def score(segment: Optional[str] = None) -> None:
     else:
         pred_by_t = {t: _lexicon_score(f) for t, f in feats_all.items()}
 
+    # Bakåtvaliderad utfallsmodell (validate): blandas in med konfigurerbar
+    # vikt – lärarens åsikt (LLM-destillat/lexikon) + facitets historik.
+    out_booster, out_meta = _load_outcome_model()
+    blend_w = float(getattr(config, "SOFT_OUTCOME_BLEND", 0.30))
+    if out_booster is not None and blend_w > 0:
+        mode += "+utfall"
+    # Hårda rader för korskontrollen (samma segment).
+    hard_rows = _fund_rows(seg_name)
+
     for t, f in feats_all.items():
+        base_score = pred_by_t[t]
+        outcome_prob = None
+        if out_booster is not None and blend_w > 0:
+            latest_txt = _latest_report_text(t)
+            if latest_txt:
+                rf = _text_features(latest_txt)
+                Xo = np.array([[rf.get(k, 0.0) for k in _OUTCOME_FEATURES]])
+                outcome_prob = float(out_booster.predict(Xo)[0])
+                base_score = (1 - blend_w) * base_score + blend_w * (outcome_prob * 5.0)
+        # Korskontroll mjukt-mot-hårt: pratet prövas mot senaste hårda raden.
+        rows_t = hard_rows.get(t) or []
+        walk, walk_flag = crosscheck(f, rows_t[-1] if rows_t else None)
+        flags = list(f.get("_flags", []))
+        if walk_flag:
+            flags.append(walk_flag)
         rows.append({
             "ticker": t, "name": name_map.get(t, t),
-            "soft_score": round(pred_by_t[t], 2),
+            "soft_score": round(base_score, 2),
             "mode": ("LLM" if t in labels else mode),   # facit-bolag märks som LLM-täckta
             "llm_composite": labels.get(t, ""),
+            "outcome_prob": ("" if outcome_prob is None else round(outcome_prob, 3)),
+            "walk_score": ("" if walk is None else walk),
             "tone_score": round(f["tone_score"], 3),
-            "red_flag_count": int(f["red_flag_count"]),
-            "red_flags": ";".join(f.get("_flags", [])),
+            "red_flag_count": len(flags),
+            "red_flags": ";".join(flags),
             **{k: round(f[k], 3) for k in _LEXICON},
         })
     rows.sort(key=lambda r: r["soft_score"], reverse=True)
@@ -368,6 +599,8 @@ def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "score"
     if cmd == "train":
         train()
+    elif cmd == "validate":
+        validate()
     elif cmd == "score":
         score(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "explain" and len(sys.argv) > 2:
