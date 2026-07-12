@@ -81,25 +81,47 @@ def _cast_field(key: str, v):
     return str(v).strip()
 
 
-def _prefill(ticker: str) -> dict:
+def _prefill(ticker: str, segment: Optional[str] = None) -> dict:
     """Lokal (nätfri) förfyllning: läser samma CSV:er som resten av
     pipelinen om tickern redan är spårad hos oss – annars tomt dict (allt
     fylls då manuellt). Görs ALDRIG mot nätet (ingen Yahoo-kurs hämtas –
     pris är alltid ett manuellt fält, se modulens docstring)."""
     out: Dict[str, object] = {}
-    fund = value_screener._load_fundamentals(None)
-    entry = fund.get(ticker)
+    # Fundamentals kan ligga i VILKET segments results_dir som helst (ett bolag
+    # hör till exakt ett segment: large ELLER small) – sök i det begärda
+    # segmentet först, sedan övriga (en small-cap förfylldes tidigare aldrig
+    # eftersom bara default-segmentet lästes).
+    seg_names = [segment] if segment in config.SEGMENTS else []
+    seg_names += [s for s in config.SEGMENTS if s not in seg_names]
+    entry = None
+    for s in seg_names:
+        entry = value_screener._load_fundamentals(s).get(ticker)
+        if entry:
+            break
     if entry:
         latest = entry["latest"]
-        for f in ("revenue", "revenue_prior", "net_profit", "equity",
-                  "liabilities", "depreciation_amortization",
-                  "shares_outstanding", "period"):
-            v = value_screener._num(latest.get(f))
+        # PENGAFÄLT konverteras till Mkr via sina enhetskolumner (_to_msek) –
+        # det RÅA värdet kan vara i tkr/kkr, och nedströms behandlar scan()
+        # alla belopp som Mkr → utan konvertering blev ett tkr-bolag 1000x fel.
+        for f in ("revenue", "net_profit", "equity",
+                  "liabilities", "depreciation_amortization"):
+            v = value_screener._to_msek(latest.get(f), latest.get(f + "_unit"))
             if v is not None:
-                out[f] = v
-        nm = latest.get("name")
-        if nm and str(nm) != "nan":
-            out["name"] = nm
+                out[f] = round(v, 2)
+        # revenue_prior delar revenue-fältets enhet (samma mening i rapporten).
+        vp = value_screener._to_msek(latest.get("revenue_prior"), latest.get("revenue_unit"))
+        if vp is not None:
+            out["revenue_prior"] = round(vp, 2)
+        sh = value_screener._num(latest.get("shares_outstanding"))
+        if sh is not None:
+            out["shares_outstanding"] = sh
+        # PERIOD är en STRÄNG ("Q1"/"Helår") – den gick tidigare genom _num()
+        # och blev därför ALLTID None → förfyllda skanningar tappade perioden →
+        # årsfaktor 1.0 på kvartalsdata (≈4x fel ROE/multipel) + en falsk
+        # "ange period"-varning. Ta den som sträng.
+        per = latest.get("period")
+        if per and str(per) != "nan":
+            out["period"] = str(per)
 
     import portfolio as pf
     scores = pf._load_scores()
@@ -257,7 +279,7 @@ def scan(ticker: str, overrides: Optional[dict] = None, segment: Optional[str] =
     if not ticker:
         raise ValueError("ticker saknas")
 
-    pre = _prefill(ticker)
+    pre = _prefill(ticker, segment)
     merged: Dict[str, object] = dict(pre)
     field_source = {k: "cachad (redan spårad hos oss)" for k in pre}
     for k, v in (overrides or {}).items():
