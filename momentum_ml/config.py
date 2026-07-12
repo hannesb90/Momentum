@@ -605,6 +605,11 @@ PORTFOLIO_INSIDER_BONUS = 0.05
 PEAD_FRESH_DAYS = 42
 PEAD_BLACKOUT_MIN_DAYS = 77
 PEAD_BLACKOUT_MAX_DAYS = 104
+# Mjuka modellens utfalls-blandning: vikt för den BAKÅTVALIDERADE utfalls-
+# modellen (mjuk text i rapport N → hårt utfall i rapport N+1, tränad mot
+# facit av soft_signals validate) i soft_score. 0 = enbart lärar-destillatet.
+# Modellen sparas över huvud taget bara om den slår majoritets-baselinen i CV.
+SOFT_OUTCOME_BLEND = 0.30
 # Min-köp: en enskild post under detta är inte värd courtage/spread. Sådana
 # satellit-poster viks in i kärnan denna månad och byggs nästa månad när gapet
 # blivit stort nog för en vettig affär (fyll-mot-mål ackumulerar ändå).

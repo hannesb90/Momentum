@@ -27,9 +27,12 @@ ExecStart=-/opt/momentum/venv/bin/python -m altdata.mfn_fundamentals extract lar
 ExecStart=-/opt/momentum/venv/bin/python -m altdata.mfn_fundamentals extract small
 ExecStart=-/opt/momentum/venv/bin/python -m altdata.value_screener score large
 ExecStart=-/opt/momentum/venv/bin/python -m altdata.value_screener score small
-#  5. soft_signals – token-fria mjuka värden: destillerar LLM-kvalitetsbetygen
-#     (train är sekundsnabb och no-op:ar ärligt om labels är för få/modellen
-#     inte slår baselinen) och poängsätter sedan HELA universumet utan tokens.
+#  5. soft_signals – token-fria mjuka värden: validate bakåtvaliderar mjuk
+#     text mot NÄSTA rapports hårda utfall (utfallsmodell, sparas bara om den
+#     slår baselinen), train destillerar LLM-kvalitetsbetygen (no-op:ar ärligt
+#     om labels är för få), score poängsätter HELA universumet utan tokens
+#     (lärare + utfall blandas, korskontroll prat-mot-siffror flaggar).
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.soft_signals validate
 ExecStart=-/opt/momentum/venv/bin/python -m altdata.soft_signals train
 ExecStart=-/opt/momentum/venv/bin/python -m altdata.soft_signals score large
 ExecStart=-/opt/momentum/venv/bin/python -m altdata.soft_signals score small
