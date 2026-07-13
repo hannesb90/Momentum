@@ -77,9 +77,14 @@ def _prompt(item: dict) -> str:
     # input-tokens på praktiskt taget varje PM utan att tappa signal (se
     # altdata/mfn_clean.py). Byter INTE schema – modellen ombeds fortfarande
     # bara om kvalitativa fält, aldrig siffror.
+    # Klipp vid LÄSNING (MFN_MAX_BODY_CHARS): cachen sparar numera upp till
+    # MFN_CACHE_MAX_BODY_CHARS (40k, för regex-extraktionens tabeller i
+    # slutet av rapport-PM) – utan detta klipp hade LLM-kostnaden per
+    # rapport-PM ökat upp till 5x. Samma 8k-gräns som gällde när klippet
+    # satt i cachen → identisk token-kostnad som innan.
     return (f"PUBLICERAT: {item.get('published','')}\n"
             f"RUBRIK: {item.get('title','')}\n\n"
-            f"TEXT:\n{mfn_clean.clean_item_text(item)}")
+            f"TEXT:\n{mfn_clean.clean_item_text(item)[: int(getattr(config, 'MFN_MAX_BODY_CHARS', 8000))]}")
 
 
 def _cache_path(pid: str) -> Path:

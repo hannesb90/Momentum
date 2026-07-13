@@ -357,10 +357,12 @@ def _load_fundamentals_growth(segment: Optional[str] = None) -> pd.DataFrame:
     enskild rapportrad, ingen historisk hopslagning mot en tidigare rapport
     krävs.
 
-    De två CSV:erna är disjunkta by construction: fundamentals_from_pdf.csv
-    innehåller BARA PM där extract_hard_facts() gav NOLL fält på press-
-    texten (annars hade PDF-backfillen aldrig körts för det PM:et) – ingen
-    dubblettrisk vid sammanslagning.
+    SAMMA rapport (pm_id) kan finnas i BÅDA CSV:erna med komplementära fält
+    sedan PDF-backfillen blev nyckelfälts-medveten (mfn_pdf._KEY_FIELDS) –
+    raderna slås ihop fältvis per pm_id (text-raden vinner där båda har
+    värde), annars skulle merge_asof-källan få dubbla rader per rapport och
+    slumpmässigt kunna välja pdf-raden utan revenue_prior → NaN-tillväxt
+    trots känd data.
 
     Saknas filerna (inte genererade ännu, eller körs i en miljö utan
     altdata-pipelinen) returneras en tom DataFrame – growth-featuresen blir
@@ -385,6 +387,12 @@ def _load_fundamentals_growth(segment: Optional[str] = None) -> pd.DataFrame:
     df = pd.concat(frames, ignore_index=True)
     if "ticker" not in df.columns or "published" not in df.columns:
         return pd.DataFrame(columns=cols)
+    # Fältvis pm_id-sammanslagning (se docstring) – groupby().first() tar
+    # första icke-NaN per kolumn; mfn-CSV:n läses först → text-raden vinner.
+    if "pm_id" in df.columns:
+        has_id = df["pm_id"].notna()
+        merged = df[has_id].groupby("pm_id", as_index=False, sort=False).first()
+        df = pd.concat([merged, df[~has_id]], ignore_index=True)
     df["published"] = pd.to_datetime(df["published"], errors="coerce", utc=True).dt.tz_localize(None)
     df = df.dropna(subset=["ticker", "published"])
 

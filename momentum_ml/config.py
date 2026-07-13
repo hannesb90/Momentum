@@ -465,7 +465,24 @@ MFN_BASE_URL        = "https://mfn.se"
 MFN_LANG            = "sv"          # hämta svenska PM (MFN har även "en")
 MFN_REQUEST_PAUSE_S = 0.5          # paus mellan anrop (snäll mot MFN)
 MFN_MAX_PAGES       = 20           # max feed-sidor per bolag (500 PM/sida; stoppar vid START_DATE)
-MFN_MAX_BODY_CHARS  = 8000         # klipp PM-text innan LLM (håller token-kostnad nere)
+# LLM-klipp (token-kostnad): appliceras vid LÄSNING i sentiment._prompt –
+# INTE längre vid cache-tillfället (se MFN_CACHE_MAX_BODY_CHARS nedan).
+MFN_MAX_BODY_CHARS  = 8000
+# Cache-klipp: hur mycket av PM-texten som SPARAS. Var tidigare samma 8000
+# som LLM-klippet – men svenska rapport-PM klistrar in resultat-/balans-
+# räkningen I SLUTET av texten, efter narrativet, så exakt tabellerna med
+# equity/net_profit/skulder (de vanligaste dataluckorna) klipptes bort
+# INNAN regex-extraktionen någonsin såg dem. 40k rymmer sammandrags-
+# tabellerna; token-fria konsumenter (mfn_fundamentals/soft_signals) läser
+# gärna allt, LLM-vägarna klipper själva (sentiment 8k, quality 24k).
+# OBS: redan cachade PM är klippta vid 8k – kräver omhämtning (schema-bump
+# i mfn_fetch) för att historiken ska få fulltexten.
+MFN_CACHE_MAX_BODY_CHARS = 40000
+# PDF-backfill: max antal rapport-PM per bolag (nyaste först) som får sin
+# PDF hämtad när NYCKELFÄLT saknas i textextraktionen. Modellen använder
+# senaste + upp till 4 historiska rapporter → 6 täcker behovet utan att
+# ladda ner decennier av PDF:er per bolag.
+MFN_PDF_BACKFILL_PER_TICKER = 6
 MFN_CACHE_DIR       = "cache/mfn"   # rå-PM cachas här (JSON per ticker)
 BORSAPI_CACHE_DIR   = "cache/borsapi"  # BörsAPI-svar cachas för alltid (kvot = engångspott)
 BORSAPI_DAILY_BUDGET = 90              # krediter/dygn för backfill (gratis engångspott: kör "backfill 70"; Hobby: 90; Pro: 480)
