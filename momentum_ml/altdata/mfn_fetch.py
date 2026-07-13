@@ -94,7 +94,10 @@ def _coerce(item: dict) -> Optional[dict]:
         "id": str(pid),
         "published": str(date),
         "title": str(c.get("title") or ""),
-        "text": (text or "")[: config.MFN_MAX_BODY_CHARS],
+        # Cache-klipp – MEDVETET större än LLM-klippet (MFN_MAX_BODY_CHARS):
+        # rapport-PM lägger sammandrags-tabellerna (balansräkning!) SIST i
+        # texten; 8k-klippet åt upp exakt dem. LLM-vägar klipper vid läsning.
+        "text": (text or "")[: int(getattr(config, "MFN_CACHE_MAX_BODY_CHARS", 40000))],
         "type": str(props.get("type") or ""),
         "tags": props.get("tags") or [],
         "lang": str(props.get("lang") or config.MFN_LANG),
@@ -353,7 +356,12 @@ def _clean_name(name: str) -> str:
 # i stället för att bara kolla "finns filen" – annars skulle en cachad fil
 # från INNAN attachments-fältet fanns aldrig hämtas om, och köraren skulle
 # behöva radera hela cachen manuellt (riskabelt, lätt att göra fel på).
-_SCHEMA_VERSION = 2
+# v3: cache-klippet höjt 8k → 40k (MFN_CACHE_MAX_BODY_CHARS) – rapport-PM:ens
+# sammandrags-tabeller (equity/net_profit/skulder) låg EFTER 8k-gränsen och
+# klipptes bort innan extraktionen såg dem. Historiken måste omhämtas för att
+# få fulltexten; nattliga refresh full-hämtar schema-föråldrade filer
+# inkrementellt (en fil i taget, avbrottssäkert) över de kommande nätterna.
+_SCHEMA_VERSION = 3
 
 
 def _needs_refetch(path: Path) -> bool:

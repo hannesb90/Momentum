@@ -631,10 +631,17 @@ def compare_layout(url: str) -> None:
 
 
 def backfill(segment: Optional[str] = None, limit: Optional[int] = None) -> None:
-    """Går igenom rapport-PM som INTE fick något extraherat ur press-texten
-    (extract_hard_facts på item['text'] gav tomt) men SOM har minst en PDF-
-    bilaga. Laddar ner+extraherar+kör om parsern mot PDF-texten. Resumable –
-    varje PDF cachas för alltid. Skriver <results_dir>/fundamentals_from_pdf.csv.
+    """Går igenom rapport-PM där text-extraktionen saknar NYCKELFÄLT för
+    värderingen (_KEY_FIELDS: equity/liabilities/net_profit/aktieantal/
+    revenue) och som har minst en PDF-bilaga – laddar ner+extraherar+kör om
+    parsern mot PDF-texten. (Tidigare krävdes att texten gav NOLL fält –
+    revenue i löptexten räckte då för att balansräkningen i PDF:en aldrig
+    hämtades, en verifierad huvudorsak till equity-luckorna.) Nyaste först
+    med per-bolag-tak (MFN_PDF_BACKFILL_PER_TICKER). Resumable – varje PDF:s
+    text cachas för alltid. Skriver <results_dir>/fundamentals_from_pdf.csv;
+    samma pm_id kan nu finnas i BÅDA fundamentals-CSV:erna med komplementära
+    fält – konsumenterna (value_screener/feature_engineering) slår ihop
+    fältvis per pm_id med text-raden som vinnare.
 
     Enkel-instans: vägrar starta om en annan backfill redan kör (skyddar
     Pi:ns minne mot att två processer krokar ihop – har hänt upprepat)."""
@@ -649,15 +656,41 @@ def backfill(segment: Optional[str] = None, limit: Optional[int] = None) -> None
         _release_lock()
 
 
+# NYCKELFÄLT för värderingsmodellen: saknas något av dessa i TEXT-extraktionen
+# är PDF:en värd att hämta ÄVEN om texten gav andra fält. Det gamla filtret
+# ("noll fält alls") var en verifierad huvudorsak till dataluckorna: nästan
+# varje rapport-PM har revenue i löptexten ("Nettoomsättningen uppgick
+# till...") – det räckte för att PM:et exkluderades från backfillen, trots att
+# balansräkningen (equity/liabilities/aktieantal, som i praktiken BARA finns
+# i PDF:ens tabeller) aldrig extraherats. Mätbart: revenue saknades för ~63
+# storbolag men equity för ~258 – exakt de fält som satt bakom filtret.
+_KEY_FIELDS = ("equity", "liabilities", "net_profit", "shares_outstanding", "revenue")
+
+
 def _backfill_inner(segment: Optional[str] = None, limit: Optional[int] = None) -> None:
     items = _report_items(segment)
     # extract_hard_facts() på press-texten körs EN gång per item (inte två,
     # som tidigare – onödigt dubbelarbete över tiotusentals PM).
-    miss_items = [it for it in items if not extract_hard_facts(it.get("text") or "")]
-    candidates_all = [it for it in miss_items if it.get("attachments")]
+    miss_items = []
+    for it in items:
+        facts = extract_hard_facts(it.get("text") or "")
+        if any(f not in facts for f in _KEY_FIELDS):
+            miss_items.append(it)
+    with_att = [it for it in miss_items if it.get("attachments")]
+    # Per-bolag-tak, NYASTE först: modellen använder senaste + upp till 4
+    # historiska rapporter (konsistens/kravlista) – 6 st täcker behovet utan
+    # att ladda ner decennier av PDF:er per bolag. Redan textcachade PDF:er
+    # (get_pdf_text-cachen) kostar inget att omprocessa, taket gäller URVALET.
+    per_ticker = int(getattr(config, "MFN_PDF_BACKFILL_PER_TICKER", 6))
+    by_ticker: dict = {}
+    for it in sorted(with_att, key=lambda x: str(x.get("published") or ""), reverse=True):
+        by_ticker.setdefault(it.get("ticker"), []).append(it)
+    candidates_all = [it for lst in by_ticker.values() for it in lst[:per_ticker]]
     candidates = candidates_all[:limit] if limit else candidates_all
-    print(f"[mfn_pdf backfill] {len(candidates_all)}/{len(miss_items)} miss-PM har minst en "
-          f"PDF-bilaga ({len(miss_items) - len(candidates_all)} saknar helt bilaga – olösbart utan)")
+    print(f"[mfn_pdf backfill] {len(with_att)}/{len(miss_items)} PM med saknade nyckelfält "
+          f"({'/'.join(_KEY_FIELDS)}) har PDF-bilaga; per-bolag-tak {per_ticker} (nyaste först) "
+          f"→ {len(candidates_all)} kandidater "
+          f"({len(miss_items) - len(with_att)} saknar helt bilaga – olösbart utan)")
     if limit and len(candidates) < len(candidates_all):
         print(f"[mfn_pdf backfill] bearbetar {len(candidates)} av dem denna körning (limit={limit})")
 
@@ -705,20 +738,36 @@ def _backfill_inner(segment: Optional[str] = None, limit: Optional[int] = None) 
         print("Inga rader att skriva.")
         return
 
-    cols = ["ticker", "published", "period", "pm_id", "title", "pdf_url"]
-    for r in rows:
-        for k in r:
-            if k not in cols:
-                cols.append(k)
     seg = config.SEGMENTS.get(segment) if segment else None
     seg = seg or config.SEGMENTS[config.DEFAULT_SEGMENT]
     out = Path(config.anchor(seg["results_dir"])) / "fundamentals_from_pdf.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
+
+    # BEVARANDE skrivning: med per-bolag-taket (nyaste 6) är körningens rader
+    # bara en DELMÄNGD av allt som någonsin backfillats – att skriva om filen
+    # med enbart dem hade tyst raderat äldre rapporters PDF-data vid varje
+    # körning. Behåll befintliga rader vars pm_id INTE bearbetades denna
+    # körning (bearbetade ersätts med färskt resultat, även om det blev tomt).
+    processed = {it.get("id") for it in candidates}
+    old_rows = []
+    if out.exists():
+        try:
+            with open(out, encoding="utf-8") as f:
+                old_rows = [r for r in csv.DictReader(f) if r.get("pm_id") not in processed]
+        except Exception:  # noqa: BLE001 – trasig fil → skriv om från körningens rader
+            old_rows = []
+    all_rows = old_rows + rows
+
+    cols = ["ticker", "published", "period", "pm_id", "title", "pdf_url"]
+    for r in all_rows:
+        for k in r:
+            if k not in cols:
+                cols.append(k)
     with open(out, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=cols)
+        w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
-        w.writerows(rows)
-    print(f"[mfn_pdf backfill] {len(rows)} rader -> {out}")
+        w.writerows(all_rows)
+    print(f"[mfn_pdf backfill] {len(rows)} nya/uppdaterade + {len(old_rows)} bevarade rader -> {out}")
 
 
 def main():
