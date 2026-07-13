@@ -1,0 +1,14 @@
+[Unit]
+Description=Kör momentum-pdf.service nattligt (efter MFN-kedjan kl 04:30)
+
+[Timer]
+# 05:30 – EFTER momentum-mfn (04:30, TimeoutStartSec 3h ger ev. överlapp men
+# enheterna rör olika filer: mfn-kedjan läser/skriver PM-cache + extract-CSV,
+# pdf-kedjan bara PDF-textcache + fundamentals_from_pdf.csv; value_screener
+# score i slutet av BÅDA är idempotent så sist-skriven vinner harmlöst).
+OnCalendar=*-*-* 05:30:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
