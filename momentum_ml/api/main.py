@@ -129,18 +129,53 @@ def get_stats(segment: Optional[str] = None):
     return _clean(data)
 
 
+# signals.csv är stor (alla tickers × alla veckor, ~100 MB på storsegmentet)
+# och lästes tidigare I SIN HELHET vid VARJE anrop – samma flaskhals som
+# portfolio._latest_signals fick svansläsning+mtime-cache för (Buffett-
+# hängningen), men i API-lagret. /latest behöver bara SENASTE raden per
+# ticker → läs bara filens sista _SIGNALS_TAIL_BYTES (kronologisk fil, ~1 år)
+# och cacha resultatet på mtime. En ticker utan handel på ~1 år faller bort –
+# korrekt (ingen aktuell signal). /history cachar färdiga svar per
+# (fil, ticker, limit, mtime) så en återbesökt aktievy inte skannar om filen.
+_SIGNALS_TAIL_BYTES = 8 * 1024 * 1024
+_LATEST_CACHE: dict = {}
+_HISTORY_CACHE: dict = {}
+
+
+def _signals_tail_df(path: Path) -> pd.DataFrame:
+    import io
+    with open(path, "rb") as f:
+        header = f.readline()
+        if path.stat().st_size > _SIGNALS_TAIL_BYTES + len(header):
+            f.seek(-_SIGNALS_TAIL_BYTES, 2)
+            f.readline()   # kasta trolig halv rad
+        chunk = f.read()
+    return pd.read_csv(io.BytesIO(header + chunk), index_col=0, parse_dates=True)
+
+
 @app.get("/api/signals/latest")
 def get_latest_signals(segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "signals.csv")
-    df = _read_csv(path, index_col=0, parse_dates=True)
+    mt = path.stat().st_mtime
+    hit = _LATEST_CACHE.get(str(path))
+    if hit is not None and hit[0] == mt:
+        return hit[1]
+    df = _signals_tail_df(path)
     latest = df.groupby("ticker").last().reset_index()
     latest = latest.sort_values("prob_up", ascending=False)
-    return _records(latest)
+    out = _records(latest)
+    _LATEST_CACHE[str(path)] = (mt, out)
+    return out
 
 
 @app.get("/api/signals/history")
 def get_signal_history(ticker: Optional[str] = None, limit: int = 260, segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "signals.csv")
+    mt = path.stat().st_mtime
+    key = (str(path), ticker or "", int(limit))
+    hit = _HISTORY_CACHE.get(key)
+    if hit is not None and hit[0] == mt:
+        return hit[1]
     df = _read_csv(path, index_col=0, parse_dates=True)
     if ticker:
         df = df[df["ticker"] == ticker]
@@ -148,7 +183,11 @@ def get_signal_history(ticker: Optional[str] = None, limit: int = 260, segment: 
             raise HTTPException(status_code=404, detail=f"Ingen data för ticker '{ticker}'.")
     df = df.sort_index().tail(limit).reset_index()
     df = df.rename(columns={df.columns[0]: "date"})
-    return _records(df)
+    out = _records(df)
+    if len(_HISTORY_CACHE) > 32:
+        _HISTORY_CACHE.clear()
+    _HISTORY_CACHE[key] = (mt, out)
+    return out
 
 
 @app.get("/api/portfolio")
@@ -185,13 +224,25 @@ def get_sector_momentum(segment: Optional[str] = None):
     return _records(df)
 
 
+_PRICES_CACHE: dict = {}
+
+
 @app.get("/api/prices")
 def get_prices(ticker: str, limit: int = 260, segment: Optional[str] = None):
-    """Per-ticker prishistorik (close) för aktiedetaljvyns kursgraf."""
+    """Per-ticker prishistorik (close) för aktiedetaljvyns kursgraf.
+    Hela prices.csv (alla tickers × ~260v, ~340k rader) parsades tidigare om
+    för VARJE aktievy-öppning (~3s på Pi:n) – nu cachas den parsade filen på
+    mtime (liten: bara date/ticker/close) och filtreringen är vektoriserad."""
     path = _seg_dir(segment) / "prices.csv"
     if not path.exists():
         return []
-    df = _read_csv(path)
+    mt = path.stat().st_mtime
+    hit = _PRICES_CACHE.get(str(path))
+    if hit is not None and hit[0] == mt:
+        df = hit[1]
+    else:
+        df = _read_csv(path)
+        _PRICES_CACHE[str(path)] = (mt, df)
     df = df[df["ticker"] == ticker].sort_values("date").tail(limit)
     return _records(df[["date", "close"]])
 

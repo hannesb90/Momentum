@@ -475,6 +475,22 @@ def _parse_num(s: str) -> float:
     return float(s.replace(" ", "").replace(_NBSP, "").replace(",", "."))
 
 
+# "1,500" är TVETYDIGT: svenskt decimalkomma (1,5) ELLER engelskt tusental
+# (1500) – en 1000x-skillnad åt endera hållet. Mönstret: 1-3 siffror, komma,
+# EXAKT 3 siffror. För PENGABELOPP (Mkr/MSEK) skriver svensk text i praktiken
+# aldrig tre decimaler ("1,500 Mkr" menat som 1,5 skrivs "1,5 Mkr"), och för
+# AKTIEANTAL fångade _NUM bara första gruppen av "12,500,000" → 12,5 aktier
+# (verifierat fel). Vi kan inte VETA vilket som avses utan språkkontext →
+# hoppa fältet (ärlig miss) hellre än att gissa. EPS undantas medvetet:
+# "0,125 kr" är ett legitimt svenskt mikrobolags-EPS med tre decimaler,
+# och tusentals-tolkningen (1500 kr/aktie) är osannolik där.
+_AMBIG_COMMA_RE = re.compile(r"^\d{1,3},\d{3}$")
+
+
+def _ambiguous_thousands(s: str) -> bool:
+    return bool(_AMBIG_COMMA_RE.match(s.replace(" ", "").replace(_NBSP, "")))
+
+
 def is_report_pm(item: dict) -> bool:
     title = str(item.get("title") or "")
     return bool(_REPORT_TITLE_RE.search(title)) and not _INVITATION_TITLE_RE.search(title)
@@ -532,13 +548,18 @@ def _first_match(patterns: List[re.Pattern], text: str) -> Optional[re.Match]:
     return None
 
 
-def _apply_patterns(out: Dict[str, dict], patterns_by_field: Dict[str, List[re.Pattern]], text: str) -> None:
+def _apply_patterns(out: Dict[str, dict], patterns_by_field: Dict[str, List[re.Pattern]],
+                    text: str, ambig_guard: bool = True) -> None:
     """Delad loop-kropp för _FIELD_PATTERNS/_EPS_PATTERNS/_SHARE_PATTERNS –
-    samma post/pre-mönsterpar, samma defensiva _parse_num-hantering."""
+    samma post/pre-mönsterpar, samma defensiva _parse_num-hantering.
+    ambig_guard: hoppa tal på tvetydig '1,500'-form (se _ambiguous_thousands)
+    – på för pengabelopp/aktieantal, av för EPS."""
     for field, patterns in patterns_by_field.items():
         m = _first_match(patterns, text)
         if not m:
             continue
+        if ambig_guard and _ambiguous_thousands(m.group("val")):
+            continue   # kan vara 1000x fel åt endera hållet – ärlig miss i stället
         # Defensivt: en regex-träff garanterar inte ett parsbart tal (t.ex. ett
         # okänt HTML-strippnings-artefakt vi inte förutsett) – ett fält som inte
         # går att tolka ska hoppas över, aldrig krascha hela extraktionen.
@@ -548,10 +569,11 @@ def _apply_patterns(out: Dict[str, dict], patterns_by_field: Dict[str, List[re.P
             continue
         d = {"value": val, "unit": m.group("unit")}
         if m.group("cmp"):
-            try:
-                d["prior_period"] = _parse_num(m.group("cmp"))
-            except ValueError:
-                pass
+            if not (ambig_guard and _ambiguous_thousands(m.group("cmp"))):
+                try:
+                    d["prior_period"] = _parse_num(m.group("cmp"))
+                except ValueError:
+                    pass
         out[field] = d
 
 
@@ -562,7 +584,8 @@ def extract_hard_facts(text: str) -> Dict[str, dict]:
         return {}
     out: Dict[str, dict] = {}
     _apply_patterns(out, _FIELD_PATTERNS, text)
-    _apply_patterns(out, _EPS_PATTERNS, text)
+    # EPS utan spärr: "0,125 kr" är legitimt svenskt tre-decimals-EPS.
+    _apply_patterns(out, _EPS_PATTERNS, text, ambig_guard=False)
     _apply_patterns(out, _SHARE_PATTERNS, text)
     # "12,5 miljoner aktier" – skala upp x1e6 (regexen fångade bara den råa
     # 12,5:an, "miljoner" satt i enhetsgruppen). Görs här, inte i den delade
