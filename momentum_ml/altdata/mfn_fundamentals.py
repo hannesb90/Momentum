@@ -359,12 +359,23 @@ def _table_row_pattern(label_alts: str) -> re.Pattern:
     # OBS: INGET ^-krav på radstart – pdfplumber klistrar ofta in
     # vänster-navigeringstext FÖRE själva raden på samma textrad
     # ("Vår strategi Nettoomsättning 26 46.021 45.052" – bekräftat i en
-    # riktig AAK-resultaträkning). $-kravet (radslut, re.M) räcker för att
-    # utesluta femårs-sammanfattningstabeller.
+    # riktig AAK-resultaträkning).
+    #
+    # KOLUMNANTAL: raden får sluta med 2, 4 ELLER 6 tal – svensk standard-
+    # layout för DELÅRSRAPPORTERS resultaträkning är just 4 eller 6 kolumner
+    # (Q, Q föregående år, jan–sep, jan–sep föregående år, ev. R12 + helår),
+    # och det gamla exakt-2-kravet missade därmed den VANLIGASTE tabellformen
+    # helt (en huvudorsak till equity/net_profit-luckorna). Kolumnordningen
+    # är konventionsstyrd: FÖRSTA paret = aktuell period + jämförelseperiod –
+    # samma semantik som narrativ-mönstrens "125,3 (110,2)". Extra tal tas i
+    # HELA PAR ({0,2} par efter val/cmp), så femårs-översikter (5 kolumner,
+    # udda antal) fortfarande INTE matchar – de har ingen (aktuell,
+    # jämförelse)-semantik att plocka.
     return re.compile(
         rf"\b(?:{label_alts})\b{_TABLE_TAIL}\s+"
         rf"(?:{_TABLE_NOTE}\s+)?"
-        rf"(?P<val>{_TABLE_NUM})\s+(?P<cmp>{_TABLE_NUM})\s*$",
+        rf"(?P<val>{_TABLE_NUM})\s+(?P<cmp>{_TABLE_NUM})"
+        rf"(?:\s+{_TABLE_NUM}\s+{_TABLE_NUM}){{0,2}}\s*$",
         re.I | re.M,
     )
 

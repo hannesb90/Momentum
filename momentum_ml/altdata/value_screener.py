@@ -79,9 +79,18 @@ def _to_msek(value, unit) -> Optional[float]:
 
 def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
     """Per ticker: senaste kända rapportrad + tillväxtkonsistens över de
-    senaste (upp till 4) rapporterna vi faktiskt har. De två CSV:erna
-    (mfn/pdf) är disjunkta by construction (mfn_pdf.py backfillar bara PM
-    där text-extraktionen gav noll fält) – ingen dubblettrisk vid concat."""
+    senaste (upp till 4) rapporterna vi faktiskt har.
+
+    SAMMA RAPPORT (pm_id) kan förekomma i BÅDA CSV:erna med KOMPLEMENTÄRA
+    fält: texten gav revenue/net_profit, PDF-backfillen balansräkningen
+    (equity/liabilities/aktieantal). Sedan backfillen blev nyckelfälts-
+    medveten (mfn_pdf._KEY_FIELDS) är de INTE längre disjunkta – raderna slås
+    därför ihop FÄLTVIS per pm_id, med text-raden (fundamentals_from_mfn,
+    läses först) som vinnare där båda har ett värde: narrativ-extraktion är
+    verifierad mot fler skarpa exempel än tabell-extraktion, samma prioritet
+    som mfn_pdf.backfill() själv använder mellan narrativ- och tabellträffar
+    i en och samma PDF. Utan sammanslagningen hade 'latest = sista raden'
+    slumpmässigt sett BARA enas fält och modellen tappat de andras."""
     import pandas as pd
 
     seg = config.SEGMENTS.get(segment) if segment else None
@@ -101,6 +110,13 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
     df = pd.concat(frames, ignore_index=True)
     if "ticker" not in df.columns or "published" not in df.columns:
         return {}
+    # Fältvis sammanslagning per pm_id: groupby().first() tar per kolumn det
+    # FÖRSTA icke-NaN-värdet i gruppen – radordningen (mfn före pdf, bevarad
+    # av sort=False + stabil ordning inom grupp) ger text-raden företräde.
+    if "pm_id" in df.columns:
+        has_id = df["pm_id"].notna()
+        merged = df[has_id].groupby("pm_id", as_index=False, sort=False).first()
+        df = pd.concat([merged, df[~has_id]], ignore_index=True)
     df["published"] = pd.to_datetime(df["published"], errors="coerce", utc=True)
     df = df.dropna(subset=["ticker", "published"]).sort_values("published")
 
