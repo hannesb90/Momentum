@@ -427,6 +427,49 @@ def _table_scale_unit(text: str, pos: int) -> str:
     return "tkr" if last.group("thousand") else "Mkr"
 
 
+# KONCERN vs MODERBOLAG (verifierad skarp bugg): svenska årsredovisningar
+# visar ofta BÅDA "Koncernens" (konsoliderat, de riktiga siffrorna för hela
+# gruppen) OCH "Moderbolagets" (bara det juridiska moderbolaget – för en
+# koncern med verksamheten i dotterbolag, t.ex. en fastighetskoncern, kan
+# moderbolagets EGNA balans-/resultaträkning vara 100-1000x mindre än
+# koncernens) balans-/resultaträkningar i samma dokument. Utan sektions-
+# medvetenhet tog _table_row_pattern.search() bara FÖRSTA träffen, oavsett
+# vilket avsnitt den råkade landa i. Verifierat skarpt exempel: Wallenstam
+# AB – 'Eget kapital' extraherat som 32 Mkr (moderbolagets, en ren holding-
+# summa) i stället för koncernens faktiska ~30 000+ Mkr, vilket gav en
+# fysiskt omöjlig ROE på 656%.
+_KONCERN_HDR_RE = re.compile(r"\bkoncernens?\b", re.I)
+_MODER_HDR_RE = re.compile(r"\bmoderbolagets?\b|\bmoderf(?:öretag|oretag)ets?\b", re.I)
+
+
+def _prefer_consolidated_match(text: str, pat: re.Pattern) -> Optional[re.Match]:
+    """Bland ALLA träffar för mönstret, föredra den som ligger i ett
+    'Koncernens...'-avsnitt framför ett 'Moderbolagets...'-avsnitt (sektionen
+    en position tillhör = det NÄRMASTE FÖREGÅENDE av de två rubrik-typerna).
+    Finns ingen sektionsstruktur alls i texten (inga koncern-/moderbolags-
+    rubriker) → OFÖRÄNDRAT beteende: första träffen, exakt som innan denna
+    fix (t.ex. det verifierade AAK-exemplet, som saknar denna uppdelning)."""
+    matches = list(pat.finditer(text))
+    if not matches:
+        return None
+    if len(matches) == 1:
+        return matches[0]
+    koncern_pos = [m.start() for m in _KONCERN_HDR_RE.finditer(text)]
+    moder_pos = [m.start() for m in _MODER_HDR_RE.finditer(text)]
+    if not koncern_pos and not moder_pos:
+        return matches[0]
+
+    def _in_koncern_section(pos: int) -> bool:
+        k = max((p for p in koncern_pos if p < pos), default=-1)
+        m = max((p for p in moder_pos if p < pos), default=-1)
+        return k > m   # senaste föregående rubriken avgör vilket avsnitt vi är i
+
+    for m in matches:
+        if _in_koncern_section(m.start()):
+            return m
+    return matches[0]   # ingen träff i ett koncern-avsnitt -> bästa tillgängliga
+
+
 def extract_table_facts(text: str) -> Dict[str, dict]:
     """Samma fälttaxonomi som extract_hard_facts(), men för TABELLFORMATERAD
     text (PDF-extraherade resultat-/balansräkningar) i stället för
@@ -440,7 +483,7 @@ def extract_table_facts(text: str) -> Dict[str, dict]:
         return {}
     out: Dict[str, dict] = {}
     for field, pat in {**_TABLE_FIELD_PATTERNS, **_TABLE_EPS_PATTERNS, **_TABLE_SHARE_PATTERNS}.items():
-        m = pat.search(text)
+        m = _prefer_consolidated_match(text, pat)
         if not m:
             continue
         try:
