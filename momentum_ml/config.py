@@ -531,6 +531,12 @@ VALUE_MULT_FAIR        = 22
 SECTOR_RANK_BLEND     = 0.5   # andel sektor-percentil i blandningen [0..1]
 SECTOR_RANK_MIN_PEERS = 5     # kräv minst så många bolag med värdet i sektorn
 
+# Kursdata-cachens nycklar innehåller dagens datum (medvetet – annars frös
+# kursdatan) → gårdagens pkl:er träffas aldrig mer och måste städas, annars
+# växer cache/ obegränsat (en full universum-pickle per dag/segment) på Pi:ns
+# SD-kort. 0 = städning av.
+PRICE_CACHE_MAX_AGE_DAYS = 10
+
 # ── ETF/sektor-rotation (D-spåret: dual momentum – "trend, inte bolag") ───────
 # Rankar sektor-ETF:ernas EGNA kurser (inte svenska aktier per sektor). Håller de
 # hetaste K (relativ momentum) MEN bara om de har egen positiv trend (absolut
