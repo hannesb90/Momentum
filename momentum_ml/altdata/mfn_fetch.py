@@ -18,6 +18,7 @@ VIKTIGT – körs på Pi:n (molncontainern når varken mfn.se eller Yahoo).
     python altdata/mfn_fetch.py refresh large    # PRENUMERATION: inkrementellt delta (nattligt/veckovis)
     python altdata/mfn_fetch.py audit             # granska cachen mot fixad matchning (ingen nätaccess)
     python altdata/mfn_fetch.py audit --fix       # ...och rensa förorenade PM ur cachefilerna
+    python altdata/mfn_fetch.py refetch T1.ST,T2.ST   # full ombearbetning av ANGIVNA tickers (nätanrop)
     python altdata/mfn_fetch.py stats            # PM/dag mätt på redan hämtad cache (inget nätanrop)
     python altdata/mfn_fetch.py types             # PM eller även rapporter? typ-fördelning + exempel
     python altdata/mfn_fetch.py raw "AAK"         # rå feed-dump: finns en PDF-länk vi missar?
@@ -154,24 +155,39 @@ def _author_match(c: dict, query: str, ticker: Optional[str]) -> bool:
     """Behåll bara PM som faktiskt är BOLAGETS egna – inte sådana som nämner
     det, ELLER ett SLÄKT bolag med snarlikt namn.
 
-    TICKER-matchning är AUTOKORITATIV och avgör ensam när PM:et har tickers
-    (MFN:s egen strukturerade data, otvetydig identitet) – ingen fallback till
-    namn i det fallet. Det stänger en VERIFIERAD, allvarlig bugg: en fråga på
-    "Electrolux" (ELUX-B.ST) matchade av misstag PM från "Electrolux
+    TICKER-matchning provas FÖRST (MFN:s egen strukturerade data, otvetydig
+    identitet) och accepteras direkt vid träff. Vid ICKE-träff faller vi
+    tillbaka på namn (exakt ordmängd, ordgräns-medveten – ALDRIG substräng)
+    i stället för att direkt underkänna.
+
+    Den fallbacken är nödvändig: en FÖRSTA version av denna fix gjorde
+    ticker-matchning ensam avgörande så fort PM:et hade tickers alls, utan
+    reträtt till namn. En verklig full-audit (1057 bolag) visade att det
+    tyst rensade bort 100% av HISTORIKEN för ett tjugotal äkta bolag vars
+    MFN-tickerformat skiljer sig från vårt lokala universums:
+      • BTA-interimsaktier under en emission ("ALZCUR-BTA.ST",
+        "INTRUM-BTA.ST", "IRLAB-BTA-A.ST") – MFN:s tickers-array anger den
+        ORDINARIE aktien ("ALZCUR"), inte BTA-formatet.
+      • Nordiska dubbelnoteringar där MFN:s tickers-array anger
+        primärlistans/utländskt format ("NOKIA-SEK.ST" är i själva verket
+        Nokian Tyres, "ORKO.ST" är Orkla).
+    I samtliga fall är själva PM:et fortfarande obestridligen bolagets EGET
+    (author_name/slug är korrekt) – bara vår lokala ticker-sträng skiljer sig
+    från MFN:s. Namn-fallbacken fångar dessa korrekt.
+
+    Fallbacken stänger INTE upp den ursprungliga, verifierade buggen: en
+    fråga på "Electrolux" (ELUX-B.ST) ska INTE matcha PM från "Electrolux
     Professional AB" – ett HELT ANNAT, separat noterat bolag (egen ticker
     EPRO B, avknoppat 2020) vars namn råkar BÖRJA med moderbolagets. Gamla
-    koden gjorde _norm(query) till en substräng-test mot _norm(slug) – eftersom
-    _norm stryker MELLANSLAG blev "ELECTROLUX" en substräng av
-    "ELECTROLUXPROFESSIONAL" utan ordgräns. Extraktionen LYCKADES på den
-    förorenade texten (revenue/ebit/net_profit) – fel bolags siffror hade
-    runnit tyst in i RÄTT bolags ROE/värdering. Se mfn_fetch_audit().
-
-    Fallback (namn, ordgräns-medveten – EXAKT ordmängd, inte substräng) gäller
-    bara när ticker saknas ELLER PM:et självt saknar tickers (sällsynta rena
-    flaggningsmeddelanden)."""
+    (för-fix) koden gjorde _norm(query) till en RÅ SUBSTRÄNG-test mot
+    _norm(slug) – eftersom _norm stryker MELLANSLAG blev "ELECTROLUX" en
+    substräng av "ELECTROLUXPROFESSIONAL" utan ordgräns. Namn-fallbacken här
+    kräver EXAKT ordmängd ({ELECTROLUX} != {ELECTROLUX, PROFESSIONAL, AB}) –
+    så det fallet förblir korrekt avvisat. Se mfn_fetch_audit()."""
     if ticker and c["tickers"]:
         tn = _norm(ticker.split(".")[0])          # "SAAB-B.ST" -> "SAABB"
-        return any(_norm(t.split(":")[-1]) == tn for t in c["tickers"])  # "XSTO:SAAB B" -> "SAABB"
+        if any(_norm(t.split(":")[-1]) == tn for t in c["tickers"]):  # "XSTO:SAAB B" -> "SAABB"
+            return True
     qw = _words(query)
     if not qw:
         return False
@@ -445,6 +461,52 @@ def refresh_universe(target: str) -> None:
         print(f"    python -m altdata.value_screener score {target}")
 
 
+def refetch(tickers: List[str]) -> None:
+    """FULL ombearbetning för ANGIVNA tickers – ignorerar cache-färskhet och
+    hämtar HELA historiken på nytt (samma fetch_company-väg som en helt ny
+    ticker), skriver sedan över cachefilen helt.
+
+    Återställningsverktyget efter den TRIST NÖDVÄNDIGA lärdomen i
+    _author_match: en tidigare, för sträng version av matchningen körde
+    'audit --fix' och rensade tyst bort ÄKTA historik för ett antal bolag
+    (BTA-interimsaktier, nordiska dubbelnoteringar – se docstringen på
+    _author_match). audit --fix tar bara BORT dåliga PM, den kan aldrig
+    LÄGGA TILLBAKA de äkta som redan strukits ur filen – och refresh_universe
+    hämtar bara FRAMÅT-delta (max_pages=1) för redan cachade bolag, så den
+    kompletterar aldrig gamla luckor. Denna funktion hämtar om HELA historiken
+    med den (nu rättade) matchningslogiken, så exakt rätt data hamnar där
+    igen – utan att man manuellt behöver avgöra vilka av de granskade
+    bolagen som var äkta false positives kontra äkta föroreningar.
+
+        python -m altdata.mfn_fetch refetch ALZCUR-BTA.ST,NOKIA-SEK.ST,...
+    """
+    from data.data_loader import load_sweden_universe
+    _, _, _, name_map = load_sweden_universe(min_market_cap=None)
+    qmap = _load_map()
+    cache_dir = Path(config.MFN_CACHE_DIR)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[refetch] {len(tickers)} bolag – full ombearbetning (ignorerar cache-färskhet)")
+    total = 0
+    for i, t in enumerate(tickers, 1):
+        query = qmap.get(t) or _clean_name(name_map.get(t, t))
+        try:
+            items = fetch_company(query, ticker=t)
+        except Exception as e:  # noqa: BLE001
+            print(f"  [{i:>4}/{len(tickers)}] {t:<16} FEL: {e}")
+            continue
+        out = cache_dir / f"{t}.json"
+        out.write_text(json.dumps({"ticker": t, "query": query, "schema": _SCHEMA_VERSION,
+                                   "items": items}, ensure_ascii=False), encoding="utf-8")
+        total += len(items)
+        print(f"  [{i:>4}/{len(tickers)}] {t:<16} '{query[:28]:<28}' -> {len(items)} PM")
+        time.sleep(config.MFN_REQUEST_PAUSE_S)
+    print(f"[refetch] klart – {total} PM totalt över {len(tickers)} bolag.")
+    print("  Kör nu hela efterbearbetningskedjan:")
+    print("    python -m altdata.mfn_events scan large   (+ small)")
+    print("    python -m altdata.mfn_fundamentals extract large   (+ small)")
+    print("    python -m altdata.value_screener score large   (+ small)")
+
+
 def stats() -> None:
     """Statistik ur REDAN HÄMTAD cache (inget nätanrop) – ärligt svar, mätt på
     vårt eget universum, på 'hur många PM kommer det ut per dag från MFN'.
@@ -619,12 +681,14 @@ def audit(fix: bool = False) -> None:
         bad_ids = {it.get("id") for it in bad}
         d["items"] = [it for it in items if it.get("id") not in bad_ids]
         f.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
-    print(f"\n  Rensat {len(poisoned)} filer. Kör nu om (nätanrop – hämtar ev. RIKTIGA PM som "
-          f"den gamla, för snäva namn-frågan aldrig hittade):")
-    print("    python -m altdata.mfn_fetch refresh large")
-    print("    python -m altdata.mfn_fetch refresh small")
-    print("  ...och sedan hela efterbearbetningskedjan (rensar bort ev. redan extraherad "
-          "förorenad data ur fundamentals/value_shortlist):")
+    tickers_list = ",".join(t for _, _, t, _, _ in poisoned)
+    print(f"\n  Rensat {len(poisoned)} filer.")
+    print("  VIKTIGT: refresh hämtar bara FRAMÅT-delta för redan cachade bolag – den kan inte")
+    print("  återställa historik som just rensades bort ovan. Om matchningslogiken (_author_match)")
+    print("  har ändrats sedan cachen skrevs (t.ex. en tidigare för sträng version), kör i stället")
+    print("  en FULL ombearbetning av exakt de granskade bolagen så äkta data hämtas hem igen:")
+    print(f"    python -m altdata.mfn_fetch refetch {tickers_list}")
+    print("  ...och sedan hela efterbearbetningskedjan:")
     print("    python -m altdata.mfn_events scan large   (+ small)")
     print("    python -m altdata.mfn_fundamentals extract large   (+ small)")
     print("    python -m altdata.value_screener score large   (+ small)")
@@ -650,6 +714,14 @@ def main():
         refresh_universe(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
     elif cmd == "audit":
         audit(fix="--fix" in sys.argv)
+    elif cmd == "refetch":
+        arg = sys.argv[2] if len(sys.argv) > 2 else ""
+        tickers = [t.strip() for t in arg.split(",") if t.strip()]
+        if not tickers:
+            print("Ange minst en ticker (kommaseparerat): "
+                  "python -m altdata.mfn_fetch refetch ALZCUR-BTA.ST,NOKIA-SEK.ST")
+        else:
+            refetch(tickers)
     elif cmd == "stats":
         stats()
     elif cmd == "types":
