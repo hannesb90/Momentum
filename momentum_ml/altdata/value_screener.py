@@ -264,6 +264,39 @@ def _ranks(vals: Dict[str, Optional[float]]) -> Dict[str, float]:
     return out
 
 
+def _sector_blend_ranks(vals: Dict[str, Optional[float]], sector_of,
+                        blend: Optional[float] = None,
+                        min_peers: Optional[int] = None) -> Dict[str, float]:
+    """Blandar global percentil med SEKTOR-percentil (config.SECTOR_RANK_BLEND)
+    för sektor-strukturella faktorer (värdering, skuld): en bank ska inte se
+    "billig" ut bara för att banker som grupp handlas till lägre multiplar än
+    SaaS – jämför den mot ANDRA banker också. Sektorer med färre än
+    SECTOR_RANK_MIN_PEERS bolag (med värdet) faller tillbaka på ren global
+    rank (en 2-bolags-sektor ger ingen meningsfull intern percentil).
+    blend=0 → exakt _ranks() (gamla beteendet, regressionsgaranti)."""
+    if blend is None:
+        blend = float(getattr(config, "SECTOR_RANK_BLEND", 0.5))
+    if min_peers is None:
+        min_peers = int(getattr(config, "SECTOR_RANK_MIN_PEERS", 5))
+    global_r = _ranks(vals)
+    if blend <= 0:
+        return global_r
+    by_sec: Dict[str, Dict[str, Optional[float]]] = {}
+    for t, v in vals.items():
+        by_sec.setdefault(str(sector_of(t) or ""), {})[t] = v
+    out: Dict[str, float] = {}
+    for sec, sub in by_sec.items():
+        n_present = sum(1 for v in sub.values() if isinstance(v, (int, float)))
+        if sec and n_present >= min_peers:
+            sec_r = _ranks(sub)
+            for t in sub:
+                out[t] = (1 - blend) * global_r[t] + blend * sec_r[t]
+        else:
+            for t in sub:
+                out[t] = global_r[t]
+    return out
+
+
 def _checklist(r: dict):
     """KVALITETSKRAVLISTAN (OT-analytics-inspirerad): tio binära krav prövade
     mot ALLT vi extraherat ur rapporterna. Varje krav är uppfyllt (True),
@@ -313,7 +346,7 @@ def score(segment: Optional[str] = None) -> None:
         return
 
     seg_cfg = config.SEGMENTS.get(seg_name, config.SEGMENTS[config.DEFAULT_SEGMENT])
-    _, _, _, name_map = load_sweden_universe(min_market_cap=seg_cfg["market_cap"])
+    _, sector_map, _, name_map = load_sweden_universe(min_market_cap=seg_cfg["market_cap"])
 
     tickers = list(fund.keys())
     prices = fetch_weekly_data(tickers, use_cache=True)
@@ -343,8 +376,12 @@ def score(segment: Optional[str] = None) -> None:
     value_vals = {r["ticker"]: r["owner_earnings_yield"] for r in rows}   # högre yield = billigare
 
     roe_rank, cons_rank = _ranks(roe_vals), _ranks(cons_vals)
-    debt_rank = _ranks(debt_vals)
-    growth_rank, value_rank = _ranks(growth_vals), _ranks(value_vals)
+    # Skuld + värdering är sektor-strukturella (banker/fastighet har hög D/E
+    # och låga multiplar av naturen) → sektor-blandad rank. ROE/konsistens/
+    # tillväxt förblir GLOBALA – Buffett-kravet är absolut, inte sektorrelativt.
+    debt_rank = _sector_blend_ranks(debt_vals, sector_map.get)
+    growth_rank = _ranks(growth_vals)
+    value_rank = _sector_blend_ranks(value_vals, sector_map.get)
 
     for r in rows:
         t = r["ticker"]

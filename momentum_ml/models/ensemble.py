@@ -73,14 +73,14 @@ class MomentumEnsemble:
         # break-signal – LSTM saknar motsvarighet, så den blandas inte.
         if "prob_raw" in lg.columns:
             combined["prob_raw"] = lg["prob_raw"]
-        # OBS kalibrering: LGBM:s prob_up är isotoniskt kalibrerad, LSTM:s är inte,
-        # och MEDELVÄRDET av två sannolikheter är i allmänhet INTE kalibrerat. Den
-        # blandade prob_up används därför främst för (a) RANGORDNING till topp-N –
-        # robust mot monoton miss-kalibrering – och (b) som visat tal i appen (där
-        # den är ungefärlig). pred_signal nedan (>0.5) skrivs ändå ÖVER i
-        # build_full_output av den alltid-investerade topp-N-logiken, så själva
-        # 0.5-tröskeln är inte aktiv. Att omkalibrera blandningen (eller kalibrera
-        # LSTM före blandning) förbättrar mest det VISADE talet, inte rangordningen.
+        # Kalibrering: BÅDA benen är numera isotoniskt kalibrerade på sina
+        # respektive valideringsfönster (LGBM per walk-forward-split, LSTM på
+        # sitt val-fönster – se models/lstm_model.py). Ett viktat medel av två
+        # kalibrerade sannolikheter är inte matematiskt perfekt kalibrerat, men
+        # långt närmare än förr (då LSTM-benet var helt okalibrerat). En gammal
+        # LSTM-checkpoint utan kalibrator kör okalibrerat tills nästa nattliga
+        # träning. pred_signal nedan (>0.5) skrivs ändå ÖVER i build_full_output
+        # av den alltid-investerade topp-N-logiken, så 0.5-tröskeln är inte aktiv.
         combined["pred_signal"] = (combined["prob_up"] > 0.5).astype(int)
         return combined
 

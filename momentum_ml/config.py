@@ -520,6 +520,17 @@ VALUE_DEBT_EQUITY_SAFE = 0.5       # Debt/Equity under detta = konservativt skul
 VALUE_MULT_CHEAP       = 15
 VALUE_MULT_FAIR        = 22
 
+# ── Sektor-relativ rankning (edge-granskning 3) ───────────────────────────────
+# Värderings- och skuld-percentiler räknade mot HELA universumet är strukturellt
+# skeva: en bank ser alltid "billig" (låg multipel) och "farligt skuldsatt"
+# (hög D/E) ut mot ett SaaS-bolag – det är sektorns natur, inte bolagets
+# egenskap. Blandar därför global percentil med SEKTOR-percentil för de
+# sektor-strukturella faktorerna (värdering + skuld) i value-/quant-screenern.
+# Kvalitet (ROE) och tillväxt förblir GLOBALA – Buffett-kravet är absolut hög
+# avkastning, inte "bra för att vara en bank". 0 = av (exakt gamla beteendet).
+SECTOR_RANK_BLEND     = 0.5   # andel sektor-percentil i blandningen [0..1]
+SECTOR_RANK_MIN_PEERS = 5     # kräv minst så många bolag med värdet i sektorn
+
 # ── ETF/sektor-rotation (D-spåret: dual momentum – "trend, inte bolag") ───────
 # Rankar sektor-ETF:ernas EGNA kurser (inte svenska aktier per sektor). Håller de
 # hetaste K (relativ momentum) MEN bara om de har egen positiv trend (absolut
