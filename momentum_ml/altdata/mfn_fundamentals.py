@@ -386,12 +386,45 @@ def _parse_table_num(s: str) -> float:
     return float(s.replace(".", "").replace(",", "."))
 
 
+# Skaldeklaration i räkenskaps-tabeller ("Belopp i tkr", "MSEK", "(KSEK)"...).
+# KRITISKT för tabellspåret: tabellrader saknar enhetsord vid själva talet
+# (till skillnad från narrativ-mönstrens "125,3 Mkr"), och nedströms
+# (value_screener._to_msek) betyder TOM enhet "anta redan-MSEK". Småbolags
+# årsredovisningar redovisar ofta i TKR – utan enhets-detektering läses en
+# 12,5 MSEK-omsättning ("Nettoomsättning 12.500 11.200" under "Belopp i tkr")
+# som 12 500 MSEK: ett tyst 1000x-fel rakt in i ROE/värderingen.
+_TABLE_SCALE_RE = re.compile(
+    r"\b(?P<thousand>tkr|tsek|ksek|kkr|tusental(?:s)?\s+kronor|belopp\s+i\s+tusental"
+    r"|sek\s*thousand|sek\s*k)\b"
+    r"|\b(?P<million>mkr|msek|miljoner\s+kronor|sek\s*million|sek\s*m)\b",
+    re.I,
+)
+_TABLE_SCALE_WINDOW = 4000   # tecken bakåt – rubriken står överst på samma sida
+
+
+def _table_scale_unit(text: str, pos: int) -> str:
+    """Närmaste skaldeklaration FÖRE tabellraden (så läser en människa det:
+    'Belopp i tkr' i sidhuvudet gäller tabellen som följer). Ingen deklaration
+    inom fönstret → '' (nedströms antar MSEK – dokumenterat status quo, samma
+    som innan enhets-detekteringen fanns)."""
+    lo = max(0, pos - _TABLE_SCALE_WINDOW)
+    last = None
+    for m in _TABLE_SCALE_RE.finditer(text, lo, pos):
+        last = m
+    if last is None:
+        return ""
+    return "tkr" if last.group("thousand") else "Mkr"
+
+
 def extract_table_facts(text: str) -> Dict[str, dict]:
     """Samma fälttaxonomi som extract_hard_facts(), men för TABELLFORMATERAD
     text (PDF-extraherade resultat-/balansräkningar) i stället för
     pressmeddelande-narrativ. Avsedd att köras UTÖVER extract_hard_facts()
     på PDF-text, inte i stället för – se mfn_pdf.py:s backfill() som slår
-    ihop båda (narrativ-träff vinner om båda hittar samma fält)."""
+    ihop båda (narrativ-träff vinner om båda hittar samma fält).
+    Enheten härleds ur närmaste föregående skaldeklaration (se
+    _table_scale_unit) – aktie-/EPS-fält får ingen (antal respektive kr,
+    aldrig Mkr/tkr)."""
     if not text:
         return {}
     out: Dict[str, dict] = {}
@@ -404,7 +437,12 @@ def extract_table_facts(text: str) -> Dict[str, dict]:
             cmp = _parse_table_num(m.group("cmp"))
         except ValueError:
             continue
-        out[field] = {"value": val, "prior_period": cmp}
+        d = {"value": val, "prior_period": cmp}
+        if field in _VALUE_FIELDS:   # bara penningfält skalar med tkr/Mkr
+            unit = _table_scale_unit(text, m.start())
+            if unit:
+                d["unit"] = unit
+        out[field] = d
     return out
 
 # ── Period-detektering ur titeln (svenska IR-titlar är starkt standardiserade) ─
