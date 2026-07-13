@@ -220,6 +220,23 @@ def _metrics(entry: dict, price: Optional[float]) -> dict:
         # da saknas ofta -> 0 (konservativ underskattning); capex saknas ofta -> 0
         # (då blir OE en övre gräns – dokumenterad approximation)
 
+    # PLAUSIBILITETSSPÄRR (upptäckt via skarp PDF-backfill-data: verkliga
+    # exempel med ROE 656%/12545%/21950% och D/E -377.11 – fysiskt omöjliga
+    # tal, inte äkta resultat). Grundorsaken är sannolikt en fel matchad
+    # tabellrad eller en skalglidning i extraktionen (equity/net_profit/
+    # aktieantal) – men OAVSETT mekanism ska en implausibel siffra ALDRIG nå
+    # rankningen som om den vore sanning. Bara historiskt verifierade
+    # extremfall (t.ex. en turn-around-kvartal på nästan obefintligt kapital)
+    # kan ge trecifrig ROE på riktigt – 300% är redan en generös gräns.
+    # D/E kan per definition (equity > 0 ovan) aldrig vara negativt – en
+    # negativ siffra betyder alltid att 'liabilities' själv är korrupt.
+    _ROE_MAX = 3.0     # 300 %
+    _DE_MAX = 30.0     # skulder 30x eget kapital – redan extrem hävstång
+    if roe is not None and abs(roe) > _ROE_MAX:
+        roe = None
+    if debt_equity is not None and not (0 <= debt_equity <= _DE_MAX):
+        debt_equity = None
+
     rev_growth = None
     if revenue is not None and revenue_prior not in (None, 0):
         rev_growth = (revenue - revenue_prior) / abs(revenue_prior)
@@ -228,6 +245,13 @@ def _metrics(entry: dict, price: Optional[float]) -> dict:
     # INTE MSEK) / 1e6 – aktieantalet har ingen Mkr-liknande skala.
     mcap_msek = (price * shares / 1e6) if (price is not None and shares) else None
     oe_yield = (owner_earnings / mcap_msek) if (owner_earnings is not None and mcap_msek) else None
+    # Plausibilitetsspärr (samma motivering som ROE/D-E ovan): en verklig
+    # skarp körning gav en multipel på 1,12e-05x ("billig", ser ut som ett
+    # skrikande köp) – owner earnings kan inte rimligen vara >200% av hela
+    # börsvärdet på ett år för ett fungerande bolag; det är ett extraktions-
+    # fel (fel rad/skala i net_profit eller aktieantal), inte ett äkta case.
+    if oe_yield is not None and abs(oe_yield) > 2.0:
+        owner_earnings = oe_yield = None
     mult = (mcap_msek / owner_earnings) if (owner_earnings and owner_earnings > 0 and mcap_msek) else None
 
     zone = "okänd"
