@@ -309,11 +309,30 @@ def _clean_name(name: str) -> str:
     hela listan innan denna kod skrevs – se konversationen/committen). Kvar
     okänt: "Case Group", "Wall to Wall Group", "SJR in Scandinavia" – inget
     uppenbart mönster, INTE gissat vidare (_http_get visar nu svarskropp om
-    de ska felsökas senare)."""
+    de ska felsökas senare).
+
+    TREDJE, verifierat mönster (upptäckt via en riktig refetch-körning): två
+    till klasser av frågor som ger en TEKNISKT giltig men FEL sökning (inget
+    500-fel, bara noll träffar eftersom söksträngen inte matchar det riktiga
+    bolagsnamnet):
+      · BTA-interimsaktier har en bokstavlig "TEMP"-markör inbakad i
+        data/sweden_universe.csv:s namnfält ("AlzeCure Pharma AB TEMP",
+        "Intrum AB TEMP", ...) – en databas-flagga, inte del av bolagsnamnet.
+        Ostrippad blev queryn "AlzeCure Pharma TEMP", vilket MFN inte har
+        någon träff på (verifierat: 0 PM för samtliga 5 BTA-tickers i
+        universumet innan denna fix).
+      · "Ltd"/"Ltd."/"Limited" ingick ALDRIG i bolagsforms-listan (bara
+        AB/ASA/Oyj/plc/Inc/A-S/AG/SE/S.A. hanterades) – utländska bolag
+        registrerade som Limited (AutoStore Holdings Ltd., Borr Drilling
+        Limited, BW Energy Ltd, BW LPG Limited, BW Offshore Limited, Archer
+        Limited, ...) fick en för specifik/fel query. Samma bolagsforms-
+        mönster som AB/ASA, bara en tidigare lucka i listan."""
     n = name
     n = re.sub(r"\bclass\s+[a-d]\b", " ", n, flags=re.I)          # "Class B"
     n = re.sub(r"\bser(ie|ies|\.)?\s*[a-d]\b", " ", n, flags=re.I)  # "Ser./Series B"
-    n = re.sub(r"\(publ\.?\)|\bAB\b|\bASA\b|\bOyj\b|\bplc\b|\bInc\b", " ", n, flags=re.I)
+    n = re.sub(r"\bTEMP\b", " ", n, flags=re.I)                    # databas-flagga, ej bolagsnamn
+    n = re.sub(r"\(publ\.?\)|\bAB\b|\bASA\b|\bOyj\b|\bplc\b|\bInc\b|\bLtd\.?\b|\bLimited\b",
+               " ", n, flags=re.I)
     n = n.replace("&", " ").replace(":", " ")                     # bryter MFN-queryn
     n = re.sub(r"\s+", " ", n).strip(" ,.-")
     # Utländska bolagsformer bara i SLUTET av namnet – "AG"/"SE" mitt i en fras
