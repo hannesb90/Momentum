@@ -99,8 +99,18 @@ def _company_context(ticker: str):
     if not items:
         return None
     items = sorted(items, key=lambda it: it.get("published", ""), reverse=True)
-    rep = next((it for it in items
-                if any(k in it.get("title", "").lower() for k in _REPORT_KW)), None)
+    # Rapport-valet: is_report_pm FÖRST (den kan skilja en riktig rapport från
+    # en INBJUDAN till rapportpresentationen/prisutmärkelse-PM – en lärdom
+    # mfn_fundamentals redan betalat för; den gamla råa nyckelordsmatchen
+    # kunde ge LLM:en en siffer-lös inbjudan som "senaste rapport" och
+    # kvalitetsbetyget byggdes då på fel underlag). Nyckelordsmatchen behålls
+    # bara som fallback för titelformer utanför is_report_pm:s mönster
+    # (t.ex. engelska "year-end"/"interim").
+    from altdata.mfn_fundamentals import is_report_pm
+    rep = next((it for it in items if is_report_pm(it)), None)
+    if rep is None:
+        rep = next((it for it in items
+                    if any(k in it.get("title", "").lower() for k in _REPORT_KW)), None)
     docs = ([rep] if rep else []) + [it for it in items[:4] if it is not rep]
     text = ""
     for it in docs:
@@ -114,15 +124,29 @@ def _cache_path(ticker: str) -> Path:
     return d / f"{ticker}.json"
 
 
-def _composite(s: dict) -> float:
+def _composite(s: dict):
+    """Snitt av de BEDÖMBARA kvalitetsbetygen (1-5). INGET bedömbart → None,
+    inte 0.0: LLM-betygen är 1-5 så äkta minimum är 1.0 – ett 0.0-composite
+    var alltid en 'kunde inte bedömas'-sentinel, men nedströms percentil-
+    rankning kan inte skilja sentinel från betyg och rankade bolaget som
+    SÄMST i universumet i stället för obetygsatt."""
     vals = [s[k] for k in _SCORE_KEYS if isinstance(s.get(k), (int, float))]
-    return round(sum(vals) / len(vals), 2) if vals else 0.0
+    return round(sum(vals) / len(vals), 2) if vals else None
+
+
+def _norm_composite(s: dict) -> dict:
+    """Normalisera CACHADE poster: äldre cache-filer (skrivna innan _composite
+    returnerade None) bär 0.0-sentinelen – översätt till None vid läsning så
+    gamla filer inte behöver skrivas om."""
+    if not s.get("composite"):   # 0, 0.0 eller None → obetygsatt
+        s["composite"] = None
+    return s
 
 
 def score_company(ticker: str, name: str, client=None) -> dict:
     cp = _cache_path(ticker)
     if cp.exists():
-        return json.loads(cp.read_text())
+        return _norm_composite(json.loads(cp.read_text()))
     ctx = _company_context(ticker)
     if not ctx:
         return None
@@ -178,7 +202,7 @@ def screen() -> None:
             print(f"  ...{i}/{len(cands)} ({scored} poängsatta)")
     if missing:
         print(f"[screen] {missing} kandidater saknar MFN-cache – kör mfn_fetch först för full täckning.")
-    rows.sort(key=lambda r: r.get("composite", 0), reverse=True)
+    rows.sort(key=lambda r: (r.get("composite") or 0), reverse=True)
     out = Path(config.QUALITY_CACHE_DIR).parent.parent / "results" / "quality_shortlist.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     cols = ["ticker", "name", "composite", *_SCORE_KEYS, "revenue_msek", "ebitda_msek",
@@ -269,7 +293,8 @@ def report() -> None:
     import csv
     from data.data_loader import fetch_weekly_data
 
-    scored = [json.loads(p.read_text()) for p in Path(config.QUALITY_CACHE_DIR).glob("*.json")]
+    scored = [_norm_composite(json.loads(p.read_text()))
+              for p in Path(config.QUALITY_CACHE_DIR).glob("*.json")]
     if not scored:
         print("[report] inga poängsatta bolag – kör 'score' först.")
         return
@@ -324,7 +349,7 @@ def report() -> None:
         r["mentioned_investors"] = "; ".join(map(str, s.get("mentioned_investors") or []))
         rows.append(r)
 
-    rows.sort(key=lambda r: r.get("composite", 0), reverse=True)
+    rows.sort(key=lambda r: (r.get("composite") or 0), reverse=True)
     out = Path(config.RESULTS_DIR) / "quality_shortlist.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     cols = ["ticker", "name", "composite", "zone", "loss", "mcap_msek", "ebitda_multiple",
@@ -340,7 +365,7 @@ def report() -> None:
 
     # Kärn-listan: hög kvalitet OCH billig/rimlig värdering (positiv EBITDA).
     sweet = [r for r in rows
-             if r.get("composite", 0) >= 4.0 and r.get("zone") in ("billig", "rimlig")]
+             if (r.get("composite") or 0) >= 4.0 and r.get("zone") in ("billig", "rimlig")]
     print(f"\n  🎯 HÖG KVALITET (composite ≥ 4.0) **OCH** BILLIG/RIMLIG (vinst- el. P/S-multipel) – {len(sweet)} st:")
     if not sweet:
         print("     (inga träffar – vidga filtren eller se hela CSV:n för zon-fördelningen.)")
@@ -360,7 +385,7 @@ def report() -> None:
 
     # Bästa KVALITET bland de faktiskt BILLIGA/RIMLIGA (även under 4.0) – kärn-tratten.
     value = sorted([r for r in rows if r.get("zone") in ("billig", "rimlig")],
-                   key=lambda r: r.get("composite", 0), reverse=True)
+                   key=lambda r: (r.get("composite") or 0), reverse=True)
     print(f"\n  💰 BÄSTA KVALITET BLAND DE BILLIGA/RIMLIGA (vinst- el. P/S-multipel) – topp {min(12, len(value))} av {len(value)}:")
     for r in value[:12]:
         print(_fmt(r))
@@ -368,9 +393,9 @@ def report() -> None:
     # Förvinst-case: går ännu back men hög kvalitet, billig/rimlig PÅ P/S OCH tydlig väg till vinst.
     turn = sorted([r for r in rows if r.get("loss")
                    and r.get("zone") in ("billig", "rimlig")
-                   and r.get("composite", 0) >= 4.0
+                   and (r.get("composite") or 0) >= 4.0
                    and isinstance(r.get("profit_path"), (int, float)) and r["profit_path"] >= 4],
-                  key=lambda r: r.get("composite", 0), reverse=True)
+                  key=lambda r: (r.get("composite") or 0), reverse=True)
     print(f"\n  🚀 FÖRVINST-CASE ATT BEVAKA (förlust men billig på P/S + väg till vinst) – {len(turn)} st:")
     for r in turn[:12]:
         print(_fmt(r))
