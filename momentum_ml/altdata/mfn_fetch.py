@@ -16,6 +16,8 @@ VIKTIGT – körs på Pi:n (molncontainern når varken mfn.se eller Yahoo).
     python altdata/mfn_fetch.py one  "Saab" SAAB-B.ST   # ett bolag, filtrerat på ticker
     python altdata/mfn_fetch.py fetch large      # hela segmentet (cachas per ticker, förstagångs)
     python altdata/mfn_fetch.py refresh large    # PRENUMERATION: inkrementellt delta (nattligt/veckovis)
+    python altdata/mfn_fetch.py audit             # granska cachen mot fixad matchning (ingen nätaccess)
+    python altdata/mfn_fetch.py audit --fix       # ...och rensa förorenade PM ur cachefilerna
     python altdata/mfn_fetch.py stats            # PM/dag mätt på redan hämtad cache (inget nätanrop)
     python altdata/mfn_fetch.py types             # PM eller även rapporter? typ-fördelning + exempel
     python altdata/mfn_fetch.py raw "AAK"         # rå feed-dump: finns en PDF-länk vi missar?
@@ -144,20 +146,36 @@ def _norm(s: str) -> str:
     return "".join(ch for ch in (s or "").upper() if ch.isalnum())
 
 
+def _words(s: str) -> frozenset:
+    return frozenset(w for w in re.split(r"[^A-Za-z0-9ÅÄÖåäö]+", (s or "").upper()) if w)
+
+
 def _author_match(c: dict, query: str, ticker: Optional[str]) -> bool:
-    """Behåll bara PM som faktiskt är BOLAGETS egna (inte sådana som nämner det)."""
-    qn = _norm(query)
-    sn, nn = _norm(c["author_slug"]), _norm(c["author_name"])
-    if sn and (sn in qn or qn in sn):
-        return True
-    if nn and (nn in qn or qn in nn):
-        return True
-    if ticker:
+    """Behåll bara PM som faktiskt är BOLAGETS egna – inte sådana som nämner
+    det, ELLER ett SLÄKT bolag med snarlikt namn.
+
+    TICKER-matchning är AUTOKORITATIV och avgör ensam när PM:et har tickers
+    (MFN:s egen strukturerade data, otvetydig identitet) – ingen fallback till
+    namn i det fallet. Det stänger en VERIFIERAD, allvarlig bugg: en fråga på
+    "Electrolux" (ELUX-B.ST) matchade av misstag PM från "Electrolux
+    Professional AB" – ett HELT ANNAT, separat noterat bolag (egen ticker
+    EPRO B, avknoppat 2020) vars namn råkar BÖRJA med moderbolagets. Gamla
+    koden gjorde _norm(query) till en substräng-test mot _norm(slug) – eftersom
+    _norm stryker MELLANSLAG blev "ELECTROLUX" en substräng av
+    "ELECTROLUXPROFESSIONAL" utan ordgräns. Extraktionen LYCKADES på den
+    förorenade texten (revenue/ebit/net_profit) – fel bolags siffror hade
+    runnit tyst in i RÄTT bolags ROE/värdering. Se mfn_fetch_audit().
+
+    Fallback (namn, ordgräns-medveten – EXAKT ordmängd, inte substräng) gäller
+    bara när ticker saknas ELLER PM:et självt saknar tickers (sällsynta rena
+    flaggningsmeddelanden)."""
+    if ticker and c["tickers"]:
         tn = _norm(ticker.split(".")[0])          # "SAAB-B.ST" -> "SAABB"
-        for t in c["tickers"]:
-            if _norm(t.split(":")[-1]) == tn:     # "XSTO:SAAB B" -> "SAABB"
-                return True
-    return False
+        return any(_norm(t.split(":")[-1]) == tn for t in c["tickers"])  # "XSTO:SAAB B" -> "SAABB"
+    qw = _words(query)
+    if not qw:
+        return False
+    return qw == _words(c["author_slug"]) or qw == _words(c["author_name"])
 
 
 # ── Hämtning + cache ──────────────────────────────────────────────────────────
@@ -552,6 +570,66 @@ def types() -> None:
             print(f"    {tag:<28}{c:>6}")
 
 
+def audit(fix: bool = False) -> None:
+    """Granskar HELA redan hämtad MFN-cache mot den (fixade) _author_match-
+    logiken – hittar PM som slank igenom den GAMLA, för lösa matchningen.
+    Verifierat verkligt fall: ELUX-B.ST-cachen innehöll PM från "Electrolux
+    Professional AB" – ett HELT ANNAT, separat noterat bolag (egen ticker
+    EPRO B) vars namn råkar börja med moderbolagets. Extraktionen lyckades på
+    den förorenade texten – fel bolags revenue/ebit/net_profit hade runnit
+    tyst in i RÄTT bolags ROE/värdering. Inget nätanrop – ren lokal kontroll.
+
+    fix=False (default): rapporterar bara, rör ingen fil.
+    fix=True: tar bort de underkända PM:en ur cachefilerna. Kör ALLTID om
+    efterbearbetningen (events/fundamentals extract/value_screener score)
+    efteråt – annars ligger redan extraherad förorenad data kvar i
+    fundamentals_from_mfn.csv/value_shortlist.csv trots rensad cache."""
+    cache_dir = Path(config.MFN_CACHE_DIR)
+    files = sorted(f for f in cache_dir.glob("*.json") if not f.name.startswith("_"))
+    if not files:
+        print(f"Ingen cache i {cache_dir}/.")
+        return
+    poisoned = []
+    for f in files:
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        items = d.get("items") or []
+        if not items:
+            continue
+        ticker = d.get("ticker") or f.stem
+        query = d.get("query") or ""
+        bad = [it for it in items if not _author_match(it, query, ticker)]
+        if bad:
+            poisoned.append((f, d, ticker, bad, items))
+    if not poisoned:
+        print(f"[audit] {len(files)} cachade bolag genomsökta – inga förorenade PM hittade.")
+        return
+    total_bad = sum(len(bad) for _, _, _, bad, _ in poisoned)
+    print(f"[audit] {len(poisoned)}/{len(files)} bolag har PM som INTE hade matchat "
+          f"den fixade logiken ({total_bad} PM totalt):")
+    for f, d, ticker, bad, items in poisoned:
+        offenders = sorted({it.get("author_name") or it.get("author_slug") or "?" for it in bad})
+        print(f"  {ticker:<14} {len(bad)}/{len(items)} PM från: {', '.join(offenders)[:80]}")
+    if not fix:
+        print(f"\n  Kör med --fix för att rensa cachen (t.ex. 'python -m altdata.mfn_fetch audit --fix').")
+        return
+    for f, d, ticker, bad, items in poisoned:
+        bad_ids = {it.get("id") for it in bad}
+        d["items"] = [it for it in items if it.get("id") not in bad_ids]
+        f.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    print(f"\n  Rensat {len(poisoned)} filer. Kör nu om (nätanrop – hämtar ev. RIKTIGA PM som "
+          f"den gamla, för snäva namn-frågan aldrig hittade):")
+    print("    python -m altdata.mfn_fetch refresh large")
+    print("    python -m altdata.mfn_fetch refresh small")
+    print("  ...och sedan hela efterbearbetningskedjan (rensar bort ev. redan extraherad "
+          "förorenad data ur fundamentals/value_shortlist):")
+    print("    python -m altdata.mfn_events scan large   (+ small)")
+    print("    python -m altdata.mfn_fundamentals extract large   (+ small)")
+    print("    python -m altdata.value_screener score large   (+ small)")
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -570,6 +648,8 @@ def main():
         fetch_universe(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
     elif cmd == "refresh":
         refresh_universe(sys.argv[2] if len(sys.argv) > 2 else config.DEFAULT_SEGMENT)
+    elif cmd == "audit":
+        audit(fix="--fix" in sys.argv)
     elif cmd == "stats":
         stats()
     elif cmd == "types":
