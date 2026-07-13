@@ -33,6 +33,36 @@ def _cache_path(key: str) -> Path:
     return Path(config.CACHE_DIR) / f"{h}.pkl"
 
 
+def _prune_stale_cache(max_age_days: Optional[int] = None) -> None:
+    """Rensar gamla kursdata-pkl:er. Cache-nyckeln innehåller DAGENS datum
+    (medvetet – annars serverades frusen kursdata dag efter dag, se
+    fetch_weekly_data), men det betyder också att varje dag skapar en NY
+    pkl och gårdagens aldrig mer träffas. Utan städning växer cache/ med
+    en full universum-pickle (tiotals MB) per dag och segment – gigabyte
+    på några månader på Pi:ns SD-kort. Rensar ENBART *.pkl direkt i
+    CACHE_DIR (aldrig underkataloger som mfn/, aldrig andra filtyper som
+    portfolio_holdings.csv)."""
+    if max_age_days is None:
+        max_age_days = int(getattr(config, "PRICE_CACHE_MAX_AGE_DAYS", 10))
+    if max_age_days <= 0:
+        return
+    import time
+    cutoff = time.time() - max_age_days * 86400
+    removed = 0
+    try:
+        for p in Path(config.CACHE_DIR).glob("*.pkl"):
+            try:
+                if p.stat().st_mtime < cutoff:
+                    p.unlink()
+                    removed += 1
+            except OSError:
+                continue
+    except OSError:
+        return
+    if removed:
+        print(f"[DataLoader] Rensade {removed} kursdata-cachefiler äldre än {max_age_days} dagar.")
+
+
 def fetch_weekly_data(
     tickers: List[str],
     start: str = config.START_DATE,
@@ -102,6 +132,7 @@ def fetch_weekly_data(
 
     with open(cp, "wb") as f:
         pickle.dump(result, f)
+    _prune_stale_cache()   # dagliga nycklar → gårdagens pkl:er träffas aldrig mer
 
     return result
 
