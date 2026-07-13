@@ -102,6 +102,20 @@ def _signed_num(v):
         return None
 
 
+def _score_num(v):
+    """För POÄNG/BETYG (kvalitet 0–5, kvant, value_score, soft, prob_up):
+    0 är ett giltigt, meningsfullt värde – SÄMSTA betyget, inte 'saknas'.
+    _num kastar ≤0 (rätt för kurser/belopp) och gjorde att ett bolag med
+    betyg exakt 0 räknades som obetygsatt → neutral 0,5-fallback i
+    sammanvägningen, dvs. sämsta bolaget fick medelbetyg. Negativt är
+    däremot aldrig en giltig poäng → None."""
+    try:
+        f = float(v)
+        return f if f >= 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
 _CLOSES_CACHE: dict = {}
 
 
@@ -862,7 +876,7 @@ def _load_scores_uncached() -> dict:
                 if not tk:
                     continue
                 e = ent(tk, r.get("name"))
-                e["quality"] = _num(r.get("composite"))
+                e["quality"] = _score_num(r.get("composite"))
                 e["zone"] = (r.get("zone") or "").strip()
         except Exception:  # noqa: BLE001
             pass
@@ -872,11 +886,11 @@ def _load_scores_uncached() -> dict:
         try:
             rows_k = list(csv.DictReader(open(kp, encoding="utf-8")))
             col = next((c for c in ("grade", "quant_score", "composite", "score", "total")
-                        if rows_k and _num(rows_k[0].get(c)) is not None), None)
+                        if rows_k and _score_num(rows_k[0].get(c)) is not None), None)
             if col:
                 for r in rows_k:
                     tk = (r.get("ticker") or "").strip().upper()
-                    v = _num(r.get(col))
+                    v = _score_num(r.get(col))
                     if tk and v is not None:
                         ent(tk, r.get("name"))["quant"] = v
         except Exception:  # noqa: BLE001
@@ -895,7 +909,7 @@ def _load_scores_uncached() -> dict:
                 if not tk:
                     continue
                 e = ent(tk, r.get("name"))
-                e["value_score"] = _num(r.get("value_score"))
+                e["value_score"] = _score_num(r.get("value_score"))
                 e["value_zone"] = (r.get("zone") or "").strip()
                 e["meets_roe_bar"] = str(r.get("meets_roe_bar")).strip().lower() == "true"
                 e["meets_debt_bar"] = str(r.get("meets_debt_bar")).strip().lower() == "true"
@@ -913,11 +927,19 @@ def _load_scores_uncached() -> dict:
         if not sp.exists():
             continue
         for tk, r in _latest_signals(sp).items():   # pandas-snabb (var ~12s i en radloop)
-            p = _num(r.get("prob_up"))
+            p = _score_num(r.get("prob_up"))
             if p is not None:
                 e = ent(tk, r.get("name"))
-                e["prob_up"] = max(p, e.get("prob_up") or 0.0)
-                e["pred_signal"] = str(r.get("pred_signal"))
+                # Ticker i BÅDA segmenten (bytt börsvärdesklass, t.ex. Smart Eye):
+                # ta det starkaste segmentets prob_up – men då MÅSTE pred_signal
+                # följa med från SAMMA segment. Tidigare togs max(prob_up) medan
+                # pred_signal ovillkorligt skrevs över av sist lästa segmentet
+                # (small) → en post kunde säga prob_up 68% (large) och samtidigt
+                # "modellen har släppt bolaget" (small:s signal), vilket
+                # säljvakten läser som en äkta sälj-bekräftelse.
+                if p >= (e.get("prob_up") or 0.0):
+                    e["prob_up"] = p
+                    e["pred_signal"] = str(r.get("pred_signal"))
 
     # Mjuka värden TOKEN-FRITT (altdata/soft_signals.py, nattligt): destillerad
     # LLM-elev (eller lexikon-läge). Används som KVALITETS-FALLBACK enbart där
@@ -933,8 +955,8 @@ def _load_scores_uncached() -> dict:
                 tk = (r.get("ticker") or "").strip().upper()
                 if not tk:
                     continue
-                soft = _num(r.get("soft_score"))
-                llm = _num(r.get("llm_composite"))   # LLM-facit ur quality-CACHEN
+                soft = _score_num(r.get("soft_score"))
+                llm = _score_num(r.get("llm_composite"))   # LLM-facit ur quality-CACHEN
                 e = ent(tk, r.get("name"))
                 if e.get("quality") is None:
                     # LLM vinner ÄVEN här: llm_composite täcker bolag som är
@@ -1115,10 +1137,22 @@ def _pct_rank(sorted_vals, v):
     _unified_rank O(n² log n) i antal bolag – obemärkt med en handfull test-
     tickers, men en verklig hängning (30s+ timeout) med hela Sverige-universumet
     (~2600+ bolag) efter att value_shortlist.csv gjorde 'scores' mycket större.
-    bisect ger O(log n) per uppslag istället."""
+    bisect ger O(log n) per uppslag istället.
+
+    LIKA VÄRDEN får MITTRANK (snitt av bisect_left/bisect_right) – samma
+    tie-fix som _ranks() i quant-/value-screenern fick i matematik-granskningen,
+    men denna separata implementation missades då. Enbart bisect_right gav alla
+    i ett tie-block TOPPEN av blocket: kvalitetsbetyget (0–5 i 0,1-steg) har
+    tunga ties, så modalvärdet (t.ex. 40/100 bolag på 3,5) fick percentil 0,70
+    i stället för ärliga 0,50 – en systematisk uppblåsning av tie-tunga källor
+    (kvalitet/kvant-betyg) relativt kontinuerliga (value_score/P(upp)) i den
+    sammanvägda poängen. Rangordningen INOM ett tie-block var alltid lika –
+    skevheten satt i viktningen MELLAN källor."""
     if not sorted_vals or v is None:
         return None
-    return bisect.bisect_right(sorted_vals, v) / len(sorted_vals)
+    lo = bisect.bisect_left(sorted_vals, v)
+    hi = bisect.bisect_right(sorted_vals, v)
+    return ((lo + hi) / 2) / len(sorted_vals)
 
 
 # Viktprofiler per rank-modell (köp-vakten). Nycklar: quality/quant/value/
@@ -1695,7 +1729,13 @@ def _dynamic_fill_split(bucket_vals, amount, targets, attr, meta_out=None):
     if strength <= 0 or amount <= 0 or not attr:
         return base
     core_attr = attr.get("broad", 0.55)
-    excess = {b: max(0.0, attr.get(b, 0.0) - core_attr) for b in ("sweden", "theme")}
+    # Tilta ALDRIG mot en hink användaren satt målvikt 0 på – den bundna tilten
+    # omfördelar INOM den valda strategin och får inte återinföra en hink som
+    # uttryckligen valts bort (verifierat fel innan: mål sweden=0 men attraktiv
+    # aktie → 16% av insättningen gick ändå till sweden).
+    excess = {b: (max(0.0, attr.get(b, 0.0) - core_attr)
+                  if float(targets.get(b, 0.0) or 0.0) > 0 else 0.0)
+              for b in ("sweden", "theme")}
     esum = sum(excess.values())
     if esum <= 0:                    # inget slår kärnan → mål-gap styr (tiebreaker)
         return base
@@ -2059,7 +2099,10 @@ def backtest_result(monthly=5000, months=None):
         return None
     if px.empty or "index" not in px.columns or len(px) < 30:
         return None
-    res = _dca_backtest(px, config.PORTFOLIO_TARGET, start_book, monthly)
+    # Användarens SPARADE målvikter (load_target) – inte config-defaulten.
+    # Annars backtestas en annan fördelning än den next_buy faktiskt kör med
+    # så fort användaren justerat målet i appen.
+    res = _dca_backtest(px, load_target(), start_book, monthly)
     from datetime import datetime
     out = {
         "start_value": round(V0), "monthly": monthly,
