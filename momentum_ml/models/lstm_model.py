@@ -130,6 +130,11 @@ class MomentumLSTM:
             torch.set_num_threads(config.NUM_TRAINING_THREADS)
         self.net: Optional[MomentumLSTMNet] = None
         self.scaler = None
+        # Isotonisk kalibrator (rå sigmoid-sannolikhet → kalibrerad), anpassad
+        # på VALIDERINGSFÖNSTRET efter träning – samma princip som LGBM:s
+        # kalibrering. Utan den blandade ensemblen kalibrerad (LGBM) med
+        # okalibrerad (LSTM) sannolikhet – medelvärdet blev okalibrerat.
+        self.calibrator = None
         print(f"[LSTM] Använder: {self.device} "
               f"({torch.get_num_threads()} trådar)")
 
@@ -206,6 +211,25 @@ class MomentumLSTM:
                     break
 
         self.net.load_state_dict(best_state)
+
+        # Kalibrera på valideringsfönstret (ALDRIG träningsdata – då kalibrerar
+        # man bort modellens egen overfitting i stället för att korrigera den).
+        # Degenererat fönster (en klass/få rader) ger en grov men ofarlig
+        # mappning – IsotonicRegression kraschar inte.
+        from sklearn.isotonic import IsotonicRegression
+        raw_va, y_va = [], []
+        self.net.eval()
+        with torch.no_grad():
+            for x, y_cls, _ in val_dl:
+                p, _r = self.net(x.to(self.device))
+                raw_va.append(p.cpu().numpy())
+                y_va.append(y_cls.numpy())
+        if raw_va and sum(len(a) for a in raw_va) >= 10:
+            self.calibrator = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
+            self.calibrator.fit(np.concatenate(raw_va), np.concatenate(y_va))
+            print(f"  [LSTM] Isotonisk kalibrering anpassad på {sum(len(a) for a in raw_va)} valideringsrader.")
+        else:
+            print("  [LSTM] För få valideringsrader för kalibrering – kör okalibrerat.")
         return self
 
     # ── Prediktion ────────────────────────────────────────────────────────────
@@ -227,6 +251,10 @@ class MomentumLSTM:
 
         probs = np.concatenate(probs)
         rets  = np.concatenate(rets)
+        # Kalibrera om kalibrator finns (äldre sparade .pt saknar den → rå,
+        # samma beteende som före kalibreringen infördes).
+        if self.calibrator is not None:
+            probs = self.calibrator.transform(probs)
 
         # Datum för de predikterade raderna
         dates = [ds.get_date(i) for i in range(len(ds))]
@@ -244,6 +272,7 @@ class MomentumLSTM:
         torch.save({
             "state_dict": self.net.state_dict(),
             "scaler":     self.scaler,
+            "calibrator": self.calibrator,
         }, path)
         print(f"[LSTM] Modell sparad: {path}")
 
@@ -254,4 +283,6 @@ class MomentumLSTM:
         self.net = MomentumLSTMNet().to(self.device)
         self.net.load_state_dict(ckpt["state_dict"])
         self.scaler = ckpt["scaler"]
+        # Äldre checkpoint (före kalibreringen) → None = okalibrerad prediktion.
+        self.calibrator = ckpt.get("calibrator")
         return self

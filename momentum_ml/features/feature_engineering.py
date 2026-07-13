@@ -408,6 +408,12 @@ def _load_fundamentals_growth(segment: Optional[str] = None) -> pd.DataFrame:
     return out.sort_values(["ticker", "published"])
 
 
+# Tak/saknat-sentinel för days_since_report: allt äldre än ett år är "gammalt"
+# – ingen extra information i 400 vs 700 dagar, och saknad rapporthistorik
+# kodas som exakt detta värde (se attach_fundamentals_features).
+_DAYS_SINCE_CAP = 365
+
+
 def attach_fundamentals_features(
     all_features: Dict[str, pd.DataFrame],
     segment: Optional[str] = None,
@@ -437,11 +443,20 @@ def attach_fundamentals_features(
     by_ticker = ({tk: g.drop(columns="ticker") for tk, g in fund.groupby("ticker")}
                  if len(fund) else {})
 
+    # days_since_report: dagar sedan senast kända rapport (PEAD-driftens
+    # tidsaxel – den mest evidensbackade rapportsignalen). Köp-vaktens
+    # blackout/färsk-logik använder redan detta, men den TRÄNADE modellen
+    # såg det aldrig – nu blir det en riktig feature som modellen själv får
+    # lära sig tröskla (färsk rapport → drift; gammal → ingen information).
+    # SAKNAT värde kodas som _DAYS_SINCE_CAP (max-stale), INTE NaN: den
+    # centrala fillna(0)-hanteringen i modellerna hade annars gjort "okänd
+    # rapporthistorik" till "rapporterade idag" – motsatt betydelse.
     for ticker, feat in all_features.items():
         g = by_ticker.get(ticker)
         if g is None or g.empty:
             feat["rev_growth_yoy"] = np.nan
             feat["eps_growth_yoy"] = np.nan
+            feat["days_since_report"] = float(_DAYS_SINCE_CAP)
             continue
         left = feat.index.to_frame(index=False, name="Date").sort_values("Date")
         joined = pd.merge_asof(left, g.sort_values("published"),
@@ -449,6 +464,12 @@ def attach_fundamentals_features(
         joined = joined.set_index("Date")
         feat["rev_growth_yoy"] = joined["rev_growth_yoy"].reindex(feat.index)
         feat["eps_growth_yoy"] = joined["eps_growth_yoy"].reindex(feat.index)
+        days = (joined.index.to_series() - joined["published"]).dt.days
+        feat["days_since_report"] = (days.clip(upper=_DAYS_SINCE_CAP)
+                                     .fillna(_DAYS_SINCE_CAP)
+                                     .reindex(feat.index)
+                                     .fillna(_DAYS_SINCE_CAP)
+                                     .astype(float))
     return all_features
 
 
@@ -506,6 +527,9 @@ FEATURE_COLS = [
     # as-of-kopplad – se attach_fundamentals_features()). NaN tills bolagets
     # första kända rapport, fillna(0) sker centralt i models/lgbm_model.py.
     "rev_growth_yoy", "eps_growth_yoy",
+    # PEAD-tidsaxeln: dagar sedan senast kända rapport (takad vid 365; saknat
+    # = 365, ALDRIG NaN – fillna(0) hade betytt "rapporterade idag").
+    "days_since_report",
 ]
 
 # Ablation: släpp namngivna features ur modellens INDATA genom HELA pipelinen

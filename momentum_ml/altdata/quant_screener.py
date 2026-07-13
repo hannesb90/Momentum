@@ -165,14 +165,44 @@ def _ranks(vals: dict) -> dict:
     return out
 
 
-def _group_score(data, factors) -> dict:
-    """Medel-percentil över faktorerna i en grupp (riktning: -1 inverterar)."""
+def _sector_blend_ranks(vals: dict, sector_of) -> dict:
+    """Global percentil blandad med SEKTOR-percentil (config.SECTOR_RANK_BLEND)
+    – samma motivering och matematik som value_screener._sector_blend_ranks:
+    värdering/skuld är sektor-strukturella (banker ser alltid 'billiga' och
+    'skuldsatta' ut mot SaaS). Sektor med < SECTOR_RANK_MIN_PEERS bolag →
+    ren global rank. blend=0 → exakt _ranks() (gamla beteendet)."""
+    blend = float(getattr(config, "SECTOR_RANK_BLEND", 0.5))
+    min_peers = int(getattr(config, "SECTOR_RANK_MIN_PEERS", 5))
+    global_r = _ranks(vals)
+    if blend <= 0:
+        return global_r
+    by_sec = {}
+    for t, v in vals.items():
+        by_sec.setdefault(str(sector_of(t) or ""), {})[t] = v
+    out = {}
+    for sec, sub in by_sec.items():
+        n_present = sum(1 for v in sub.values() if isinstance(v, (int, float)))
+        if sec and n_present >= min_peers:
+            sec_r = _ranks(sub)
+            for t in sub:
+                out[t] = (1 - blend) * global_r[t] + blend * sec_r[t]
+        else:
+            for t in sub:
+                out[t] = global_r[t]
+    return out
+
+
+def _group_score(data, factors, sector_relative: bool = False) -> dict:
+    """Medel-percentil över faktorerna i en grupp (riktning: -1 inverterar).
+    sector_relative=True → sektor-blandad rank (för värdering/skuld, se
+    _sector_blend_ranks); sektorn läses ur TradingView-datan själv."""
+    sector_of = (lambda t: data.get(t, {}).get("sector")) if sector_relative else None
     parts = []
     for field, direction in factors:
         vals = {t: (_num(rec.get(field)) if direction > 0
                     else (-_num(rec.get(field)) if _num(rec.get(field)) is not None else None))
                 for t, rec in data.items()}
-        parts.append(_ranks(vals))
+        parts.append(_sector_blend_ranks(vals, sector_of) if sector_relative else _ranks(vals))
     return {t: sum(p[t] for p in parts) / len(parts) for t in data}
 
 
@@ -232,7 +262,8 @@ def score(min_rev_msek=100) -> None:
     print(f"[score] filter: −{drop_rev} med < {min_rev_msek} MSEK omsättning, "
           f"−{drop_sec} health → {len(data)} betygsatta")
     groups = {"quality": _group_score(data, _QUALITY), "growth": _group_score(data, _GROWTH),
-              "safety": _group_score(data, _SAFETY), "value": _group_score(data, _VALUE)}
+              "safety": _group_score(data, _SAFETY, sector_relative=True),
+              "value": _group_score(data, _VALUE, sector_relative=True)}
     rows = []
     for t, rec in data.items():
         comp = sum(_WEIGHTS[g] * groups[g][t] for g in _WEIGHTS)
