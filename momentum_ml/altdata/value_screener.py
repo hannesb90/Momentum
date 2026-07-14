@@ -81,7 +81,7 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
     """Per ticker: senaste kända rapportrad + tillväxtkonsistens över de
     senaste (upp till 4) rapporterna vi faktiskt har.
 
-    SAMMA RAPPORT (pm_id) kan förekomma i BÅDA CSV:erna med KOMPLEMENTÄRA
+    SAMMA RAPPORT (pm_id) kan förekomma i BÅDA MFN-CSV:erna med KOMPLEMENTÄRA
     fält: texten gav revenue/net_profit, PDF-backfillen balansräkningen
     (equity/liabilities/aktieantal). Sedan backfillen blev nyckelfälts-
     medveten (mfn_pdf._KEY_FIELDS) är de INTE längre disjunkta – raderna slås
@@ -90,7 +90,20 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
     verifierad mot fler skarpa exempel än tabell-extraktion, samma prioritet
     som mfn_pdf.backfill() själv använder mellan narrativ- och tabellträffar
     i en och samma PDF. Utan sammanslagningen hade 'latest = sista raden'
-    slumpmässigt sett BARA enas fält och modellen tappat de andras."""
+    slumpmässigt sett BARA enas fält och modellen tappat de andras.
+
+    ANDRA STEGET – altdata/avanza.py (fundamentals_from_avanza.csv): Avanzas
+    egna pm_id ('avanza-TICKER-ÅR-RTYPE') matchar ALDRIG ett äkta MFN-pm_id,
+    så den sammanslagningen ovan slår aldrig ihop dem. Avanza-rader slås
+    därför ihop i ett EGET andra steg på (ticker, period) – SAMMA periodsträng-
+    konvention ('Helår 2025'/'Q2 2026', verifierat i avanza._period_label mot
+    mfn_fundamentals.detect_period). Avanza FYLLER BARA GENUINA LUCKOR: en
+    redan populerad text/pdf-siffra vinner ALLTID (annan definition av eget
+    kapital – totalAssets−totalLiabilities – kan avvika något från 'Eget
+    kapital' ur balansräkningen, och narrativ/tabell-extraktionen är verifierad
+    mot fler skarpa exempel). Avanza kan alltså både lägga till HELT NYA
+    rapportperioder (bolag/kvartal vi aldrig fått ur MFN alls) och komplettera
+    saknade fält i en period vi redan delvis har – aldrig skriva över."""
     import pandas as pd
 
     seg = config.SEGMENTS.get(segment) if segment else None
@@ -105,18 +118,45 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
                 frames.append(pd.read_csv(p))
             except Exception:  # noqa: BLE001
                 pass
-    if not frames:
+    if frames:
+        text_df = pd.concat(frames, ignore_index=True)
+        # Fältvis sammanslagning per pm_id: groupby().first() tar per kolumn det
+        # FÖRSTA icke-NaN-värdet i gruppen – radordningen (mfn före pdf, bevarad
+        # av sort=False + stabil ordning inom grupp) ger text-raden företräde.
+        if "pm_id" in text_df.columns:
+            has_id = text_df["pm_id"].notna()
+            merged = text_df[has_id].groupby("pm_id", as_index=False, sort=False).first()
+            text_df = pd.concat([merged, text_df[~has_id]], ignore_index=True)
+    else:
+        text_df = pd.DataFrame()
+
+    avanza_p = results_dir / "fundamentals_from_avanza.csv"
+    avanza_df = pd.DataFrame()
+    if avanza_p.exists():
+        try:
+            avanza_df = pd.read_csv(avanza_p)
+        except Exception:  # noqa: BLE001
+            pass
+
+    parts = [d for d in (text_df, avanza_df) if not d.empty]
+    if not parts:
         return {}
-    df = pd.concat(frames, ignore_index=True)
+    df = pd.concat(parts, ignore_index=True, sort=False)
     if "ticker" not in df.columns or "published" not in df.columns:
         return {}
-    # Fältvis sammanslagning per pm_id: groupby().first() tar per kolumn det
-    # FÖRSTA icke-NaN-värdet i gruppen – radordningen (mfn före pdf, bevarad
-    # av sort=False + stabil ordning inom grupp) ger text-raden företräde.
-    if "pm_id" in df.columns:
-        has_id = df["pm_id"].notna()
-        merged = df[has_id].groupby("pm_id", as_index=False, sort=False).first()
-        df = pd.concat([merged, df[~has_id]], ignore_index=True)
+
+    if "period" in df.columns:
+        # Sorteringsnyckel: mfn/pdf-rader (rank 0) FÖRE avanza-rader (rank 1)
+        # inom varje (ticker, period)-grupp, så groupby().first() väljer
+        # text/pdf-värdet där det finns och faller tillbaka på Avanza bara
+        # för genuint tomma celler/perioder.
+        src_rank = df["pm_id"].astype(str).str.startswith("avanza-") if "pm_id" in df.columns \
+            else pd.Series(False, index=df.index)
+        df = df.assign(_src_rank=src_rank.astype(int)).sort_values(["ticker", "period", "_src_rank"])
+        key_present = df["ticker"].notna() & df["period"].notna()
+        merged2 = df[key_present].groupby(["ticker", "period"], as_index=False, sort=False).first()
+        df = pd.concat([merged2, df[~key_present]], ignore_index=True).drop(columns=["_src_rank"], errors="ignore")
+
     df["published"] = pd.to_datetime(df["published"], errors="coerce", utc=True)
     df = df.dropna(subset=["ticker", "published"]).sort_values("published")
 
