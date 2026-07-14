@@ -246,10 +246,15 @@ def _map_path() -> Path:
     return Path(config.anchor("cache")) / "avanza_map.json"
 
 
-# Interimsinstrument-segment (delårs-emissionsrätter/betalda tecknade aktier)
-# som INTE finns i Avanzas egen ticker – samma mönster som tvingade fram
-# _clean_name-fixen i mfn_fetch.py (BTA-tickrarnas "TEMP"-flagga).
-_INSTRUMENT_SEG_RE = re.compile(r"^(BTA|TO|TR|UR)\d*$", re.I)
+# Interimsinstrument-/aktieklass-segment som INTE finns i Avanzas ticker för
+# STAMAKTIEN – BTA/TO/TR/UR (delårs-emissionsrätter/betalda tecknade aktier,
+# samma mönster som tvingade fram _clean_name-fixen i mfn_fetch.py) samt PREF
+# (preferensaktie – VERIFIERAT via coverage-körning: 6/17 no-data-bolag i
+# small-segmentet hade '-PREF'-suffix, t.ex. KLOV-PREF.ST, medan KLOV-B.ST
+# redan hade data – preferensaktien delar SAMMA bolagsfundamenta som stam-
+# aktien, bara utdelningsvillkoren skiljer, så att stryka PREF och söka på
+# stammen ger korrekt delad revenue/net_profit/equity).
+_INSTRUMENT_SEG_RE = re.compile(r"^(BTA|TO|TR|UR|PREF)\d*$", re.I)
 
 
 def _ticker_variants(base: str) -> list:
