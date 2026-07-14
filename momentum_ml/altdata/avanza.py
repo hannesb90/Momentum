@@ -599,7 +599,17 @@ def extract(segment: Optional[str] = None) -> None:
 
     segment: 'large'/'small' ELLER 'quality' (Small+Micro+Nano Cap, se
     _resolve_universe) – skriver till results/quality/ för det senare, rör
-    ALDRIG large/small:s fundamentals_from_avanza.csv."""
+    ALDRIG large/small:s fundamentals_from_avanza.csv.
+
+    HOPPAR ÖVER 'confirmed: false'-poster (osäkra fallback-träffar från
+    match()) – VERIFIERAT skarpt varför det är nödvändigt: en tidigare
+    version extraherade OAVSETT confirmed-status, vilket hade tystat in helt
+    orelaterade bolags siffror (t.ex. amerikanska Roivant Sciences/Opendoor/
+    Meta Platforms/ATHA Energy för svenska RO.ST/OP.ST/ME.ST/SAS.ST) i
+    fundamentals_from_avanza.csv – exakt samma felklass som Eagle Football
+    Group-buggen, bara inte längre tyst i match()-utskriften. Osäkra poster
+    ligger KVAR i avanza_map.json (för manuell granskning/ev. framtida
+    override i avanza_overrides.csv) men bidrar inga rader."""
     mp = _map_path()
     if not mp.exists():
         print(f"Ingen {mp} – kör 'match' först.")
@@ -609,8 +619,17 @@ def extract(segment: Optional[str] = None) -> None:
     tickers, sector_map, cap_map, _name_map, results_dir = _resolve_universe(segment)
     wanted = {t for t in tickers if cap_map.get(t) != "Fond" and sector_map.get(t) != "Fond"}
 
+    candidates = sorted(wanted & mapping.keys())
+    uncertain = [t for t in candidates if not mapping[t].get("confirmed")]
+    candidates = [t for t in candidates if mapping[t].get("confirmed")]
+    if uncertain:
+        print(f"[extract] hoppar över {len(uncertain)} OSÄKRA mappningar (granska manuellt, "
+              f"se avanza_map.json/avanza_overrides.csv):")
+        for t in uncertain:
+            print(f"    {t:<16} '{mapping[t].get('title')}'")
+
     all_rows, ok, fail = [], 0, 0
-    for i, t in enumerate(sorted(wanted & mapping.keys()), 1):
+    for i, t in enumerate(candidates, 1):
         oid = mapping[t].get("orderBookId")
         if not oid:
             continue
@@ -624,7 +643,7 @@ def extract(segment: Optional[str] = None) -> None:
         all_rows.extend(rows)
         ok += 1
         if i % 20 == 0:
-            print(f"  ...{i}/{len(wanted & mapping.keys())} ({len(all_rows)} rader hittills)")
+            print(f"  ...{i}/{len(candidates)} ({len(all_rows)} rader hittills)")
         time.sleep(_PAUSE_S)
 
     if not all_rows:
@@ -641,7 +660,8 @@ def extract(segment: Optional[str] = None) -> None:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
         w.writerows(all_rows)
-    print(f"\n[extract] {ok} bolag ({fail} fel), {len(all_rows)} rader -> {out}")
+    print(f"\n[extract] {ok} bolag ({fail} fel, {len(uncertain)} osäkra överhoppade), "
+          f"{len(all_rows)} rader -> {out}")
 
 
 # ── Överlevnadsrevision (avnotering/uppköp) ───────────────────────────────────
