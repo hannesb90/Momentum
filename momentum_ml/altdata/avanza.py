@@ -418,7 +418,20 @@ def _build_rows(ticker: str, analysis: dict) -> list:
     equityPerShare meningslös men eps ändå brukbar). Utan detta saknade
     283/296 bolag P/E-underlaget helt (Avanza-extraktionen gav aldrig
     aktieantal) – 'komplett'-andelen i coverage() låg fast på 0% trots att
-    revenue/net_profit/equity/liabilities redan täcktes."""
+    revenue/net_profit/equity/liabilities redan täcktes.
+
+    TOMMA FRAMTIDSPERIODER HOPPAS ÖVER: Avanza listar även INNEVARANDE/
+    KOMMANDE kvartal med financialYear/reportType (och ofta ett nominellt
+    'date' = periodens SLUTdatum, t.ex. '2026-06-30' för Q2 2026) INNAN
+    rapporten faktiskt publicerats – alla värdefält saknas (None) då.
+    VERIFIERAT med skarp coverage/diagnose-körning: en sådan tom rad blev
+    konsekvent 'senaste raden' i value_screener._load_fundamentals (den har
+    ju det SENASTE datumet) och gjorde ROE/D-E/aktieantal obedömbara trots
+    att en fullt komplett Q1-rad låg direkt före den i samma historik –
+    drabbade i praktiken NÄSTAN VARJE bolag identiskt (samma mönster i 8/8
+    diagnostiserade bolag: 8TRA/AAK/ABB/ACAST/ACRO/AFGO/AFKO/AFRY). En rad
+    utan NÅGOT faktiskt värdefält (bara datum/period/pm_id) är alltså inte
+    en riktig rapport och hoppas över helt."""
     rows = []
     for by_key, granularity in (("companyFinancialsByYear", "year"), ("companyFinancialsByQuarter", "quarter")):
         fin = _rows_from_section(analysis.get(by_key), _FIN_FIELDS)
@@ -434,6 +447,11 @@ def _build_rows(ticker: str, analysis: dict) -> list:
             date = f.get("date") or r.get("date")
             if not date:
                 continue   # utan datum: ingen point-in-time-plats i pipelinen (dropna nedströms ändå)
+            has_fin_value = any(f.get(k) is not None for k in
+                                ("revenue", "net_profit", "_total_assets", "liabilities", "debt_equity_avanza"))
+            has_ratio_value = any(r.get(k) is not None for k in ("eps", "roe_avanza", "_equity_per_share"))
+            if not has_fin_value and not has_ratio_value:
+                continue   # tom framtidsperiod (se docstring) - inte en riktig rapport
             revenue = f.get("revenue")
             equity_raw = None
             if f.get("_total_assets") is not None and f.get("liabilities") is not None:
