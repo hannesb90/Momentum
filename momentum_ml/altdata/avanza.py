@@ -181,13 +181,19 @@ def _ticker_variants(base: str) -> list:
       1. Bokstavlig ticker.
       2. Interimsinstrument-segment (BTA/TO/TR/UR, ev. numrerat) borttaget
          ur bindestrecks-delarna – "INTRUM-BTA" -> "INTRUM".
-      3. Trailing "O" borttagen – VERIFIERAT mönster (en riktig match-
+      3. En trailing "O" borttagen – VERIFIERAT mönster (en riktig match-
          körning missade 58+ bolag, nästan alla nordiska primärnoteringar
          på Oslo Børs som vårt lokala universum suffixar med "O" för den
          svenska sekundärnoteringen: 'EQNRO'->'EQNR' (Equinor), 'YARO'->
          'YAR' (Yara), 'ORKO'->'ORK' (Orkla) – Avanzas egen ticker saknar
          suffixet. Samma mekanism som AKERO/AKRBPO/BNORO/DOFGO/ORKO/PENO/
-         SOFFO visade i MFN-matchningen tidigare, nu i ett annat system."""
+         SOFFO visade i MFN-matchningen tidigare, nu i ett annat system.
+      4. TVÅ trailing "O" borttagna (inte rstrip-alla – ticker-stammen kan
+         själv sluta på "O") – 'AUTOOO' (AutoStore: stammen "AUTO" slutar
+         redan på O, plus sekundärnoteringssuffixet "O" ovanpå) kräver att
+         BÅDA sista O:na strippas för att bli 'AUTO'; steg 3 ensam ger bara
+         'AUTOO' som inte finns hos Avanza. Ett rakt rstrip("O") hade
+         strippat även stammens egen O och felaktigt gett 'AUT'."""
     variants = [base]
     parts = base.split("-")
     stripped = [p for p in parts if not _INSTRUMENT_SEG_RE.match(p)]
@@ -197,6 +203,10 @@ def _ticker_variants(base: str) -> list:
             variants.append(cand)
     if base.endswith("O") and len(base) > 3:
         cand = base[:-1]
+        if cand not in variants:
+            variants.append(cand)
+    if base.endswith("OO") and len(base) > 4:
+        cand = base[:-2]
         if cand not in variants:
             variants.append(cand)
     return variants
