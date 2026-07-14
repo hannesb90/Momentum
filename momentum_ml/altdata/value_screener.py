@@ -70,6 +70,21 @@ def _num(v):
         return None
 
 
+def _seg_market_cap_and_dir(segment: Optional[str]):
+    """segment: 'large'/'small' (config.SEGMENTS) ELLER 'quality' (Small+
+    Micro+NANO Cap – SAMMA specialfall som altdata/avanza.py._resolve_universe
+    och mfn_fetch.py redan använder; Nano exkluderas medvetet ur 'small' i
+    config.py, men det är ett skäl att inte TA POSITIONER där, inte ett skäl
+    att avstå värde-screening). 'quality' skriver till en EGEN results/
+    quality/-mapp, rör aldrig large/small:s filer. Returnerar
+    (market_cap_lista, results_dir)."""
+    if segment == "quality":
+        return config.QUALITY_MARKET_CAP, Path(config.anchor("results/quality"))
+    seg_cfg = config.SEGMENTS.get(segment) if segment else None
+    seg_cfg = seg_cfg or config.SEGMENTS[config.DEFAULT_SEGMENT]
+    return seg_cfg["market_cap"], Path(config.anchor(seg_cfg["results_dir"]))
+
+
 def _to_msek(value, unit) -> Optional[float]:
     v = _num(value)
     if v is None:
@@ -107,9 +122,7 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
     saknade fält i en period vi redan delvis har – aldrig skriva över."""
     import pandas as pd
 
-    seg = config.SEGMENTS.get(segment) if segment else None
-    seg = seg or config.SEGMENTS[config.DEFAULT_SEGMENT]
-    results_dir = Path(config.anchor(seg["results_dir"]))
+    _, results_dir = _seg_market_cap_and_dir(segment)
 
     frames = []
     for fname in ("fundamentals_from_mfn.csv", "fundamentals_from_pdf.csv"):
@@ -426,8 +439,8 @@ def score(segment: Optional[str] = None) -> None:
               f"kör mfn_fundamentals.py extract / mfn_pdf.py backfill först.")
         return
 
-    seg_cfg = config.SEGMENTS.get(seg_name, config.SEGMENTS[config.DEFAULT_SEGMENT])
-    _, sector_map, _, name_map = load_sweden_universe(min_market_cap=seg_cfg["market_cap"])
+    market_cap, results_dir = _seg_market_cap_and_dir(seg_name)
+    _, sector_map, _, name_map = load_sweden_universe(min_market_cap=market_cap)
 
     tickers = list(fund.keys())
     prices = fetch_weekly_data(tickers, use_cache=True)
@@ -476,7 +489,7 @@ def score(segment: Optional[str] = None) -> None:
 
     rows.sort(key=lambda r: r["value_score"], reverse=True)
 
-    out = Path(config.anchor(seg_cfg["results_dir"])) / "value_shortlist.csv"
+    out = results_dir / "value_shortlist.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     cols = ["ticker", "name", "value_score", "zone", "mult", "roe", "debt_equity",
             "owner_earnings_msek", "owner_earnings_yield", "rev_growth_yoy",
@@ -546,8 +559,8 @@ def coverage(segment: Optional[str] = None) -> None:
     from data.data_loader import load_sweden_universe
 
     seg_name = segment or config.DEFAULT_SEGMENT
-    seg_cfg = config.SEGMENTS.get(seg_name, config.SEGMENTS[config.DEFAULT_SEGMENT])
-    tickers, sector_map, cap_map, name_map = load_sweden_universe(min_market_cap=seg_cfg["market_cap"])
+    market_cap, results_dir = _seg_market_cap_and_dir(seg_name)
+    tickers, sector_map, cap_map, name_map = load_sweden_universe(min_market_cap=market_cap)
     # Fonder har inga bolagsfundamenta – exkludera (samma logik som quality_screener).
     universe = [t for t in tickers
                 if cap_map.get(t) != "Fond" and sector_map.get(t) != "Fond"]
@@ -583,7 +596,7 @@ def coverage(segment: Optional[str] = None) -> None:
         rows.append({"ticker": t, "name": name, "status": status,
                      "n_reports": entry["n_reports"], "missing": "; ".join(missing_metrics)})
 
-    out = Path(config.anchor(seg_cfg["results_dir"])) / "value_coverage.csv"
+    out = results_dir / "value_coverage.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     import csv as _csv
     with open(out, "w", newline="", encoding="utf-8") as f:
@@ -631,8 +644,7 @@ def diagnose(segment: Optional[str] = None, fields: str = "net_profit,equity", l
     import pandas as pd
 
     seg_name = segment or config.DEFAULT_SEGMENT
-    seg_cfg = config.SEGMENTS.get(seg_name, config.SEGMENTS[config.DEFAULT_SEGMENT])
-    results_dir = Path(config.anchor(seg_cfg["results_dir"]))
+    _, results_dir = _seg_market_cap_and_dir(seg_name)
 
     cov_path = results_dir / "value_coverage.csv"
     if not cov_path.exists():
