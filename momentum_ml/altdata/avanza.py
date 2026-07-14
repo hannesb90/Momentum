@@ -295,19 +295,31 @@ def _ticker_variants(base: str) -> list:
     return variants
 
 
-# Avanzas titelformat är alltid "Bolagsnamn (TICKER)" – matcha EXAKT mot
+# Avanzas titelformat är OFTAST "Bolagsnamn (TICKER)" – matcha EXAKT mot
 # ticker-delen i parentesen, ALDRIG mot hela titeln som en fri delsträng.
-# VERIFIERAT skarpt fel med den gamla (för lösa) regeln: 'FOOT-PREF.ST'
+# VERIFIERAT skarpt fel med den URSPRUNGLIGA (för lösa) regeln: 'FOOT-PREF.ST'
 # (Footway) söktes som 'FOOT' och blev "bekräftad" mot 'Eagle Football Group
 # (EFG)' – 'FOOT' råkade vara en delsträng av bolagsNAMNET 'FootBALL', inte
-# av tickern. Fel bolags siffror hade tystats in i Footways rad, vilket är
-# värre än ingen data alls. En delsträng mot hela titeln är ALDRIG säker nog.
+# av tickern.
+#
+# MEN: en skarp revalidate()-körning visade att Avanza för en del bolag helt
+# UTELÄMNAR parentesen – titeln är bara 'AAK'/'SAAB B'/'SEB A'/'SSAB A' rakt
+# av (troligen när bolagsnamnet redan ÄR/innehåller tickern, ingen redundant
+# '(TICKER)' behövs). En regel som KRÄVER parentes kastade ut 32+ äkta
+# bekräftade matchningar tillsammans med de riktiga buggarna. Fix: saknas
+# parentes helt, jämförs HELA titeln normaliserad – FORTFARANDE EXAKT
+# likhet, aldrig en fri delsträng (det var precis det som orsakade Eagle
+# Football Group-felet, om än den titeln HADE parenteser).
 _TITLE_TICKER_RE = re.compile(r"\(([A-Z0-9 .\-]+)\)\s*$")
 
 
 def _title_ticker_matches(title: str, variant: str) -> bool:
-    m = _TITLE_TICKER_RE.search(title or "")
-    return bool(m) and _norm_ticker(m.group(1)) == _norm_ticker(variant)
+    title = title or ""
+    tn = _norm_ticker(variant)
+    m = _TITLE_TICKER_RE.search(title)
+    if m:
+        return _norm_ticker(m.group(1)) == tn
+    return _norm_ticker(title) == tn   # ingen parentes -> hela titeln, EXAKT
 
 
 def _search_variant(variant: str) -> tuple:
