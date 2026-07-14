@@ -1,0 +1,14 @@
+[Unit]
+Description=Kör momentum-avanza-calendar.service veckovis (måndag 06:15)
+
+[Timer]
+# Måndag morgon, efter helgens lugn och före veckans rapporter – kommande
+# rapportdatum bekräftas löpande men ändras sällan snabbare än så. Månadsvis
+# (som audit-timern) vore för glest: ett datum som bekräftas veckan före
+# rapport skulle missas helt.
+OnCalendar=Mon *-*-* 06:15:00
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

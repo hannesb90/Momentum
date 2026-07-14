@@ -45,7 +45,8 @@ Körs på Pi:n (nät):
     python -m altdata.avanza match quality          # ...även Small+Micro+NANO Cap
     python -m altdata.avanza extract large          # bygg fundamentals_from_avanza.csv
     python -m altdata.avanza extract quality        # ...till results/quality/ (rör ej large/small)
-    python -m altdata.avanza audit                  # månatlig avnoterings-/uppköpsrevision
+    python -m altdata.avanza audit                  # månatlig avnoterings-/uppköpsrevision + överlevnadsliggare
+    python -m altdata.avanza calendar large          # rapportkalender (nextReport ur keyIndicators)
     python -m altdata.avanza revalidate              # engångsstädning: purga gamla felmatchningar
 
 Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
@@ -733,6 +734,18 @@ def audit() -> None:
     till skillnad från övriga CSV:er i pipelinen). Tänkt körd en gång i
     månaden (deploy/momentum-avanza-audit.timer).
 
+    ÖVERLEVNADSLIGGARE (survivorship framåt): varje snapshot-post bär
+    first_seen (datum då tickern FÖRST observerades av audit – ärligt "vår
+    bevakning började då", inte noteringsdatumet) och last_ok (senaste datum
+    tickern kunde verifieras som levande). Tillsammans med delisting-CSV:ns
+    daterade händelser ackumulerar det en point-in-time-universumhistorik:
+    ett FRAMTIDA backtest kan veta exakt när varje ticker bevisligen levde
+    och när den försvann – den survivorship-lucka som backtest/benchmark.py
+    ärligt dokumenterar som "kan ej kodas bort" BAKÅT (Avanza kan inte
+    återuppliva redan avnoterade bolags historik) stängs därmed FRAMÅT, och
+    blir mer värd för varje månad liggaren växer. Projektionen exporteras
+    till results/universe_survival.csv varje körning.
+
         python -m altdata.avanza audit
     """
     import csv as _csv
@@ -764,11 +777,30 @@ def audit() -> None:
         if was_ok and status == "error":
             newly_flagged.append(t)
             print(f"  [{i:>4}/{len(confirmed)}] {t:<14} NY FLAGGA – kunde inte verifieras längre")
-        current[t] = {"status": status, "checked": today, "orderBookId": oid, "title": v.get("title")}
+        entry = dict(prev.get(t) or {})
+        entry.update({"status": status, "checked": today, "orderBookId": oid, "title": v.get("title")})
+        # first_seen sätts EN gång (befintliga poster utan fältet får dagens
+        # datum – ärligt "bevakningen började nu", aldrig bakdaterat/gissat)
+        entry.setdefault("first_seen", today)
+        if ok:
+            entry["last_ok"] = today
+        current[t] = entry
         time.sleep(_PAUSE_S)
 
     snap_path.parent.mkdir(parents=True, exist_ok=True)
     snap_path.write_text(json.dumps(current, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # Överlevnadsprojektion – skrivs om varje körning (liggaren i snapshoten
+    # är sanningskällan; CSV:n är en läsvänlig export för backtest/manuell koll).
+    surv = Path(config.anchor("results")) / "universe_survival.csv"
+    surv.parent.mkdir(parents=True, exist_ok=True)
+    with open(surv, "w", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=["ticker", "title", "status", "first_seen",
+                                           "last_ok", "checked"], extrasaction="ignore")
+        w.writeheader()
+        for t in sorted(current):
+            w.writerows([{"ticker": t, **current[t]}])
+    print(f"[audit] överlevnadsliggare ({len(current)} tickers) -> {surv}")
 
     if not newly_flagged:
         n_error = sum(1 for s in current.values() if s.get("status") == "error")
@@ -806,6 +838,79 @@ def audit() -> None:
     print(f"\n[audit] {len(rows)} rader TILLAGDA (ackumulerande, historik bevaras) -> {out}")
 
 
+def calendar(segment: Optional[str] = None) -> None:
+    """RAPPORTKALENDER – hämtar keyIndicators.nextReport/previousReport
+    (VERIFIERADE fält ur skarp INVE-B-probe: {"date": "2026-07-16",
+    "reportType": "INTERIM", "isConfirmed": true}) för segmentets bekräftade
+    mappningar och skriver <results_dir>/report_calendar.csv sorterad på
+    nästa rapportdatum. Detta är en datalucka MFN aldrig kan fylla – feeden
+    innehåller bara REDAN PUBLICERADE PM, aldrig kommande datum.
+
+    Användning: PEAD-planering (veta NÄR rapporter kommer, inte bara reagera
+    efteråt) och dashboarden ("dagar till rapport"). OBS point-in-time-
+    ärlighet: detta är en NU-ögonblicksbild – kommande rapportdatum fanns
+    inte att veta historiskt, så fältet får ALDRIG bli en ML-tränings-
+    feature bakåt i tiden (lookahead per definition). Endast framåtblickande
+    användning. Osäkra mappningar hoppas över (samma regel som extract()).
+
+        python -m altdata.avanza calendar large
+    """
+    import csv as _csv
+
+    mp = _map_path()
+    if not mp.exists():
+        print(f"Ingen {mp} – kör 'match' först.")
+        return
+    mapping = json.loads(mp.read_text())
+    tickers, sector_map, cap_map, name_map, results_dir = _resolve_universe(segment)
+    wanted = {t for t in tickers if cap_map.get(t) != "Fond" and sector_map.get(t) != "Fond"}
+    candidates = sorted(t for t in wanted & mapping.keys()
+                        if mapping[t].get("confirmed") and mapping[t].get("orderBookId"))
+
+    rows, fail = [], 0
+    print(f"[calendar] hämtar rapportdatum för {len(candidates)} bolag...")
+    for i, t in enumerate(candidates, 1):
+        try:
+            info = _get(f"/_api/market-guide/stock/{mapping[t]['orderBookId']}")
+        except Exception:  # noqa: BLE001
+            fail += 1
+            continue
+        finally:
+            time.sleep(_PAUSE_S)
+        ki = info.get("keyIndicators") or {}
+        nr = ki.get("nextReport") or {}
+        pr = ki.get("previousReport") or {}
+        if not nr.get("date") and not pr.get("date"):
+            continue
+        rows.append({
+            "ticker": t, "name": name_map.get(t, t),
+            "next_report_date": nr.get("date") or "",
+            "next_report_type": nr.get("reportType") or "",
+            "next_report_confirmed": nr.get("isConfirmed"),
+            "previous_report_date": pr.get("date") or "",
+        })
+        if i % 50 == 0:
+            print(f"  ...{i}/{len(candidates)}")
+
+    rows.sort(key=lambda r: r["next_report_date"] or "9999")
+    out = Path(results_dir) / "report_calendar.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=["ticker", "name", "next_report_date",
+                                           "next_report_type", "next_report_confirmed",
+                                           "previous_report_date"])
+        w.writeheader()
+        w.writerows(rows)
+    print(f"\n[calendar] {len(rows)} bolag med rapportdatum ({fail} fel) -> {out}")
+    upcoming = [r for r in rows if r["next_report_date"]][:15]
+    if upcoming:
+        print("\n  NÄRMAST KOMMANDE RAPPORTER:")
+        for r in upcoming:
+            conf = "bekräftad" if r["next_report_confirmed"] else "prel."
+            print(f"   {r['next_report_date']}  {r['ticker']:<14} {str(r['name'])[:28]:<28} "
+                  f"{r['next_report_type']} ({conf})")
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -824,6 +929,8 @@ def main():
         extract(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "audit":
         audit()
+    elif cmd == "calendar":
+        calendar(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "revalidate":
         revalidate()
     else:
