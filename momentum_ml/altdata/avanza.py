@@ -108,12 +108,29 @@ def probe(ticker_or_name: str) -> None:
     print(f"\n[probe] === ANALYSIS (id={iid}) – companyFinancials ===")
     analysis = _get(f"/_api/market-guide/stock/{iid}/analysis")
     print(f"toppnivå-nycklar: {list(analysis.keys())}")
-    for key in ("companyFinancialsByYear", "companyFinancialsByQuarter", "companyFinancialsByQuarterTTM"):
-        rows = analysis.get(key) or []
-        print(f"\n{key}: {len(rows)} rader")
-        if rows:
-            print(f"  fältnamn i EN rad: {list(rows[0].keys())}")
-            print(f"  exempel: {json.dumps(rows[0], ensure_ascii=False, indent=2)}")
+    # OVERIFIERAD form: kan vara lista ELLER dict (år/kvartal som nycklar) –
+    # en tidigare version antog lista och kraschade (KeyError: 0) på en dict.
+    # companyKeyRatiosByYear/stockKeyRatiosByYear är NYA, oväntade nycklar
+    # (inte dokumenterade i avanza-mcp-källkoden) – kan innehålla RÅA
+    # balansposter (equity/liabilities) som companyFinancials* saknar.
+    for key in ("companyFinancialsByYear", "companyFinancialsByQuarter",
+               "companyKeyRatiosByYear", "companyKeyRatiosByQuarter",
+               "stockKeyRatiosByYear", "keyRatiosByYear"):
+        section = analysis.get(key)
+        if section is None:
+            continue
+        if isinstance(section, dict):
+            print(f"\n{key}: DICT, {len(section)} nycklar: {list(section.keys())[:10]}")
+            first_key = next(iter(section), None)
+            if first_key is not None:
+                first_val = section[first_key]
+                print(f"  exempel [{first_key!r}]: {json.dumps(first_val, ensure_ascii=False, indent=2)[:1500]}")
+        elif isinstance(section, list) and section:
+            print(f"\n{key}: LISTA, {len(section)} rader")
+            print(f"  fältnamn i EN rad: {list(section[0].keys())}")
+            print(f"  exempel: {json.dumps(section[0], ensure_ascii=False, indent=2)[:1500]}")
+        else:
+            print(f"\n{key}: tom ({type(section).__name__})")
 
     out = Path(config.anchor("cache")) / "_avanza_probe.json"
     out.parent.mkdir(parents=True, exist_ok=True)
