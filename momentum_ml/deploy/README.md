@@ -128,7 +128,32 @@ journalctl -u momentum-sync.service -f
 automatiskt – skriptet skriver bara ut en påminnelse om vad som ska köras
 manuellt, eftersom sådana ändringar kan kräva `daemon-reload`/sudo.
 
-## 6. Hälsokontroll på Pi:n
+## 6. Avanza-revision + rapportkalender
+
+Två fristående timers ovanpå Avanza-datakällan (`altdata/avanza.py`):
+
+- **`momentum-avanza-audit`** (månadsvis, 1:a kl 06:30): re-verifierar varje
+  bekräftad ticker-mappning mot Avanza, flaggar nya avnoteringar/uppköp med
+  MFN-styrkt orsak (`results/avanza_delisting_audit.csv`, ackumulerande) och
+  underhåller överlevnadsliggaren (`results/universe_survival.csv` med
+  first_seen/last_ok per ticker – bygger point-in-time-universumhistorik
+  för framtida survivorship-fri backtest).
+- **`momentum-avanza-calendar`** (veckovis, måndag 06:15): hämtar kommande
+  rapportdatum (keyIndicators.nextReport) för large+small och skriver
+  `results*/report_calendar.csv` – data MFN aldrig kan ge (bara publicerade
+  PM). Endast framåtblickande användning; får aldrig bli en tränings-feature
+  bakåt (lookahead).
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-avanza-audit.service    /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-avanza-audit.timer      /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-avanza-calendar.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-avanza-calendar.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-avanza-audit.timer momentum-avanza-calendar.timer
+```
+
+## 7. Hälsokontroll på Pi:n
 
 ```bash
 vcgencmd measure_temp        # håll under ~80°C, sätt kylfläns/fläkt annars
