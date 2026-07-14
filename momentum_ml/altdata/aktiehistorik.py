@@ -234,6 +234,14 @@ def extract_survival_facts(html: str) -> Optional[dict]:
     # -> första 'avnotering'-träffen i listordning är den SENASTE/RIKTIGA
     # avnoteringen, inte en äldre (t.ex. en tidigare avnoterad preferensaktie).
     delisting = next((e for e in events if e["type"] == "avnotering"), None)
+    # Statusraden är FACIT: ett bolag som är noterat idag kan ha gamla
+    # avnoteringar i historiken (avnoterad preferensaktie, listbyte
+    # First North->Nasdaq). Utan denna spärr fick ett LEVANDE bolag ett
+    # delisted_date, och nedströmskod som läser kolumnen utan att först
+    # kolla status skulle räkna bolaget som dött. Händelsen finns kvar i
+    # events-listan – bara den vilseledande topp-nivå-tolkningen nollas.
+    if status == "noterad":
+        delisting = None
     listings = [e for e in events if e["type"] == "notering"]
     first_listing = min(listings, key=lambda e: (e["year"], e["date"] or "")) if listings else None
 
