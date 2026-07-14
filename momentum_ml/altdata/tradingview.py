@@ -26,6 +26,8 @@ Inofficiellt API → kan sluta funka utan förvarning; behandla som best effort.
     python altdata/tradingview.py universe                    # dry-run: visa bolag som SAKNAS i universumet
     python altdata/tradingview.py universe write              # addera dem till sweden_universe.csv
     python altdata/tradingview.py gaps                        # kartlägg svenska aktier UTANFÖR .ST-avgränsningen (NGM/Spotlight) + mät Yahoo-täckning
+    python altdata/tradingview.py universe_ngm                 # dry-run: bolag utanför OMXSTO (NGM/Spotlight)
+    python altdata/tradingview.py universe_ngm write           # skriv data/sweden_universe_ngm.csv
 """
 import sys
 import json
@@ -401,6 +403,75 @@ def gaps() -> None:
     print("[gaps] klart – REN MÄTNING, inget skrivet. Klistra in utskriften för beslut.")
 
 
+# ── NGM/Spotlight-universum: skrivs EFTER gaps() bekräftat att Avanzas
+# prisdiagram (altdata/avanza.py:s chart_probe/fetch_chart_ohlcv) har
+# tillräckligt djup - skrivs till en EGEN fil, rör aldrig sweden_universe.csv.
+# '.NGM'-suffixet (i stället för '.ST') är den signal hela pipelinen nedströms
+# (data_loader.fetch_weekly_data) använder för att routa till Avanza istället
+# för Yahoo - se data_loader.py:s kommentar vid _AVANZA_SUFFIX.
+def universe_ngm(write=False) -> None:
+    """Hämtar hela svenska aktielistan och skriver de UTANFÖR OMXSTO (NGM/
+    Spotlight, sedan 2023 samma börskod hos TradingView efter NGM:s köp av
+    Spotlight) till data/sweden_universe_ngm.csv. Dry-run som default.
+
+        python altdata/tradingview.py universe_ngm            # dry-run
+        python altdata/tradingview.py universe_ngm write       # skriv filen
+    """
+    import csv
+    ngm_path = Path(__file__).parent.parent / "data" / "sweden_universe_ngm.csv"
+    try:
+        data = _fetch_all_swedish()
+    except Exception as e:  # noqa: BLE001
+        print(f"[universe_ngm] kunde inte hämta: {e}  (körs på Pi:n – molnet saknar nät)")
+        return
+
+    _BAD_SUFFIX = {"PREF", "BTA", "BT", "BTU", "TR", "TO", "RTS", "TECKN", "IL", "NPV", "TA"}
+    _BAD_NAME = ("pref", "temp", "bta", "rights", "teckningsr", "interim", "warrant")
+    rows, skip_cur, skip_class = [], 0, 0
+    for row in data:
+        s, d = row.get("s", ""), (row.get("d") or [])
+        if ":" not in s:
+            continue
+        ex, base = s.split(":", 1)
+        if ex == config.TRADINGVIEW_EXCHANGE:
+            continue
+        subtype = (str(d[4]).lower() if len(d) > 4 else "")
+        if subtype and subtype not in ("common",):
+            skip_class += 1
+            continue
+        cur = (str(d[5]).upper() if len(d) > 5 else "")
+        if cur and cur != "SEK":
+            skip_cur += 1
+            continue
+        stub = base.replace("_", "-")
+        suffix = stub.rsplit("-", 1)[-1].upper() if "-" in stub else ""
+        name = str(d[0]) if d else base
+        if suffix in _BAD_SUFFIX or any(x in name.lower() for x in _BAD_NAME):
+            skip_class += 1
+            continue
+        ticker = f"{stub}.NGM"
+        sector = _gics(d[2] if len(d) > 2 else "")
+        tier = _cap_tier(d[1] if len(d) > 1 else None)
+        rows.append((ticker, name, sector, tier))
+    rows.sort()
+
+    print(f"[universe_ngm] {len(rows)} bolag utanför {config.TRADINGVIEW_EXCHANGE} "
+          f"(hoppade: {skip_cur} icke-SEK, {skip_class} pref/BTA/rätter/fonder)")
+    for r in rows[:20]:
+        print(f"    + {r[0]:<15}{str(r[1])[:30]:<31}{r[2]:<24}{r[3]}")
+    if len(rows) > 20:
+        print(f"    … och {len(rows) - 20} till")
+
+    if not write:
+        print("  DRY-RUN – inget skrivet. Kör 'universe_ngm write' för att skapa filen.")
+        return
+    with open(ngm_path, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["ticker", "name", "sector", "market_cap_category"])
+        w.writerows(rows)
+    print(f"[universe_ngm] skrev {len(rows)} bolag → {ngm_path}")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "probe"
     if cmd == "probe":
@@ -412,6 +483,8 @@ def main():
         universe(write=(len(sys.argv) > 2 and sys.argv[2] == "write"))
     elif cmd == "gaps":
         gaps()
+    elif cmd == "universe_ngm":
+        universe_ngm(write=(len(sys.argv) > 2 and sys.argv[2] == "write"))
     else:
         print(__doc__)
 

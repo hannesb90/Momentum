@@ -21,7 +21,7 @@ from pathlib import Path
 import config
 from data.data_loader import (
     fetch_weekly_data, build_universe_df, filter_liquid_universe,
-    filter_active_universe, load_sweden_universe,
+    filter_active_universe, load_sweden_universe, load_ngm_universe,
 )
 from features.feature_engineering import (
     build_all_features, to_model_df, attach_categorical_features,
@@ -51,6 +51,11 @@ def parse_args():
     p.add_argument("--market-cap",   nargs="+", default=None,
                    choices=["Mega Cap", "Large Cap", "Mid Cap", "Small Cap", "Micro Cap", "Nano Cap"],
                    help="Begränsa --universe till dessa marketcap-kategorier (default: alla)")
+    p.add_argument("--include-ngm", action="store_true",
+                   help="Ta även med NGM/Spotlight (data/sweden_universe_ngm.csv, byggd av "
+                        "'python altdata/tradingview.py universe_ngm write'). Prisdata hämtas via "
+                        "Avanza istället för Yahoo (kräver 'python -m altdata.avanza match ngm' "
+                        "kört först). Default av – ändrar det handlade universumet permanent.")
     p.add_argument("--segment", choices=list(config.SEGMENTS.keys()), default=None,
                    help="Storlekssegment (egen modell + egen results-mapp). Sätter "
                         "--market-cap och results-katalog enligt config.SEGMENTS. "
@@ -157,6 +162,13 @@ def main():
         tickers, sweden_sector_map, cap_tier_map, sweden_name_map = load_sweden_universe(min_market_cap=args.market_cap)
         config.SECTOR_MAP.update(sweden_sector_map)
         config.NAME_MAP.update(sweden_name_map)
+        if args.include_ngm:
+            ngm_tickers, ngm_sector_map, ngm_cap_map, ngm_name_map = load_ngm_universe()
+            tickers = tickers + ngm_tickers
+            cap_tier_map.update(ngm_cap_map)
+            config.SECTOR_MAP.update(ngm_sector_map)
+            config.NAME_MAP.update(ngm_name_map)
+            print(f"  --include-ngm: +{len(ngm_tickers)} NGM/Spotlight-tickers (Avanza-prisdata)")
     else:
         tickers = config.DEFAULT_TICKERS
 
