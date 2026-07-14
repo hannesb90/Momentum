@@ -44,6 +44,7 @@ Körs på Pi:n (nät):
     python -m altdata.avanza chart_probe "Bolag"    # prisdiagram-schema/djup (testa NGM/Spotlight-bolag)
     python -m altdata.avanza match large            # bygg ticker -> orderBookId (cachas)
     python -m altdata.avanza match quality          # ...även Small+Micro+NANO Cap
+    python -m altdata.avanza match ngm              # ...NGM/Spotlight (data/sweden_universe_ngm.csv)
     python -m altdata.avanza extract large          # bygg fundamentals_from_avanza.csv
     python -m altdata.avanza extract quality        # ...till results/quality/ (rör ej large/small)
     python -m altdata.avanza audit                  # månatlig avnoterings-/uppköpsrevision + överlevnadsliggare
@@ -174,19 +175,61 @@ def probe(ticker_or_name: str) -> None:
           "totalLiabilities/netProfit/equityPerShare/marketCapital – utan att printa om allt.)")
 
 
-# ── Prishistorik (chart) – SCHEMA-UPPTÄCKANDE, precis som probe() ovan ────────
+# ── Prishistorik (chart) ───────────────────────────────────────────────────────
 # Avanza handlar HELA svenska marknaden (Nasdaq Stockholm+First North, MEN
 # ÄVEN NGM och Spotlight) - till skillnad från Yahoo, vars '.ST'-suffix bara
-# mappar mot OMXSTO (se altdata/tradingview.py:s gaps()-kommando, som mätte
-# Yahoo-täckningen för NGM/Spotlight-bolag). Om Avanzas eget prisdiagram har
-# tillräckligt djup/upplösning HÄR kan det ersätta/komplettera Yahoo för just
-# de börser Yahoo inte täcker - men INTE VERIFIERAT: exakt vilka timePeriod-
-# värden endpointen accepterar, hur långt tillbaka data faktiskt går, eller
-# upplösningen (dags-/veckovis?) på de äldre perioderna. Källkoden för
-# avanza-mcp-projektet (samma verifieringskälla som resten av modulen)
-# dokumenterar path:en (/_api/price-chart/stock/{id}) och att svaret
-# innehåller OHLC, men inte de exakta gränserna - de MÄTS här, gissas inte.
+# mappar mot OMXSTO (se altdata/tradingview.py:s gaps()-kommando).
+#
+# VERIFIERAT (skarp chart_probe-körning mot Plejd/PLEJD och Kopparbergs
+# Bryggeri/KOBR B, båda NGM-listade): svarets punktlista ligger under
+# nyckeln 'ohlc', varje punkt har fälten timestamp (EPOCH MILLISEKUNDER),
+# open, high, low, close, totalVolumeTraded. Upplösningen är ADAPTIV per
+# timePeriod - kortare period ger TÄTARE punkter, INTE samma punkter
+# trunkerade: one_month ≈ 189 punkter/29 dagar (intradag), one_year ≈ 251
+# punkter/år (≈ dagsvis, matchar antal handelsdagar), three_years/
+# five_years ≈ 157/261 punkter över perioden (≈ EN punkt/vecko) - alltså
+# redan VECKOUPPLÖST för de långa perioderna, exakt vad
+# MIN_HISTORY_WEEKS/fetch_weekly_data behöver, ingen resampling krävs.
+# five_years gav fullständig 5-årsdjup för båda testbolagen (start ~5 år
+# bakåt från körningsdatumet, inte begränsat av notering/BTA-episoder i de
+# två testade fallen) - gott och väl över MIN_HISTORY_WEEKS=78.
 _CHART_PERIODS = ("one_month", "three_months", "one_year", "three_years", "five_years")
+_CHART_POINT_KEYS = ("ohlc", "dataPoints", "candles", "points", "series")
+
+
+def fetch_chart_ohlcv(order_book_id: str, period: str = "five_years"):
+    """Hämtar OCH tolkar prisdiagram-data för ETT bolag -> pandas DataFrame
+    med kolumnerna Open/High/Low/Close/Volume (samma kontrakt som
+    data_loader._clean() förväntar sig), indexerad på datum. Returnerar
+    None om svaret saknar en igenkänd punktlista eller är tomt - GISSAR
+    ALDRIG en tom/felaktig serie (samma disciplin som resten av modulen).
+
+    period: en av _CHART_PERIODS, se modulkommentaren ovan för verifierad
+    upplösning per period (five_years = veckovis, redan rätt för pipelinen)."""
+    import pandas as pd
+    data = _get(f"/_api/price-chart/stock/{order_book_id}", {"timePeriod": period})
+    points = None
+    for k in _CHART_POINT_KEYS:
+        if isinstance(data.get(k), list):
+            points = data[k]
+            break
+    if not points:
+        return None
+    rows = []
+    for p in points:
+        ts = p.get("timestamp")
+        if ts is None:
+            continue
+        rows.append({
+            "Date": pd.to_datetime(ts, unit="ms"),
+            "Open": p.get("open"), "High": p.get("high"),
+            "Low": p.get("low"), "Close": p.get("close"),
+            "Volume": p.get("totalVolumeTraded"),
+        })
+    if not rows:
+        return None
+    df = pd.DataFrame(rows).set_index("Date").sort_index()
+    return df
 
 
 def chart_probe(ticker_or_name: str) -> None:
@@ -225,7 +268,7 @@ def chart_probe(ticker_or_name: str) -> None:
         dump[period] = data
         top_keys = list(data.keys())
         points = None
-        for k in ("ohlc", "dataPoints", "candles", "points", "series"):
+        for k in _CHART_POINT_KEYS:
             if isinstance(data.get(k), list):
                 points = data[k]
                 break
@@ -300,6 +343,16 @@ def _resolve_universe(segment: Optional[str]):
     'quality' skriver till en EGEN results/quality/-mapp, rör ALDRIG large/
     small:s filer). Returnerar (tickers, sector_map, cap_map, name_map,
     results_dir)."""
+    if segment == "ngm":
+        # NGM/Spotlight – ett eget universum (data/sweden_universe_ngm.csv),
+        # inte cap-tier-segmenterat som large/small/quality: dessa bolag
+        # matchas mot Avanza HELT för prisdata (data_loader.fetch_weekly_data
+        # via '.NGM'-suffixet), inte för att gå igenom risksättning/handel
+        # ännu – en egen results/ngm/-katalog håller isär det.
+        from data.data_loader import load_ngm_universe
+        tickers, sector_map, cap_map, name_map = load_ngm_universe()
+        return tickers, sector_map, cap_map, name_map, config.anchor("results/ngm")
+
     from data.data_loader import load_sweden_universe
     if segment == "quality":
         market_cap = config.QUALITY_MARKET_CAP
@@ -444,7 +497,7 @@ def match(segment: Optional[str] = None) -> None:
     extract() litar på den. Samma lärdom som mfn_fetch._author_match kostade
     dyrt att sakna: gissa aldrig tyst.
 
-    segment: 'large'/'small' ELLER 'quality' (Small+Micro+Nano Cap, se
+    segment: 'large'/'small'/'quality' (Small+Micro+Nano Cap) ELLER 'ngm' (se
     _resolve_universe). Provar en ev. VERIFIERAD override-sökfråga
     (avanza_overrides.csv) FÖRST, före de vanliga tickervarianterna – för
     bolag som bytt namn på ett sätt inga strängregler kan räkna ut."""
@@ -681,7 +734,7 @@ def extract(segment: Optional[str] = None) -> None:
     EXTRA kolumner (Avanzas egna färdiga nyckeltal) – oanvända av dagens
     pipeline tills value_screener explicit kopplas in att föredra dem.
 
-    segment: 'large'/'small' ELLER 'quality' (Small+Micro+Nano Cap, se
+    segment: 'large'/'small'/'quality' (Small+Micro+Nano Cap) ELLER 'ngm' (se
     _resolve_universe) – skriver till results/quality/ för det senare, rör
     ALDRIG large/small:s fundamentals_from_avanza.csv.
 
