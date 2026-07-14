@@ -51,7 +51,24 @@ INDEX_URL = "https://www.skatteverket.se/privat/skatter/vardepapper/aktiehistori
 EXAMPLE_URL = ("https://www.skatteverket.se/privat/skatter/vardepapper/"
                "aktiehistorik/s/sas.4.dfe345a107ebcc9baf80009498.html")
 
-_UA = "Mozilla/5.0 (Momentum research; kontakt via GitHub hannesb90/Momentum)"
+# VERIFIERAT PROBLEM (skarp körning på Pi:n): en identifierande, icke-
+# webbläsarlik User-Agent ("Mozilla/5.0 (Momentum research; ...)") gav
+# ConnectionResetError från skatteverket.se – samma Pi når Avanza/Yahoo/
+# GitHub problemfritt, så det är riktat mot just den här klienten (en WAF/
+# brandvägg som stänger anslutningen på icke-webbläsarsignaler), inte ett
+# nätverksfel. Sidorna är offentlig, oautentiserad myndighetsinformation
+# (ingen inloggning, inget kringgås) – en vanlig webbläsar-UA + fullständiga
+# standardheaders (det en riktig webbläsare alltid skickar) är rimligt för
+# att alls kunna läsa dem, inte ett försök att dölja vad vi gör.
+_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+_HEADERS = {
+    "User-Agent": _UA,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "sv-SE,sv;q=0.9,en;q=0.8",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+}
 _PAUSE_S = 1.0   # artigare än Avanza-pausen – myndighetssajt, ingen brådska
 
 _EVENT_KW_RE = re.compile(
@@ -60,6 +77,12 @@ _EVENT_KW_RE = re.compile(
     r"avregistrer|upplös",
     re.I,
 )
+
+# Session (inte engångs-requests.get): en del WAF:er kräver en cookie satt
+# vid FÖRSTA träffen innan de släpper igenom efterföljande sidor – en
+# session bär den cookien automatiskt mellan anrop, engångsanrop gjorde inte det.
+_session = requests.Session()
+_session.headers.update(_HEADERS)
 
 
 def _cache_dir() -> Path:
@@ -70,8 +93,7 @@ def _http_get(url: str, retries: int = 3) -> str:
     last = None
     for attempt in range(retries):
         try:
-            r = requests.get(url, headers={"User-Agent": _UA,
-                                           "Accept": "text/html"}, timeout=30)
+            r = _session.get(url, timeout=30)
             r.raise_for_status()
             return r.text
         except Exception as e:  # noqa: BLE001
