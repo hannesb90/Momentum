@@ -46,6 +46,7 @@ Körs på Pi:n (nät):
     python -m altdata.avanza extract large          # bygg fundamentals_from_avanza.csv
     python -m altdata.avanza extract quality        # ...till results/quality/ (rör ej large/small)
     python -m altdata.avanza audit                  # månatlig avnoterings-/uppköpsrevision
+    python -m altdata.avanza revalidate              # engångsstädning: purga gamla felmatchningar
 
 Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
 Group): altdata/avanza_overrides.csv (ticker,query,comment) – valfri fil,
@@ -294,16 +295,29 @@ def _ticker_variants(base: str) -> list:
     return variants
 
 
+# Avanzas titelformat är alltid "Bolagsnamn (TICKER)" – matcha EXAKT mot
+# ticker-delen i parentesen, ALDRIG mot hela titeln som en fri delsträng.
+# VERIFIERAT skarpt fel med den gamla (för lösa) regeln: 'FOOT-PREF.ST'
+# (Footway) söktes som 'FOOT' och blev "bekräftad" mot 'Eagle Football Group
+# (EFG)' – 'FOOT' råkade vara en delsträng av bolagsNAMNET 'FootBALL', inte
+# av tickern. Fel bolags siffror hade tystats in i Footways rad, vilket är
+# värre än ingen data alls. En delsträng mot hela titeln är ALDRIG säker nog.
+_TITLE_TICKER_RE = re.compile(r"\(([A-Z0-9 .\-]+)\)\s*$")
+
+
+def _title_ticker_matches(title: str, variant: str) -> bool:
+    m = _TITLE_TICKER_RE.search(title or "")
+    return bool(m) and _norm_ticker(m.group(1)) == _norm_ticker(variant)
+
+
 def _search_variant(variant: str) -> tuple:
     """Ett sökförsök -> (bekräftad_träff_eller_None, bästa_ej_bekräftade_eller_None).
-    Bekräftelse: variantens tecken finns i träffens titel (ordgräns-fri
-    delsträng, samma princip som mfn_fetch – exakt matchning är för strikt
-    för "Wallenstam B" vs "WALL B", en delsträng räcker och är säker nog i
-    kombination med att vi SJÄLVA valde söksträngen)."""
+    Bekräftelse: variantens ticker matchar EXAKT ticker-delen i träffens
+    titel – se _title_ticker_matches/_TITLE_TICKER_RE ovan för varför en fri
+    delsträng mot hela titeln inte duger."""
     hits = search(variant.replace("-", " "))
     stock_hits = [h for h in (hits.get("hits") or []) if h.get("type") == "STOCK"]
-    tn = _norm_ticker(variant)
-    confirmed = next((h for h in stock_hits if tn in _norm_ticker(str(h.get("title") or ""))), None)
+    confirmed = next((h for h in stock_hits if _title_ticker_matches(str(h.get("title") or ""), variant)), None)
     return confirmed, (stock_hits[0] if stock_hits else None)
 
 
@@ -390,6 +404,50 @@ def match(segment: Optional[str] = None) -> None:
     mp.write_text(json.dumps(mapping, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\n[match] {matched} nya ({uncertain} osäkra), {already} redan cachade, "
           f"{skipped} utan träff -> {mp}")
+
+
+def revalidate() -> None:
+    """ENGÅNGSSTÄDNING (körs vid behov, t.ex. efter en skärpning av
+    bekräftelseregeln): läser om VARJE 'confirmed: true'-post i
+    avanza_map.json mot dess SPARADE titel med DAGENS (strängare) regel –
+    exakt ticker-i-parentes-matchning (_title_ticker_matches), inte den
+    gamla 'ticker syns NÅGONSTANS i titeln'-regeln som gav en VERIFIERAD
+    felmatchning (FOOT-PREF.ST/Footway -> 'Eagle Football Group (EFG)',
+    eftersom 'FOOT' råkade vara en delsträng av bolagsNAMNET 'FootBALL').
+
+    Poster som INTE längre klarar den strängare regeln mot NÅGON av sina
+    _ticker_variants tas bort ur mappningen – en efterföljande 'match'-
+    körning försöker då om dem på riktigt i stället för att permanent lita
+    på en gammal felaktig träff. redan match():ade tickers som ALDRIG var
+    'confirmed' (bara osäkra fallback-träffar) rörs inte – de var redan
+    flaggade för manuell granskning.
+
+        python -m altdata.avanza revalidate
+    """
+    mp = _map_path()
+    if not mp.exists():
+        print(f"Ingen {mp} – inget att validera om.")
+        return
+    mapping = json.loads(mp.read_text())
+    n_confirmed = sum(1 for v in mapping.values() if v.get("confirmed"))
+    bad = []
+    for t, v in list(mapping.items()):
+        if not v.get("confirmed"):
+            continue
+        base = t.split(".")[0]
+        title = str(v.get("title") or "")
+        if not any(_title_ticker_matches(title, cand) for cand in _ticker_variants(base)):
+            bad.append((t, title))
+            del mapping[t]
+    if not bad:
+        print(f"[revalidate] alla {n_confirmed} bekräftade mappningar klarar den strängare "
+              f"regeln – inga ändringar.")
+        return
+    mp.write_text(json.dumps(mapping, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"[revalidate] {len(bad)} felmatchning(ar) av {n_confirmed} bekräftade hittades och "
+          f"togs bort (kör 'match' igen för att försöka om dem):")
+    for t, title in bad:
+        print(f"  {t:<16} var felaktigt matchad mot: '{title}'")
 
 
 # ── Extraktion (analysis -> fundamentals_from_avanza.csv) ────────────────────
@@ -725,6 +783,8 @@ def main():
         extract(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "audit":
         audit()
+    elif cmd == "revalidate":
+        revalidate()
     else:
         print(__doc__)
 
