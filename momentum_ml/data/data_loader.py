@@ -63,6 +63,58 @@ def _prune_stale_cache(max_age_days: Optional[int] = None) -> None:
         print(f"[DataLoader] Rensade {removed} kursdata-cachefiler äldre än {max_age_days} dagar.")
 
 
+# '.NGM'-suffix (data/sweden_universe_ngm.csv, byggd av
+# altdata/tradingview.py:s universe_ngm()) -> hämtas via Avanza istället för
+# Yahoo. Grund: NGM/Spotlight (sedan NGM:s köp av Spotlight 2023 samma
+# börskod hos TradingView) saknar en pålitlig Yahoo-mappning (verifierat via
+# gaps()-kommandot: 0/8 träff på '.NGM'-suffixet, och '.ST' gav träff för en
+# del men med en KÄND risk för symbolkrock mot Nasdaq Stockholm-instrument
+# med samma kortnamn). Avanza handlar däremot HELA svenska marknaden.
+_AVANZA_SUFFIX = ".NGM"
+
+
+def _fetch_avanza_weekly(tickers: List[str]) -> Dict[str, "pd.DataFrame"]:
+    """Hämtar veckovis OHLCV via Avanzas prisdiagram för '.NGM'-tickers.
+    Läser orderBookId ur cache/avanza_map.json (byggd av
+    'python -m altdata.avanza match ngm') – BARA confirmed:true-poster
+    används, samma regel som resten av Avanza-integrationen (en osäker
+    matchning ska aldrig tyst användas som om den vore bekräftad).
+
+    VERIFIERAT (chart_probe mot Plejd/Kopparbergs Bryggeri): timePeriod=
+    'five_years' ger redan VECKOUPPLÖST data, ingen resampling behövs. INTE
+    kontrollerat: om detta håller för ALLA NGM/Spotlight-bolag eller om
+    vissa har kortare/glesare historik – _clean()s MIN_HISTORY_WEEKS-filter
+    sorterar bort dem som inte räcker, snarare än att anta att de gör det."""
+    if not tickers:
+        return {}
+    from altdata import avanza
+    map_path = Path(config.anchor("cache")) / "avanza_map.json"
+    if not map_path.exists():
+        print(f"  [WARN] {map_path} saknas – kör 'python -m altdata.avanza match ngm' "
+              f"först. Hoppar över {len(tickers)} NGM-tickers.")
+        return {}
+    import json as _json
+    mapping = _json.loads(map_path.read_text(encoding="utf-8"))
+
+    result: Dict[str, pd.DataFrame] = {}
+    for ticker in tickers:
+        entry = mapping.get(ticker)
+        if not entry or not entry.get("confirmed") or not entry.get("orderBookId"):
+            print(f"  [WARN] {ticker}: ingen bekräftad Avanza-matchning, hoppar över.")
+            continue
+        try:
+            df = avanza.fetch_chart_ohlcv(entry["orderBookId"], period="five_years")
+        except Exception as e:  # noqa: BLE001
+            print(f"  [WARN] {ticker}: Avanza-hämtning misslyckades ({e}), hoppar över.")
+            continue
+        df = _clean(df, ticker) if df is not None else None
+        if df is not None:
+            result[ticker] = df
+        import time as _time
+        _time.sleep(getattr(avanza, "_PAUSE_S", 0.5))
+    return result
+
+
 def fetch_weekly_data(
     tickers: List[str],
     start: str = config.START_DATE,
@@ -72,6 +124,9 @@ def fetch_weekly_data(
     """
     Hämtar OHLCV-veckodata för en lista tickers.
     Returnerar dict {ticker: DataFrame med kolumner Open/High/Low/Close/Volume}.
+
+    Tickers med '.NGM'-suffix hämtas via Avanza (se _fetch_avanza_weekly/
+    _AVANZA_SUFFIX ovan) istället för Yahoo Finance.
     """
     # BUGG (fixad): end=None ("idag", se config.END_DATE) blev tidigare
     # BOKSTAVLIGEN strängen "None" i cache-nyckeln f-strängen – identisk
@@ -92,38 +147,46 @@ def fetch_weekly_data(
         with open(cp, "rb") as f:
             return pickle.load(f)
 
-    print(f"[DataLoader] Hämtar {len(tickers)} tickers från Yahoo Finance...")
-    raw = yf.download(
-        tickers,
-        start=start,
-        end=resolved_end,
-        interval="1wk",
-        auto_adjust=True,
-        progress=True,
-        threads=True,
-    )
+    yahoo_tickers = [t for t in tickers if not t.endswith(_AVANZA_SUFFIX)]
+    ngm_tickers = [t for t in tickers if t.endswith(_AVANZA_SUFFIX)]
 
     result: Dict[str, pd.DataFrame] = {}
 
-    if isinstance(raw.columns, pd.MultiIndex):
-        for ticker in tickers:
-            try:
-                df = raw.xs(ticker, axis=1, level=1).copy()
-                df = _clean(df, ticker)
-                if df is not None:
-                    result[ticker] = df
-            except KeyError:
-                print(f"  [WARN] {ticker}: ingen data, hoppar över.")
-    else:
-        # Enstaka ticker
-        df = _clean(raw, tickers[0])
-        if df is not None:
-            result[tickers[0]] = df
+    if yahoo_tickers:
+        print(f"[DataLoader] Hämtar {len(yahoo_tickers)} tickers från Yahoo Finance...")
+        raw = yf.download(
+            yahoo_tickers,
+            start=start,
+            end=resolved_end,
+            interval="1wk",
+            auto_adjust=True,
+            progress=True,
+            threads=True,
+        )
+
+        if isinstance(raw.columns, pd.MultiIndex):
+            for ticker in yahoo_tickers:
+                try:
+                    df = raw.xs(ticker, axis=1, level=1).copy()
+                    df = _clean(df, ticker)
+                    if df is not None:
+                        result[ticker] = df
+                except KeyError:
+                    print(f"  [WARN] {ticker}: ingen data, hoppar över.")
+        else:
+            # Enstaka ticker
+            df = _clean(raw, yahoo_tickers[0])
+            if df is not None:
+                result[yahoo_tickers[0]] = df
+
+    if ngm_tickers:
+        print(f"[DataLoader] Hämtar {len(ngm_tickers)} NGM/Spotlight-tickers från Avanza...")
+        result.update(_fetch_avanza_weekly(ngm_tickers))
 
     if not result:
         raise RuntimeError(
             "Ingen ticker gav tillräcklig data. Kontrollera nätverksåtkomst "
-            "till Yahoo Finance och att tickrarna/perioden är giltiga."
+            "till Yahoo Finance/Avanza och att tickrarna/perioden är giltiga."
         )
 
     print(f"[DataLoader] Laddade {len(result)} tickers, "
@@ -246,6 +309,41 @@ def load_sweden_universe(
                 sector_map[row["ticker"]] = row["sector"]
                 cap_tier_map[row["ticker"]] = row["market_cap_category"]
                 name_map[row["ticker"]] = row["name"]
+
+    return tickers, sector_map, cap_tier_map, name_map
+
+
+def load_ngm_universe() -> "tuple[List[str], Dict[str, str], Dict[str, str], Dict[str, str]]":
+    """Läser data/sweden_universe_ngm.csv (byggd av
+    altdata/tradingview.py:s universe_ngm() – svenska aktier UTANFÖR
+    Nasdaq Stockholm/First North, dvs NGM Main Regulated/Nordic SME +
+    Spotlight, som TradingView sedan NGM:s köp av Spotlight 2023 redovisar
+    under samma börskod). Tickers har '.NGM'-suffix (inte '.ST') – det är
+    signalen fetch_weekly_data() använder för att hämta prisdata via
+    Avanza istället för Yahoo (Yahoo saknar en pålitlig mappning för
+    dessa börser, verifierat via tradingview.py:s gaps()-kommando).
+
+    Filen är valfri (skapas bara efter ett explicit 'universe_ngm write')
+    – saknas den returneras tomma listor, ingen krasch. Samma
+    (tickers, sector_map, cap_tier_map, name_map)-kontrakt som
+    load_sweden_universe() för att kunna slås ihop rakt av."""
+    import csv
+
+    tickers: List[str] = []
+    sector_map: Dict[str, str] = {}
+    cap_tier_map: Dict[str, str] = {}
+    name_map: Dict[str, str] = {}
+
+    ngm_path = Path(__file__).parent / "sweden_universe_ngm.csv"
+    if not ngm_path.exists():
+        return tickers, sector_map, cap_tier_map, name_map
+
+    with open(ngm_path, encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            tickers.append(row["ticker"])
+            sector_map[row["ticker"]] = row["sector"]
+            cap_tier_map[row["ticker"]] = row["market_cap_category"]
+            name_map[row["ticker"]] = row["name"]
 
     return tickers, sector_map, cap_tier_map, name_map
 
