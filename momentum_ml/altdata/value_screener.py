@@ -428,6 +428,22 @@ def _checklist(r: dict):
 # kvalitet/tillväxt/trygghet/värdering-split. Justerbart, ingen helig siffra.
 _WEIGHTS = {"quality": 0.30, "safety": 0.20, "growth": 0.20, "value": 0.30}
 
+# GICS-sektorer utan prissättningsmakt – vinsten är en funktion av externa
+# råvarupriser, inte en varaktig konkurrensfördel (Buffetts egen uttalade
+# och dokumenterade hållning mot rena råvarubolag). VERIFIERAT konkret fall:
+# Lundin Gold (LUG.ST, sektor 'Materials') rankades som en av modellens
+# bästa köp mitt under rekordhögt guldpris – trailing ROE/owner-earnings-
+# yield fångar bara att marginalerna råkar vara på cykeltopp just nu, inte
+# att de är VARAKTIGA. roe_consistency (senaste 4 rapporterna) gör det
+# SNARARE VÄRRE: några kvartal i följd med samma medvind ser "konsekvent"
+# bra ut fast det bara är exponering mot samma pris, inte kvalitet.
+# 'Materials' i data/sweden_universe.csv (GICS) omfattar gruv-/metall-/
+# skogs-/kemibolag (48 st), 'Energy' olje-/gasbolag (23 st) – verifierat
+# mot den faktiska CSV:n, inte gissat. Rör INTE value_score/topplistan
+# (transparens: alla bolag syns fortfarande, rankade som vanligt) – bara de
+# två "här är modellens bästa idéer"-gaterna nedan.
+_COMMODITY_SECTORS = {"Energy", "Materials"}
+
 
 def score(segment: Optional[str] = None) -> None:
     from data.data_loader import fetch_weekly_data, load_sweden_universe
@@ -486,6 +502,7 @@ def score(segment: Optional[str] = None) -> None:
         r["meets_roe_bar"] = bool(r["roe"] is not None and r["roe"] >= config.VALUE_ROE_GOOD)
         r["meets_debt_bar"] = bool(r["debt_equity"] is not None and r["debt_equity"] <= config.VALUE_DEBT_EQUITY_SAFE)
         r["checklist_score"], r["checklist"], r["checklist_miss"] = _checklist(r)
+        r["commodity_sector"] = sector_map.get(t) in _COMMODITY_SECTORS
 
     rows.sort(key=lambda r: r["value_score"], reverse=True)
 
@@ -497,18 +514,20 @@ def score(segment: Optional[str] = None) -> None:
             "checklist_score", "checklist", "checklist_miss",
             "ebit_margin", "ebit_margin_trend", "eps_trend", "net_debt_msek", "op_cf_msek",
             "n_reports", "mcap_msek", "meets_roe_bar",
-            "meets_debt_bar", "period", "annual_factor", "published"]
+            "meets_debt_bar", "commodity_sector", "period", "annual_factor", "published"]
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
         w.writerows(rows)
     print(f"[value_screener] {len(rows)} bolag rankade → {out}")
 
+    n_commodity = sum(1 for r in rows if r["commodity_sector"])
     buffett = [r for r in rows if r["meets_roe_bar"] and r["meets_debt_bar"]
-               and r["zone"] in ("billig", "rimlig")]
+               and r["zone"] in ("billig", "rimlig") and not r["commodity_sector"]]
     print(f"\n  🎯 KLARAR BUFFETT-BARREN (ROE ≥ {config.VALUE_ROE_GOOD:.0%}, "
-          f"D/E ≤ {config.VALUE_DEBT_EQUITY_SAFE}, billig/rimlig owner-earnings-multipel) "
-          f"– {len(buffett)} st:")
+          f"D/E ≤ {config.VALUE_DEBT_EQUITY_SAFE}, billig/rimlig owner-earnings-multipel, "
+          f"EJ råvarusektor – Energy/Materials trailing-ROE kan vara cykeltopp, {n_commodity} "
+          f"uteslutna) – {len(buffett)} st:")
     for r in buffett[:15]:
         print(f"   {r['value_score']:>5.1f}  {r['ticker']:<12} {str(r['name'])[:24]:<24} "
               f"ROE {r['roe']:.0%}  D/E {r['debt_equity']:.2f}  {r['mult']}x [{r['zone']}]")
@@ -525,10 +544,10 @@ def score(segment: Optional[str] = None) -> None:
           f"okänd för dem tills fler perioder finns i fundamentals-CSV:erna.")
 
     ck = [r for r in rows if r.get("checklist_score") is not None]
-    strong = sorted([r for r in ck if r["checklist_score"] >= 70],
+    strong = sorted([r for r in ck if r["checklist_score"] >= 70 and not r["commodity_sector"]],
                     key=lambda r: -r["checklist_score"])
-    print(f"\n  KVALITETSKRAVLISTAN (OT-stil, 10 krav): {len(ck)} bolag bedömbara "
-          f"(≥4 prövbara krav), {len(strong)} klarar ≥70%:")
+    print(f"\n  KVALITETSKRAVLISTAN (OT-stil, 10 krav, EJ råvarusektor): {len(ck)} bolag "
+          f"bedömbara (≥4 prövbara krav), {len(strong)} klarar ≥70%:")
     for r in strong[:15]:
         print(f"   {r['checklist_score']:>3}%  {r['checklist']:<6} {r['ticker']:<12} "
               f"{str(r['name'])[:22]:<22} missar: {r['checklist_miss'] or '–'}")
