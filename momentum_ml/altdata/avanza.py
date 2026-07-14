@@ -169,6 +169,52 @@ def _map_path() -> Path:
     return Path(config.anchor("cache")) / "avanza_map.json"
 
 
+# Interimsinstrument-segment (delårs-emissionsrätter/betalda tecknade aktier)
+# som INTE finns i Avanzas egen ticker – samma mönster som tvingade fram
+# _clean_name-fixen i mfn_fetch.py (BTA-tickrarnas "TEMP"-flagga).
+_INSTRUMENT_SEG_RE = re.compile(r"^(BTA|TO|TR|UR)\d*$", re.I)
+
+
+def _ticker_variants(base: str) -> list:
+    """Kandidat-söksträngar för en ticker, prövade i ordning tills en
+    BEKRÄFTAD träff hittas:
+      1. Bokstavlig ticker.
+      2. Interimsinstrument-segment (BTA/TO/TR/UR, ev. numrerat) borttaget
+         ur bindestrecks-delarna – "INTRUM-BTA" -> "INTRUM".
+      3. Trailing "O" borttagen – VERIFIERAT mönster (en riktig match-
+         körning missade 58+ bolag, nästan alla nordiska primärnoteringar
+         på Oslo Børs som vårt lokala universum suffixar med "O" för den
+         svenska sekundärnoteringen: 'EQNRO'->'EQNR' (Equinor), 'YARO'->
+         'YAR' (Yara), 'ORKO'->'ORK' (Orkla) – Avanzas egen ticker saknar
+         suffixet. Samma mekanism som AKERO/AKRBPO/BNORO/DOFGO/ORKO/PENO/
+         SOFFO visade i MFN-matchningen tidigare, nu i ett annat system."""
+    variants = [base]
+    parts = base.split("-")
+    stripped = [p for p in parts if not _INSTRUMENT_SEG_RE.match(p)]
+    if stripped != parts and stripped:
+        cand = "-".join(stripped)
+        if cand not in variants:
+            variants.append(cand)
+    if base.endswith("O") and len(base) > 3:
+        cand = base[:-1]
+        if cand not in variants:
+            variants.append(cand)
+    return variants
+
+
+def _search_variant(variant: str) -> tuple:
+    """Ett sökförsök -> (bekräftad_träff_eller_None, bästa_ej_bekräftade_eller_None).
+    Bekräftelse: variantens tecken finns i träffens titel (ordgräns-fri
+    delsträng, samma princip som mfn_fetch – exakt matchning är för strikt
+    för "Wallenstam B" vs "WALL B", en delsträng räcker och är säker nog i
+    kombination med att vi SJÄLVA valde söksträngen)."""
+    hits = search(variant.replace("-", " "))
+    stock_hits = [h for h in (hits.get("hits") or []) if h.get("type") == "STOCK"]
+    tn = _norm_ticker(variant)
+    confirmed = next((h for h in stock_hits if tn in _norm_ticker(str(h.get("title") or ""))), None)
+    return confirmed, (stock_hits[0] if stock_hits else None)
+
+
 def match(segment: Optional[str] = None) -> None:
     """Bygger ticker -> Avanza orderBookId genom att söka på VÅR ticker-
     sträng (inte bolagsnamnet – Avanzas titelformat "Bolag (TICKER)" gör
@@ -176,11 +222,11 @@ def match(segment: Optional[str] = None) -> None:
     Sparar mappningen permanent i cache/avanza_map.json (ändras sällan – körs
     inte om för redan matchade tickers).
 
-    SÄKERHET (samma lärdom som mfn_fetch._author_match kostade dyrt att
-    sakna): kräver att VÅR tickers bokstav/siffror finns som delsträng i
-    träffens titel innan den godtas. En STOCK-träff utan den bekräftelsen
-    accepteras ändå (bästa gissning) men FLAGGAS som osäker i utskriften –
-    granska de raderna manuellt innan extract() litar på dem."""
+    Provar flera tickervarianter (se _ticker_variants) tills en BEKRÄFTAD
+    träff hittas – annars sparas bästa ej bekräftade träff (om någon fanns)
+    men FLAGGAS som osäker i utskriften, så den kan granskas manuellt innan
+    extract() litar på den. Samma lärdom som mfn_fetch._author_match kostade
+    dyrt att sakna: gissa aldrig tyst."""
     from data.data_loader import load_sweden_universe
 
     seg_cfg = config.SEGMENTS.get(segment) if segment else None
@@ -198,18 +244,23 @@ def match(segment: Optional[str] = None) -> None:
             already += 1
             continue
         base = t.split(".")[0]
-        try:
-            hits = search(base.replace("-", " "))
-        except Exception as e:  # noqa: BLE001
-            print(f"  [{i:>4}/{len(tickers)}] {t:<14} FEL: {e}")
-            continue
-        stock_hits = [h for h in (hits.get("hits") or []) if h.get("type") == "STOCK"]
-        tn = _norm_ticker(base)
-        confirmed = next((h for h in stock_hits if tn in _norm_ticker(str(h.get("title") or ""))), None)
-        hit = confirmed or (stock_hits[0] if stock_hits else None)
+        confirmed = fallback = None
+        for variant in _ticker_variants(base):
+            try:
+                confirmed, hit = _search_variant(variant)
+            except Exception as e:  # noqa: BLE001
+                print(f"  [{i:>4}/{len(tickers)}] {t:<14} FEL ('{variant}'): {e}")
+                continue
+            finally:
+                time.sleep(_PAUSE_S)
+            if fallback is None:
+                fallback = hit
+            if confirmed is not None:
+                break
+        hit = confirmed or fallback
         if hit is None:
             skipped += 1
-            print(f"  [{i:>4}/{len(tickers)}] {t:<14} ingen STOCK-träff")
+            print(f"  [{i:>4}/{len(tickers)}] {t:<14} ingen STOCK-träff (provade {_ticker_variants(base)})")
             continue
         if confirmed is None:
             uncertain += 1
@@ -218,7 +269,6 @@ def match(segment: Optional[str] = None) -> None:
         mapping[t] = {"orderBookId": str(hit.get("orderBookId") or ""),
                       "title": hit.get("title"), "confirmed": confirmed is not None}
         matched += 1
-        time.sleep(_PAUSE_S)
 
     mp.parent.mkdir(parents=True, exist_ok=True)
     mp.write_text(json.dumps(mapping, ensure_ascii=False, indent=2), encoding="utf-8")
