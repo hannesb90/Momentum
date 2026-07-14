@@ -341,23 +341,61 @@ def facts(name_or_url: str) -> None:
         print(f"    {e['date'] or e['year']:<12} [{e['type']:<12}] {e['text'][:90]}")
 
 
+# Kända A-Ö-undersidor – VERIFIERADE ORDAGRANT ur skarp probe_index-körning
+# (hrefs, inte gissade/konstruerade). Ligger under en 'aktiehistorik/'-KATALOG,
+# skild från FILEN 'aktiehistorik.html' som INDEX_URL pekar mot – därför
+# hårdkodade hela vägen i stället för att härleda ur INDEX_URL.
+_SUBPAGE_BASE = "https://www.skatteverket.se/privat/skatter/vardepapper/aktiehistorik/"
+SUBPAGE_URLS = [_SUBPAGE_BASE + suffix for suffix in (
+    "df.4.6fdde64a12cc4eee23080001707.html", "gi.4.6fdde64a12cc4eee23080001567.html",
+    "jl.4.6fdde64a12cc4eee23080001646.html", "mo.4.6fdde64a12cc4eee23080001845.html",
+    "pr.4.6fdde64a12cc4eee23080001932.html", "su.4.6fdde64a12cc4eee23080001938.html",
+    "vy.4.6fdde64a12cc4eee23080002417.html", "zo.4.6fdde64a12cc4eee23080002494.html",
+    "09.4.6fdde64a12cc4eee23080002541.html",
+)]
+
+# Länkar som INTE är bolagssidor (navigations-/metalänkar, verifierade texter
+# ur skarp körning) – filtreras bort innan bokstavsanalysen nedan.
+_NAV_LINK_TEXTS = {"aktiehistorik", "beskrivning av aktiehistoriken",
+                   "mer information om aktiehistoriken och v",
+                   "d–f", "g–i", "j–l", "m–o", "p–r", "s–u", "v–y", "z–ö", "0–9"}
+
+
 def probe_index() -> None:
-    """Hämtar startsidan och dumpar länkstrukturen – svarar på: hur når man
-    A-Ö-sidorna, och hur ser bolagssidornas URL-mönster ut? Ingen tolkning,
-    bara rådata att bygga nästa steg på."""
-    print(f"[probe_index] hämtar {INDEX_URL}")
-    html = _http_get(INDEX_URL)
-    raw = _save("_probe_index.html", html)
+    """Hämtar startsidan (cache-först, som dump_table/facts) och dumpar
+    länkstrukturen – svarar DEFINITIVT (bokstavsfördelning över ALLA
+    extraherade länkar, inte bara de första 60 som skrevs ut förra
+    körningen) på: täcker huvudsidan hela alfabetet, eller krävs
+    SUBPAGE_URLS för B/C-Ö? Ingen tolkning av enskilda bolag än."""
+    cached = _cache_dir() / "_probe_index.html"
+    if cached.exists():
+        print(f"[probe_index] läser cachad {cached} (inget nätanrop)")
+        html = cached.read_text(encoding="utf-8")
+    else:
+        print(f"[probe_index] hämtar {INDEX_URL}")
+        html = _http_get(INDEX_URL)
+        _save("_probe_index.html", html)
+
     links = _extract_links(html)
-    ak_links = [(h, t) for h, t in links if "aktiehistorik" in h.lower()]
-    print(f"  {len(links)} länkar totalt, {len(ak_links)} med 'aktiehistorik' i href:")
-    for h, t in ak_links[:60]:
-        print(f"    {t[:40]:<40} -> {h[:110]}")
-    if len(ak_links) > 60:
-        print(f"    ... och {len(ak_links) - 60} till")
-    print(f"\n  rå HTML sparad: {raw}")
-    print("  Klistra in utskriften så designar vi nästa steg (A-Ö-crawl) mot de "
-          "FAKTISKA URL-mönstren.")
+    ak_links = [(h, t) for h, t in links if "aktiehistorik" in h.lower()
+               and t.strip().lower() not in _NAV_LINK_TEXTS]
+    print(f"  {len(links)} länkar totalt, {len(ak_links)} bolagslänkar "
+          f"(navigations-/metalänkar borträknade)")
+
+    from collections import Counter
+    first_letters = Counter(t.strip()[0].upper() for h, t in ak_links if t.strip())
+    print(f"\n  Bokstavsfördelning (VISAR om huvudsidan täcker hela alfabetet "
+          f"eller om SUBPAGE_URLS krävs):")
+    for letter in sorted(first_letters):
+        print(f"    {letter}: {first_letters[letter]} bolag")
+    missing = sorted(set("ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ") - set(first_letters))
+    if missing:
+        print(f"\n  INGA bolag på huvudsidan för: {', '.join(missing)} – dessa MÅSTE "
+              f"hämtas via SUBPAGE_URLS.")
+    else:
+        print(f"\n  Huvudsidan täcker HELA alfabetet – SUBPAGE_URLS kan vara redundanta "
+              f"(verifiera ändå: dubbletter är ofarliga, en krävd bokstav som saknas är inte det).")
+    print(f"\n  rå HTML: {cached if cached.exists() else _cache_dir() / '_probe_index.html'}")
 
 
 def probe(url: Optional[str] = None) -> None:
