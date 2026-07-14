@@ -70,33 +70,30 @@ def _clean_query(ticker_or_name: str) -> str:
 def probe(ticker_or_name: str) -> None:
     """Sök upp ETT bolag och dumpa RÅ JSON från de tre relevanta endpointsen
     (stock info/keyIndicators, analysis/companyFinancials) – inget antas,
-    allt skrivs ut så de faktiska fältnamnen syns svart på vitt."""
+    allt skrivs ut så de faktiska fältnamnen syns svart på vitt.
+
+    VERIFIERAT sök-svarsschema (skarp körning): hits[] är en BLANDNING av
+    typer (STOCK, CERTIFICATE/BULL/BEAR på samma underliggande, ...) – vi
+    vill alltid den FÖRSTA träffen med type=='STOCK'. Fältet heter
+    'orderBookId' (stort B) – INTE 'orderbookId'/'id', som råkar finnas
+    (annan betydelse: sektorkoder) längre ner i strukturen och gav en
+    falsk positiv (404) i en tidigare version av detta skript."""
     q = _clean_query(ticker_or_name)
     print(f"[probe] söker '{q}' (från '{ticker_or_name}')")
     hits = search(q)
     print(f"[probe] rått sök-svar (nycklar): {list(hits.keys())}")
     print(json.dumps(hits, ensure_ascii=False, indent=2)[:3000])
 
-    # Försök hitta ett orderbookId ur svaret – sökresultatets exakta form är
-    # OVERIFIERAD, så vi letar brett i stället för att anta en fast path.
-    def _find_ids(obj, path=""):
-        found = []
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                if k in ("orderbookId", "id") and isinstance(v, (str, int)):
-                    found.append((f"{path}.{k}", str(v)))
-                found.extend(_find_ids(v, f"{path}.{k}"))
-        elif isinstance(obj, list):
-            for i, v in enumerate(obj[:5]):
-                found.extend(_find_ids(v, f"{path}[{i}]"))
-        return found
-
-    ids = _find_ids(hits)
-    print(f"\n[probe] hittade möjliga instrument-id: {ids[:10]}")
-    if not ids:
-        print("[probe] inget id hittat i sök-svaret – kolla den råa dumpen ovan manuellt.")
+    stock_hits = [h for h in (hits.get("hits") or []) if h.get("type") == "STOCK"]
+    if not stock_hits:
+        print("[probe] ingen STOCK-träff i sök-svaret – kolla den råa dumpen ovan manuellt.")
         return
-    iid = ids[0][1]
+    hit = stock_hits[0]
+    iid = str(hit.get("orderBookId") or "")
+    print(f"\n[probe] vald träff: {hit.get('title')!r} orderBookId={iid}")
+    if not iid:
+        print("[probe] orderBookId saknades i den valda träffen – kolla dumpen ovan.")
+        return
     time.sleep(_PAUSE_S)
 
     print(f"\n[probe] === STOCK INFO (id={iid}) ===")
