@@ -39,6 +39,7 @@ backfill) – annars blir kortlistan tom, ingen krasch.
 
     python altdata/value_screener.py score large       # bygg value_shortlist.csv
     python altdata/value_screener.py coverage large     # vilka bolag saknar vi värde för?
+    python altdata/value_screener.py diagnose large      # varför saknas net_profit/equity? (kör coverage först)
 """
 import sys
 import csv
@@ -611,6 +612,68 @@ def coverage(segment: Optional[str] = None) -> None:
     print(f"\n  Full per-bolag-status skriven till: {out}")
 
 
+def diagnose(segment: Optional[str] = None, fields: str = "net_profit,equity", limit: int = 8) -> None:
+    """Visar ALLA rader (mfn/pdf/avanza, alla perioder, en rad per rapport)
+    för ett urval bolag som coverage() flaggat 'delvis' med NÅGOT av de
+    angivna fälten saknat i den SENASTE raden. Kräver att coverage(segment)
+    körts först (läser dess value_coverage.csv) – ingen egen omberäkning.
+
+    Till skillnad från coverage()s sammanfattning (som bara räknar) visar
+    detta VARJE enskild rapportrad per bolag, så man ser VARFÖR fältet
+    saknas: genomgående (källorna har det aldrig för bolaget – t.ex. en
+    utlandsnoterad korsnotering) eller bara i den allra SENASTE perioden
+    (t.ex. en färsk kvartalsrad utan balansräkning som skymmer en äldre,
+    komplett årsrad – _load_fundamentals väljer bara den senaste raden).
+
+        python altdata/value_screener.py diagnose large
+        python altdata/value_screener.py diagnose large net_profit,equity 12
+    """
+    import pandas as pd
+
+    seg_name = segment or config.DEFAULT_SEGMENT
+    seg_cfg = config.SEGMENTS.get(seg_name, config.SEGMENTS[config.DEFAULT_SEGMENT])
+    results_dir = Path(config.anchor(seg_cfg["results_dir"]))
+
+    cov_path = results_dir / "value_coverage.csv"
+    if not cov_path.exists():
+        print(f"Ingen {cov_path} – kör 'coverage {seg_name}' först.")
+        return
+    cov = pd.read_csv(cov_path)
+    wanted_fields = [f.strip() for f in fields.split(",") if f.strip()]
+    pattern = "|".join(wanted_fields)
+    sub = cov[(cov["status"] == "delvis") & cov["missing"].str.contains(pattern, na=False, regex=True)]
+    sample = sub["ticker"].head(limit).tolist()
+    print(f"[diagnose] {len(sample)} av {len(sub)} bolag ('delvis', saknar {'/'.join(wanted_fields)}): "
+          f"{sample}\n")
+    if not sample:
+        return
+
+    frames = []
+    for fname, src in [("fundamentals_from_mfn.csv", "mfn"), ("fundamentals_from_pdf.csv", "pdf"),
+                       ("fundamentals_from_avanza.csv", "avanza")]:
+        p = results_dir / fname
+        if p.exists():
+            try:
+                d = pd.read_csv(p)
+            except Exception:  # noqa: BLE001
+                continue
+            d["_src"] = src
+            frames.append(d)
+    if not frames:
+        print("Inga fundamentals-CSV:er hittades.")
+        return
+    df = pd.concat(frames, ignore_index=True, sort=False)
+
+    cols = ["_src", "published", "period", "revenue", "net_profit", "equity",
+           "liabilities", "shares_outstanding"]
+    cols = [c for c in cols if c in df.columns]
+    for t in sample:
+        rows = df[df["ticker"] == t].sort_values("published")
+        print(f"=== {t} ({len(rows)} rader totalt) ===")
+        print(rows[cols].to_string(index=False))
+        print()
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "score"
     seg = sys.argv[2] if len(sys.argv) > 2 else None
@@ -618,6 +681,10 @@ def main():
         score(seg)
     elif cmd == "coverage":
         coverage(seg)
+    elif cmd == "diagnose":
+        fields = sys.argv[3] if len(sys.argv) > 3 else "net_profit,equity"
+        limit = int(sys.argv[4]) if len(sys.argv) > 4 else 8
+        diagnose(seg, fields, limit)
     else:
         print(__doc__)
 
