@@ -34,6 +34,7 @@ händelser ändras inte, och Skatteverket ska inte behöva serva om samma sida
     python -m altdata.aktiehistorik facts sas              # extract_survival_facts(), läsvänligt
     python -m altdata.aktiehistorik build_index            # huvudsida+9 undersidor -> _company_index.json
     python -m altdata.aktiehistorik match_survival [seg]    # namnmatcha vårt universum mot indexet (LOKALT, 0 nätanrop)
+    python -m altdata.aktiehistorik extract_all [limit]     # hämta+tolka varje BEKRÄFTAD träff -> data/historical_survival.csv
 """
 import html as _html
 import json
@@ -567,11 +568,12 @@ def match_survival(segment: Optional[str] = None) -> None:
     per definition inte hör hemma i något aktuellt marknadsvärde-segment).
 
     Sparar cache/aktiehistorik/ticker_match.json: {ticker: {name, url,
-    confirmed}}. Extraktionssteget (hämta varje bekräftad matchnings sida
-    + extract_survival_facts(), det NÄTVERKSTUNGA steget) byggs separat och
-    läser BARA confirmed:true-poster – samma regel som avanza.extract()
-    lärde sig dyrt att inte hoppa över (osäkra träffar extraherades
-    tidigare tyst, tills en riktig felmatchning upptäcktes).
+    confirmed}}. Extraktionssteget (extract_all_survival() nedan – hämta
+    varje bekräftad matchnings sida + extract_survival_facts(), det
+    NÄTVERKSTUNGA steget) körs SEPARAT och läser BARA confirmed:true-poster
+    – samma regel som avanza.extract() lärde sig dyrt att inte hoppa över
+    (osäkra träffar extraherades tidigare tyst, tills en riktig
+    felmatchning upptäcktes).
 
         python -m altdata.aktiehistorik match_survival
         python -m altdata.aktiehistorik match_survival large
@@ -624,6 +626,104 @@ def match_survival(segment: Optional[str] = None) -> None:
                 n += 1
                 if n >= 20:
                     break
+
+
+# ── Extraktion i skala (det NÄTVERKSTUNGA steget) ─────────────────────────────
+# Läser BARA confirmed:true ur ticker_match.json – samma regel avanza.extract()
+# lärde sig dyrt (en osäker träff extraherades tidigare tyst tills en riktig
+# felmatchning upptäcktes). Körs SEPARAT från match_survival() med flit: match
+# är gratis/lokalt och körs om vid varje normaliseringsfix, extraktionen kostar
+# ett nätanrop per bolag och ska inte behöva göras om av det skälet.
+def extract_all_survival(limit: Optional[int] = None) -> None:
+    """Hämtar (cache-först, artig paus mellan NYA anrop) Skatteverket-sidan
+    för varje bekräftad matchning i cache/aktiehistorik/ticker_match.json och
+    kör extract_survival_facts() på den. Skriver kumulativt till
+    cache/aktiehistorik/survival_facts.json (så en avbruten körning aldrig
+    tappar redan hämtat arbete – redan extraherade tickers hämtas aldrig om)
+    och till slut en platt data/historical_survival.csv för nedströms bruk.
+
+    INTE ännu kopplad in i backtest/benchmark.py – enligt modulens docstring
+    ("en källa i taget, verifierad hela vägen") görs det som ett eget,
+    separat steg efter att denna CSV synats.
+
+    limit: valfritt tak på antal NYA nätanrop denna körning (för att testa
+    på en liten batch innan hela listan körs).
+
+        python -m altdata.aktiehistorik extract_all       # alla bekräftade
+        python -m altdata.aktiehistorik extract_all 20     # testa på 20 först
+    """
+    match_path = _cache_dir() / "ticker_match.json"
+    if not match_path.exists():
+        print(f"Ingen {match_path} – kör 'match_survival' först.")
+        return
+    matches = json.loads(match_path.read_text(encoding="utf-8"))
+    confirmed = {t: m for t, m in matches.items() if m.get("confirmed")}
+
+    out_path = _cache_dir() / "survival_facts.json"
+    results = json.loads(out_path.read_text(encoding="utf-8")) if out_path.exists() else {}
+
+    fetched_now = 0
+    unparsed, failed = [], []
+    for ticker, m in sorted(confirmed.items()):
+        if ticker in results:
+            continue
+        if limit is not None and fetched_now >= limit:
+            break
+        url = m["url"]
+        if not url.startswith("http"):
+            url = "https://www.skatteverket.se" + url
+        cache_file = _cache_dir() / f"_probe_{_slug(url)}.html"
+        if cache_file.exists():
+            html = cache_file.read_text(encoding="utf-8")
+        else:
+            try:
+                html = _http_get(url)
+            except Exception as e:  # noqa: BLE001
+                print(f"  [MISSLYCKADES] {ticker} ({m['name']}): {e}")
+                failed.append(ticker)
+                continue
+            _save(cache_file.name, html)
+            fetched_now += 1
+            time.sleep(_PAUSE_S)
+
+        f = extract_survival_facts(html)
+        if f is None:
+            print(f"  [OTOLKBAR STRUKTUR] {ticker} ({m['name']}) – flaggas, extraheras inte")
+            unparsed.append(ticker)
+            continue
+        f["ticker"] = ticker
+        f["name"] = m["name"]
+        f["url"] = url
+        results[ticker] = f
+        # sparas löpande - en avbruten körning (t.ex. Ctrl-C) tappar aldrig
+        # redan hämtat/tolkat arbete
+        out_path.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    print(f"\n[extract_all] {len(results)} bolag extraherade totalt "
+          f"({fetched_now} nya nätanrop denna körning, {len(unparsed)} otolkbara, "
+          f"{len(failed)} misslyckade hämtningar)")
+    if failed:
+        print(f"  misslyckade: {', '.join(failed)}")
+    if unparsed:
+        print(f"  otolkbara: {', '.join(unparsed)}")
+
+    _write_survival_csv(results)
+
+
+def _write_survival_csv(results: dict) -> Path:
+    import csv
+    out = Path(config.anchor("data")) / "historical_survival.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["ticker", "name", "status", "delisted_date", "delisted_reason",
+                    "first_listed_date", "source_url"])
+        for ticker, f in sorted(results.items()):
+            w.writerow([ticker, f["name"], f["status"], f["delisted_date"] or "",
+                        (f["delisted_reason"] or "").replace("\n", " ").strip(),
+                        f["first_listed_date"] or "", f["url"]])
+    print(f"  sparad: {out}")
+    return out
 
 
 def probe(url: Optional[str] = None) -> None:
@@ -689,6 +789,8 @@ def main():
         build_index()
     elif cmd == "match_survival":
         match_survival(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif cmd == "extract_all":
+        extract_all_survival(int(sys.argv[2]) if len(sys.argv) > 2 else None)
     else:
         print(__doc__)
 
