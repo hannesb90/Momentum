@@ -40,6 +40,7 @@ SKARPT VERIFIERAT (riktig probe-körning mot Wallenstam, WALL-B.ST):
 Körs på Pi:n (nät):
     python -m altdata.avanza search "Volvo"        # hitta instrument-id
     python -m altdata.avanza probe SAAB-B.ST        # full schema-dump för ETT bolag
+    python -m altdata.avanza inspect                # riktat urval ur senast sparade probe-dump
     python -m altdata.avanza match large            # bygg ticker -> orderBookId (cachas)
     python -m altdata.avanza match quality          # ...även Small+Micro+NANO Cap
     python -m altdata.avanza extract large          # bygg fundamentals_from_avanza.csv
@@ -161,6 +162,52 @@ def probe(ticker_or_name: str) -> None:
     print(f"\n[probe] fullständigt svar sparat: {out}")
     print("\n[probe] Klistra in denna utskrift så bygger vi mappningen mot våra kanoniska fält "
           "(revenue/net_profit/equity/liabilities/...) FÖRST efter att ha sett riktiga fältnamn.")
+    print("[probe] (kör 'inspect' för ett riktat urval ur den sparade dumpen: quote/totalAssets/"
+          "totalLiabilities/netProfit/equityPerShare/marketCapital – utan att printa om allt.)")
+
+
+def inspect_probe() -> None:
+    """Läser SENAST SPARADE probe()-dump (cache/_avanza_probe.json, kräver att
+    probe() körts först för bolaget du vill inspektera) och visar ett RIKTAT
+    urval i stället för hela dumpen:
+      - info['quote']: livepris – ger ett TREDJE, mer universellt sätt att
+        härleda aktieantal (marketCapital/price) för bolag där equityPerShare/
+        eps saknas (nuvarande _build_rows-härledning behöver minst en av dem).
+      - companyFinancialsByYear.totalAssets/totalLiabilities/netProfit (senaste
+        4 år): verifierar att equity_raw/net_profit FAKTISKT har data att
+        jobba med för bolagstyper där andra fält (t.ex. 'sales') legitimt är
+        0.0 (investmentbolag har ingen omsättning, men har fortfarande
+        tillgångar/skulder/resultat – 0.0 där är en äkta siffra, inte en lucka).
+      - companyKeyRatiosByYear.equityPerShare + keyIndicators.marketCapital/
+        equityPerShare: cross-check mellan de två endpointsen (historisk serie
+        vs nu-ögonblicksbild) – ska stämma överens om båda är pålitliga."""
+    p = Path(config.anchor("cache")) / "_avanza_probe.json"
+    if not p.exists():
+        print(f"Ingen {p} – kör 'probe <ticker>' först.")
+        return
+    data = json.loads(p.read_text(encoding="utf-8"))
+    info = data.get("info") or {}
+    analysis = data.get("analysis") or {}
+
+    print("=== info toppnivå-nycklar ===")
+    print(list(info.keys()))
+
+    print("\n=== info['quote'] (livepris) ===")
+    print(json.dumps(info.get("quote"), ensure_ascii=False, indent=2))
+
+    fin = analysis.get("companyFinancialsByYear") or {}
+    for key in ("totalAssets", "totalLiabilities", "netProfit"):
+        print(f"\n=== companyFinancialsByYear.{key} (senaste 4 år) ===")
+        print(json.dumps((fin.get(key) or [])[-4:], ensure_ascii=False, indent=2))
+
+    ratios = analysis.get("companyKeyRatiosByYear") or {}
+    print("\n=== companyKeyRatiosByYear.equityPerShare (senaste 4 år) ===")
+    print(json.dumps((ratios.get("equityPerShare") or [])[-4:], ensure_ascii=False, indent=2))
+
+    ki = info.get("keyIndicators") or {}
+    print("\n=== keyIndicators.marketCapital + equityPerShare (cross-check) ===")
+    print(json.dumps({"marketCapital": ki.get("marketCapital"), "equityPerShare": ki.get("equityPerShare")},
+                     ensure_ascii=False, indent=2))
 
 
 def _resolve_universe(segment: Optional[str]):
@@ -617,6 +664,8 @@ def main():
                          ensure_ascii=False, indent=2)[:3000])
     elif cmd == "probe":
         probe(sys.argv[2] if len(sys.argv) > 2 else "SAAB-B.ST")
+    elif cmd == "inspect":
+        inspect_probe()
     elif cmd == "match":
         match(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "extract":
