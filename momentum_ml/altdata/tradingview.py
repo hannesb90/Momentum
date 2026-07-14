@@ -25,6 +25,7 @@ Inofficiellt API → kan sluta funka utan förvarning; behandla som best effort.
     python altdata/tradingview.py fill                        # alla poängsatta → _tradingview.json
     python altdata/tradingview.py universe                    # dry-run: visa bolag som SAKNAS i universumet
     python altdata/tradingview.py universe write              # addera dem till sweden_universe.csv
+    python altdata/tradingview.py gaps                        # kartlägg svenska aktier UTANFÖR .ST-avgränsningen (NGM/Spotlight) + mät Yahoo-täckning
 """
 import sys
 import json
@@ -285,6 +286,121 @@ def universe(write=False) -> None:
     print(f"[universe] skrev {len(allrows)} bolag (+{len(new)} nya) → {uni_path}")
 
 
+# ── Kartläggning av universum-avgränsningen (NGM/Spotlight utanför .ST) ───────
+# Universumet byggdes i två steg med SAMMA avgränsning båda gångerna:
+# FinanceDatabase STO.csv (Nasdaq Stockholm, commit ba97889) och därefter
+# TradingView-scannen filtrerad till ex == OMXSTO (rad ~240 ovan). Grunden var
+# PRISDATAKÄLLAN: hela pipelinen prissätts via Yahoo och OMXSTO är det som
+# säkert mappar till '.ST'. NGM (Main Regulated + Nordic SME) och Spotlight
+# uteslöts därmed av FORMATSKÄL – inte för att bolagen bedömts ointressanta.
+# Detta kommando MÄTER (gissar inte) om Yahoo har prisdata för dem: utan
+# priser kan modellen varken träna på eller handla dem oavsett önskan.
+_YAHOO_SUFFIX_CANDIDATES = (".ST", ".NGM")
+
+
+def gaps() -> None:
+    """Kartlägger svenska aktier UTANFÖR universum-avgränsningen (alla börser
+    utom OMXSTO i TradingView-scannen) och testar Yahoo-prisdata för ett
+    stickprov per börs. REN MÄTNING – skriver ingenting; beslutet att
+    inkludera tas separat på resultatet.
+
+        python altdata/tradingview.py gaps
+    """
+    from collections import Counter
+    try:
+        data = _fetch_all_swedish()
+    except Exception as e:  # noqa: BLE001
+        print(f"[gaps] kunde inte hämta: {e}  (körs på Pi:n – molnet saknar nät)")
+        return
+
+    _BAD_SUFFIX = {"PREF", "BTA", "BT", "BTU", "TR", "TO", "RTS", "TECKN", "IL", "NPV", "TA"}
+    _BAD_NAME = ("pref", "temp", "bta", "rights", "teckningsr", "interim", "warrant")
+
+    by_exchange: dict = {}
+    n_omxsto = skip_cur = skip_class = 0
+    for row in data:
+        s, d = row.get("s", ""), (row.get("d") or [])
+        if ":" not in s:
+            continue
+        ex, base = s.split(":", 1)
+        if ex == config.TRADINGVIEW_EXCHANGE:
+            n_omxsto += 1
+            continue
+        # samma instrumentfilter som universe(): räkna jämförbara RIKTIGA
+        # stamaktier, inte pref/BTA/rätter/fonder/utländska sekundärnoteringar
+        subtype = (str(d[4]).lower() if len(d) > 4 else "")
+        if subtype and subtype not in ("common",):
+            skip_class += 1
+            continue
+        cur = (str(d[5]).upper() if len(d) > 5 else "")
+        if cur and cur != "SEK":
+            skip_cur += 1
+            continue
+        stub = base.replace("_", "-")
+        suffix = stub.rsplit("-", 1)[-1].upper() if "-" in stub else ""
+        name = str(d[0]) if d else base
+        if suffix in _BAD_SUFFIX or any(x in name.lower() for x in _BAD_NAME):
+            skip_class += 1
+            continue
+        mcap = d[1] if len(d) > 1 and isinstance(d[1], (int, float)) else None
+        by_exchange.setdefault(ex, []).append({"base": stub, "name": name, "mcap": mcap})
+
+    total_out = sum(len(v) for v in by_exchange.values())
+    print(f"[gaps] {len(data)} svenska aktier i scannen: {n_omxsto} på "
+          f"{config.TRADINGVIEW_EXCHANGE} (nuvarande avgränsning), {total_out} UTANFÖR "
+          f"på {len(by_exchange)} andra börser")
+    print(f"  (bortfiltrerat som ej jämförbart: {skip_cur} icke-SEK, "
+          f"{skip_class} pref/BTA/rätter/fonder)\n")
+
+    try:
+        import yfinance as yf
+    except ImportError:
+        yf = None
+        print("  OBS: yfinance saknas – kartlägger utan Yahoo-test.\n")
+
+    for ex in sorted(by_exchange, key=lambda e: -len(by_exchange[e])):
+        stocks = sorted(by_exchange[ex], key=lambda r: -(r["mcap"] or 0))
+        tiers = Counter(_cap_tier(r["mcap"]) for r in stocks)
+        tier_str = ", ".join(f"{k}: {v}" for k, v in tiers.most_common())
+        print(f"  ── {ex}: {len(stocks)} bolag ({tier_str})")
+        for r in stocks[:10]:
+            m = f"{r['mcap'] / 1e6:,.0f} MSEK" if r["mcap"] else "okänt börsvärde"
+            print(f"       {r['base']:<14}{r['name'][:36]:<38}{m}")
+        if len(stocks) > 10:
+            print(f"       … och {len(stocks) - 10} till")
+
+        if yf is None or not stocks:
+            print()
+            continue
+        # Stickprov: topp-5 på börsvärde + 3 jämnt spridda ur resten – testar
+        # varje kandidat-suffix. En träff på '.ST' för en icke-OMXSTO-aktie
+        # kan vara en SYMBOLKROCK med ett annat Nasdaq-instrument – träffar
+        # måste namnverifieras innan de läggs in, detta är bara en mätning.
+        rest = stocks[5:]
+        step = max(1, len(rest) // 3) if rest else 1
+        sample = stocks[:5] + rest[::step][:3]
+        hits = {suf: [] for suf in _YAHOO_SUFFIX_CANDIDATES}
+        for r in sample:
+            for suf in _YAHOO_SUFFIX_CANDIDATES:
+                sym = r["base"] + suf
+                try:
+                    df = yf.download(sym, period="6mo", interval="1wk",
+                                     progress=False, auto_adjust=True)
+                except Exception:  # noqa: BLE001
+                    df = None
+                if df is not None and len(df) > 0:
+                    hits[suf].append(sym)
+        print(f"     Yahoo-stickprov ({len(sample)} bolag):")
+        for suf in _YAHOO_SUFFIX_CANDIDATES:
+            got = hits[suf]
+            print(f"       {suf:<6} {len(got)}/{len(sample)} har prisdata"
+                  + (f"  ({', '.join(got[:6])})" if got else ""))
+        print("     (en .ST-träff kan vara symbolkrock med annat Nasdaq-instrument – "
+              "namnverifiera innan inkludering)\n")
+
+    print("[gaps] klart – REN MÄTNING, inget skrivet. Klistra in utskriften för beslut.")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "probe"
     if cmd == "probe":
@@ -294,6 +410,8 @@ def main():
         fill()
     elif cmd == "universe":
         universe(write=(len(sys.argv) > 2 and sys.argv[2] == "write"))
+    elif cmd == "gaps":
+        gaps()
     else:
         print(__doc__)
 
