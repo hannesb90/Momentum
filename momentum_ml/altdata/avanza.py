@@ -41,6 +41,7 @@ Körs på Pi:n (nät):
     python -m altdata.avanza search "Volvo"        # hitta instrument-id
     python -m altdata.avanza probe SAAB-B.ST        # full schema-dump för ETT bolag
     python -m altdata.avanza inspect                # riktat urval ur senast sparade probe-dump
+    python -m altdata.avanza chart_probe "Bolag"    # prisdiagram-schema/djup (testa NGM/Spotlight-bolag)
     python -m altdata.avanza match large            # bygg ticker -> orderBookId (cachas)
     python -m altdata.avanza match quality          # ...även Small+Micro+NANO Cap
     python -m altdata.avanza extract large          # bygg fundamentals_from_avanza.csv
@@ -171,6 +172,79 @@ def probe(ticker_or_name: str) -> None:
           "(revenue/net_profit/equity/liabilities/...) FÖRST efter att ha sett riktiga fältnamn.")
     print("[probe] (kör 'inspect' för ett riktat urval ur den sparade dumpen: quote/totalAssets/"
           "totalLiabilities/netProfit/equityPerShare/marketCapital – utan att printa om allt.)")
+
+
+# ── Prishistorik (chart) – SCHEMA-UPPTÄCKANDE, precis som probe() ovan ────────
+# Avanza handlar HELA svenska marknaden (Nasdaq Stockholm+First North, MEN
+# ÄVEN NGM och Spotlight) - till skillnad från Yahoo, vars '.ST'-suffix bara
+# mappar mot OMXSTO (se altdata/tradingview.py:s gaps()-kommando, som mätte
+# Yahoo-täckningen för NGM/Spotlight-bolag). Om Avanzas eget prisdiagram har
+# tillräckligt djup/upplösning HÄR kan det ersätta/komplettera Yahoo för just
+# de börser Yahoo inte täcker - men INTE VERIFIERAT: exakt vilka timePeriod-
+# värden endpointen accepterar, hur långt tillbaka data faktiskt går, eller
+# upplösningen (dags-/veckovis?) på de äldre perioderna. Källkoden för
+# avanza-mcp-projektet (samma verifieringskälla som resten av modulen)
+# dokumenterar path:en (/_api/price-chart/stock/{id}) och att svaret
+# innehåller OHLC, men inte de exakta gränserna - de MÄTS här, gissas inte.
+_CHART_PERIODS = ("one_month", "three_months", "one_year", "three_years", "five_years")
+
+
+def chart_probe(ticker_or_name: str) -> None:
+    """Söker upp ETT bolag (samma sök+orderBookId-mönster som probe()) och
+    dumpar RÅ prisdiagram-JSON för varje kandidat-timePeriod – hur långt
+    tillbaka går datan, vilken upplösning (antal punkter/period), och vilka
+    fältnamn (open/high/low/close eller bara close?) svaret faktiskt har.
+    Testa uttryckligen mot ett NGM- eller Spotlight-bolag (inte bara
+    Nasdaq Stockholm) – det är just den täckningen frågan gäller.
+
+        python -m altdata.avanza chart_probe "NGM Bolaget"
+    """
+    q = _clean_query(ticker_or_name)
+    print(f"[chart_probe] söker '{q}' (från '{ticker_or_name}')")
+    hits = search(q)
+    stock_hits = [h for h in (hits.get("hits") or []) if h.get("type") == "STOCK"]
+    if not stock_hits:
+        print("[chart_probe] ingen STOCK-träff – kolla stavningen eller använd 'search' direkt.")
+        print(json.dumps(hits, ensure_ascii=False, indent=2)[:2000])
+        return
+    hit = stock_hits[0]
+    iid = str(hit.get("orderBookId") or "")
+    print(f"[chart_probe] vald träff: {hit.get('title')!r} orderBookId={iid}\n")
+    if not iid:
+        print("[chart_probe] orderBookId saknades – kolla dumpen ovan.")
+        return
+
+    dump = {}
+    for period in _CHART_PERIODS:
+        time.sleep(_PAUSE_S)
+        try:
+            data = _get(f"/_api/price-chart/stock/{iid}", {"timePeriod": period})
+        except Exception as e:  # noqa: BLE001
+            print(f"  timePeriod={period:<14} FEL: {e}")
+            continue
+        dump[period] = data
+        top_keys = list(data.keys())
+        points = None
+        for k in ("ohlc", "dataPoints", "candles", "points", "series"):
+            if isinstance(data.get(k), list):
+                points = data[k]
+                break
+        if points:
+            first, last = points[0], points[-1]
+            print(f"  timePeriod={period:<14} {len(points)} punkter  "
+                  f"[{first.get('timestamp') or first.get('date')} -> "
+                  f"{last.get('timestamp') or last.get('date')}]")
+            print(f"    fältnamn i EN punkt: {list(first.keys())}")
+        else:
+            print(f"  timePeriod={period:<14} toppnivå-nycklar: {top_keys} "
+                  f"(ingen igenkänd punktlista - kolla den sparade dumpen)")
+
+    out = Path(config.anchor("cache")) / "_avanza_chart_probe.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(dump, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"\n[chart_probe] fullständiga svar sparade: {out}")
+    print("[chart_probe] Klistra in utskriften – avgör om djup/upplösning räcker för att "
+          "ersätta/komplettera Yahoo på NGM/Spotlight, INGET antas ännu.")
 
 
 def inspect_probe() -> None:
@@ -923,6 +997,8 @@ def main():
         probe(sys.argv[2] if len(sys.argv) > 2 else "SAAB-B.ST")
     elif cmd == "inspect":
         inspect_probe()
+    elif cmd == "chart_probe":
+        chart_probe(sys.argv[2] if len(sys.argv) > 2 else "SAAB-B.ST")
     elif cmd == "match":
         match(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "extract":
