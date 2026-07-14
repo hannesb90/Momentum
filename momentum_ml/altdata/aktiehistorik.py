@@ -30,6 +30,8 @@ händelser ändras inte, och Skatteverket ska inte behöva serva om samma sida
 
     python -m altdata.aktiehistorik probe_index           # A-Ö-sidornas länkstruktur
     python -m altdata.aktiehistorik probe <url>            # EN bolagssidas struktur (t.ex. SAS)
+    python -m altdata.aktiehistorik dump_table sas [i]     # EN tabell fullständigt, otrunkerat
+    python -m altdata.aktiehistorik facts sas              # extract_survival_facts(), läsvänligt
 """
 import html as _html
 import re
@@ -112,8 +114,9 @@ def _strip_tags(markup: str) -> str:
 
 
 def _extract_tables(html: str) -> List[List[List[str]]]:
-    """Rå tabell-dump: [tabell][rad][cell] – för probens strukturutskrift,
-    INTE en färdig parser (celltolkning designas först efter skarp dump)."""
+    """Rå tabell-dump: [tabell][rad][cell]. Används både av probens
+    strukturutskrift och (sedan tre skarpa exempel – SAS/HQ/AAK – verifierat
+    ett konsekvent mönster) av extract_survival_facts() nedan."""
     tables = []
     for tm in re.finditer(r"<table[^>]*>(.*?)</table>", html, re.S | re.I):
         rows = []
@@ -135,6 +138,109 @@ def _extract_links(html: str) -> List[Tuple[str, str]]:
         if text:
             out.append((m.group(1), text))
     return out
+
+
+# ── Extraktion (VERIFIERAT mot tre skarpa exempel: SAS, HQ, AAK) ─────────────
+# Tabell 0 ("Namnändringar och notering på lista") har ALLTID en statusrad
+# UTAN årtal överst ('Aktien är avnoterad' / 'Aktien är noterad på ...') –
+# den enda signal som behövs för levande/avnoterad, ingen datumtolkning
+# krävs för STATUS. Följande rader (MED årtal) beskriver historiska
+# händelser; dag+månad står ofta i kommentar-cellen UTAN årtal (året tas då
+# från 'År'-kolumnen) – verifierat exakt: SAS '13 augusti' + År=2024 ->
+# 2024-08-13 (riktig avnotering); HQ 'den 22 december. ... den 14 december
+# 2017 ...' -> regexen tar FÖRSTA datumträffen ('22 december', utan eget
+# årtal, får 2017 från kolumnen) = 2017-12-22 (den RIKTIGA avnoteringen),
+# INTE det andra datumet i samma cell (handelsstoppets startdag).
+_MONTHS_SV = {"januari": 1, "februari": 2, "mars": 3, "april": 4, "maj": 5, "juni": 6,
+             "juli": 7, "augusti": 8, "september": 9, "oktober": 10, "november": 11,
+             "december": 12}
+_DATE_RE = re.compile(r"\b(\d{1,2})\s+(" + "|".join(_MONTHS_SV) + r")(?:\s+(\d{4}))?\b", re.I)
+_DELIST_RE = re.compile(r"avnoterad|avnotering|avregistrerad", re.I)
+_RELIST_RE = re.compile(r"ny\s+notering|nynotering", re.I)
+_NAMECHANGE_RE = re.compile(r"namnändring\s+från\s+(.+?)\s+till\s+(.+?)(?:\s+\d|\.|$)", re.I)
+
+
+def _parse_sv_date(text: str, fallback_year: int) -> Optional[str]:
+    """'13 augusti' + fallback_year 2024 -> '2024-08-13'. Ogiltiga datum
+    (t.ex. felräknad skottdag) returnerar None – gissar aldrig ett datum."""
+    import datetime
+    m = _DATE_RE.search(text)
+    if not m:
+        return None
+    day = int(m.group(1))
+    month = _MONTHS_SV[m.group(2).lower()]
+    year = int(m.group(3)) if m.group(3) else fallback_year
+    try:
+        return datetime.date(year, month, day).isoformat()
+    except ValueError:
+        return None
+
+
+def extract_survival_facts(html: str) -> Optional[dict]:
+    """En bolagssidas HTML -> {status, delisted_date, delisted_reason,
+    first_listed_date, name_changes, events}. Returnerar None om sidans
+    struktur INTE matchar det verifierade mönstret (tabell 0:s rubrikrad
+    != ['År','Kommentarer']) – flaggas då för manuell granskning i stället
+    för att tyst läsa fel tabell som om den vore notering/avnotering."""
+    tables = _extract_tables(html)
+    if not tables or not tables[0]:
+        return None
+    header = [h.strip().lower() for h in tables[0][0]]
+    if header[:2] != ["år", "kommentarer"]:
+        return None
+    rows = tables[0][1:]
+    if not rows:
+        return None
+
+    status_text = rows[0][1] if len(rows[0]) > 1 else ""
+    # ORDNING KRITISK: 'avnoterad' innehåller självt delsträngen 'noterad',
+    # så 'avnoterad' måste kollas FÖRST – annars läses varje avnoterat
+    # bolag felaktigt som 'noterad'.
+    if re.search(r"\bavnoterad\b", status_text, re.I):
+        status = "avnoterad"
+    elif re.search(r"\bnoterad\b", status_text, re.I):
+        status = "noterad"
+    else:
+        status = "okänd"
+
+    events, name_changes = [], []
+    for r in rows[1:]:
+        if len(r) < 2 or not r[0].strip():
+            continue
+        try:
+            year = int(r[0].strip())
+        except ValueError:
+            continue
+        comment = r[1].strip()
+        date = _parse_sv_date(comment, year)
+        nm = _NAMECHANGE_RE.search(comment)
+        if nm:
+            name_changes.append({"from": nm.group(1).strip(), "to": nm.group(2).strip(),
+                                 "date": date, "year": year})
+            etype = "namnändring"
+        elif _DELIST_RE.search(comment):
+            etype = "avnotering"
+        elif _RELIST_RE.search(comment):
+            etype = "notering"
+        else:
+            etype = "övrigt"
+        events.append({"year": year, "date": date, "type": etype, "text": comment})
+
+    # Rad-ordningen på sidan är NYAST FÖRST (verifierat i alla tre exempel)
+    # -> första 'avnotering'-träffen i listordning är den SENASTE/RIKTIGA
+    # avnoteringen, inte en äldre (t.ex. en tidigare avnoterad preferensaktie).
+    delisting = next((e for e in events if e["type"] == "avnotering"), None)
+    listings = [e for e in events if e["type"] == "notering"]
+    first_listing = min(listings, key=lambda e: (e["year"], e["date"] or "")) if listings else None
+
+    return {
+        "status": status,
+        "delisted_date": delisting["date"] if delisting else None,
+        "delisted_reason": delisting["text"] if delisting else None,
+        "first_listed_date": first_listing["date"] if first_listing else None,
+        "name_changes": name_changes,
+        "events": events,
+    }
 
 
 def _save(name: str, content: str) -> Path:
@@ -190,6 +296,49 @@ def dump_table(name_or_url: str, table_index: int = 0) -> None:
         for cell in r:
             print(f"    {cell!r}")
         print()
+
+
+def facts(name_or_url: str) -> None:
+    """Kör extract_survival_facts() mot en bolagssida och skriver ut resultatet
+    läsvänligt – samma cache-först-princip som dump_table (inget nytt
+    nätanrop om sidan redan probats).
+
+        python -m altdata.aktiehistorik facts sas
+        python -m altdata.aktiehistorik facts hq
+    """
+    cached = None
+    if not name_or_url.startswith("http"):
+        matches = sorted(_cache_dir().glob(f"_probe_*{name_or_url.lower()}*.html"))
+        if matches:
+            cached = matches[0]
+    if cached:
+        print(f"[facts] läser cachad {cached} (inget nätanrop)")
+        html = cached.read_text(encoding="utf-8")
+    elif name_or_url.startswith("http"):
+        print(f"[facts] hämtar {name_or_url}")
+        html = _http_get(name_or_url)
+        _save(f"_probe_{_slug(name_or_url)}.html", html)
+    else:
+        print(f"Ingen cachad sida matchar '{name_or_url}' i {_cache_dir()} – ange en full URL.")
+        return
+
+    f = extract_survival_facts(html)
+    if f is None:
+        print("  KUNDE INTE TOLKAS – tabell 0:s rubrikrad matchade inte "
+              "['År','Kommentarer']. Flaggas för manuell granskning, ingen gissning.")
+        return
+    print(f"  status:            {f['status']}")
+    print(f"  avnoterad:         {f['delisted_date'] or '–'}")
+    if f["delisted_reason"]:
+        print(f"    orsak: {f['delisted_reason']}")
+    print(f"  första notering:   {f['first_listed_date'] or '–'}")
+    if f["name_changes"]:
+        print("  namnbyten:")
+        for nc in f["name_changes"]:
+            print(f"    {nc['date'] or nc['year']}: '{nc['from']}' -> '{nc['to']}'")
+    print(f"\n  alla {len(f['events'])} händelser:")
+    for e in f["events"]:
+        print(f"    {e['date'] or e['year']:<12} [{e['type']:<12}] {e['text'][:90]}")
 
 
 def probe_index() -> None:
@@ -265,6 +414,11 @@ def main():
             return
         idx = int(sys.argv[3]) if len(sys.argv) > 3 else 0
         dump_table(sys.argv[2], idx)
+    elif cmd == "facts":
+        if len(sys.argv) < 3:
+            print("Ange bolag/URL: python -m altdata.aktiehistorik facts sas")
+            return
+        facts(sys.argv[2])
     else:
         print(__doc__)
 
