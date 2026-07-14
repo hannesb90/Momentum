@@ -145,6 +145,53 @@ def _save(name: str, content: str) -> Path:
     return p
 
 
+def _slug(url: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", url.rsplit("/", 1)[-1].lower())[:60]
+
+
+def dump_table(name_or_url: str, table_index: int = 0) -> None:
+    """Skriver ut EN tabell FULLSTÄNDIGT, otrunkerat (probe() klipper celler
+    vid 28 tecken – bara för kompakt översikt, inte för att designa
+    datumextraktion mot). Läser ur cache/aktiehistorik/ om bolaget redan
+    probats (INGET nytt nätanrop) – annars hämtas och sparas det på nytt.
+    name_or_url: antingen en full URL (som probe()), eller bara ett
+    igenkännbart fragment av ett redan cachat filnamn (t.ex. 'sas' eller
+    'hq') – då används den cachade filen direkt.
+
+        python -m altdata.aktiehistorik dump_table sas       # tabell 0 (notering)
+        python -m altdata.aktiehistorik dump_table sas 2      # tabell 2 (övrigt)
+    """
+    cached = None
+    if not name_or_url.startswith("http"):
+        matches = sorted(_cache_dir().glob(f"_probe_*{name_or_url.lower()}*.html"))
+        if matches:
+            cached = matches[0]
+    if cached:
+        print(f"[dump_table] läser cachad {cached} (inget nätanrop)")
+        html = cached.read_text(encoding="utf-8")
+    else:
+        url = name_or_url if name_or_url.startswith("http") else None
+        if url is None:
+            print(f"Ingen cachad sida matchar '{name_or_url}' i {_cache_dir()} – ange en full URL.")
+            return
+        print(f"[dump_table] hämtar {url}")
+        html = _http_get(url)
+        _save(f"_probe_{_slug(url)}.html", html)
+
+    tables = _extract_tables(html)
+    if table_index >= len(tables):
+        print(f"Bara {len(tables)} tabell(er) hittades (index 0-{len(tables) - 1}).")
+        return
+    rows = tables[table_index]
+    print(f"[dump_table] tabell {table_index}: {len(rows)} rader, FULLSTÄNDIG text:\n")
+    for i, r in enumerate(rows):
+        marker = "RUBRIK" if i == 0 else f"rad {i}"
+        print(f"  [{marker}]")
+        for cell in r:
+            print(f"    {cell!r}")
+        print()
+
+
 def probe_index() -> None:
     """Hämtar startsidan och dumpar länkstrukturen – svarar på: hur når man
     A-Ö-sidorna, och hur ser bolagssidornas URL-mönster ut? Ingen tolkning,
@@ -212,6 +259,12 @@ def main():
         probe_index()
     elif cmd == "probe":
         probe(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif cmd == "dump_table":
+        if len(sys.argv) < 3:
+            print("Ange bolag/URL: python -m altdata.aktiehistorik dump_table sas [tabell-index]")
+            return
+        idx = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+        dump_table(sys.argv[2], idx)
     else:
         print(__doc__)
 
