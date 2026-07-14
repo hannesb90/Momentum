@@ -46,6 +46,11 @@ Körs på Pi:n (nät):
     python -m altdata.avanza extract large          # bygg fundamentals_from_avanza.csv
     python -m altdata.avanza extract quality        # ...till results/quality/ (rör ej large/small)
     python -m altdata.avanza audit                  # månatlig avnoterings-/uppköpsrevision
+
+Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
+Group): altdata/avanza_overrides.csv (ticker,query,comment) – valfri fil,
+varje rad ska vara verifierad mot en skarp 'search'-körning innan den läggs
+till, samma princip som mfn_fetch.py:s valfria mfn_map.csv.
 """
 import json
 import re
@@ -297,6 +302,27 @@ def _search_variant(variant: str) -> tuple:
     return confirmed, (stock_hits[0] if stock_hits else None)
 
 
+def _load_query_overrides() -> dict:
+    """Valfri ticker -> KÄND aktuell sökfråga (altdata/avanza_overrides.csv,
+    kolumner ticker,query,comment). För bolag som bytt namn/ticker på ett sätt
+    ingen strängregel (_ticker_variants) kan räkna ut – t.ex. CLNK-B.ST
+    (Cellink) heter numera BICO Group med EN enda aktieklass, ingen "-B" ens
+    kvar. Varje rad ska vara VERIFIERAD mot en skarp search()-körning innan
+    den läggs till (inte gissad – en extern, overifierad namnbyteslista
+    ledde till detta, men bara BICO-fallet kontrollerades faktiskt mot en
+    riktig sökning innan det lades till). Samma mönster som mfn_fetch.py:s
+    valfria mfn_map.csv. Saknas filen -> tom dict, ingen krasch."""
+    p = Path(__file__).parent / "avanza_overrides.csv"
+    out: dict = {}
+    if p.exists():
+        import csv as _csv
+        with open(p, encoding="utf-8") as f:
+            for row in _csv.DictReader(f):
+                if row.get("ticker") and row.get("query"):
+                    out[row["ticker"]] = row["query"]
+    return out
+
+
 def match(segment: Optional[str] = None) -> None:
     """Bygger ticker -> Avanza orderBookId genom att söka på VÅR ticker-
     sträng (inte bolagsnamnet – Avanzas titelformat "Bolag (TICKER)" gör
@@ -311,8 +337,11 @@ def match(segment: Optional[str] = None) -> None:
     dyrt att sakna: gissa aldrig tyst.
 
     segment: 'large'/'small' ELLER 'quality' (Small+Micro+Nano Cap, se
-    _resolve_universe)."""
+    _resolve_universe). Provar en ev. VERIFIERAD override-sökfråga
+    (avanza_overrides.csv) FÖRST, före de vanliga tickervarianterna – för
+    bolag som bytt namn på ett sätt inga strängregler kan räkna ut."""
     tickers, sector_map, cap_map, _name_map, _results_dir = _resolve_universe(segment)
+    overrides = _load_query_overrides()
 
     mp = _map_path()
     mapping = json.loads(mp.read_text()) if mp.exists() else {}
@@ -326,7 +355,8 @@ def match(segment: Optional[str] = None) -> None:
             continue
         base = t.split(".")[0]
         confirmed = fallback = None
-        for variant in _ticker_variants(base):
+        variants = ([overrides[t]] if t in overrides else []) + _ticker_variants(base)
+        for variant in variants:
             try:
                 confirmed, hit = _search_variant(variant)
             except Exception as e:  # noqa: BLE001
@@ -341,7 +371,7 @@ def match(segment: Optional[str] = None) -> None:
         hit = confirmed or fallback
         if hit is None:
             skipped += 1
-            print(f"  [{i:>4}/{len(tickers)}] {t:<14} ingen STOCK-träff (provade {_ticker_variants(base)})")
+            print(f"  [{i:>4}/{len(tickers)}] {t:<14} ingen STOCK-träff (provade {variants})")
             continue
         if confirmed is None:
             uncertain += 1
