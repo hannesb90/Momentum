@@ -1,0 +1,27 @@
+[Unit]
+Description=Momentum ML – månatlig Avanza-överlevnadsrevision (avnotering/uppköp)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=PATH=/opt/momentum/venv/bin
+Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
+Environment=PYTHONUNBUFFERED=1
+# audit() re-verifierar VARJE redan bekräftad avanza_map.json-mappning mot
+# Avanzas stock-info-endpoint (samma som probe()/company_financials() redan
+# använder) – ett fel där en sökning förut gav träff är en stark avnoterings-/
+# uppköpssignal. Sveper ALLA segment i EN körning (ingen segment-arg – se
+# avanza.py:s docstring), skriver ACKUMULERANDE results/avanza_delisting_
+# audit.csv (skrivs aldrig över, till skillnad från övriga CSV:er i kedjan).
+# "-"-prefix: fel stoppar inte resten (samma princip som mfn-/pdf-kedjan).
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.avanza audit
+
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=20
+MemoryMax=400M
+
+TimeoutStartSec=1h
