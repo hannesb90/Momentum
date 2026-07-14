@@ -490,7 +490,14 @@ def build_index() -> None:
 # äkta nollresultat (inga sådana bolag), inte ett filtreringsfel.
 _SUFFIX_WORDS = {"ab", "publ", "asa", "as", "ltd", "limited", "inc", "corp",
                  "corporation", "holding", "holdings", "group", "plc", "se",
-                 "nv", "ag", "oyj", "aktiebolag", "aktiebolaget", "spa", "sa"}
+                 "nv", "ag", "oyj", "aktiebolag", "aktiebolaget", "spa", "sa",
+                 # instrumentbeskrivande ord (ej bolagsidentitet) - samma
+                 # PREF/BTA-mönster som avanza.py:s _INSTRUMENT_SEG_RE redan
+                 # känner igen på tickernivå, verifierat mot skarpa exempel
+                 # ('ALM Equity AB Pref.shs', 'AlzeCure Pharma AB TEMP',
+                 # 'Autoliv Inc. SDB') där dessa ord blockerade en annars
+                 # exakt matchning
+                 "pref", "temp", "sdb", "shs"}
 
 
 def _normalize_name(name: str) -> str:
