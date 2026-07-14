@@ -33,6 +33,7 @@ händelser ändras inte, och Skatteverket ska inte behöva serva om samma sida
     python -m altdata.aktiehistorik dump_table sas [i]     # EN tabell fullständigt, otrunkerat
     python -m altdata.aktiehistorik facts sas              # extract_survival_facts(), läsvänligt
     python -m altdata.aktiehistorik build_index            # huvudsida+9 undersidor -> _company_index.json
+    python -m altdata.aktiehistorik match_survival [seg]    # namnmatcha vårt universum mot indexet (LOKALT, 0 nätanrop)
 """
 import html as _html
 import json
@@ -477,6 +478,125 @@ def build_index() -> None:
     print(f"\n  sparad: {out}")
 
 
+# ── Namnmatchning (vårt universum -> Skatteverkets index) ────────────────────
+# HELT LOKAL (0 nätanrop) – matchar mot den redan hämtade _company_index.json.
+# Skatteverket verkar indexera varje bolag under dess NUVARANDE namn (AAK:s
+# sida nås via 'aak.html' trots att bolaget historiskt hetat 'BNS Industri
+# AB' – namnbytet ligger inbäddat som HISTORIK på sidan, inte som en egen
+# indexpost). Juridiska suffix (AB/(publ)/Ltd/ASA/A-S/Inc/Corp/Holding/...)
+# och aktieklasser ('Class B') skiljer sig ofta mellan vår universum-CSV
+# (FinanceDatabase) och Skatteverkets skrivsätt – normaliseras bort innan
+# jämförelse. Verifierat manuellt att Å/Ä-luckan i build_index() är ett
+# äkta nollresultat (inga sådana bolag), inte ett filtreringsfel.
+_SUFFIX_WORDS = {"ab", "publ", "asa", "as", "ltd", "limited", "inc", "corp",
+                 "corporation", "holding", "holdings", "group", "plc", "se",
+                 "nv", "ag", "oyj", "aktiebolag", "spa", "sa"}
+
+
+def _normalize_name(name: str) -> str:
+    """Bolagsnamn -> jämförbar kärna: gemener, danska 'A/S' hopslaget till
+    ett ord, aktieklass ('Class B') och juridiska suffix upprepat strippade
+    från slutet tills inget mer går bort ('X AB (publ)' kräver två pass:
+    strippa 'publ', sedan 'ab')."""
+    n = (name or "").strip().lower()
+    n = re.sub(r"\ba/s\b", " as ", n)
+    n = re.sub(r"[().,]", " ", n)
+    n = re.sub(r"\bclass\s+[a-zåäö]\b", " ", n)
+    tokens = n.split()
+    while tokens and tokens[-1] in _SUFFIX_WORDS:
+        tokens.pop()
+    return " ".join(tokens)
+
+
+def _match_index(name: str, index_by_norm: dict) -> Tuple[Optional[dict], Optional[dict]]:
+    """(bekräftad_träff, bästa_osäkra) mot ett {normaliserat_namn: [poster]}-
+    uppslag. Bekräftad = EXAKT normaliserad likhet. Osäker fallback =
+    normaliserat namn är en delsträng åt endera hållet (≥3 tecken, undviker
+    triviala korta delsträngar) – FLAGGAS osäker, används aldrig tyst som
+    om den vore bekräftad (samma lärdom som avanza.py:s Eagle Football
+    Group-fall: gissa aldrig tyst)."""
+    key = _normalize_name(name)
+    if not key:
+        return None, None
+    exact = index_by_norm.get(key)
+    if exact:
+        return exact[0], None
+    for other_key, entries in index_by_norm.items():
+        if len(key) >= 3 and len(other_key) >= 3 and (key in other_key or other_key in key):
+            return None, entries[0]
+    return None, None
+
+
+def match_survival(segment: Optional[str] = None) -> None:
+    """Matchar VÅRT ticker-universum mot Skatteverkets redan hämtade
+    bolagsindex (cache/aktiehistorik/_company_index.json, byggd av
+    build_index()) – HELT LOKAL strängmatchning, INGET nätanrop, snabbt
+    även mot 1650 bolag.
+
+    segment: 'large'/'small'/'quality' ELLER None (default – HELA
+    universumet oavsett handelssegment, eftersom döda/avnoterade tickers
+    per definition inte hör hemma i något aktuellt marknadsvärde-segment).
+
+    Sparar cache/aktiehistorik/ticker_match.json: {ticker: {name, url,
+    confirmed}}. Extraktionssteget (hämta varje bekräftad matchnings sida
+    + extract_survival_facts(), det NÄTVERKSTUNGA steget) byggs separat och
+    läser BARA confirmed:true-poster – samma regel som avanza.extract()
+    lärde sig dyrt att inte hoppa över (osäkra träffar extraherades
+    tidigare tyst, tills en riktig felmatchning upptäcktes).
+
+        python -m altdata.aktiehistorik match_survival
+        python -m altdata.aktiehistorik match_survival large
+    """
+    idx_path = _cache_dir() / "_company_index.json"
+    if not idx_path.exists():
+        print(f"Ingen {idx_path} – kör 'build_index' först.")
+        return
+    index = json.loads(idx_path.read_text(encoding="utf-8"))
+    index_by_norm: dict = {}
+    for e in index:
+        k = _normalize_name(e["name"])
+        if k:
+            index_by_norm.setdefault(k, []).append(e)
+
+    from data.data_loader import load_sweden_universe
+    market_cap = None
+    if segment:
+        seg_cfg = config.SEGMENTS.get(segment)
+        market_cap = seg_cfg["market_cap"] if seg_cfg else config.QUALITY_MARKET_CAP
+    tickers, sector_map, cap_map, name_map = load_sweden_universe(min_market_cap=market_cap)
+
+    result = {}
+    confirmed = uncertain = none = 0
+    for t in tickers:
+        if cap_map.get(t) == "Fond" or sector_map.get(t) == "Fond":
+            continue
+        name = name_map.get(t, t)
+        hit, fallback = _match_index(name, index_by_norm)
+        if hit:
+            result[t] = {"name": hit["name"], "url": hit["url"], "confirmed": True}
+            confirmed += 1
+        elif fallback:
+            result[t] = {"name": fallback["name"], "url": fallback["url"], "confirmed": False}
+            uncertain += 1
+        else:
+            none += 1
+
+    out = _cache_dir() / "ticker_match.json"
+    out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"[match_survival] {confirmed} bekräftade, {uncertain} osäkra, {none} utan träff "
+          f"(av {len(tickers)} tickers, segment={segment or 'hela universumet'}) -> {out}")
+    if uncertain:
+        print(f"\n  {min(uncertain, 20)} exempel på osäkra (granska/förbättra normaliseringen vid behov):")
+        n = 0
+        for t, v in result.items():
+            if not v["confirmed"]:
+                print(f"    {t:<16} vårt namn={name_map.get(t, t)!r:<40} "
+                      f"Skatteverket={v['name']!r}")
+                n += 1
+                if n >= 20:
+                    break
+
+
 def probe(url: Optional[str] = None) -> None:
     """Hämtar EN bolagssida och dumpar strukturen: titel, tabeller (rubriker +
     första rader) och alla textrader som matchar händelse-nyckelord
@@ -538,6 +658,8 @@ def main():
         facts(sys.argv[2])
     elif cmd == "build_index":
         build_index()
+    elif cmd == "match_survival":
+        match_survival(sys.argv[2] if len(sys.argv) > 2 else None)
     else:
         print(__doc__)
 
