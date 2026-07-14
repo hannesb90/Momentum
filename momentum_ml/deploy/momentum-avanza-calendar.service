@@ -1,0 +1,26 @@
+[Unit]
+Description=Momentum ML – veckovis rapportkalender från Avanza (nextReport-datum)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=PATH=/opt/momentum/venv/bin
+Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
+Environment=PYTHONUNBUFFERED=1
+# Hämtar keyIndicators.nextReport/previousReport för de TRADADE segmenten
+# (large+small – quality är screening-only och utelämnas medvetet: ~600
+# extra anrop/vecka för datum ingen handelslogik läser). Ett anrop per
+# bekräftad mappning, ~0.5s paus => ~6-7 min/vecka totalt.
+# "-"-prefix: ett stegs fel stoppar inte nästa (samma princip som övriga kedjor).
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.avanza calendar large
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.avanza calendar small
+
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=20
+MemoryMax=400M
+
+TimeoutStartSec=1h
