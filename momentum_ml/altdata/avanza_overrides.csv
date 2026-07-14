@@ -1,0 +1,2 @@
+ticker,query,comment
+CLNK-B.ST,BICO,Cellink bytte namn till BICO Group 2021 - en enda aktieklass kvar, ingen -B. Verifierat mot skarp 'python -m altdata.avanza search BICO' (orderBookId 702377, Stockholmsbörsen).
