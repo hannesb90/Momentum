@@ -490,14 +490,17 @@ def build_index() -> None:
 # äkta nollresultat (inga sådana bolag), inte ett filtreringsfel.
 _SUFFIX_WORDS = {"ab", "publ", "asa", "as", "ltd", "limited", "inc", "corp",
                  "corporation", "holding", "holdings", "group", "plc", "se",
-                 "nv", "ag", "oyj", "aktiebolag", "spa", "sa"}
+                 "nv", "ag", "oyj", "aktiebolag", "aktiebolaget", "spa", "sa"}
 
 
 def _normalize_name(name: str) -> str:
     """Bolagsnamn -> jämförbar kärna: gemener, danska 'A/S' hopslaget till
     ett ord, aktieklass ('Class B') och juridiska suffix upprepat strippade
-    från slutet tills inget mer går bort ('X AB (publ)' kräver två pass:
-    strippa 'publ', sedan 'ab')."""
+    från BÅDA ändarna tills inget mer går bort ('X AB (publ)' kräver två
+    pass: strippa 'publ', sedan 'ab'; 'AB Electrolux (publ)' och
+    'Aktiebolaget Fastator (publ)' är verkliga fall där suffixet står
+    FÖRST istället – verifierat mot skarp match_survival-körning där dessa
+    annars bara blev osäkra delsträngsträffar istället för bekräftade)."""
     n = (name or "").strip().lower()
     n = re.sub(r"\ba/s\b", " as ", n)
     n = re.sub(r"[().,]", " ", n)
@@ -505,25 +508,44 @@ def _normalize_name(name: str) -> str:
     tokens = n.split()
     while tokens and tokens[-1] in _SUFFIX_WORDS:
         tokens.pop()
+    while tokens and tokens[0] in _SUFFIX_WORDS:
+        tokens.pop(0)
     return " ".join(tokens)
 
 
 def _match_index(name: str, index_by_norm: dict) -> Tuple[Optional[dict], Optional[dict]]:
     """(bekräftad_träff, bästa_osäkra) mot ett {normaliserat_namn: [poster]}-
-    uppslag. Bekräftad = EXAKT normaliserad likhet. Osäker fallback =
-    normaliserat namn är en delsträng åt endera hållet (≥3 tecken, undviker
-    triviala korta delsträngar) – FLAGGAS osäker, används aldrig tyst som
-    om den vore bekräftad (samma lärdom som avanza.py:s Eagle Football
-    Group-fall: gissa aldrig tyst)."""
+    uppslag. Bekräftad = EXAKT normaliserad likhet. Osäker fallback = det
+    KORTARE namnets ORD (hela tokens, inte tecken) förekommer som en
+    SAMMANHÄNGANDE svit i det längre namnet – FLAGGAS osäker, används
+    aldrig tyst som om den vore bekräftad (samma lärdom som avanza.py:s
+    Eagle Football Group-fall: gissa aldrig tyst).
+
+    Ordbaserad matchning istället för teckendelsträng: en skarp
+    match_survival-körning visade att 'DNO ASA Class A' (normaliserat
+    'dno') annars char-delsträngsmatchade mot 'AddNode Group AB'
+    (normaliserat 'addnode', som råkar innehålla bokstäverna d-n-o i rad)
+    – två helt orelaterade bolag. Ordgränser tar bort den brusfällan utan
+    att offra legitima fall som 'Bygghemma Group' vs 'Bygghemma Group
+    First'."""
     key = _normalize_name(name)
     if not key:
         return None, None
     exact = index_by_norm.get(key)
     if exact:
         return exact[0], None
+    key_tokens = key.split()
     for other_key, entries in index_by_norm.items():
-        if len(key) >= 3 and len(other_key) >= 3 and (key in other_key or other_key in key):
-            return None, entries[0]
+        other_tokens = other_key.split()
+        if not key_tokens or not other_tokens:
+            continue
+        shorter, longer = (key_tokens, other_tokens) if len(key_tokens) <= len(other_tokens) else (other_tokens, key_tokens)
+        if shorter == longer or sum(len(w) for w in shorter) < 3:
+            continue
+        n = len(shorter)
+        for i in range(len(longer) - n + 1):
+            if longer[i:i + n] == shorter:
+                return None, entries[0]
     return None, None
 
 
