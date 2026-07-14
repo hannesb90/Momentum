@@ -254,8 +254,10 @@ def _map_path() -> Path:
 # small-segmentet hade '-PREF'-suffix, t.ex. KLOV-PREF.ST, medan KLOV-B.ST
 # redan hade data – preferensaktien delar SAMMA bolagsfundamenta som stam-
 # aktien, bara utdelningsvillkoren skiljer, så att stryka PREF och söka på
-# stammen ger korrekt delad revenue/net_profit/equity).
-_INSTRUMENT_SEG_RE = re.compile(r"^(BTA|TO|TR|UR|PREF)\d*$", re.I)
+# stammen ger korrekt delad revenue/net_profit/equity). PREF[AB]?: även
+# klassade preferensaktier – verifierat fall 'OP-PREFB.ST' (Oscar Properties
+# pref B) som fick noll träff när bara exakt 'PREF' kändes igen.
+_INSTRUMENT_SEG_RE = re.compile(r"^(BTA|TO|TR|UR|PREF[AB]?)\d*$", re.I)
 
 
 def _ticker_variants(base: str) -> list:
@@ -382,8 +384,15 @@ def match(segment: Optional[str] = None) -> None:
         if cap_map.get(t) == "Fond" or sector_map.get(t) == "Fond":
             continue
         if t in mapping:
-            already += 1
-            continue
+            # En OSÄKER post får ETT nytt försök när en override finns för
+            # tickern – annars blockerar den gamla fallback-träffen för evigt
+            # (verifierat: BICO-overriden hade aldrig fått verka om inte
+            # revalidate() råkat radera CLNK-B-posten först). Bekräftade
+            # poster provas aldrig om (dyra nätanrop i onödan).
+            if mapping[t].get("confirmed") or t not in overrides:
+                already += 1
+                continue
+            print(f"  [{i:>4}/{len(tickers)}] {t:<14} OSÄKER post + override finns – provar om")
         base = t.split(".")[0]
         confirmed = fallback = None
         variants = ([overrides[t]] if t in overrides else []) + _ticker_variants(base)
