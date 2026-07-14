@@ -32,8 +32,10 @@ händelser ändras inte, och Skatteverket ska inte behöva serva om samma sida
     python -m altdata.aktiehistorik probe <url>            # EN bolagssidas struktur (t.ex. SAS)
     python -m altdata.aktiehistorik dump_table sas [i]     # EN tabell fullständigt, otrunkerat
     python -m altdata.aktiehistorik facts sas              # extract_survival_facts(), läsvänligt
+    python -m altdata.aktiehistorik build_index            # huvudsida+9 undersidor -> _company_index.json
 """
 import html as _html
+import json
 import re
 import sys
 import time
@@ -398,6 +400,83 @@ def probe_index() -> None:
     print(f"\n  rå HTML: {cached if cached.exists() else _cache_dir() / '_probe_index.html'}")
 
 
+def _company_links_from(html: str) -> List[Tuple[str, str]]:
+    """(bolagsnamn, href) ur en index-/undersidas HTML – nav-/metalänkar och
+    tomma länktexter (verifierat: en enstaka nolledd-blankstegslänk finns på
+    huvudsidan, brus) filtreras bort."""
+    out = []
+    for h, t in _extract_links(html):
+        if "aktiehistorik" not in h.lower():
+            continue
+        name = t.strip()
+        if not name or name.lower() in _NAV_LINK_TEXTS:
+            continue
+        out.append((name, h))
+    return out
+
+
+def crawl_index() -> List[Tuple[str, str]]:
+    """Kombinerar huvudsidan (A-C, VERIFIERAT i skarp körning) + de 9
+    SUBPAGE_URLS (D-Ö+0-9, VERIFIERAT nödvändiga – huvudsidan saknar dem
+    helt) till EN fullständig (bolagsnamn, href)-lista, deduplicerad på
+    href. Cache-först per sida (samma princip som övriga kommandon) – en
+    redan hämtad sida hämtas ALDRIG om, ingen paus behövs då."""
+    seen, all_links = set(), []
+
+    idx_cache = _cache_dir() / "_probe_index.html"
+    if idx_cache.exists():
+        html = idx_cache.read_text(encoding="utf-8")
+    else:
+        html = _http_get(INDEX_URL)
+        _save("_probe_index.html", html)
+    for name, href in _company_links_from(html):
+        if href not in seen:
+            seen.add(href)
+            all_links.append((name, href))
+
+    for url in SUBPAGE_URLS:
+        cache_file = _cache_dir() / f"_sub_{_slug(url)}.html"
+        if cache_file.exists():
+            sub_html = cache_file.read_text(encoding="utf-8")
+        else:
+            sub_html = _http_get(url)
+            _save(f"_sub_{_slug(url)}.html", sub_html)
+            time.sleep(_PAUSE_S)
+        for name, href in _company_links_from(sub_html):
+            if href not in seen:
+                seen.add(href)
+                all_links.append((name, href))
+
+    return all_links
+
+
+def build_index() -> None:
+    """Kör crawl_index() och sparar HELA bolagslistan till cache/
+    aktiehistorik/_company_index.json – grunden för nästa steg
+    (namnmatchning mot vårt ticker-universum). Visar bokstavsfördelningen
+    igen som en SLUTGILTIG sanity-check – ska nu vara hela A-Ö, inga
+    saknade bokstäver (annars är täckningen ofullständig och något är fel)."""
+    links = crawl_index()
+    print(f"[build_index] {len(links)} bolag totalt (huvudsida + {len(SUBPAGE_URLS)} undersidor)")
+
+    from collections import Counter
+    first_letters = Counter(n[0].upper() for n, _ in links if n)
+    missing = sorted(set("ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ") - set(first_letters))
+    print()
+    for letter in sorted(first_letters):
+        print(f"    {letter}: {first_letters[letter]}")
+    if missing:
+        print(f"\n  VARNING: fortfarande saknade bokstäver: {', '.join(missing)} – "
+              f"täckningen är INTE komplett, undersök innan nästa steg.")
+    else:
+        print(f"\n  Full A-Ö-täckning bekräftad.")
+
+    out = _cache_dir() / "_company_index.json"
+    out.write_text(json.dumps([{"name": n, "url": h} for n, h in links],
+                              ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"\n  sparad: {out}")
+
+
 def probe(url: Optional[str] = None) -> None:
     """Hämtar EN bolagssida och dumpar strukturen: titel, tabeller (rubriker +
     första rader) och alla textrader som matchar händelse-nyckelord
@@ -457,6 +536,8 @@ def main():
             print("Ange bolag/URL: python -m altdata.aktiehistorik facts sas")
             return
         facts(sys.argv[2])
+    elif cmd == "build_index":
+        build_index()
     else:
         print(__doc__)
 
