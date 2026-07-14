@@ -365,12 +365,15 @@ def _load_fundamentals_growth(segment: Optional[str] = None) -> pd.DataFrame:
     trots känd data.
 
     ANDRA STEGET – altdata/avanza.py (fundamentals_from_avanza.csv, samma
-    princip som value_screener._load_fundamentals): Avanzas pm_id matchar
-    aldrig ett äkta MFN-pm_id, så den slås ihop i ett eget steg på
-    (ticker, period) och FYLLER BARA GENUINA LUCKOR – en redan populerad
-    text/pdf-siffra vinner alltid. Avanza saknar eps_prior helt (bara
-    revenue_prior beräknas i avanza._build_rows), så eps_growth_yoy förblir
-    NaN för rader som bara har Avanza-data – ärligt obedömbart, ingen gissning.
+    delade mekanism som value_screener._load_fundamentals, se altdata/
+    fund_merge.fill_from_avanza): Avanza FYLLER bara NaN-celler i text-rader
+    med samma (ticker, årsbärande period), eller läggs till som egna rader
+    för perioder text-källorna helt saknar – text-rader slås ALDRIG ihop med
+    varandra och behåller sina egna published-stämplar (kritiskt just HÄR:
+    merge_asof:en nedströms är point-in-time, en hopblandad published-stämpel
+    är en lookahead-läcka). Avanza saknar eps_prior helt (bara revenue_prior
+    beräknas i avanza._build_rows), så eps_growth_yoy förblir NaN för rader
+    som bara har Avanza-data – ärligt obedömbart, ingen gissning.
 
     Saknas filerna (inte genererade ännu, eller körs i en miljö utan
     altdata-pipelinen) returneras en tom DataFrame – growth-featuresen blir
@@ -409,20 +412,10 @@ def _load_fundamentals_growth(segment: Optional[str] = None) -> pd.DataFrame:
         except Exception:  # noqa: BLE001
             pass
 
-    parts = [d for d in (text_df, avanza_df) if not d.empty]
-    if not parts:
+    from altdata.fund_merge import fill_from_avanza
+    df = fill_from_avanza(text_df, avanza_df)
+    if df.empty or "ticker" not in df.columns or "published" not in df.columns:
         return pd.DataFrame(columns=cols)
-    df = pd.concat(parts, ignore_index=True, sort=False)
-    if "ticker" not in df.columns or "published" not in df.columns:
-        return pd.DataFrame(columns=cols)
-
-    if "period" in df.columns:
-        src_rank = df["pm_id"].astype(str).str.startswith("avanza-") if "pm_id" in df.columns \
-            else pd.Series(False, index=df.index)
-        df = df.assign(_src_rank=src_rank.astype(int)).sort_values(["ticker", "period", "_src_rank"])
-        key_present = df["ticker"].notna() & df["period"].notna()
-        merged2 = df[key_present].groupby(["ticker", "period"], as_index=False, sort=False).first()
-        df = pd.concat([merged2, df[~key_present]], ignore_index=True).drop(columns=["_src_rank"], errors="ignore")
 
     df["published"] = pd.to_datetime(df["published"], errors="coerce", utc=True).dt.tz_localize(None)
     df = df.dropna(subset=["ticker", "published"])
