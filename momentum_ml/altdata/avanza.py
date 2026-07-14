@@ -293,7 +293,12 @@ def match(segment: Optional[str] = None) -> None:
 _FIN_FIELDS = {"revenue": "sales", "net_profit": "netProfit",
               "_total_assets": "totalAssets", "liabilities": "totalLiabilities",
               "debt_equity_avanza": "debtToEquityRatio"}
-_RATIO_FIELDS = {"eps": "earningsPerShare", "roe_avanza": "returnOnEquityRatio"}
+# _equity_per_share (VERIFIERAT fältnamn ur skarp probe, companyKeyRatiosByYear)
+# används BARA för att härleda aktieantal (se _build_rows) – Avanzas analysis-
+# endpoint har inget eget "antal aktier"-fält, men equity/equityPerShare ger
+# samma tal utan ett extra API-anrop.
+_RATIO_FIELDS = {"eps": "earningsPerShare", "roe_avanza": "returnOnEquityRatio",
+                 "_equity_per_share": "equityPerShare"}
 
 
 def _rows_from_section(section: dict, fields: dict) -> dict:
@@ -333,7 +338,16 @@ def _build_rows(ticker: str, analysis: dict) -> list:
     (verifierat i probe: Wallenstams sales 2025 = 3 256 000 000, inte
     3256 eller 3.256) konverteras till Mkr HÄR – value_screener._to_msek
     tolkar en tom/okänd enhet som 'redan Mkr', så vi MÅSTE skala om innan
-    skrivning, annars blir det ett 1 000 000x-fel i andra riktningen."""
+    skrivning, annars blir det ett 1 000 000x-fel i andra riktningen.
+
+    shares_outstanding HÄRLEDS (Avanza har inget eget aktieantal-fält):
+    primärt equity_raw / equityPerShare (båda RÅA SEK, samma skala tar ut
+    varandra), med net_profit_raw / eps som reserv för år där equityPerShare
+    saknas men eps finns (t.ex. ett förlustår med negativt eget kapital gör
+    equityPerShare meningslös men eps ändå brukbar). Utan detta saknade
+    283/296 bolag P/E-underlaget helt (Avanza-extraktionen gav aldrig
+    aktieantal) – 'komplett'-andelen i coverage() låg fast på 0% trots att
+    revenue/net_profit/equity/liabilities redan täcktes."""
     rows = []
     for by_key, granularity in (("companyFinancialsByYear", "year"), ("companyFinancialsByQuarter", "quarter")):
         fin = _rows_from_section(analysis.get(by_key), _FIN_FIELDS)
@@ -350,11 +364,16 @@ def _build_rows(ticker: str, analysis: dict) -> list:
             if not date:
                 continue   # utan datum: ingen point-in-time-plats i pipelinen (dropna nedströms ändå)
             revenue = f.get("revenue")
-            equity = None
+            equity_raw = None
             if f.get("_total_assets") is not None and f.get("liabilities") is not None:
-                equity = (f["_total_assets"] - f["liabilities"]) / 1e6
+                equity_raw = f["_total_assets"] - f["liabilities"]
+            equity = (equity_raw / 1e6) if equity_raw is not None else None
             # revenue_prior: SAMMA reportType, föregående år, ur SAMMA serie.
             prior = fin.get((year - 1, rtype), {}).get("revenue")
+            eqs = r.get("_equity_per_share")
+            shares = (equity_raw / eqs) if (equity_raw is not None and eqs not in (None, 0)) else None
+            if shares is None and f.get("net_profit") is not None and r.get("eps") not in (None, 0):
+                shares = f["net_profit"] / r["eps"]
             row = {
                 "ticker": ticker, "published": f"{date}T08:00:00Z", "period": period,
                 "pm_id": f"avanza-{ticker}-{year}-{rtype}",
@@ -367,6 +386,7 @@ def _build_rows(ticker: str, analysis: dict) -> list:
                 "liabilities": (f["liabilities"] / 1e6) if f.get("liabilities") is not None else None,
                 "liabilities_unit": "Mkr",
                 "eps": r.get("eps"),
+                "shares_outstanding": shares,
                 "debt_equity_avanza": f.get("debt_equity_avanza"),
                 "roe_avanza": r.get("roe_avanza"),
             }
@@ -417,7 +437,8 @@ def extract(segment: Optional[str] = None) -> None:
         return
     cols = ["ticker", "published", "period", "pm_id", "title", "revenue", "revenue_unit",
            "revenue_prior", "net_profit", "net_profit_unit", "equity", "equity_unit",
-           "liabilities", "liabilities_unit", "eps", "debt_equity_avanza", "roe_avanza"]
+           "liabilities", "liabilities_unit", "eps", "shares_outstanding",
+           "debt_equity_avanza", "roe_avanza"]
     out = Path(config.anchor(seg_cfg["results_dir"])) / "fundamentals_from_avanza.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     import csv
