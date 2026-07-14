@@ -1,0 +1,14 @@
+[Unit]
+Description=Kör momentum-avanza-audit.service en gång i månaden
+
+[Timer]
+# Första i månaden, 06:30 – efter mfn-kedjan (04:30) och pdf-kedjan (05:30),
+# så en avnotering som redan hunnit synas i mfn-cachen kan korsrefereras
+# samma natt. Månadsvis räcker gott: avnoteringar/uppköp är sällanhändelser,
+# och varje körning gör N nätanrop (ett per bekräftad Avanza-mappning).
+OnCalendar=*-*-01 06:30:00
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

@@ -41,7 +41,10 @@ Körs på Pi:n (nät):
     python -m altdata.avanza search "Volvo"        # hitta instrument-id
     python -m altdata.avanza probe SAAB-B.ST        # full schema-dump för ETT bolag
     python -m altdata.avanza match large            # bygg ticker -> orderBookId (cachas)
+    python -m altdata.avanza match quality          # ...även Small+Micro+NANO Cap
     python -m altdata.avanza extract large          # bygg fundamentals_from_avanza.csv
+    python -m altdata.avanza extract quality        # ...till results/quality/ (rör ej large/small)
+    python -m altdata.avanza audit                  # månatlig avnoterings-/uppköpsrevision
 """
 import json
 import re
@@ -160,6 +163,28 @@ def probe(ticker_or_name: str) -> None:
           "(revenue/net_profit/equity/liabilities/...) FÖRST efter att ha sett riktiga fältnamn.")
 
 
+def _resolve_universe(segment: Optional[str]):
+    """segment = 'large'/'small' (config.SEGMENTS, tradade backtest-segment)
+    ELLER 'quality' (Small+Micro+NANO Cap – SAMMA specialfall som
+    mfn_fetch.fetch_universe/refresh_universe redan använder för sin PM-cache;
+    Nano exkluderas MEDVETET ur 'small' i config.py – opålitlig klassning/
+    likviditet för att TA POSITIONER, inte ett skäl att avstå datainsamling.
+    'quality' skriver till en EGEN results/quality/-mapp, rör ALDRIG large/
+    small:s filer). Returnerar (tickers, sector_map, cap_map, name_map,
+    results_dir)."""
+    from data.data_loader import load_sweden_universe
+    if segment == "quality":
+        market_cap = config.QUALITY_MARKET_CAP
+        results_dir = config.anchor("results/quality")
+    else:
+        seg_cfg = config.SEGMENTS.get(segment) if segment else None
+        seg_cfg = seg_cfg or config.SEGMENTS[config.DEFAULT_SEGMENT]
+        market_cap = seg_cfg["market_cap"]
+        results_dir = config.anchor(seg_cfg["results_dir"])
+    tickers, sector_map, cap_map, name_map = load_sweden_universe(min_market_cap=market_cap)
+    return tickers, sector_map, cap_map, name_map, results_dir
+
+
 # ── Matchning (ticker -> Avanza orderBookId) ──────────────────────────────────
 def _norm_ticker(s: str) -> str:
     return "".join(ch for ch in (s or "").upper() if ch.isalnum())
@@ -236,12 +261,11 @@ def match(segment: Optional[str] = None) -> None:
     träff hittas – annars sparas bästa ej bekräftade träff (om någon fanns)
     men FLAGGAS som osäker i utskriften, så den kan granskas manuellt innan
     extract() litar på den. Samma lärdom som mfn_fetch._author_match kostade
-    dyrt att sakna: gissa aldrig tyst."""
-    from data.data_loader import load_sweden_universe
+    dyrt att sakna: gissa aldrig tyst.
 
-    seg_cfg = config.SEGMENTS.get(segment) if segment else None
-    seg_cfg = seg_cfg or config.SEGMENTS[config.DEFAULT_SEGMENT]
-    tickers, sector_map, cap_map, _name_map = load_sweden_universe(min_market_cap=seg_cfg["market_cap"])
+    segment: 'large'/'small' ELLER 'quality' (Small+Micro+Nano Cap, se
+    _resolve_universe)."""
+    tickers, sector_map, cap_map, _name_map, _results_dir = _resolve_universe(segment)
 
     mp = _map_path()
     mapping = json.loads(mp.read_text()) if mp.exists() else {}
@@ -401,17 +425,18 @@ def extract(segment: Optional[str] = None) -> None:
     net_profit/equity/liabilities/...) så value_screener._load_fundamentals
     kan läsa den rakt av. debt_equity_avanza/roe_avanza/eps följer med som
     EXTRA kolumner (Avanzas egna färdiga nyckeltal) – oanvända av dagens
-    pipeline tills value_screener explicit kopplas in att föredra dem."""
+    pipeline tills value_screener explicit kopplas in att föredra dem.
+
+    segment: 'large'/'small' ELLER 'quality' (Small+Micro+Nano Cap, se
+    _resolve_universe) – skriver till results/quality/ för det senare, rör
+    ALDRIG large/small:s fundamentals_from_avanza.csv."""
     mp = _map_path()
     if not mp.exists():
         print(f"Ingen {mp} – kör 'match' först.")
         return
     mapping = json.loads(mp.read_text())
 
-    seg_cfg = config.SEGMENTS.get(segment) if segment else None
-    seg_cfg = seg_cfg or config.SEGMENTS[config.DEFAULT_SEGMENT]
-    from data.data_loader import load_sweden_universe
-    tickers, sector_map, cap_map, _name_map = load_sweden_universe(min_market_cap=seg_cfg["market_cap"])
+    tickers, sector_map, cap_map, _name_map, results_dir = _resolve_universe(segment)
     wanted = {t for t in tickers if cap_map.get(t) != "Fond" and sector_map.get(t) != "Fond"}
 
     all_rows, ok, fail = [], 0, 0
@@ -439,7 +464,7 @@ def extract(segment: Optional[str] = None) -> None:
            "revenue_prior", "net_profit", "net_profit_unit", "equity", "equity_unit",
            "liabilities", "liabilities_unit", "eps", "shares_outstanding",
            "debt_equity_avanza", "roe_avanza"]
-    out = Path(config.anchor(seg_cfg["results_dir"])) / "fundamentals_from_avanza.csv"
+    out = Path(results_dir) / "fundamentals_from_avanza.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     import csv
     with open(out, "w", newline="", encoding="utf-8") as f:
@@ -447,6 +472,139 @@ def extract(segment: Optional[str] = None) -> None:
         w.writeheader()
         w.writerows(all_rows)
     print(f"\n[extract] {ok} bolag ({fail} fel), {len(all_rows)} rader -> {out}")
+
+
+# ── Överlevnadsrevision (avnotering/uppköp) ───────────────────────────────────
+# Svenska nyckelord i PM-TITLAR som brukar signalera att ett bolag försvinner
+# från börsen. Träff = LEDTRÅD för manuell granskning, INTE ett facit – en
+# rubrik som nämner "budplikt" kan lika gärna handla om ett ANNAT bolags bud
+# PÅ det här bolaget (ingen automatisk sanning, samma försiktighet som
+# _search_variant()s 'confirmed vs uncertain'-flaggning).
+_DELISTING_KEYWORDS = re.compile(
+    r"avnoter|uppköp|budplikt|tvångsinlösen|offentligt (?:kontant)?bud|"
+    r"budet\b|fusion(?:en)?\b|samgående|sammanslagning|delisting|"
+    r"inlösen av aktier|likvidation|konkurs",
+    re.I,
+)
+
+
+def _mfn_delisting_hint(ticker: str) -> Optional[dict]:
+    """Söker REDAN CACHAD MFN-data (cache/mfn/{ticker}.json, byggd av
+    mfn_fetch.py – INGET nytt nätanrop här) efter den SENASTE PM-titeln som
+    matchar ett avnoterings-/uppköpsnyckelord. Returnerar None om cachen
+    saknas eller inget PM matchar (ärligt 'okänd orsak', inte en gissning)."""
+    p = Path(config.MFN_CACHE_DIR) / f"{ticker}.json"
+    if not p.exists():
+        return None
+    try:
+        cached = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return None
+    items = sorted(cached.get("items") or [], key=lambda it: it.get("published") or "", reverse=True)
+    for it in items:
+        title = it.get("title") or ""
+        m = _DELISTING_KEYWORDS.search(title)
+        if m:
+            return {"keyword": m.group(0), "title": title,
+                    "date": (it.get("published") or "")[:10], "url": it.get("url")}
+    return None
+
+
+def audit() -> None:
+    """MÅNATLIG ÖVERLEVNADSREVISION – re-verifierar VARJE redan BEKRÄFTAD
+    avanza_map.json-mappning mot /_api/market-guide/stock/{orderBookId}
+    (SAMMA verifierade endpoint som probe()/company_financials() redan
+    använder – inget nytt, ogissat API). Sveper ALLA segment/tiers som någon
+    gång match():ats (oavsett 'large'/'small'/'quality') – avnotering är en
+    bolags-egenskap, inte en segment-egenskap.
+
+    Ett fel (404/timeout/etc) på ett instrument som förut gick att slå upp är
+    en stark avnoterings-/uppköpssignal – byggd på samma lärdom som avslöjade
+    de 9 AUTOOO/EQNRO-liknande fallen i match(): en Avanza-sökning som SLUTAR
+    ge träff är information, inte brus.
+
+    Jämför mot cache/avanza_audit_snapshot.json (föregående körnings status
+    per ticker) för att hitta NYA fel sedan senast – annars skulle varje
+    körning återflagga samma redan kända/granskade bolag om och om igen.
+    NYFLAGGADE tickers korsrefereras mot redan cachad MFN-data (ingen extra
+    nätaccess) för att STYRKA (inte bevisa) en trolig orsak.
+
+    Skriver ACKUMULERANDE results/avanza_delisting_audit.csv (en rad per
+    nyflaggat bolag och körning – historik bevaras, filen skrivs ALDRIG över,
+    till skillnad från övriga CSV:er i pipelinen). Tänkt körd en gång i
+    månaden (deploy/momentum-avanza-audit.timer).
+
+        python -m altdata.avanza audit
+    """
+    import csv as _csv
+    from datetime import datetime, timezone
+
+    mp = _map_path()
+    if not mp.exists():
+        print(f"Ingen {mp} – kör 'match' först.")
+        return
+    mapping = json.loads(mp.read_text())
+    confirmed = {t: v for t, v in mapping.items() if v.get("confirmed") and v.get("orderBookId")}
+
+    snap_path = Path(config.anchor("cache")) / "avanza_audit_snapshot.json"
+    prev = json.loads(snap_path.read_text()) if snap_path.exists() else {}
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    current = dict(prev)
+    newly_flagged = []
+    print(f"[audit] verifierar {len(confirmed)} bekräftade mappningar...")
+    for i, (t, v) in enumerate(sorted(confirmed.items()), 1):
+        oid = v["orderBookId"]
+        try:
+            info = _get(f"/_api/market-guide/stock/{oid}")
+            ok = bool(info)
+        except Exception:  # noqa: BLE001
+            ok = False
+        status = "ok" if ok else "error"
+        was_ok = prev.get(t, {}).get("status") in (None, "ok")
+        if was_ok and status == "error":
+            newly_flagged.append(t)
+            print(f"  [{i:>4}/{len(confirmed)}] {t:<14} NY FLAGGA – kunde inte verifieras längre")
+        current[t] = {"status": status, "checked": today, "orderBookId": oid, "title": v.get("title")}
+        time.sleep(_PAUSE_S)
+
+    snap_path.parent.mkdir(parents=True, exist_ok=True)
+    snap_path.write_text(json.dumps(current, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    if not newly_flagged:
+        n_error = sum(1 for s in current.values() if s.get("status") == "error")
+        print(f"[audit] inga NYA avvikelser sedan förra körningen ({len(confirmed)} kontrollerade, "
+              f"{n_error} sedan tidigare kända fel) -> {snap_path}")
+        return
+
+    print(f"\n[audit] {len(newly_flagged)} NYA avvikelser – korsrefererar mot cachad MFN-data...")
+    rows = []
+    for t in newly_flagged:
+        hint = _mfn_delisting_hint(t)
+        if hint:
+            reason = f"PM nämner \"{hint['keyword']}\""
+        else:
+            reason = "okänd (ingen MFN-nyckelordsträff) – manuell koll"
+        rows.append({
+            "audit_date": today, "ticker": t, "orderBookId": confirmed[t]["orderBookId"],
+            "avanza_titel": confirmed[t].get("title"), "trolig_orsak": reason,
+            "styrkande_pm_titel": (hint or {}).get("title") or "",
+            "styrkande_pm_datum": (hint or {}).get("date") or "",
+            "styrkande_pm_url": (hint or {}).get("url") or "",
+        })
+        print(f"  {t:<14} {reason}")
+
+    out = Path(config.anchor("results")) / "avanza_delisting_audit.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    cols = ["audit_date", "ticker", "orderBookId", "avanza_titel", "trolig_orsak",
+           "styrkande_pm_titel", "styrkande_pm_datum", "styrkande_pm_url"]
+    file_exists = out.exists()
+    with open(out, "a", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+        if not file_exists:
+            w.writeheader()
+        w.writerows(rows)
+    print(f"\n[audit] {len(rows)} rader TILLAGDA (ackumulerande, historik bevaras) -> {out}")
 
 
 def main():
@@ -463,6 +621,8 @@ def main():
         match(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "extract":
         extract(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif cmd == "audit":
+        audit()
     else:
         print(__doc__)
 
