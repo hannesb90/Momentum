@@ -53,6 +53,8 @@ Körs på Pi:n (nät):
     python -m altdata.avanza check_marketplace       # Avanzas EGET listing.marketPlaceName/countryCode, ALLA matchade bolag
     python -m altdata.avanza check_marketplace suspects  # ...bara de ~109 ASA/A-S/Oyj/P-F-misstänkta (snabbare)
     python -m altdata.avanza list_probe              # proba börslist-/IPO-endpoints + chart-djup (Yahoo-ersättningsfrågan)
+    python -m altdata.avanza list_probe2             # fördjupning: paginering på /_mobile/market/stocks + chart-djup mot ÄLDRE bolag
+    python -m altdata.avanza list_probe2 VOLV-B.ST   # ...annat chart-testbolag (default AAK.ST)
     python -m altdata.avanza universe_remove T1,T2   # dry-run: ta bort tickers ur sweden_universe.csv (lägg till 'write' för att faktiskt skriva)
 
 Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
@@ -1271,6 +1273,114 @@ def list_probe() -> None:
           "Yahoo-ersättning byggs FÖRST mot ett verifierat schema.")
 
 
+_MOBILE_STOCKS_PROBE_LIMITS = (5, 50, 500, 2000)
+# 2010-01-01 i ms sedan epoch – backtesten startar där, så chart-djupet måste
+# nå MINST hit för att Avanza ens vara en KANDIDAT till Yahoo-ersättning.
+_BACKTEST_START_MS = 1262304000000
+
+
+def list_probe2(chart_ticker: str = "AAK.ST") -> None:
+    """Fördjupning av list_probe(): (C) hur långt bär den enda 200:an ur
+    steg A (/_mobile/market/stocks) – testar om 'limit' har ett servertak
+    och om 'offset' faktiskt paginerar (olika bolag vid olika offset ->
+    listan går att enumerera fullständigt via upprepade anrop). (D) chart-
+    djup mot ett ÄLDRE, etablerat bolag – list_probe()s testbolag (TRATON,
+    IPO 2019) kunde inte skilja "hela historiken" från "takad vid ~7 år"
+    eftersom TRATON inte HAR äldre historik att sakna. AAK/Volvo/SEB gör.
+
+        python -m altdata.avanza list_probe2                # chart mot AAK.ST
+        python -m altdata.avanza list_probe2 VOLV-B.ST       # annat bolag
+    """
+    dump: dict = {}
+    print("[list_probe2] == C. /_mobile/market/stocks – limit-tak ==")
+    for limit in _MOBILE_STOCKS_PROBE_LIMITS:
+        key = f"limit={limit}"
+        try:
+            r = requests.request("GET", f"{BASE}/_mobile/market/stocks",
+                                 params={"limit": limit},
+                                 headers={"User-Agent": _UA, "Accept": "application/json"},
+                                 timeout=30)
+            body = r.json() if (r.content and "json" in (r.headers.get("Content-Type") or "")) else None
+            first_list = None
+            if isinstance(body, dict):
+                first_list = next((v for v in body.values() if isinstance(v, list)), None)
+            elif isinstance(body, list):
+                first_list = body
+            n_returned = len(first_list) if first_list is not None else None
+            dump[key] = {"status": r.status_code, "n_returned": n_returned,
+                        "top_keys": list(body.keys()) if isinstance(body, dict) else None}
+            print(f"  {key:<12} status={r.status_code}  returnerade={n_returned}"
+                  + (f"  toppnycklar={list(body.keys())}" if isinstance(body, dict) else ""))
+        except Exception as e:  # noqa: BLE001
+            dump[key] = {"status": None, "error": str(e)}
+            print(f"  {key:<12} FEL: {e}")
+        finally:
+            time.sleep(_PAUSE_S)
+
+    print("\n[list_probe2] == C2. offset-paginering (olika bolag vid olika offset?) ==")
+    for offset in (0, 5, 10):
+        key = f"offset={offset}"
+        try:
+            r = requests.request("GET", f"{BASE}/_mobile/market/stocks",
+                                 params={"limit": 5, "offset": offset},
+                                 headers={"User-Agent": _UA, "Accept": "application/json"},
+                                 timeout=30)
+            body = r.json() if (r.content and "json" in (r.headers.get("Content-Type") or "")) else None
+            first_list = None
+            if isinstance(body, dict):
+                first_list = next((v for v in body.values() if isinstance(v, list)), None)
+            elif isinstance(body, list):
+                first_list = body
+            names = [item.get("name", item) if isinstance(item, dict) else item
+                     for item in first_list] if first_list else None
+            dump[key] = {"status": r.status_code, "names": names}
+            print(f"  {key:<12} status={r.status_code}  namn={names}")
+        except Exception as e:  # noqa: BLE001
+            dump[key] = {"status": None, "error": str(e)}
+            print(f"  {key:<12} FEL: {e}")
+        finally:
+            time.sleep(_PAUSE_S)
+
+    print(f"\n[list_probe2] == D. Chart-djup mot ÄLDRE bolag ({chart_ticker}) ==")
+    mapping = json.loads(_map_path().read_text()) if _map_path().exists() else {}
+    entry = mapping.get(chart_ticker)
+    if not entry or not entry.get("confirmed") or not entry.get("orderBookId"):
+        print(f"  {chart_ticker}: ingen bekräftad orderBookId i avanza_map.json – "
+              f"kör 'match large' (eller motsvarande segment) först, hoppar över D.")
+    else:
+        print(f"  testbolag: {entry.get('title')!r} (orderBookId={entry['orderBookId']})")
+        for period in _CHART_DEPTH_CANDIDATES:
+            try:
+                data = _get(f"/_api/price-chart/stock/{entry['orderBookId']}",
+                            {"timePeriod": period})
+                points = next((data[k] for k in _CHART_POINT_KEYS
+                               if isinstance(data.get(k), list)), None)
+                first_ts = points[0].get("timestamp") if points else None
+                reaches_2010 = (first_ts is not None and first_ts <= _BACKTEST_START_MS)
+                dump[f"chart {period}"] = {"status": 200,
+                                           "n_points": len(points) if points else 0,
+                                           "first": (points[0] if points else None),
+                                           "last": (points[-1] if points else None),
+                                           "reaches_2010": reaches_2010}
+                if points:
+                    flag = "NÅR 2010" if reaches_2010 else "täcker INTE 2010"
+                    print(f"  timePeriod={period:<14} {len(points)} punkter  "
+                          f"[{points[0].get('timestamp')} -> {points[-1].get('timestamp')}]  ({flag})")
+                else:
+                    print(f"  timePeriod={period:<14} 200 men ingen punktlista "
+                          f"(nycklar: {list(data.keys())})")
+            except Exception as e:  # noqa: BLE001
+                dump[f"chart {period}"] = {"status": None, "error": str(e)}
+                print(f"  timePeriod={period:<14} FEL: {e}")
+            finally:
+                time.sleep(_PAUSE_S)
+
+    out = Path(config.anchor("cache")) / "_avanza_list_probe2.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(dump, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"\n[list_probe2] fullständiga svar sparade: {out}")
+
+
 # Båda universum-filerna – NGM/Spotlight-bolagen (data/sweden_universe_ngm.csv,
 # '.NGM'-suffix) fångades i check_marketplace(scope='all') precis som
 # huvudlistan, och behöver kunna rensas på samma sätt (verkligt fall:
@@ -1352,6 +1462,8 @@ def main():
         check_marketplace(sys.argv[2] if len(sys.argv) > 2 else "all")
     elif cmd == "list_probe":
         list_probe()
+    elif cmd == "list_probe2":
+        list_probe2(sys.argv[2] if len(sys.argv) > 2 else "AAK.ST")
     elif cmd == "universe_remove":
         if len(sys.argv) < 3:
             print("Ange kommaseparerade tickers: python -m altdata.avanza universe_remove "
