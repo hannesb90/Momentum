@@ -922,6 +922,13 @@ def _load_scores_uncached() -> dict:
                 # enligt ALLA modeller" i Buffett-modellen trots att den redan var
                 # uteslutet ur value_screener.py:s EGNA Buffett-lista.
                 e["commodity_sector"] = str(r.get("commodity_sector")).strip().lower() == "true"
+                # OT-grindens två pris-baserade flaggor (value_screener._price_risk):
+                # uppvärderad-utan-resultat resp. extremvolatil – läses in HÄR så
+                # is_buffett-grinden nedan ser samma verklighet som value_screener.py:s
+                # egen Buffett-lista (commodity_sector-lärdomen: två 'Buffett'-ytor
+                # får aldrig glida isär igen).
+                e["rerated_up"] = str(r.get("rerated_up")).strip().lower() == "true"
+                e["high_vol"] = str(r.get("high_vol")).strip().lower() == "true"
                 # OBS: _num() slänger negativa tal (den är byggd för kurser/
                 # värden) – ROE och tillväxt KAN vara negativa och är då just
                 # det säljvakten bryr sig om, så parsa dem direkt med float().
@@ -1339,6 +1346,15 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
                 continue
             if e.get("commodity_sector"):
                 continue
+            # OT-grinden (samma fyra spärrar som value_screener.py:s egen
+            # Buffett-lista): säkerhetsmarginal (bara config.BUFFETT_BUY_ZONES,
+            # default 'billig' – "uppsida med marginal när jag köper"; 'okänd'/
+            # tom zon faller också bort: köp bara det vi faktiskt kunnat
+            # värdera), ej uppvärderad utan resultat, ej extremvolatil.
+            if (e.get("value_zone") or "") not in getattr(config, "BUFFETT_BUY_ZONES", ("billig",)):
+                continue
+            if e.get("rerated_up") or e.get("high_vol"):
+                continue
         res = _composite_score(e, model, w, q_sorted, k_sorted, v_sorted, research=False)
         if res is None:
             continue
@@ -1365,6 +1381,102 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
                 cand["note"] = (cand["note"] + " · uppdragsanalys ✓") if cand["note"] else "uppdragsanalys ✓"
         ranked.sort(key=lambda x: -x["score"])
     return ranked[:top_n]
+
+
+def _takeprofit_ledger_path() -> Path:
+    return Path(config.anchor("cache/takeprofit_ledger.json"))
+
+
+def _update_takeprofit_ledger(ticker: str, price: float, level: int) -> None:
+    """Loggar kursen vid ett skarpt säljvakts-råd (nivå ≥2). Högsta kurs
+    behålls per ticker – rådet återkommer ofta vecka efter vecka medan kursen
+    stiger, och det är TOPPEN av rådperioden som är framtidskurs-proxyn."""
+    p = _takeprofit_ledger_path()
+    try:
+        ledger = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except Exception:  # noqa: BLE001
+        ledger = {}
+    cur = ledger.get(ticker)
+    if cur is None or price > float(cur.get("price") or 0):
+        import datetime as _dt
+        ledger[ticker] = {"price": round(price, 2), "level": level,
+                          "date": _dt.date.today().isoformat()}
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(ledger, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _refill_candidates(rows) -> list:
+    """FYLLA PÅ-REGELN (OT: 'fylla på kan jag göra om jag nått framtidskurs,
+    sålt av en del enligt modellen och värdet åter gått ner en bit under
+    framtidskursen'). Vår översättning:
+
+      1. Säljvakten gav ett skarpt råd (nivå ≥2 – 'ta hem vinsten'/'sälj')
+         vid kurs P (liggaren ovan – vår framtidskurs-proxy).
+      2. Kursen har sedan fallit ≥ config.REFILL_DISCOUNT under P.
+      3. Du äger fortfarande bolaget (påfyllnad, inte återuppståndelse av
+         helt sålda positioner).
+      4. Caset håller fortfarande: inga röda flaggor, inte värderingszon
+         'dyr', och (om value-data finns) klarar fortfarande ROE/skuld-barren
+         – ett bolag som fallit för att CASET försämrats är ingen påfyllnad,
+         det är en varning.
+
+    Rent rådgivande – köper inget, flyttar inga kronor i planen."""
+    p = _takeprofit_ledger_path()
+    if not p.exists():
+        return []
+    try:
+        ledger = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return []
+    held = {(r.get("ticker") or "").upper(): r for r in rows}
+    watch = {t: v for t, v in ledger.items() if t in held}
+    if not watch:
+        return []
+    discount = float(getattr(config, "REFILL_DISCOUNT", 0.10))
+
+    closes: dict = {}
+    for seg in config.SEGMENTS.values():
+        pp = Path(seg.get("results_dir", "")) / "prices.csv"
+        if not pp.exists():
+            continue
+        try:
+            for r in csv.DictReader(open(pp, encoding="utf-8")):
+                tk = (r.get("ticker") or "").upper()
+                if tk in watch:
+                    v = _num(r.get("close"))
+                    if v:
+                        closes[tk] = v   # sista raden per ticker vinner (kronologisk fil)
+        except Exception:  # noqa: BLE001
+            continue
+
+    scores = _load_scores()
+    out = []
+    for tk, entry in watch.items():
+        price_now = closes.get(tk)
+        tp_price = float(entry.get("price") or 0)
+        if not price_now or tp_price <= 0:
+            continue
+        if price_now > tp_price * (1 - discount):
+            continue
+        sc = scores.get(tk, {})
+        if int(sc.get("red_flag_count") or 0) > 0:
+            continue
+        if sc.get("zone") == "dyr" or sc.get("value_zone") == "dyr":
+            continue
+        if sc.get("has_value_data") and (sc.get("meets_roe_bar") is False
+                                         or sc.get("meets_debt_bar") is False):
+            continue
+        dip = 1 - price_now / tp_price
+        out.append({
+            "ticker": tk, "name": held[tk].get("name") or tk,
+            "tp_price": round(tp_price, 2), "tp_date": entry.get("date"),
+            "price": round(price_now, 2), "dip": round(dip, 4),
+            "why": (f"Säljvakten flaggade 'ta hem vinsten' vid ~{tp_price:.0f} kr "
+                    f"({entry.get('date')}); kursen är nu {dip:.0%} under den nivån "
+                    f"och caset håller fortfarande – läge att fylla på om du tog hem vinst då."),
+        })
+    out.sort(key=lambda x: -x["dip"])
+    return out
 
 
 def _takeprofit(rows) -> list:
@@ -1523,6 +1635,14 @@ def _takeprofit(rows) -> list:
                 level = 3
             action = {1: "bevaka", 2: "ta hem vinsten", 3: "sälj"}[level]
             house_kr = round(hr["value"] - cost)   # gain>0 garanterat här
+            # FYLLA PÅ-LIGGAREN (OT: "nått framtidskurs, sålt av en del, värdet
+            # åter under framtidskursen"): kursen vid ett skarpt 'ta hem
+            # vinsten'/'sälj'-råd är vår proxy för framtidskursen – loggas så
+            # _refill_candidates() senare kan föreslå påfyllnad när kursen
+            # fallit en marginal under den. Högsta rådnivå-kursen behålls
+            # (rådet kan återkomma vecka efter vecka på stigande kurs).
+            if level >= 2 and series[-1]:
+                _update_takeprofit_ledger(tk, float(series[-1]), level)
             flags.append({
                 "name": hr["name"], "ticker": tk,
                 "gain": round(gain, 4), "ret": round(h_ret, 4), "index_ret": round(idx_ret, 4),
@@ -1919,6 +2039,9 @@ def next_buy(rows, amount=None) -> dict:
         "best": (out_rows[0] if out_rows else None),   # DET enskilt bästa köpet just nu
         "opportunity": _safe(lambda: _opportunity(rows, amount), None, "opportunist"),
         "sell_watch": _safe(lambda: _takeprofit(rows), [], "säljvakt"),
+        # OBS ordning: _takeprofit ovan uppdaterar fylla på-liggaren, så refill
+        # beräknas EFTER den (dict-literaler evalueras uppifrån och ner).
+        "refill": _safe(lambda: _refill_candidates(rows), [], "fyll på"),
         "isk": sum(r.get("value", 0.0) for r in rows) <= float(getattr(config, "PORTFOLIO_ISK_LIMIT", 300000)),
         "skipped": skipped,
         "tilt": (tilt_meta or None),   # dynamisk fördelning: hur mycket som tiltats mot satelliterna

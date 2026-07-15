@@ -197,8 +197,36 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
             d_i = _num(r.get("dividend"))
             if d_i is not None and d_i > 0:
                 dividend_any = True
+        # UPPVÄRDERINGS-REFERENS (OT: "tidigare uppvärdering i relation till
+        # resultat"): en jämförelserapport ~2,5 år före den senaste, med
+        # beräkningsbar årsuppräknad vinst > 0 – används av _price_risk() för
+        # att dekomponera kursutvecklingen i vinsttillväxt × multipel-
+        # expansion. Fönstret (config.VALUE_RERATING_WINDOW_MONTHS) hellre än
+        # en exakt punkt: rapportdatum ligger var som helst i kvartalet, och
+        # kravet np_annual > 0 (förluståret kan inte dekomponeras meningsfullt)
+        # gör att närmsta användbara rapport i fönstret väljs.
+        old_ref = None
+        lo_mo, hi_mo = getattr(config, "VALUE_RERATING_WINDOW_MONTHS", (20, 40))
+        latest_pub = g.iloc[-1]["published"]
+        target_days = (lo_mo + hi_mo) / 2 * 30.44
+        best_dist = None
+        for _, r in g.iterrows():
+            age_days = (latest_pub - r["published"]).days
+            if not (lo_mo * 30.44 <= age_days <= hi_mo * 30.44):
+                continue
+            np_old = _to_msek(r.get("net_profit"), r.get("net_profit_unit"))
+            if np_old is None:
+                continue
+            np_old_annual = np_old * annualization_factor(r.get("period"))
+            if np_old_annual <= 0:
+                continue
+            dist = abs(age_days - target_days)
+            if best_dist is None or dist < best_dist:
+                best_dist = dist
+                old_ref = {"published": r["published"], "np_annual": np_old_annual}
         out[t] = {
             "latest": latest,
+            "old_ref": old_ref,
             "n_reports": len(g),
             "growth_consistency": (sum(flags) / len(flags)) if flags else None,
             "roe_consistency": (sum(roe_flags) / len(roe_flags)) if len(roe_flags) >= 2 else None,
@@ -308,12 +336,74 @@ def _metrics(entry: dict, price: Optional[float]) -> dict:
         "n_reports": entry["n_reports"], "growth_consistency": entry["growth_consistency"],
         "roe_consistency": entry.get("roe_consistency"),
         "capex_included": capex is not None,   # transparens: äkta OE eller övre gräns?
+        "np_annual": np_annual,                # internt: uppvärderings-dekomponeringen
         "published": latest.get("published"),
         # Transparens: vilken rapportperiod och årsfaktor som låg bakom talen –
         # så en manuell koll av value_shortlist.csv kan se om ett bolag är
         # helårs- eller uppskalad kvartalsdata.
         "period": latest.get("period"), "annual_factor": round(factor, 2),
     }
+
+
+def _price_risk(price_df, np_annual_now, old_ref) -> dict:
+    """Pris-baserade riskmått ur veckoserien (OT-komponenterna volatilitet +
+    'tidigare uppvärdering i relation till resultat'):
+
+    vol_52w: årsvolatilitet = std(veckoavkastningar senaste 52v) × √52.
+    Kräver ≥ 30 avkastningspunkter, annars None (säger inget om risk).
+
+    Uppvärderings-dekomponering: kursförändring över ~2,5 år (old_ref från
+    _load_fundamentals) delas i vinsttillväxt × multipelexpansion:
+        multipelexpansion = (pris_nu/pris_då) / (vinst_nu/vinst_då)
+    > 1 betyder att aktien blivit dyrare PER VINSTKRONA – uppgången är
+    uppvärdering, inte resultat. Flaggas (rerated_up) när kursen stigit
+    minst VALUE_RERATING_MIN_PRICE_CHG OCH expansionen ≥ MAX_EXPANSION.
+
+    ÄRLIGA BEGRÄNSNINGAR (medvetna, dokumenterade):
+    · Per-aktie-pris mot TOTAL vinst antar oförändrat aktieantal – kraftig
+      utspädning underskattar expansionen (flaggar för LITE, aldrig fel håll).
+    · Kräver vinst > 0 i båda ändar – förlust-till-vinst-resor kan inte
+      dekomponeras och flaggas ALDRIG (hellre omarkerad än felmarkerad).
+    Saknas data → alla fält None/False: en aktie utesluts aldrig ur
+    Buffett-grinden på gissad grund, bara på beräknad."""
+    out = {"vol_52w": None, "price_chg_30m": None, "earn_chg_30m": None,
+           "mult_expansion_30m": None, "rerated_up": False, "high_vol": False}
+    if price_df is None or "Close" not in price_df:
+        return out
+    closes = price_df["Close"].dropna()
+    if closes.empty:
+        return out
+    if getattr(closes.index, "tz", None) is not None:
+        closes = closes.tz_localize(None)
+
+    rets = closes.pct_change().dropna().tail(52)
+    if len(rets) >= 30:
+        vol = float(rets.std() * (52 ** 0.5))
+        out["vol_52w"] = round(vol, 3)
+        out["high_vol"] = vol > float(getattr(config, "VALUE_VOL_MAX", 0.60))
+
+    if old_ref and np_annual_now is not None and np_annual_now > 0:
+        pub = old_ref["published"]
+        if getattr(pub, "tz", None) is not None or getattr(pub, "tzinfo", None) is not None:
+            pub = pub.tz_localize(None)
+        before = closes[closes.index <= pub]
+        # kursserien måste faktiskt nå tillbaka: senaste veckan FÖRE
+        # referensrapporten får inte ligga mer än ~3 månader före den
+        # (annars jämförs mot en helt annan tidpunkt än rapporten)
+        if not before.empty and (pub - before.index[-1]).days <= 92:
+            price_then, price_now = float(before.iloc[-1]), float(closes.iloc[-1])
+            if price_then > 0:
+                price_ratio = price_now / price_then
+                earn_ratio = np_annual_now / old_ref["np_annual"]
+                out["price_chg_30m"] = round(price_ratio - 1, 3)
+                out["earn_chg_30m"] = round(earn_ratio - 1, 3)
+                if earn_ratio > 0:
+                    expansion = price_ratio / earn_ratio
+                    out["mult_expansion_30m"] = round(expansion, 2)
+                    out["rerated_up"] = bool(
+                        (price_ratio - 1) >= float(getattr(config, "VALUE_RERATING_MIN_PRICE_CHG", 0.50))
+                        and expansion >= float(getattr(config, "VALUE_RERATING_MAX_EXPANSION", 1.5)))
+    return out
 
 
 def _ranks(vals: Dict[str, Optional[float]]) -> Dict[str, float]:
@@ -448,6 +538,9 @@ def score(segment: Optional[str] = None) -> None:
         p = prices.get(t)
         price = float(p["Close"].dropna().iloc[-1]) if (p is not None and not p["Close"].dropna().empty) else None
         m = _metrics(fund[t], price)
+        # OT-riskmåtten (volatilitet + uppvärderings-dekomponering) ur samma
+        # veckoserie som priset ovan – inga extra nätanrop.
+        m.update(_price_risk(p, m.get("np_annual"), fund[t].get("old_ref")))
         m["ticker"] = t
         m["name"] = name_map.get(t, t)
         # Kravliste-underlaget (marginal/EPS/nettoskuld/kassaflöde/utdelning)
@@ -496,7 +589,9 @@ def score(segment: Optional[str] = None) -> None:
             "checklist_score", "checklist", "checklist_miss",
             "ebit_margin", "ebit_margin_trend", "eps_trend", "net_debt_msek", "op_cf_msek",
             "n_reports", "mcap_msek", "meets_roe_bar",
-            "meets_debt_bar", "commodity_sector", "period", "annual_factor", "published"]
+            "meets_debt_bar", "commodity_sector",
+            "vol_52w", "high_vol", "price_chg_30m", "earn_chg_30m",
+            "mult_expansion_30m", "rerated_up", "period", "annual_factor", "published"]
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
@@ -504,12 +599,22 @@ def score(segment: Optional[str] = None) -> None:
     print(f"[value_screener] {len(rows)} bolag rankade → {out}")
 
     n_commodity = sum(1 for r in rows if r["commodity_sector"])
+    n_rerated = sum(1 for r in rows if r["rerated_up"])
+    n_highvol = sum(1 for r in rows if r["high_vol"])
+    # OT-grinden i sin helhet: hårda kvalitetsbarren + SÄKERHETSMARGINAL
+    # (config.BUFFETT_BUY_ZONES, default bara 'billig' – "uppsida med marginal
+    # när jag köper") + ej råvarusektor + ej uppvärderad utan resultat + ej
+    # extremvolatil. Rör INTE value_score/topplistan (transparens).
+    buy_zones = tuple(getattr(config, "BUFFETT_BUY_ZONES", ("billig",)))
     buffett = [r for r in rows if r["meets_roe_bar"] and r["meets_debt_bar"]
-               and r["zone"] in ("billig", "rimlig") and not r["commodity_sector"]]
+               and r["zone"] in buy_zones and not r["commodity_sector"]
+               and not r["rerated_up"] and not r["high_vol"]]
     print(f"\n  🎯 KLARAR BUFFETT-BARREN (ROE ≥ {config.VALUE_ROE_GOOD:.0%}, "
-          f"D/E ≤ {config.VALUE_DEBT_EQUITY_SAFE}, billig/rimlig owner-earnings-multipel, "
-          f"EJ råvarusektor – Energy/Materials trailing-ROE kan vara cykeltopp, {n_commodity} "
-          f"uteslutna) – {len(buffett)} st:")
+          f"D/E ≤ {config.VALUE_DEBT_EQUITY_SAFE}, zon {'/'.join(buy_zones)} "
+          f"(säkerhetsmarginal), EJ råvarusektor ({n_commodity} uteslutna), EJ uppvärderad "
+          f"utan resultat ({n_rerated} uteslutna), EJ extremvolatil (> "
+          f"{getattr(config, 'VALUE_VOL_MAX', 0.60):.0%}/år, {n_highvol} uteslutna)) "
+          f"– {len(buffett)} st:")
     for r in buffett[:15]:
         print(f"   {r['value_score']:>5.1f}  {r['ticker']:<12} {str(r['name'])[:24]:<24} "
               f"ROE {r['roe']:.0%}  D/E {r['debt_equity']:.2f}  {r['mult']}x [{r['zone']}]")
