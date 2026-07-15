@@ -50,7 +50,9 @@ Körs på Pi:n (nät):
     python -m altdata.avanza audit                  # månatlig avnoterings-/uppköpsrevision + överlevnadsliggare
     python -m altdata.avanza calendar large          # rapportkalender (nextReport ur keyIndicators)
     python -m altdata.avanza revalidate              # engångsstädning: purga gamla felmatchningar
-    python -m altdata.avanza check_marketplace       # Avanzas EGET listing.marketPlaceName/countryCode för "O"-tickers (Oslo Børs m.fl.)
+    python -m altdata.avanza check_marketplace       # Avanzas EGET listing.marketPlaceName/countryCode, ALLA matchade bolag
+    python -m altdata.avanza check_marketplace suspects  # ...bara de ~109 ASA/A-S/Oyj/P-F-misstänkta (snabbare)
+    python -m altdata.avanza list_probe              # proba börslist-/IPO-endpoints + chart-djup (Yahoo-ersättningsfrågan)
     python -m altdata.avanza universe_remove T1,T2   # dry-run: ta bort tickers ur sweden_universe.csv (lägg till 'write' för att faktiskt skriva)
 
 Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
@@ -1063,7 +1065,7 @@ def _foreign_form_candidates() -> list:
     return out
 
 
-def check_marketplace(tickers: Optional[list] = None) -> None:
+def check_marketplace(scope: str = "all", tickers: Optional[list] = None) -> None:
     """Kontrollerar Avanzas EGET listing.marketPlaceName/countryCode-fält
     (StockInfo.listing – samma /_api/market-guide/stock/{id}-svar som
     probe()/extract() redan hämtar, INGEN ny endpoint, fältnamnen
@@ -1077,8 +1079,18 @@ def check_marketplace(tickers: Optional[list] = None) -> None:
     partskällornas '.ST'-tickerformat är alltså INTE bevis på en äkta
     svensk notering – bara Avanzas egna listing-fält är det.
 
-    tickers: None = hela kandidatlistan (_foreign_form_candidates – bolag
-    med utländsk juridisk bolagsform i namnet).
+    Avanza saknar (verifierat mot tre oberoende community-projekt som
+    reverse-engineerat deras API – avanza-mcp, fhqvst/avanza, Qluxzz/avanza,
+    plus en olöst feature-request från 2021 i den sistnämnda) en dokumenterad
+    endpoint för att LISTA alla aktier på en börs – ingen bulk-lösning
+    byggs därför. Istället körs kontrollen BOLAG FÖR BOLAG mot de tickers
+    vi redan matchat (samma princip, bara fler anrop):
+
+    scope: 'all' (default – ALLA confirmed:true-poster i avanza_map.json,
+    ~1000+ bolag, grundligast: fångar även felklassade bolag UTAN utländsk
+    bolagsform i namnet) eller 'suspects' (bara _foreign_form_candidates –
+    de ~109 bolagen med ASA/A-S/Oyj/P-F i namnet, snabbare).
+    tickers: uttrycklig lista – åsidosätter scope helt (för test/enstaka bolag).
 
     Läser orderBookId ur cache/avanza_map.json (BARA confirmed:true – en
     osäker matchning får aldrig ligga till grund för att ta bort ett
@@ -1087,12 +1099,18 @@ def check_marketplace(tickers: Optional[list] = None) -> None:
     (countryCode != 'SE'). Tar INTE bort något själv – det är ett separat,
     medvetet manuellt steg (universe_remove nedan) på verifierad data.
 
-        python -m altdata.avanza check_marketplace
+        python -m altdata.avanza check_marketplace           # alla ~1000+ matchade bolag
+        python -m altdata.avanza check_marketplace suspects  # bara de 109 misstänkta
     """
     import csv as _csv
 
-    cand = tickers or _foreign_form_candidates()
     mapping = json.loads(_map_path().read_text()) if _map_path().exists() else {}
+    if tickers is not None:
+        cand = tickers
+    elif scope == "suspects":
+        cand = _foreign_form_candidates()
+    else:
+        cand = sorted(t for t, e in mapping.items() if e.get("confirmed") and e.get("orderBookId"))
 
     rows, no_match = [], []
     for i, t in enumerate(cand, 1):
@@ -1142,6 +1160,115 @@ def check_marketplace(tickers: Optional[list] = None) -> None:
         print(f"\n  UTAN BEKRÄFTAD MATCHNING ({len(no_match)} st, granskades INTE – "
               f"kör 'match' först om de ska kollas): {shown}"
               + (f" ... och {len(no_match) - 20} till" if len(no_match) > 20 else ""))
+
+
+# ── Börslist-enumerering (SCHEMA-UPPTÄCKANDE PROBE, inget byggt på gissning) ──
+# MÅL (uttryckligt önskemål): kunna LISTA alla aktier per svensk börslista hos
+# Avanza → (1) avnoteringsbevakning genom att diffa listan över tid, (2)
+# IPO-koll (nya bolag dyker upp), (3) på sikt ersätta Yahoo helt som referens.
+# LÄGET: ingen av de tre community-projekt som reverse-engineerat Avanzas API
+# (avanza-mcp, fhqvst/avanza, Qluxzz/avanza) dokumenterar en sådan endpoint –
+# men Avanza HAR verifierade filter-endpoints för certifikat/warranter/ETF:er
+# (/_api/market-certificate-filter/ m.fl., wire-format VERIFIERAT ur avanza-
+# mcp:s modeller: POST {"filter":{},"offset":0,"limit":N,"sortBy":{"field",
+# "order"}} → svar {"<typ>s":[...],"filterOptions":...}). En motsvarande
+# aktie-variant är därför TROLIG men OVERIFIERAD – kandidaterna nedan är
+# mönster-härledda gissningar som PROBAS mot skarpa svar på Pi:n innan någon
+# parser byggs (samma disciplin som probe()/chart_probe()/aktiehistorik).
+_LIST_CANDIDATES = [
+    # (metod, path, payload) – payload=None => GET
+    ("POST", "/_api/market-stock-filter/",
+     {"filter": {}, "offset": 0, "limit": 5, "sortBy": {"field": "name", "order": "asc"}}),
+    ("POST", "/_api/market-stock-filter/", {"offset": 0, "limit": 5}),
+    ("GET", "/_api/market-stock-filter/filter-options", None),
+    # Äldre mobil-API:t (fhqvst/avanza byggde mot /_mobile/-paths historiskt)
+    ("GET", "/_mobile/market/stocks?limit=5", None),
+    # IPO-kandidater (Avanzas webbsida har en börsintroduktioner-vy)
+    ("GET", "/_api/market-ipo/", None),
+    ("GET", "/_api/market-guide/ipos", None),
+]
+# Chart-djup bortom five_years – avgör om Yahoo (15+ års historik, backtesten
+# startar 2010) alls KAN ersättas för prisdatan eller bara kompletteras.
+_CHART_DEPTH_CANDIDATES = ("ten_years", "fifteen_years", "twenty_years", "max", "infinity")
+
+
+def list_probe() -> None:
+    """Probar kandidat-endpoints för börslist-enumerering + IPO-listor +
+    djupare prishistorik. Skriver ut status/toppnycklar per kandidat och
+    sparar ALLA råa svar till cache/_avanza_list_probe.json – parsern byggs
+    FÖRST mot ett skarpt verifierat schema, aldrig mot en gissning.
+
+        python -m altdata.avanza list_probe
+    """
+    dump: dict = {}
+    print("[list_probe] == A. Börslist-/IPO-kandidater ==")
+    for method, path, payload in _LIST_CANDIDATES:
+        key = f"{method} {path}"
+        # Två kandidater kan dela metod+path (olika payload-varianter) – utan
+        # unik nyckel skrev variant 2:s svar TYST över variant 1:s i dumpen
+        # (upptäckt av testet: en 404 raderade 200-beviset).
+        n = 2
+        while key in dump:
+            key = f"{method} {path} (variant {n})"
+            n += 1
+        try:
+            r = requests.request(method, f"{BASE}{path}", json=payload,
+                                 headers={"User-Agent": _UA, "Accept": "application/json"},
+                                 timeout=30)
+            body = r.json() if (r.content and "json" in (r.headers.get("Content-Type") or "")) else None
+            dump[key] = {"status": r.status_code, "body": body}
+            if r.status_code == 200 and isinstance(body, dict):
+                lists = {k: len(v) for k, v in body.items() if isinstance(v, list)}
+                print(f"  200  {key}")
+                print(f"       toppnycklar: {list(body.keys())}")
+                if lists:
+                    print(f"       list-fält: {lists}")
+                first_list = next((v for v in body.values() if isinstance(v, list) and v), None)
+                if first_list and isinstance(first_list[0], dict):
+                    print(f"       fältnamn i EN post: {list(first_list[0].keys())}")
+            else:
+                print(f"  {r.status_code:>3}  {key}")
+        except Exception as e:  # noqa: BLE001
+            dump[key] = {"status": None, "error": str(e)}
+            print(f"  FEL  {key}: {e}")
+        finally:
+            time.sleep(_PAUSE_S)
+
+    print("\n[list_probe] == B. Chart-djup bortom five_years (Yahoo-ersättningsfrågan) ==")
+    mapping = json.loads(_map_path().read_text()) if _map_path().exists() else {}
+    entry = next((e for e in mapping.values() if e.get("confirmed") and e.get("orderBookId")), None)
+    if entry is None:
+        print("  ingen bekräftad orderBookId i avanza_map.json – kör 'match' först, hoppar över B.")
+    else:
+        print(f"  testbolag: {entry.get('title')!r} (orderBookId={entry['orderBookId']})")
+        for period in _CHART_DEPTH_CANDIDATES:
+            try:
+                data = _get(f"/_api/price-chart/stock/{entry['orderBookId']}",
+                            {"timePeriod": period})
+                points = next((data[k] for k in _CHART_POINT_KEYS
+                               if isinstance(data.get(k), list)), None)
+                dump[f"chart {period}"] = {"status": 200,
+                                           "n_points": len(points) if points else 0,
+                                           "first": (points[0] if points else None),
+                                           "last": (points[-1] if points else None)}
+                if points:
+                    print(f"  timePeriod={period:<14} {len(points)} punkter  "
+                          f"[{points[0].get('timestamp')} -> {points[-1].get('timestamp')}]")
+                else:
+                    print(f"  timePeriod={period:<14} 200 men ingen punktlista "
+                          f"(nycklar: {list(data.keys())})")
+            except Exception as e:  # noqa: BLE001
+                dump[f"chart {period}"] = {"status": None, "error": str(e)}
+                print(f"  timePeriod={period:<14} FEL: {e}")
+            finally:
+                time.sleep(_PAUSE_S)
+
+    out = Path(config.anchor("cache")) / "_avanza_list_probe.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(dump, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"\n[list_probe] fullständiga svar sparade: {out}")
+    print("[list_probe] Klistra in utskriften – listsnapshot/IPO-liggare och ev. "
+          "Yahoo-ersättning byggs FÖRST mot ett verifierat schema.")
 
 
 def universe_remove(tickers: list, dry_run: bool = True) -> None:
@@ -1204,7 +1331,9 @@ def main():
     elif cmd == "revalidate":
         revalidate()
     elif cmd == "check_marketplace":
-        check_marketplace()
+        check_marketplace(sys.argv[2] if len(sys.argv) > 2 else "all")
+    elif cmd == "list_probe":
+        list_probe()
     elif cmd == "universe_remove":
         if len(sys.argv) < 3:
             print("Ange kommaseparerade tickers: python -m altdata.avanza universe_remove "
