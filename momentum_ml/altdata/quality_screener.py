@@ -293,8 +293,16 @@ def report() -> None:
     import csv
     from data.data_loader import fetch_weekly_data
 
+    # cache/quality/ delas med de AGGREGERADE hjälpfilerna (_marketcaps.json,
+    # _eodhd.json, _tradingview.json, _quant.json m.fl.) - inte bara per-bolag-
+    # poster. Verkligt fel: glob("*.json") plockade upp t.ex. _tradingview.json
+    # (en flat {ticker: mcap}-dict, inte ett bolags score-schema) som en
+    # "poängsatt post", vilket kraschade _market_caps() med KeyError: 'ticker'.
+    # Samma leading-underscore-filter som tradingview.py:s _scored_tickers()
+    # redan använder för samma katalog.
     scored = [_norm_composite(json.loads(p.read_text()))
-              for p in Path(config.QUALITY_CACHE_DIR).glob("*.json")]
+              for p in Path(config.QUALITY_CACHE_DIR).glob("*.json")
+              if not p.stem.startswith("_")]
     if not scored:
         print("[report] inga poängsatta bolag – kör 'score' först.")
         return
