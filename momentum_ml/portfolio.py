@@ -929,6 +929,12 @@ def _load_scores_uncached() -> dict:
                 # får aldrig glida isär igen).
                 e["rerated_up"] = str(r.get("rerated_up")).strip().lower() == "true"
                 e["high_vol"] = str(r.get("high_vol")).strip().lower() == "true"
+                # Nordiska sekundärnoteringar (t.ex. Medistim ASA/MEDIO.ST, NOK):
+                # VERIFIERAT (currency_check mot Medistim ASAs riktiga bokslut)
+                # att Buffett-KVOTERNA (ROE/D-E/multipel) är valuta-oberoende och
+                # alltså giltiga oavsett - ingen uteslutning här, bara en etikett
+                # så 'why'-texten aldrig tyst antar SEK.
+                e["currency"] = (r.get("currency") or "SEK").strip()
                 # OBS: _num() slänger negativa tal (den är byggd för kurser/
                 # värden) – ROE och tillväxt KAN vara negativa och är då just
                 # det säljvakten bryr sig om, så parsa dem direkt med float().
@@ -1266,7 +1272,8 @@ def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted,
         qlabel = "mjuk-kvalitet" if e.get("quality_source") == "soft" else "kvalitet"
         why.append(f"{qlabel} {e['quality']:.1f}/5" + (f" · {e['zone']}" if e.get("zone") else ""))
     if is_buffett and e.get("value_score") is not None:
-        why.append(f"value {e['value_score']:.0f}" + (f" · {e['value_zone']}" if e.get("value_zone") else ""))
+        why.append(f"value {e['value_score']:.0f}" + (f" · {e['value_zone']}" if e.get("value_zone") else "")
+                   + (f" [{e['currency']}]" if e.get("currency") and e["currency"] != "SEK" else ""))
     if e.get("quant") is not None:
         why.append(f"kvant {e['quant']:.0f}")
     if pn is not None:
