@@ -913,6 +913,15 @@ def _load_scores_uncached() -> dict:
                 e["value_zone"] = (r.get("zone") or "").strip()
                 e["meets_roe_bar"] = str(r.get("meets_roe_bar")).strip().lower() == "true"
                 e["meets_debt_bar"] = str(r.get("meets_debt_bar")).strip().lower() == "true"
+                # Råvarusektor-uteslutningen (value_screener.py:s egen Buffett-bar/
+                # checklista, se _COMMODITY_SECTORS där) LÄSTES ALDRIG in här – denna
+                # köp-motors EGEN is_buffett-grind (se _rank_buy_candidates nedan)
+                # kollade bara meets_roe_bar/meets_debt_bar, aldrig sektorn. Verkligt
+                # fel: Lundin Gold (Materials, guld-cyklisk utan prissättningsmakt)
+                # klarade båda hårda barren numeriskt och dök upp som "bästa köp
+                # enligt ALLA modeller" i Buffett-modellen trots att den redan var
+                # uteslutet ur value_screener.py:s EGNA Buffett-lista.
+                e["commodity_sector"] = str(r.get("commodity_sector")).strip().lower() == "true"
                 # OBS: _num() slänger negativa tal (den är byggd för kurser/
                 # värden) – ROE och tillväxt KAN vara negativa och är då just
                 # det säljvakten bryr sig om, så parsa dem direkt med float().
@@ -1271,7 +1280,13 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
         buffett-modellen gäller value_screenerns egen owner-earnings-zon
       · buffett-modellen har dessutom en HÅRD grind: klarar bolaget inte
         ROE- och skuld-barren (meets_roe_bar/meets_debt_bar) kvalificerar det
-        inte alls, oavsett momentum ("köp inte skräp bara för att det är billigt")
+        inte alls, oavsett momentum ("köp inte skräp bara för att det är billigt").
+        Samma grind utesluter råvarusektorer (commodity_sector, se
+        value_screener.py:s _COMMODITY_SECTORS) – ett VERIFIERAT äkta fel
+        (Lundin Gold, guld-cyklisk utan prissättningsmakt) visade att denna
+        rankning läste meets_roe_bar/meets_debt_bar men aldrig commodity_sector
+        ur value_shortlist.csv, trots att value_screener.py:s EGEN Buffett-
+        lista redan uteslöt bolaget – två separata "Buffett"-ytor som glidit isär
       · innehav som redan är >8% av portföljen utesluts (koncentrera inte mer)
       · samma sektor som portföljens största (>25%) straffas
       · kräver minst ETT fundament-betyg (kvalitet/kvant/value) – inte bara fart
@@ -1321,6 +1336,8 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
             if e.get("value_score") is None:
                 continue
             if not (e.get("meets_roe_bar") and e.get("meets_debt_bar")):
+                continue
+            if e.get("commodity_sector"):
                 continue
         res = _composite_score(e, model, w, q_sorted, k_sorted, v_sorted, research=False)
         if res is None:
