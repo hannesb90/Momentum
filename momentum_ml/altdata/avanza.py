@@ -50,6 +50,8 @@ Körs på Pi:n (nät):
     python -m altdata.avanza audit                  # månatlig avnoterings-/uppköpsrevision + överlevnadsliggare
     python -m altdata.avanza calendar large          # rapportkalender (nextReport ur keyIndicators)
     python -m altdata.avanza revalidate              # engångsstädning: purga gamla felmatchningar
+    python -m altdata.avanza check_marketplace       # Avanzas EGET listing.marketPlaceName/countryCode för "O"-tickers (Oslo Børs m.fl.)
+    python -m altdata.avanza universe_remove T1,T2   # dry-run: ta bort tickers ur sweden_universe.csv (lägg till 'write' för att faktiskt skriva)
 
 Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
 Group): altdata/avanza_overrides.csv (ticker,query,comment) – valfri fil,
@@ -1038,6 +1040,145 @@ def calendar(segment: Optional[str] = None) -> None:
                   f"{r['next_report_type']} ({conf})")
 
 
+# Bolagsformer som otvetydigt INTE är svenska (ASA=norskt publikt bolag,
+# A/S=danskt, Oyj=finskt, P/F=färöiskt) – VERIFIERAT bättre signal än att
+# gissa på tickerformat: en naiv "tickern slutar på O"-regel fångar äkta
+# svenska bolag som Ratos/Volati/Garo/Axfood (198 falska positiva mot 109
+# äkta när vi provade, 2026-07-15).
+_FOREIGN_FORM_RE = re.compile(r"\bASA\b|\bA/S\b|\bOyj\b|\bP/F\b", re.I)
+
+
+def _foreign_form_candidates() -> list:
+    """Alla tickers i sweden_universe.csv vars bolagsnamn har en otvetydigt
+    utländsk juridisk bolagsform. Verkligt fynd (2026-07-15): 109 sådana
+    bolag, bl.a. hela EQNRO/YARO/ORKO/AKERO/MEDIO-familjen som redan
+    dokumenterats som nordiska "O"-suffix-tickers i _ticker_variants ovan."""
+    import csv as _csv
+    path = Path(__file__).parent.parent / "data" / "sweden_universe.csv"
+    out = []
+    with open(path, encoding="utf-8") as f:
+        for row in _csv.DictReader(f):
+            if _FOREIGN_FORM_RE.search(row.get("name", "")):
+                out.append(row["ticker"])
+    return out
+
+
+def check_marketplace(tickers: Optional[list] = None) -> None:
+    """Kontrollerar Avanzas EGET listing.marketPlaceName/countryCode-fält
+    (StockInfo.listing – samma /_api/market-guide/stock/{id}-svar som
+    probe()/extract() redan hämtar, INGEN ny endpoint, fältnamnen
+    VERIFIERADE mot avanza-mcp-projektets Listing/StockInfo-modeller) för
+    att avgöra VILKEN BÖRS ett bolag faktiskt handlas på via Avanza – det
+    verkliga facit, inte en gissning ur tickerformat eller tredjepartskällor.
+
+    Verkligt fall som motiverade detta: Medistim ASA (MEDIO.ST) – Yahoo/
+    StockAnalysis/MarketScreener kallar den "Nasdaq Stockholm"/"First
+    North", men Avanzas EGEN app visar "Oslo Børs | Aktie", NOK. Tredje-
+    partskällornas '.ST'-tickerformat är alltså INTE bevis på en äkta
+    svensk notering – bara Avanzas egna listing-fält är det.
+
+    tickers: None = hela kandidatlistan (_foreign_form_candidates – bolag
+    med utländsk juridisk bolagsform i namnet).
+
+    Läser orderBookId ur cache/avanza_map.json (BARA confirmed:true – en
+    osäker matchning får aldrig ligga till grund för att ta bort ett
+    bolag). Skriver cache/avanza_marketplace_check.csv: ticker, namn,
+    Avanzas marketPlaceName, countryCode, currency, recommend_remove
+    (countryCode != 'SE'). Tar INTE bort något själv – det är ett separat,
+    medvetet manuellt steg (universe_remove nedan) på verifierad data.
+
+        python -m altdata.avanza check_marketplace
+    """
+    import csv as _csv
+
+    cand = tickers or _foreign_form_candidates()
+    mapping = json.loads(_map_path().read_text()) if _map_path().exists() else {}
+
+    rows, no_match = [], []
+    for i, t in enumerate(cand, 1):
+        entry = mapping.get(t)
+        if not entry or not entry.get("confirmed") or not entry.get("orderBookId"):
+            no_match.append(t)
+            continue
+        try:
+            info = _get(f"/_api/market-guide/stock/{entry['orderBookId']}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  [{i:>4}/{len(cand)}] {t:<14} FEL: {e}")
+            continue
+        finally:
+            time.sleep(_PAUSE_S)
+        listing = info.get("listing") or {}
+        mp, cc = listing.get("marketPlaceName") or "", listing.get("countryCode")
+        rows.append({"ticker": t, "name": entry.get("title") or t,
+                     "market_place": mp, "country_code": cc or "",
+                     "currency": listing.get("currency") or "",
+                     "recommend_remove": cc != "SE"})
+        if i % 20 == 0:
+            print(f"  ...{i}/{len(cand)}")
+
+    out = Path(config.anchor("cache")) / "avanza_marketplace_check.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=["ticker", "name", "market_place",
+                                           "country_code", "currency", "recommend_remove"])
+        w.writeheader()
+        w.writerows(rows)
+
+    foreign = [r for r in rows if r["recommend_remove"]]
+    swedish = [r for r in rows if not r["recommend_remove"]]
+    print(f"\n[check_marketplace] {len(rows)} kontrollerade ({len(no_match)} utan "
+          f"bekräftad Avanza-matchning, hoppade över) -> {out}")
+    print(f"\n  UTLÄNDSK BÖRS ({len(foreign)} st – REKOMMENDERAS BORTTAGNA):")
+    for r in sorted(foreign, key=lambda r: r["ticker"]):
+        print(f"    {r['ticker']:<14} {str(r['name'])[:30]:<30} {r['market_place']:<32} "
+              f"{r['country_code']:<3} {r['currency']}")
+    print(f"\n  BEKRÄFTAT SVENSK BÖRS ({len(swedish)} st – behålls):")
+    for r in sorted(swedish, key=lambda r: r["ticker"])[:10]:
+        print(f"    {r['ticker']:<14} {str(r['name'])[:30]:<30} {r['market_place']}")
+    if len(swedish) > 10:
+        print(f"    ... och {len(swedish) - 10} till")
+    if no_match:
+        shown = ", ".join(no_match[:20])
+        print(f"\n  UTAN BEKRÄFTAD MATCHNING ({len(no_match)} st, granskades INTE – "
+              f"kör 'match' först om de ska kollas): {shown}"
+              + (f" ... och {len(no_match) - 20} till" if len(no_match) > 20 else ""))
+
+
+def universe_remove(tickers: list, dry_run: bool = True) -> None:
+    """Tar bort angivna tickers HELT ur data/sweden_universe.csv – det
+    avsiktliga, manuella steget EFTER check_marketplace() gett ett
+    verifierat facit (Avanzas eget countryCode != 'SE'). Kör ALDRIG
+    automatiskt på check_marketplace()s output – en människa ska se listan
+    (samma disciplin som tradingview.py:s universe()/universe_ngm():
+    dry-run visar alltid vad som SKULLE hända innan write).
+
+        python -m altdata.avanza universe_remove MEDIO.ST,EQNRO.ST      # dry-run
+        python -m altdata.avanza universe_remove MEDIO.ST,EQNRO.ST write
+    """
+    import csv as _csv
+    path = Path(__file__).parent.parent / "data" / "sweden_universe.csv"
+    rows = list(_csv.DictReader(open(path, encoding="utf-8")))
+    remove_set = {t.strip().upper() for t in tickers}
+    kept = [r for r in rows if r["ticker"].strip().upper() not in remove_set]
+    removed = [r for r in rows if r["ticker"].strip().upper() in remove_set]
+    found = {r["ticker"].strip().upper() for r in removed}
+    missing = remove_set - found
+    print(f"[universe_remove] {len(removed)}/{len(remove_set)} tickers hittade i "
+          f"{path.name} ({len(rows)} rader totalt):")
+    for r in removed:
+        print(f"    - {r['ticker']:<14} {r['name']}")
+    if missing:
+        print(f"  VARNING: {len(missing)} ticker(s) fanns inte i filen: {', '.join(sorted(missing))}")
+    if not dry_run:
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            w = _csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+            w.writeheader()
+            w.writerows(kept)
+        print(f"\n[universe_remove] skrev {len(kept)} kvarvarande rader -> {path}")
+    else:
+        print("\n  DRY-RUN – inget skrivet. Kör med 'write' som sista argument för att faktiskt ta bort.")
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -1062,6 +1203,15 @@ def main():
         calendar(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "revalidate":
         revalidate()
+    elif cmd == "check_marketplace":
+        check_marketplace()
+    elif cmd == "universe_remove":
+        if len(sys.argv) < 3:
+            print("Ange kommaseparerade tickers: python -m altdata.avanza universe_remove "
+                  "MEDIO.ST,EQNRO.ST [write]")
+            return
+        tickers = [t.strip() for t in sys.argv[2].split(",") if t.strip()]
+        universe_remove(tickers, dry_run=not (len(sys.argv) > 3 and sys.argv[3] == "write"))
     else:
         print(__doc__)
 
