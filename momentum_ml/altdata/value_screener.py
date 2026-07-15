@@ -43,6 +43,8 @@ backfill) – annars blir kortlistan tom, ingen krasch.
 """
 import sys
 import csv
+import json
+import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -792,6 +794,102 @@ def diagnose(segment: Optional[str] = None, fields: str = "net_profit,equity", l
         print()
 
 
+# Nordiska dubbelnoteringar i sweden_universe.csv: ett norskt/danskt/finskt
+# bolags PRIMÄRNOTERING rapporterar i sitt HEMLANDS valuta (NOK/DKK/EUR), men
+# vi handlar det via en SVENSK sekundärnotering ('...O.ST'-mönstret,
+# verifierat i avanza.py: EQNRO/YARO/ORKO/BNORO/AKERO m.fl. – Oslo Børs-
+# primärnoteringar sekundärnoterade i Stockholm). mfn_fundamentals.py:s
+# regex-extraktion är MEDVETET valuta-blind (bara SEK-enhetsord: Mkr/MSEK/
+# tkr/TSEK/kkr, se modulens docstring) – riktig risk ENDAST om MFN:s
+# svenskspråkiga pressmeddelande om t.ex. Medistim ASA råkar återge NOK-
+# beloppet med en SEK-liknande enhetsfras ("...MSEK"/"...kronor") istället
+# för att skriva ut NOK/MNOK/kroner, vilket _to_msek då tyst skulle tolka
+# som SEK. INTE VERIFIERAT mot riktig cachad text – currency_check() nedan
+# dumpar det faktiska pressmeddelande-utdraget + priskällans valuta så
+# frågan kan avgöras mot verklig data, inte gissas.
+def currency_check(ticker: str, segment: Optional[str] = None) -> None:
+    """Diagnostik: finns en valutakrock för ETT bolag (typiskt en nordisk
+    sekundärnotering, t.ex. 'MEDIO.ST'/Medistim ASA, NOK-rapporterande)?
+    Visar (1) priskällans valuta (Yahoo, live), (2) alla lagrade
+    fundamentals-rader för tickern källa-för-källa, (3) ett råutdrag ur det
+    senaste rapport-PM:et på MFN så den FAKTISKA enhetsfrasen syns svart på
+    vitt. Rör ingenting, inget nätanrop utöver EN Yahoo-uppslagning.
+
+        python altdata/value_screener.py currency_check MEDIO.ST
+    """
+    import pandas as pd
+
+    seg_name = segment or config.DEFAULT_SEGMENT
+    _, results_dir = _seg_market_cap_and_dir(seg_name)
+
+    print(f"[currency_check] {ticker}\n")
+
+    print("== 1. Priskällans valuta (Yahoo, live) ==")
+    try:
+        import yfinance as yf
+        info = yf.Ticker(ticker).fast_info
+        cur = info.get("currency") if hasattr(info, "get") else getattr(info, "currency", None)
+        if not cur:
+            cur = yf.Ticker(ticker).info.get("currency")
+        print(f"  {ticker}: valuta={cur!r}" +
+              (" -- OBS: INTE SEK, men fundamentas Mkr/MSEK-tolkning antar SEK!"
+               if cur and cur != "SEK" else ""))
+    except Exception as e:  # noqa: BLE001
+        print(f"  kunde inte slå upp ({e})")
+
+    print("\n== 2. Lagrade fundamentals-rader, källa för källa ==")
+    any_rows = False
+    for fname, src in [("fundamentals_from_mfn.csv", "mfn (textextraktion, SEK-enheter antas)"),
+                       ("fundamentals_from_pdf.csv", "pdf (tabellextraktion, SEK-enheter antas)"),
+                       ("fundamentals_from_avanza.csv", "avanza (Avanzas egna, RÅA SEK enligt deras API)")]:
+        p = results_dir / fname
+        if not p.exists():
+            continue
+        try:
+            d = pd.read_csv(p)
+        except Exception:  # noqa: BLE001
+            continue
+        rows = d[d["ticker"] == ticker] if "ticker" in d.columns else d.iloc[0:0]
+        if rows.empty:
+            continue
+        any_rows = True
+        cols = [c for c in ("published", "period", "revenue", "revenue_unit",
+                            "net_profit", "net_profit_unit", "equity", "equity_unit")
+               if c in rows.columns]
+        print(f"  -- {src} --")
+        print("  " + rows[cols].sort_values("published").to_string(index=False).replace("\n", "\n  "))
+    if not any_rows:
+        print("  (ingen lagrad fundamentals-rad för tickern i något segment)")
+
+    print("\n== 3. Råutdrag ur senaste rapport-PM (MFN-cache, ingen tolkning) ==")
+    from altdata.mfn_fundamentals import is_report_pm
+    p = Path(config.MFN_CACHE_DIR) / f"{ticker}.json"
+    if not p.exists():
+        print(f"  ingen MFN-cache för {ticker} ({p})")
+        return
+    items = json.loads(p.read_text(encoding="utf-8")).get("items", [])
+    reports = sorted([it for it in items if is_report_pm(it)],
+                     key=lambda it: it.get("published", ""), reverse=True)
+    if not reports:
+        print("  inget rapport-liknande PM i cachen")
+        return
+    it = reports[0]
+    text = it.get("text") or ""
+    print(f"  {it.get('published','')[:10]} | {it.get('title','')}")
+    # Utdrag runt varje "omsättning/nettoomsättning"-liknande omnämnande -
+    # här ska den RIKTIGA enhetsfrasen (kronor/kr/NOK/kroner/...) synas.
+    hits = list(re.finditer(r"(?:omsättning|nettoomsättning|revenue)", text, re.I))
+    if not hits:
+        print("  (hittade ingen 'omsättning'-liknande fras i texten - se hela PM:et manuellt)")
+        print(f"  {text[:600]}")
+        return
+    for m in hits[:3]:
+        lo, hi = max(0, m.start() - 30), min(len(text), m.end() + 120)
+        print(f"  ...{text[lo:hi]!r}...")
+    print("\n  Klistra in hela sektion 2+3 – avgör om enhetsordet ovan verkligen "
+          "är SEK/kronor eller om det är NOK/kroner i svensk språkdräkt.")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "score"
     seg = sys.argv[2] if len(sys.argv) > 2 else None
@@ -803,6 +901,11 @@ def main():
         fields = sys.argv[3] if len(sys.argv) > 3 else "net_profit,equity"
         limit = int(sys.argv[4]) if len(sys.argv) > 4 else 8
         diagnose(seg, fields, limit)
+    elif cmd == "currency_check":
+        if len(sys.argv) < 3:
+            print("Ange en ticker: python altdata/value_screener.py currency_check MEDIO.ST")
+            return
+        currency_check(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else None)
     else:
         print(__doc__)
 
