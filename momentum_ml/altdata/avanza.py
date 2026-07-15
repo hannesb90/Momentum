@@ -53,7 +53,7 @@ Körs på Pi:n (nät):
     python -m altdata.avanza check_marketplace       # Avanzas EGET listing.marketPlaceName/countryCode, ALLA matchade bolag
     python -m altdata.avanza check_marketplace suspects  # ...bara de ~109 ASA/A-S/Oyj/P-F-misstänkta (snabbare)
     python -m altdata.avanza list_probe              # proba börslist-/IPO-endpoints + chart-djup (Yahoo-ersättningsfrågan)
-    python -m altdata.avanza list_probe2             # fördjupning: paginering på /_mobile/market/stocks + chart-djup mot ÄLDRE bolag
+    python -m altdata.avanza list_probe2             # chart-djup+upplösning mot ÄLDRE bolag (Yahoo-ersättningsfrågan, avgjord: se kodkommentar ovan list_probe2)
     python -m altdata.avanza list_probe2 VOLV-B.ST   # ...annat chart-testbolag (default AAK.ST)
     python -m altdata.avanza universe_remove T1,T2   # dry-run: ta bort tickers ur sweden_universe.csv (lägg till 'write' för att faktiskt skriva)
 
@@ -1183,7 +1183,12 @@ _LIST_CANDIDATES = [
      {"filter": {}, "offset": 0, "limit": 5, "sortBy": {"field": "name", "order": "asc"}}),
     ("POST", "/_api/market-stock-filter/", {"offset": 0, "limit": 5}),
     ("GET", "/_api/market-stock-filter/filter-options", None),
-    # Äldre mobil-API:t (fhqvst/avanza byggde mot /_mobile/-paths historiskt)
+    # Äldre mobil-API:t (fhqvst/avanza byggde mot /_mobile/-paths historiskt).
+    # FÖRKASTAD (verifierad 2026-07-15): status=200 här är en FALSK POSITIV -
+    # Content-Type text/html, kroppen är Avanzas SPA-index.html (routern faller
+    # igenom till appskalet för alla okända paths istället för en riktig 404).
+    # Ingen riktig API-endpoint. Se list_probe2()s docstring för fullständig
+    # dödgångs-slutsats för hela börslist-enumereringsspåret.
     ("GET", "/_mobile/market/stocks?limit=5", None),
     # IPO-kandidater (Avanzas webbsida har en börsintroduktioner-vy)
     ("GET", "/_api/market-ipo/", None),
@@ -1273,80 +1278,49 @@ def list_probe() -> None:
           "Yahoo-ersättning byggs FÖRST mot ett verifierat schema.")
 
 
-_MOBILE_STOCKS_PROBE_LIMITS = (5, 50, 500, 2000)
 # 2010-01-01 i ms sedan epoch – backtesten startar där, så chart-djupet måste
 # nå MINST hit för att Avanza ens vara en KANDIDAT till Yahoo-ersättning.
 _BACKTEST_START_MS = 1262304000000
+# Veckodata (backtestens upplösning) kräver ~7 dagars punktavstånd. Grövre
+# än så (t.ex. 'infinity'-periodens ~30 dagar/punkt, verifierat 2026-07-15
+# mot AAK.ST: 250 punkter över 20,8 år) duger inte som PRIMÄRKÄLLA även om
+# djupet räcker – bara som komplement/sanity-check.
+_MAX_WEEKLY_GAP_DAYS = 10.0
+
+# FÖRKASTAT SPÅR (verifierat 2026-07-15): /_mobile/market/stocks gav alltid
+# status=200 i list_probe() steg A, men det var en FALSK POSITIV - riktig
+# nyttolast (curl) visade Content-Type text/html och en kropp som ÄR
+# Avanzas SPA-index.html (routern faller igenom till appskalet för alla
+# okända paths). Ingen paginerings-/limit-probe kan rädda en endpoint som
+# inte finns - togs därför bort härifrån istället för att lämnas som en
+# probe som alltid rapporterar "200" men aldrig ett tolkningsbart svar.
+# SLUTSATS för hela börslist-enumereringsspåret: tre oberoende community-
+# projekt (avanza-mcp, fhqvst/avanza, Qluxzz/avanza) dokumenterar ingen
+# bulk-börslista, och ingen av våra egna gissade kandidater (market-stock-
+# filter, market-ipo, market-guide/ipos, mobile/market/stocks) höll. Avanza
+# kan alltså INTE ersätta JerBouma/FinanceDatabase + manuell sök-matchning
+# för universum-enumerering eller avnoterings-/IPO-bevakning.
 
 
 def list_probe2(chart_ticker: str = "AAK.ST") -> None:
-    """Fördjupning av list_probe(): (C) hur långt bär den enda 200:an ur
-    steg A (/_mobile/market/stocks) – testar om 'limit' har ett servertak
-    och om 'offset' faktiskt paginerar (olika bolag vid olika offset ->
-    listan går att enumerera fullständigt via upprepade anrop). (D) chart-
-    djup mot ett ÄLDRE, etablerat bolag – list_probe()s testbolag (TRATON,
-    IPO 2019) kunde inte skilja "hela historiken" från "takad vid ~7 år"
-    eftersom TRATON inte HAR äldre historik att sakna. AAK/Volvo/SEB gör.
+    """Chart-djup mot ett ÄLDRE, etablerat bolag (default AAK.ST) - avgör om
+    Avanza kan ersätta/komplettera Yahoo för backtest-prishistorik. list_probe()s
+    testbolag (TRATON SE, IPO 2019) kunde inte skilja "hela historiken" från
+    "takad vid ~7 år" eftersom TRATON inte HAR äldre historik att sakna;
+    AAK/Volvo/SEB gör. Flaggar både om perioden når 2010 OCH om punkttätheten
+    räcker för veckodata (se _MAX_WEEKLY_GAP_DAYS) - ett djup som når 2010
+    men bara ger månadsupplösning duger inte som primärkälla.
 
         python -m altdata.avanza list_probe2                # chart mot AAK.ST
         python -m altdata.avanza list_probe2 VOLV-B.ST       # annat bolag
     """
     dump: dict = {}
-    print("[list_probe2] == C. /_mobile/market/stocks – limit-tak ==")
-    for limit in _MOBILE_STOCKS_PROBE_LIMITS:
-        key = f"limit={limit}"
-        try:
-            r = requests.request("GET", f"{BASE}/_mobile/market/stocks",
-                                 params={"limit": limit},
-                                 headers={"User-Agent": _UA, "Accept": "application/json"},
-                                 timeout=30)
-            body = r.json() if (r.content and "json" in (r.headers.get("Content-Type") or "")) else None
-            first_list = None
-            if isinstance(body, dict):
-                first_list = next((v for v in body.values() if isinstance(v, list)), None)
-            elif isinstance(body, list):
-                first_list = body
-            n_returned = len(first_list) if first_list is not None else None
-            dump[key] = {"status": r.status_code, "n_returned": n_returned,
-                        "top_keys": list(body.keys()) if isinstance(body, dict) else None}
-            print(f"  {key:<12} status={r.status_code}  returnerade={n_returned}"
-                  + (f"  toppnycklar={list(body.keys())}" if isinstance(body, dict) else ""))
-        except Exception as e:  # noqa: BLE001
-            dump[key] = {"status": None, "error": str(e)}
-            print(f"  {key:<12} FEL: {e}")
-        finally:
-            time.sleep(_PAUSE_S)
-
-    print("\n[list_probe2] == C2. offset-paginering (olika bolag vid olika offset?) ==")
-    for offset in (0, 5, 10):
-        key = f"offset={offset}"
-        try:
-            r = requests.request("GET", f"{BASE}/_mobile/market/stocks",
-                                 params={"limit": 5, "offset": offset},
-                                 headers={"User-Agent": _UA, "Accept": "application/json"},
-                                 timeout=30)
-            body = r.json() if (r.content and "json" in (r.headers.get("Content-Type") or "")) else None
-            first_list = None
-            if isinstance(body, dict):
-                first_list = next((v for v in body.values() if isinstance(v, list)), None)
-            elif isinstance(body, list):
-                first_list = body
-            names = [item.get("name", item) if isinstance(item, dict) else item
-                     for item in first_list] if first_list else None
-            dump[key] = {"status": r.status_code, "names": names}
-            print(f"  {key:<12} status={r.status_code}  namn={names}")
-        except Exception as e:  # noqa: BLE001
-            dump[key] = {"status": None, "error": str(e)}
-            print(f"  {key:<12} FEL: {e}")
-        finally:
-            time.sleep(_PAUSE_S)
-
-    print(f"\n[list_probe2] == D. Chart-djup mot ÄLDRE bolag ({chart_ticker}) ==")
+    print(f"[list_probe2] Chart-djup mot ÄLDRE bolag ({chart_ticker}) ==")
     mapping = json.loads(_map_path().read_text()) if _map_path().exists() else {}
     entry = mapping.get(chart_ticker)
     if not entry or not entry.get("confirmed") or not entry.get("orderBookId"):
         print(f"  {chart_ticker}: ingen bekräftad orderBookId i avanza_map.json – "
-              f"kör 'match large' (eller motsvarande segment) först, hoppar över D.")
+              f"kör 'match large' (eller motsvarande segment) först.")
     else:
         print(f"  testbolag: {entry.get('title')!r} (orderBookId={entry['orderBookId']})")
         for period in _CHART_DEPTH_CANDIDATES:
@@ -1356,16 +1330,26 @@ def list_probe2(chart_ticker: str = "AAK.ST") -> None:
                 points = next((data[k] for k in _CHART_POINT_KEYS
                                if isinstance(data.get(k), list)), None)
                 first_ts = points[0].get("timestamp") if points else None
+                last_ts = points[-1].get("timestamp") if points else None
                 reaches_2010 = (first_ts is not None and first_ts <= _BACKTEST_START_MS)
+                gap_days = None
+                if points and len(points) > 1 and first_ts is not None and last_ts is not None:
+                    gap_days = (last_ts - first_ts) / 1000 / 86400 / (len(points) - 1)
+                weekly_ok = gap_days is not None and gap_days <= _MAX_WEEKLY_GAP_DAYS
                 dump[f"chart {period}"] = {"status": 200,
                                            "n_points": len(points) if points else 0,
                                            "first": (points[0] if points else None),
                                            "last": (points[-1] if points else None),
-                                           "reaches_2010": reaches_2010}
+                                           "reaches_2010": reaches_2010,
+                                           "avg_gap_days": gap_days,
+                                           "weekly_resolution_ok": weekly_ok}
                 if points:
-                    flag = "NÅR 2010" if reaches_2010 else "täcker INTE 2010"
+                    depth_flag = "NÅR 2010" if reaches_2010 else "täcker INTE 2010"
+                    res_flag = (f"~{gap_days:.1f} dagar/punkt, "
+                                + ("veckoduglig" if weekly_ok else "FÖR GLEST för veckodata")
+                                if gap_days is not None else "")
                     print(f"  timePeriod={period:<14} {len(points)} punkter  "
-                          f"[{points[0].get('timestamp')} -> {points[-1].get('timestamp')}]  ({flag})")
+                          f"[{first_ts} -> {last_ts}]  ({depth_flag}, {res_flag})")
                 else:
                     print(f"  timePeriod={period:<14} 200 men ingen punktlista "
                           f"(nycklar: {list(data.keys())})")
