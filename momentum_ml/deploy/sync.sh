@@ -42,10 +42,14 @@ real_changes() { grep -E '^(>|<|\*|c|h)' | grep -vE '/$' || true; }
 
 # ── Backend ────────────────────────────────────────────────────────────────
 # Kör ALLTID. cache/ och results/ (körningsdata) samt deploy/ (systemd-units,
-# kopieras manuellt) exkluderas.
+# kopieras manuellt) exkluderas. data/sweden_universe_ngm.csv är INTE
+# git-spårad (genereras lokalt på Pi:n av tradingview.py universe_ngm write,
+# precis som cache/) - utan denna exclude skriver --delete tyst bort filen
+# så fort src saknar den, vilket redan en gång fått avanza.py:s
+# universe_remove() att rapportera "hittades i ingen fil" för giltiga tickers.
 backend_out=$(rsync -ai --delete \
     --exclude 'cache/' --exclude 'results/' --exclude '__pycache__/' \
-    --exclude 'deploy/' \
+    --exclude 'deploy/' --exclude 'data/sweden_universe_ngm.csv' \
     "$SRC_DIR/momentum_ml/" /opt/momentum/momentum_ml/)
 backend_changed=$(printf '%s\n' "$backend_out" | real_changes)
 
