@@ -519,6 +519,48 @@ _WEIGHTS = {"quality": 0.30, "safety": 0.20, "growth": 0.20, "value": 0.30}
 _COMMODITY_SECTORS = {"Energy", "Materials"}
 
 
+# VERIFIERAT (currency_check MEDIO.ST mot Medistim ASAs riktiga bokslut,
+# 2026-07-15): Avanzas companyFinancialsByYear/Quarter returnerar RÅA belopp
+# i bolagets EGEN noteringsvaluta (Medistim/norsk primärnotering: NOK 699,8
+# Mkr FY2025 - vår lagrade "699.767 Mkr" är en EXAKT träff mot NOK-talet,
+# INTE ett SEK-konverterat värde), men taggas alltid generiskt "Mkr" oavsett
+# faktisk valuta. Priset (Yahoo) är BEKRÄFTAT också NOK för samma ticker.
+# Konsekvens: ROE/D-E/owner_earnings_yield/mult/zon är KVOTER (täljare och
+# nämnare i SAMMA valuta, NOK/NOK) - därför INTE valutaförvrängda, Buffett-
+# barren/"billig"-klassningen är matematiskt giltig även för dessa bolag.
+# Det som ÄR fel: varje ABSOLUT "Mkr"-märkt siffra (revenue_msek,
+# owner_earnings_msek, mcap_msek) är vilseledande märkt - den är i själva
+# verket MNOK, inte MSEK. Snarare än att GISSA en FX-kurs (samma varning som
+# mfn_fundamentals.py redan gör för USD: fel kurs vore värre än att bara
+# märka rätt) läggs valutan in explicit så den aldrig tyst antas vara SEK.
+def _currency_cache_path() -> Path:
+    return Path(config.anchor("cache")) / "_ticker_currency.json"
+
+
+def _ticker_currency(ticker: str, cache: dict) -> str:
+    """Cachad (för alltid - en notering byter aldrig handelsvaluta) valuta
+    per ticker. `cache` muteras in-place av anroparen, som även ansvarar för
+    att skriva den till disk (samma delcheckpoint-mönster som
+    quality_screener._market_caps()). Default 'SEK' om Yahoo-uppslaget
+    misslyckas - matchar det gamla, implicita antagandet för de facto
+    SEK-rapporterande bolag (>90% av universumet), ingen ny risk för dem."""
+    if ticker in cache:
+        return cache[ticker]
+    cur = "SEK"
+    try:
+        import yfinance as yf
+        fi = yf.Ticker(ticker).fast_info
+        c = fi.get("currency") if hasattr(fi, "get") else getattr(fi, "currency", None)
+        if not c:
+            c = yf.Ticker(ticker).info.get("currency")
+        if c:
+            cur = c
+    except Exception:  # noqa: BLE001
+        pass
+    cache[ticker] = cur
+    return cur
+
+
 def score(segment: Optional[str] = None) -> None:
     from data.data_loader import fetch_weekly_data, load_sweden_universe
 
@@ -535,6 +577,13 @@ def score(segment: Optional[str] = None) -> None:
     tickers = list(fund.keys())
     prices = fetch_weekly_data(tickers, use_cache=True)
 
+    # Valuta per ticker (se modulkommentaren ovan _ticker_currency) – cachad
+    # för alltid, delcheckpoint var 25:e NYA uppslag (mönster ur
+    # quality_screener._market_caps) mot avbrott mitt i en stor körning.
+    cur_cache_path = _currency_cache_path()
+    currency_cache = json.loads(cur_cache_path.read_text()) if cur_cache_path.exists() else {}
+    new_lookups = 0
+
     rows = []
     for t in tickers:
         p = prices.get(t)
@@ -545,12 +594,25 @@ def score(segment: Optional[str] = None) -> None:
         m.update(_price_risk(p, m.get("np_annual"), fund[t].get("old_ref")))
         m["ticker"] = t
         m["name"] = name_map.get(t, t)
+        was_cached = t in currency_cache
+        m["currency"] = _ticker_currency(t, currency_cache)
+        if not was_cached:
+            new_lookups += 1
+            if new_lookups % 25 == 0:
+                cur_cache_path.parent.mkdir(parents=True, exist_ok=True)
+                cur_cache_path.write_text(json.dumps(currency_cache, ensure_ascii=False, indent=2),
+                                          encoding="utf-8")
         # Kravliste-underlaget (marginal/EPS/nettoskuld/kassaflöde/utdelning)
         # följer med från _load_fundamentals till radnivån.
         for k in ("ebit_margin", "ebit_margin_trend", "eps_trend",
                   "net_debt_msek", "op_cf_msek", "dividend_any"):
             m[k] = fund[t].get(k)
         rows.append(m)
+
+    if new_lookups:
+        cur_cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cur_cache_path.write_text(json.dumps(currency_cache, ensure_ascii=False, indent=2),
+                                  encoding="utf-8")
 
     roe_vals = {r["ticker"]: r["roe"] for r in rows}
     # ROE-konsistens (andel av senaste rapporterna som klarade barren) rankas
@@ -590,7 +652,7 @@ def score(segment: Optional[str] = None) -> None:
             "growth_consistency", "roe_consistency", "capex_included",
             "checklist_score", "checklist", "checklist_miss",
             "ebit_margin", "ebit_margin_trend", "eps_trend", "net_debt_msek", "op_cf_msek",
-            "n_reports", "mcap_msek", "meets_roe_bar",
+            "n_reports", "mcap_msek", "currency", "meets_roe_bar",
             "meets_debt_bar", "commodity_sector",
             "vol_52w", "high_vol", "price_chg_30m", "earn_chg_30m",
             "mult_expansion_30m", "rerated_up", "period", "annual_factor", "published"]
@@ -611,22 +673,27 @@ def score(segment: Optional[str] = None) -> None:
     buffett = [r for r in rows if r["meets_roe_bar"] and r["meets_debt_bar"]
                and r["zone"] in buy_zones and not r["commodity_sector"]
                and not r["rerated_up"] and not r["high_vol"]]
+    n_foreign = sum(1 for r in rows if r["currency"] != "SEK")
     print(f"\n  🎯 KLARAR BUFFETT-BARREN (ROE ≥ {config.VALUE_ROE_GOOD:.0%}, "
           f"D/E ≤ {config.VALUE_DEBT_EQUITY_SAFE}, zon {'/'.join(buy_zones)} "
           f"(säkerhetsmarginal), EJ råvarusektor ({n_commodity} uteslutna), EJ uppvärderad "
           f"utan resultat ({n_rerated} uteslutna), EJ extremvolatil (> "
           f"{getattr(config, 'VALUE_VOL_MAX', 0.60):.0%}/år, {n_highvol} uteslutna)) "
-          f"– {len(buffett)} st:")
+          f"– {len(buffett)} st ({n_foreign} icke-SEK bolag i hela universumet – kvoterna "
+          f"(ROE/D-E/multipel) gäller oavsett valuta, men Mkr-summorna nedan är i BOLAGETS "
+          f"EGEN valuta för dem, se 'currency'-kolumnen i CSV:n):")
     for r in buffett[:15]:
+        cur_tag = f" [{r['currency']}]" if r["currency"] != "SEK" else ""
         print(f"   {r['value_score']:>5.1f}  {r['ticker']:<12} {str(r['name'])[:24]:<24} "
-              f"ROE {r['roe']:.0%}  D/E {r['debt_equity']:.2f}  {r['mult']}x [{r['zone']}]")
+              f"ROE {r['roe']:.0%}  D/E {r['debt_equity']:.2f}  {r['mult']}x [{r['zone']}]{cur_tag}")
 
     print(f"\n  TOPP 20 (value_score, hela universumet):")
     for i, r in enumerate(rows[:20], 1):
         roe_s = f"{r['roe']:.0%}" if r["roe"] is not None else "  ?"
         de_s = f"{r['debt_equity']:.2f}" if r["debt_equity"] is not None else "   ?"
+        cur_tag = f" [{r['currency']}]" if r["currency"] != "SEK" else ""
         print(f"  {i:>3} {r['ticker']:<12}{str(r['name'])[:22]:<22}"
-              f"{r['value_score']:>6.1f}  ROE {roe_s:>4}  D/E {de_s:>5}  [{r['zone']}]")
+              f"{r['value_score']:>6.1f}  ROE {roe_s:>4}  D/E {de_s:>5}  [{r['zone']}]{cur_tag}")
 
     n_thin = sum(1 for r in rows if r["n_reports"] < 2)
     print(f"\n  OBS: {n_thin}/{len(rows)} bolag har bara 1 känd rapport – tillväxtkonsistens "
