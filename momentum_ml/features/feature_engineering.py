@@ -491,7 +491,18 @@ def attach_fundamentals_features(
             feat["days_since_report"] = float(_DAYS_SINCE_CAP)
             continue
         left = feat.index.to_frame(index=False, name="Date").sort_values("Date")
-        joined = pd.merge_asof(left, g.sort_values("published"),
+        g = g.sort_values("published")
+        # pandas 2.x kan ge OLIKA datetime64-upplösningar (s/ms/us/ns) beroende
+        # på källa: prisindexet ('Date', ur yfinance ELLER, sedan Avanza blev
+        # prisdatakälla för NGM/Spotlight, altdata.avanza.fetch_chart_ohlcv:s
+        # pd.to_datetime(ts, unit='ms')) kontra 'published' (ur pd.to_datetime
+        # på MFN-textsträngar, vars upplösning pandas härleder ur strängens
+        # egen precision). merge_asof KRÄVER numera identisk upplösning på
+        # båda nycklarna (MergeError annars) – normalisera uttryckligen till
+        # 'us' hellre än att lita på att källorna råkar matcha.
+        left["Date"] = left["Date"].astype("datetime64[us]")
+        g["published"] = g["published"].astype("datetime64[us]")
+        joined = pd.merge_asof(left, g,
                                 left_on="Date", right_on="published", direction="backward")
         joined = joined.set_index("Date")
         feat["rev_growth_yoy"] = joined["rev_growth_yoy"].reindex(feat.index)
