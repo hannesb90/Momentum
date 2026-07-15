@@ -537,6 +537,36 @@ VALUE_DEBT_EQUITY_SAFE = 0.5       # Debt/Equity under detta = konservativt skul
 VALUE_MULT_CHEAP       = 15
 VALUE_MULT_FAIR        = 22
 
+# ── OT-inspirerade köpvärdes-spärrar (Buffett-grinden) ────────────────────────
+# Fyra komponenter ur OT Analytics beskrivna metodik ("peer-analys, finansiellt
+# läge, värderingsmultiplar, volatilitet, tidigare uppvärdering i relation till
+# resultat och riskanalys ... uppsida med marginal när jag köper"):
+#
+# 1. SÄKERHETSMARGINAL: Buffett-grinden godtar bara dessa zoner. Tidigare
+#    släpptes både 'billig' och 'rimlig' igenom – "uppsida med marginal" är
+#    hårdare: köp bara med rabatt. ("rimlig",) kan läggas tillbaka här om
+#    grinden visar sig för snål i praktiken.
+BUFFETT_BUY_ZONES = ("billig",)
+# 2. UPPVÄRDERING vs RESULTAT: dekomponera kursutvecklingen över ~2,5 år i
+#    vinsttillväxt × multipelexpansion. En aktie vars uppgång främst är
+#    EXPANSION (dyrare per vinstkrona, inte mer vinst) är uppvärderad på
+#    hopp/cykel – generella versionen av Lundin Gold-fallet (guldpristopp
+#    lyfte kursen långt före vinsten). Flaggas när kursen stigit minst
+#    MIN_PRICE_CHG över fönstret OCH multipeln expanderat ≥ MAX_EXPANSION.
+VALUE_RERATING_MIN_PRICE_CHG  = 0.50    # bry dig bara om aktier som rusat ≥ +50%
+VALUE_RERATING_MAX_EXPANSION  = 1.5     # multipeln ≥1,5x dyrare per vinstkrona = uppvärderad
+VALUE_RERATING_WINDOW_MONTHS  = (20, 40)  # jämförelserapport söks i detta fönster bakåt
+# 3. VOLATILITET: årsvolatilitet (veckoavkastningar × √52) över denna nivå
+#    diskvalificerar från Buffett-grinden – binära/hypedrivna kursförlopp är
+#    inte "köpvärt med marginal" oavsett multipel. 60% är högt satt med flit:
+#    ska bara fånga de extrema, inte straffa normala småbolag.
+VALUE_VOL_MAX = 0.60
+# 4. FYLLA PÅ-REGELN (portfolio._refill_candidates): efter ett "ta hem
+#    vinsten"-råd (säljvaktens nivå ≥2, kursen loggas i en liggare) föreslås
+#    påfyllnad först när kursen fallit minst så här mycket under rådets nivå
+#    OCH caset fortfarande klarar köpkraven.
+REFILL_DISCOUNT = 0.10
+
 # ── Sektor-relativ rankning (edge-granskning 3) ───────────────────────────────
 # Värderings- och skuld-percentiler räknade mot HELA universumet är strukturellt
 # skeva: en bank ser alltid "billig" (låg multipel) och "farligt skuldsatt"

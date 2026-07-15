@@ -333,6 +333,38 @@ export function OverviewPage() {
         </>
       )}
 
+      {/* Fylla på-läget (OT-regeln): tog hem vinst högre → kursen en marginal under den nivån → caset håller */}
+      {(nextBuy.data?.refill ?? []).length > 0 && (
+        <>
+          <div className="section-head">
+            <h2>
+              Fylla på-läge
+              <InfoButton title="Fylla på-regeln">
+                <p>
+                  Om du tog hem vinsten när säljvakten flaggade, och kursen sedan fallit en bit
+                  under den nivån <b>utan att caset försämrats</b> (inga röda flaggor, inte dyr
+                  värdering, klarar fortfarande kvalitetsbarren) – då kan det vara läge att köpa
+                  tillbaka det du sålde. Rent rådgivande – ingen del av köpplanen ovan.
+                </p>
+              </InfoButton>
+            </h2>
+          </div>
+          <div className="list-card">
+            {(nextBuy.data?.refill ?? []).map((s) => (
+              <div key={s.ticker} className="list-row">
+                <div className="list-row__main">
+                  <span className="list-row__ticker">🔄 {s.name}</span>
+                  <span className="list-row__sub">{s.why}</span>
+                </div>
+                <div className="list-row__side">
+                  <span className="list-row__num pos">−{fmtPct(s.dip)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Backtest – simulering, nedgraderad under Coret */}
       <div className={`hero ${positiveReturn ? 'hero--up' : 'hero--down'}`}>
         <div className="hero__label">
