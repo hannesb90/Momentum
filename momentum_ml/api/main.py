@@ -250,11 +250,44 @@ def get_prices(ticker: str, limit: int = 260, segment: Optional[str] = None):
 @app.get("/api/quality")
 def get_quality():
     """Fundamental microcap-kortlista (kvalitativ sållning + värdering). Global,
-    inte segment-uppdelad. Tom lista om screenern ännu inte körts (i st. f. 404)."""
+    inte segment-uppdelad. Tom lista om screenern ännu inte körts (i st. f. 404).
+
+    TOKENFRI FALLBACK: LLM-screenern (quality_screener.py) täcker bara de bolag
+    den faktiskt körts på – Kvalitet-fliken visade därför '–' för nästan hela
+    universumet tills nattbatchen hunnit dit. soft_signals.py:s destillat
+    (LightGBM/lexikon på samma PM-text, kalibrerat mot LLM-betygen på samma
+    0–5-skala) fyller luckorna token-fritt – SAMMA precedens som portfolio.py:s
+    kvalitets-fallback: LLM vinner ALLTID när den finns, och källan märks
+    (quality_source 'llm'/'soft') så betygen aldrig kan förväxlas."""
+    rows: list = []
+    llm_tickers: set = set()
     path = RESULTS_DIR / "quality_shortlist.csv"
-    if not path.exists():
-        return []
-    return _records(_read_csv(path))
+    if path.exists():
+        rows = _records(_read_csv(path))
+        for r in rows:
+            r["quality_source"] = "llm"
+        llm_tickers = {str(r.get("ticker") or "").upper() for r in rows}
+
+    for seg in config.SEGMENTS.values():
+        sp = Path(config.anchor(seg.get("results_dir", ""))) / "soft_signals.csv"
+        if not sp.exists():
+            continue
+        try:
+            soft = _read_csv(sp)
+        except HTTPException:
+            continue
+        for r in _records(soft):
+            tk = str(r.get("ticker") or "").upper()
+            if not tk or tk in llm_tickers:
+                continue
+            llm_tickers.add(tk)   # dedupe även mellan segmentfilerna
+            rows.append({
+                "ticker": tk, "name": r.get("name"),
+                "composite": r.get("soft_score"),
+                "red_flags": r.get("red_flags") or "",
+                "quality_source": "soft",
+            })
+    return rows
 
 
 @app.get("/api/quant")

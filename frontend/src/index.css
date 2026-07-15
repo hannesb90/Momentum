@@ -1173,6 +1173,23 @@ h2 {
   vertical-align: middle;
 }
 
+/* Tokenfritt kvalitetsbetyg (soft_signals-destillatet) – ska aldrig kunna
+   förväxlas med ett Claude-läst composite, samma källmärkningsprincip som
+   portfolio.py:s "mjuk-kvalitet". Neutral grå, inte röd (inget fel, bara
+   en annan källa). */
+.softchip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: rgba(100, 116, 139, 0.14);
+  color: var(--muted, #64748b);
+  vertical-align: middle;
+}
+
 /* ── Rotation & Trend (D-spåret) ─────────────────────────────────────── */
 
 .regime-banner {

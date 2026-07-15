@@ -193,6 +193,13 @@ function DetailPanel({ row }) {
           Endast kvant-data (hård finansdata) – ingen kvalitativ Claude-analys för detta bolag ännu.
         </p>
       )}
+      {row.composite != null && row.quality_source === 'soft' && (
+        <p className="footnote" style={{ marginTop: 8 }}>
+          Kvalitetsbetyget är det <b>tokenfria destillatet</b> (soft_signals: ML/lexikon tränat på
+          Claude-betygen, samma 0–5-skala) – ingen Claude-läsning av just detta bolag ännu.
+          Claude-betyget ersätter det automatiskt när screenern hunnit dit.
+        </p>
+      )}
 
       {flags.length > 0 && (
         <div className="qdetail__flags">
@@ -469,6 +476,8 @@ export function QualityPage() {
                     Snittet av 9 kvalitativa kriterier som Claude poängsatt ur bolagets rapport
                     (förstå, moat, ledning, marknad, väg till vinst m.m.). Mäter hur bra caset
                     <b> låter</b> – inte värderingen. Klicka en rad för delbetygen.
+                    Betyg märkta <b>mjuk</b> är det tokenfria destillatet (ML/lexikon tränat på
+                    Claude-betygen, samma skala) för bolag Claude inte hunnit läsa än.
                   </InfoButton>
                 </th>
                 <th>
@@ -510,7 +519,12 @@ export function QualityPage() {
                         <span className="ticker-link__ticker">{row.ticker} <TvLink ticker={row.ticker} /></span>
                       </td>
                       <td className="qcomposite">{row.quant_score == null ? '–' : Math.round(row.quant_score)}</td>
-                      <td className="qcomposite">{row.composite == null ? '–' : fmtNum(row.composite, 2)}</td>
+                      <td className="qcomposite">
+                        {row.composite == null ? '–' : fmtNum(row.composite, 2)}
+                        {row.composite != null && row.quality_source === 'soft' ? (
+                          <span className="softchip" title="Tokenfritt destillat (soft_signals) – inte Claude-läst">mjuk</span>
+                        ) : null}
+                      </td>
                       <td>
                         <span className={`zonebadge zonebadge--${zoneClass(row.zone)}`}>
                           {ZONE_LABEL[row.zone] ?? String(row.zone).toUpperCase()}
