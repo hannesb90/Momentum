@@ -1271,39 +1271,57 @@ def list_probe() -> None:
           "Yahoo-ersättning byggs FÖRST mot ett verifierat schema.")
 
 
+# Båda universum-filerna – NGM/Spotlight-bolagen (data/sweden_universe_ngm.csv,
+# '.NGM'-suffix) fångades i check_marketplace(scope='all') precis som
+# huvudlistan, och behöver kunna rensas på samma sätt (verkligt fall:
+# BTC.B.NGM/DIV.B.NGM m.fl. visade sig vara kanadensiska/amerikanska bolag).
+_UNIVERSE_FILES = ("sweden_universe.csv", "sweden_universe_ngm.csv")
+
+
 def universe_remove(tickers: list, dry_run: bool = True) -> None:
-    """Tar bort angivna tickers HELT ur data/sweden_universe.csv – det
-    avsiktliga, manuella steget EFTER check_marketplace() gett ett
-    verifierat facit (Avanzas eget countryCode != 'SE'). Kör ALDRIG
-    automatiskt på check_marketplace()s output – en människa ska se listan
-    (samma disciplin som tradingview.py:s universe()/universe_ngm():
-    dry-run visar alltid vad som SKULLE hända innan write).
+    """Tar bort angivna tickers HELT ur BÅDA universum-filerna (vardera
+    tickern tas bort ur den fil den faktiskt finns i) – det avsiktliga,
+    manuella steget EFTER check_marketplace() gett ett verifierat facit
+    (Avanzas eget countryCode != 'SE'). Kör ALDRIG automatiskt på
+    check_marketplace()s output – en människa ska se listan (samma
+    disciplin som tradingview.py:s universe()/universe_ngm(): dry-run visar
+    alltid vad som SKULLE hända innan write).
 
         python -m altdata.avanza universe_remove MEDIO.ST,EQNRO.ST      # dry-run
         python -m altdata.avanza universe_remove MEDIO.ST,EQNRO.ST write
     """
     import csv as _csv
-    path = Path(__file__).parent.parent / "data" / "sweden_universe.csv"
-    rows = list(_csv.DictReader(open(path, encoding="utf-8")))
     remove_set = {t.strip().upper() for t in tickers}
-    kept = [r for r in rows if r["ticker"].strip().upper() not in remove_set]
-    removed = [r for r in rows if r["ticker"].strip().upper() in remove_set]
-    found = {r["ticker"].strip().upper() for r in removed}
-    missing = remove_set - found
-    print(f"[universe_remove] {len(removed)}/{len(remove_set)} tickers hittade i "
-          f"{path.name} ({len(rows)} rader totalt):")
-    for r in removed:
-        print(f"    - {r['ticker']:<14} {r['name']}")
+    found_total = set()
+
+    for fname in _UNIVERSE_FILES:
+        path = Path(__file__).parent.parent / "data" / fname
+        if not path.exists():
+            continue
+        rows = list(_csv.DictReader(open(path, encoding="utf-8")))
+        removed = [r for r in rows if r["ticker"].strip().upper() in remove_set]
+        if not removed:
+            continue
+        kept = [r for r in rows if r["ticker"].strip().upper() not in remove_set]
+        found_total |= {r["ticker"].strip().upper() for r in removed}
+        print(f"[universe_remove] {len(removed)} tickers i {fname} ({len(rows)} rader totalt):")
+        for r in removed:
+            print(f"    - {r['ticker']:<14} {r['name']}")
+        if not dry_run:
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                w = _csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+                w.writeheader()
+                w.writerows(kept)
+            print(f"  skrev {len(kept)} kvarvarande rader -> {path}")
+
+    missing = remove_set - found_total
     if missing:
-        print(f"  VARNING: {len(missing)} ticker(s) fanns inte i filen: {', '.join(sorted(missing))}")
-    if not dry_run:
-        with open(path, "w", newline="", encoding="utf-8") as f:
-            w = _csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-            w.writeheader()
-            w.writerows(kept)
-        print(f"\n[universe_remove] skrev {len(kept)} kvarvarande rader -> {path}")
-    else:
+        print(f"\n  VARNING: {len(missing)} ticker(s) fanns i INGEN av {_UNIVERSE_FILES}: "
+              f"{', '.join(sorted(missing))}")
+    if dry_run:
         print("\n  DRY-RUN – inget skrivet. Kör med 'write' som sista argument för att faktiskt ta bort.")
+    else:
+        print(f"\n[universe_remove] klart – {len(found_total)}/{len(remove_set)} tickers borttagna totalt.")
 
 
 def main():
