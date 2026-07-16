@@ -1,0 +1,21 @@
+[Unit]
+Description=Momentum – nattlig narrativ-rapport (PM/VD-ord + nyheter/social via WebSearch)
+After=network-online.target momentum-train.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+# REN NARRATIV, ALDRIG SIGNAL - skriver bara results/insight_report.json, rör
+# aldrig signals/scores. Headless claude låst till EXAKT WebSearch (ingen
+# Montrose, ingen filåtkomst). Kräver claude login (prenumeration) för
+# användaren nedan - ingen extra MCP-registrering behövs (bara WebSearch).
+Environment=PATH=/opt/momentum/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/momentum/venv/bin/python insight_report.py
+
+Nice=15
+IOSchedulingClass=idle
+# ~20 bolag / 5 per batch = ~4 headless-anrop med WebSearch – ge gott om tid.
+TimeoutStartSec=30m

@@ -648,6 +648,13 @@ CLAUDE_BIN = _os.environ.get("CLAUDE_BIN", _os.path.expanduser("~/.local/bin/cla
 # Kontobunden connector (inte lokalt .mcp.json) hinner inte alltid ansluta
 # inom Claude Codes default MCP-timeout (30s) i en färsk headless-process.
 MONTROSE_MCP_TIMEOUT_MS = 60000
+
+# ── Nattlig narrativ-rapport (insight_report.py) – REN NARRATIV, ALDRIG SIGNAL,
+# se dev-loggens #18 (PM-/rapport-/VD-ton bär ingen OOS-alfa) och §10 (social
+# buzz = brusig återvändsgränd). Kostnadstak: max MAX_TICKERS bolag, BATCH_SIZE
+# st per headless-anrop (innehav prioriteras framför kandidater vid kapning).
+INSIGHT_BATCH_SIZE = 5
+INSIGHT_MAX_TICKERS = 20
 # Aktiv rank-modell för "nästa köp" (köp-vakten). Väljer bara viktprofilen i
 # _unified_rank() – ALL underliggande data (kvalitet/kvant/value/momentum)
 # laddas alltid, så man kan växla fram och tillbaka utan omkörning. Sätts av
