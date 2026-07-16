@@ -639,7 +639,14 @@ def score(segment: Optional[str] = None) -> None:
                 + _WEIGHTS["growth"] * growth_rank[t] + _WEIGHTS["value"] * value_rank[t])
         r["value_score"] = round(comp * 100, 1)
         r["meets_roe_bar"] = bool(r["roe"] is not None and r["roe"] >= config.VALUE_ROE_GOOD)
-        r["meets_debt_bar"] = bool(r["debt_equity"] is not None and r["debt_equity"] <= config.VALUE_DEBT_EQUITY_SAFE)
+        # Sektor-relativ, INTE en global absolut D/E-tröskel (se config.
+        # VALUE_DEBT_RANK_SAFE): banker/finansbolag har strukturellt mycket
+        # högre D/E (inlåning = skuld) och klarade annars ALDRIG barren,
+        # oavsett hälsa. debt_rank är redan sektor-blandad (samma _sector_
+        # blend_ranks som värderingen använder, se kommentaren ovanför den
+        # funktionen) – återanvänds här istället för en ny beräkning.
+        r["meets_debt_bar"] = bool(r["debt_equity"] is not None
+                                    and debt_rank[t] >= config.VALUE_DEBT_RANK_SAFE)
         r["checklist_score"], r["checklist"], r["checklist_miss"] = _checklist(r)
         r["commodity_sector"] = sector_map.get(t) in _COMMODITY_SECTORS
 
@@ -675,7 +682,7 @@ def score(segment: Optional[str] = None) -> None:
                and not r["rerated_up"] and not r["high_vol"]]
     n_foreign = sum(1 for r in rows if r["currency"] != "SEK")
     print(f"\n  🎯 KLARAR BUFFETT-BARREN (ROE ≥ {config.VALUE_ROE_GOOD:.0%}, "
-          f"D/E ≤ {config.VALUE_DEBT_EQUITY_SAFE}, zon {'/'.join(buy_zones)} "
+          f"skuld bättre än sektor-percentil {config.VALUE_DEBT_RANK_SAFE:.0%}, zon {'/'.join(buy_zones)} "
           f"(säkerhetsmarginal), EJ råvarusektor ({n_commodity} uteslutna), EJ uppvärderad "
           f"utan resultat ({n_rerated} uteslutna), EJ extremvolatil (> "
           f"{getattr(config, 'VALUE_VOL_MAX', 0.60):.0%}/år, {n_highvol} uteslutna)) "

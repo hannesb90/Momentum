@@ -528,7 +528,22 @@ QUALITY_PS_FAIR        = 4.0       # P/S <= rimlig, över = dyr
 # Trösklar grundade i väldokumenterade, publikt citerade Buffett-kriterier
 # (inte gissade): ROE > 15% konsekvent, Debt/Equity < 0.5 konservativt.
 VALUE_ROE_GOOD         = 0.15      # ROE-tröskel (15%) för "kvalitetsbolag"-flaggan
-VALUE_DEBT_EQUITY_SAFE = 0.5       # Debt/Equity under detta = konservativt skuldsatt
+VALUE_DEBT_EQUITY_SAFE = 0.5       # Debt/Equity under detta = konservativt skuldsatt (ANVÄNDS EJ
+                                    # längre för meets_debt_bar, se VALUE_DEBT_RANK_SAFE nedan –
+                                    # kvar bara för print-texten/dokumentationssyfte).
+# Sektor-blandad percentil (debt_rank, se value_screener._sector_blend_ranks)
+# krävs vara ≥ detta för att klara skuld-barren. BUGG (fixad 2026-07-xx):
+# meets_debt_bar jämförde tidigare debt_equity mot EN global absolut tröskel
+# (VALUE_DEBT_EQUITY_SAFE), kalibrerad för industri-/konsumentbolag. Banker
+# har strukturellt mycket högre D/E (inlåning bokförs som skuld) – varje
+# bank i universumet föll ALLTID på den barren oavsett faktisk hälsa
+# (verkligt fall: Swedbank/Avanza Bank Holding flaggade "skuld över barren"
+# trots att de är väletablerade, lönsamma banker). 0.5 = kräver bättre än
+# medianen inom sin SEKTOR-jämförelse (redan beräknad, samma logik som
+# värderings-percentilen) – inte back-testad mot holdouten separat, bara en
+# rimlig startpunkt som ersätter en bar som var strukturellt omöjlig för en
+# hel sektor att klara.
+VALUE_DEBT_RANK_SAFE = 0.5
 # "Owner earnings"-multipel (börsvärde/owner earnings) – EGNA trösklar, inte
 # samma som QUALITY_MULT_* (owner earnings är lägre än EBITDA eftersom
 # avskrivningar redan är kvar i det, så samma multipel motsvarar INTE samma
