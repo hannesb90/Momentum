@@ -750,7 +750,16 @@ def score(segment: Optional[str] = None) -> None:
         w.writeheader()
         w.writerows(rows)
     n_flag = sum(1 for r in rows if r["red_flag_count"])
-    print(f"[soft_signals] {len(rows)} bolag poängsatta ({mode}"
+    # Den globala `mode`-variabeln beskriver bara vilken modell som FINNS
+    # (destillerad ML vs lexikon) - inte vad varje enskild rad faktiskt fick.
+    # Facit-spärren kan tysta ner ML:n till 0 verkliga ML-rader för ett helt
+    # segment (t.ex. "large" när facit bara täcker Small/Micro/Nano Cap) - då
+    # vore "(destillerad ML)" i sammanfattningen direkt missvisande. Räkna
+    # den faktiska fördelningen istället för att lita på den globala flaggan.
+    from collections import Counter
+    mode_counts = Counter(r["mode"] for r in rows)
+    mode_breakdown = ", ".join(f"{n} {m}" for m, n in mode_counts.most_common())
+    print(f"[soft_signals] {len(rows)} bolag poängsatta ({mode_breakdown}"
           + (f", CV-MAE {meta['cv_mae']} vs baseline {meta['baseline_mae']}" if meta else "")
           + f") → {out}")
     print(f"  {n_flag} bolag med röda flaggor. TOPP 10 (soft_score, token-fritt):")
