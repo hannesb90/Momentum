@@ -721,6 +721,20 @@ def _normalize_pasted_json(raw: str) -> str:
     return raw.translate(_SMART_QUOTES)
 
 
+def _read_stdin_utf8() -> str:
+    """Läser stdin som RÅA bytes och avkodar explicit UTF-8 – kringgår
+    sys.stdin.read()s lokal-beroende avkodning (locale.getpreferredencoding()).
+    Verkligt fall: en i övrigt giltig JSON-lista kraschade "Expecting ','
+    delimiter" på EXAKT samma teckenposition varje gång (inte smarta
+    citattecken – den fixen ändrade ingenting), ett tydligt tecken på
+    deterministisk byte/tecken-glidning snarare än slumpmässig korruption.
+    En del SSH-klienter (bl.a. vissa iOS-appar) skickar inte LANG/LC_* över
+    SSH, vilket kan få Python att falla tillbaka på en icke-UTF-8-avkodning
+    och tyst förskjuta positionerna för varje svenskt specialtecken (ö/ä/å)
+    i den inklistrade texten."""
+    return sys.stdin.buffer.read().decode("utf-8", errors="replace")
+
+
 def manual_prompt(ticker: str) -> None:
     """Skriver ut ett klistra-in-färdigt AI-prompt för ETT bolag – för manuell
     bedömning i en WEBBASERAD AI (claude.ai, ChatGPT m.fl.) UTAN att förbruka
@@ -775,7 +789,7 @@ def manual_import(ticker: str) -> None:
     from data.data_loader import load_sweden_universe
     ticker = ticker.upper()
     print(f"Klistra in AI:ns JSON-svar för {ticker}, avsluta med Ctrl-D (Ctrl-Z, Enter på Windows):")
-    raw = _normalize_pasted_json(sys.stdin.read())
+    raw = _normalize_pasted_json(_read_stdin_utf8())
     m = re.search(r"\{.*\}", raw, re.S)
     if not m:
         print("Hittade inget JSON-objekt i inklistringen – inget sparat.")
@@ -868,7 +882,7 @@ def batch_import(path: Optional[str] = None) -> None:
         raw = p.read_text(encoding="utf-8")
     else:
         print("Klistra in AI:ns JSON-LISTA, avsluta med Ctrl-D (Ctrl-Z, Enter på Windows):")
-        raw = sys.stdin.read()
+        raw = _read_stdin_utf8()
     raw = _normalize_pasted_json(raw)
 
     m = re.search(r"\[.*\]", raw, re.S)
