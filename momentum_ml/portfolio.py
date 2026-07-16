@@ -284,14 +284,21 @@ def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
     """
     Hämtar senaste kurs (omräknad till SEK) för innehav vars ticker INTE täcks
     av modellens prices.csv: utländska ETF:er (EUR/USD/GBp) och svenska bolag
-    utanför segmentens universum (micro caps). Direkt från samma kurskälla som
-    resten av pipelinen (Yahoo) – kräver nät. Körs dels nattligt via main.py
+    utanför segmentens universum (micro caps). Körs dels nattligt via main.py
     STEG 5 (tickers=None → läser load_holdings() från disk), dels direkt från
     save_holdings() med en explicit ticker-lista – det senare täcker fallet
     "nyss tillagt innehav" vars ticker ÄNNU inte finns på disk (raden har inte
     skrivits än) och som annars inte fått något pris förrän nästa nattkörning.
     Skriver results/holdings_quotes.csv som _latest_closes() plockar upp.
-    Valutor: fast_info.currency; GBp (pence) → /100 → GBP; växlas via <CUR>SEK=X.
+
+    Prisdata: Avanza (altdata.avanza), INTE Yahoo – verifierat 2026-07-xx att
+    Yahoo saknar/har hål i täckningen för flera nischade London-noterade
+    UCITS-ETF:er (WisdomTree/Global X/HANetf m.fl.). Avanza taggar dem
+    EXCHANGE_TRADED_FUND (inte STOCK) i sökträffar, men samma pris-endpoint
+    (market-guide/stock/{id}) fungerar rakt av – se altdata.avanza.probe_etf().
+    Matchas på exakt tickerSymbol (inte första träffen – VanEck Semiconductor
+    gav t.ex. tre träffar: VVSM/SMH/SMHC). FX-omräkning till SEK görs
+    fortfarande via yfinance (stora valutapar, inte en bristkälla här).
     """
     if tickers is None:
         rows = load_holdings(refresh=False)
@@ -300,7 +307,8 @@ def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
     need = sorted({(t or "").upper() for t in tickers} - set(have) - {""})
     if not need:
         return {}
-    import yfinance as yf
+    import time as _time
+    import altdata.avanza as av
 
     fx_cache = {"SEK": 1.0}
 
@@ -308,6 +316,7 @@ def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
         cur = (cur or "SEK").upper()
         if cur not in fx_cache:
             try:
+                import yfinance as yf
                 h = yf.Ticker(f"{cur}SEK=X").history(period="5d")["Close"].dropna()
                 fx_cache[cur] = float(h.iloc[-1]) if len(h) else None
             except Exception:  # noqa: BLE001
@@ -316,36 +325,39 @@ def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
 
     out = {}
     for tk in need:
+        base = tk.split(".")[0].replace("-", " ")
         try:
-            t = yf.Ticker(tk)
-            h = t.history(period="7d")["Close"].dropna()
-            if not len(h):
-                continue
-            px = float(h.iloc[-1])
-            try:
-                fi = t.fast_info
-                cur = fi.get("currency") if hasattr(fi, "get") else getattr(fi, "currency", None)
-            except Exception:  # noqa: BLE001
-                cur = None
-            # BUGG (fixad): föll tidigare tyst tillbaka till "SEK" när
-            # valutan inte gick att slå upp – för en icke-svensk ticker
-            # (exakt fallet detta ska hantera) ger det ett TYST FEL värde,
-            # inte bara ett saknat: en $150-aktie visades som 150 kr i
-            # stället för ~1500 kr, en 10x undervärdering utan varning.
-            # Bättre att hoppa över tickern helt (behåller manuellt/
-            # inköpsvärde) än att spara ett säkert felaktigt pris.
-            if not cur:
-                print(f"[quotes] {tk}: kunde inte slå upp valuta, hoppar (ingen SEK-gissning)")
-                continue
-            if cur == "GBp":                      # London-notering i pence
-                px, cur = px / 100.0, "GBP"
-            rate = fx(cur)
-            if not rate:
-                print(f"[quotes] {tk}: kunde inte hämta växelkurs för {cur}, hoppar")
-                continue
-            out[tk] = round(px * rate, 4)
+            hits = av.search(base).get("hits") or []
         except Exception as e:  # noqa: BLE001
-            print(f"[quotes] {tk}: {e}")
+            print(f"[quotes] {tk}: Avanza-sök misslyckades: {e}")
+            continue
+        # Matcha EXAKT tickerSymbol – flera kandidater kan dela namn (t.ex.
+        # "VanEck Semiconductor" -> VVSM/SMH/SMHC), gissa aldrig första träffen.
+        hit = next((h for h in hits if str(h.get("tickerSymbol") or "").upper() == base.upper()), None)
+        if not hit:
+            print(f"[quotes] {tk}: ingen exakt Avanza-träff på ticker '{base}', hoppar")
+            continue
+        iid = str(hit.get("orderBookId") or "")
+        if not iid:
+            continue
+        _time.sleep(0.5)   # artig paus mot Avanza (samma som altdata.avanza._PAUSE_S)
+        try:
+            info = av._get(f"/_api/market-guide/stock/{iid}")
+        except Exception as e:  # noqa: BLE001
+            print(f"[quotes] {tk}: Avanza-info misslyckades: {e}")
+            continue
+        px = (info.get("quote") or {}).get("last")
+        cur = (info.get("listing") or {}).get("currency")
+        # Samma disciplin som den gamla Yahoo-koden: hoppa hellre över tickern
+        # helt (behåller manuellt/inköpsvärde) än att spara ett gissat/fel pris.
+        if px is None or not cur:
+            print(f"[quotes] {tk}: pris/valuta saknades i Avanza-svaret, hoppar")
+            continue
+        rate = fx(cur)
+        if not rate:
+            print(f"[quotes] {tk}: kunde inte hämta växelkurs för {cur}, hoppar")
+            continue
+        out[tk] = round(float(px) * rate, 4)
     if out:
         qp = _results_dir() / "holdings_quotes.csv"
         qp.parent.mkdir(parents=True, exist_ok=True)
