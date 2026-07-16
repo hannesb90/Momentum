@@ -377,7 +377,7 @@ def main():
 
     # ── 4.5 Sektor-momentum ───────────────────────────────────────────────────
     print("\nSTEG 4.5: Sektor-momentum...")
-    sector_df = sector_momentum_snapshot(all_features)
+    sector_df = sector_momentum_snapshot(all_features, cap_tier_map=cap_tier_map)
     print_sector_momentum(sector_df)
     sector_df.to_csv(f"{config.RESULTS_DIR}/sector_momentum.csv", index=False)
 
