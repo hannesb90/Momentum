@@ -1,12 +1,18 @@
 """
 portfolio_commentary.py – en veckovis, läsvärd "förvaltarkommentar" som
-sammanfattar din portfölj i klartext PER INNEHAV: vikt, vinst/förlust,
+sammanfattar din portfölj i klartext PER INNEHAV (vikt, vinst/förlust,
 kvalitets-/kvant-/momentum-betyg, fundamenta-flaggor, sektor, kommande
-rapportdatum och färsk nyhets-/PM-sammanfattning (om insight_report.py
-körts) – inte bara hink-fördelning. Ren syntes av data som redan finns,
-ingen ny datakälla, inget nytt verktyg, inga tools alls i headless-anropet
-(bara text in, text ut). REN NARRATIV, ALDRIG SIGNAL, samma disciplin som
-insight_report.py.
+rapportdatum, färsk nyhets-/PM-sammanfattning) OCH PER SEKTOR (momentum
+senaste 4/13/26 veckor, rotation in/ut) för sektorerna dina innehav faktiskt
+tillhör – inte bara hink-fördelning.
+
+Använder headless Claudes inbyggda WebSearch (låst, se _TOOLS nedan) för att
+förklara VARFÖR en sektor/ett bolag rört sig ("X har fallit senaste tiden
+till följd av Y, men bedöms fortsatt ha Z – därför inget skäl att korrigera
+positionen"), inte bara vad siffrorna redan visar. REN NARRATIV, ALDRIG
+SIGNAL – gäller fortfarande: kommentaren får resonera om huruvida en rörelse
+ser tillfällig/strukturell ut, men ska ALDRIG skriva en ny köp/sälj-instruktion
+utöver vad Nästa köp-planen/säljvakten redan säger.
 
 Körs veckovis (måndagar), inte nattligt – det här är en syntes över tid,
 inte en daglig uppdatering.
@@ -24,19 +30,35 @@ import config  # noqa: E402
 import portfolio as pf  # noqa: E402
 import claude_headless as ch  # noqa: E402
 
-_PROMPT = """Du är en NEUTRAL, sansad portföljanalytiker. Nedan är hela
-analysunderlaget för en persons portfölj (siffror redan beräknade – ingen
-sökning, ingen ny data), MED ett avsnitt PER INNEHAV (vikt, vinst/förlust,
-modellens kvalitets-/kvant-/momentum-betyg, fundamenta-flaggor, sektor,
-kommande rapportdatum, färsk nyhets-/PM-sammanfattning om sådan finns).
+_TOOLS = "WebSearch"
 
-Skriv en förvaltarkommentar på SVENSKA (8-12 meningar, löpande text, inga
-punktlistor). Den ska vara KONKRET, inte bara hink-fördelning:
+_PROMPT = """Du är en NEUTRAL, sansad portföljanalytiker. Nedan är
+analysunderlaget för en persons portfölj (siffror redan beräknade) MED ett
+avsnitt PER INNEHAV (vikt, vinst/förlust, modellens kvalitets-/kvant-/
+momentum-betyg, fundamenta-flaggor, sektor, kommande rapportdatum, färsk
+nyhets-/PM-sammanfattning om sådan finns) och ETT AVSNITT PER SEKTOR
+(momentum senaste 4/13/26 veckor, rankning, rotation in/ut) för sektorerna
+portföljen faktiskt är exponerad mot.
+
+Använd WebSearch för att TA REDA PÅ VARFÖR en sektor eller ett innehav med
+en tydlig rörelse (stor uppgång/nedgång senaste veckorna, eller lågt
+rankad/het sektor) faktiskt rört sig – sök t.ex. "<sektor> aktier <senaste
+händelse>" eller "<bolag> nyheter". Skriv sedan analytiker-stil, konkret
+orsak + bedömning, i stil med: "Halvledarsektorn har fallit tungt senaste
+veckorna till följd av X, men bedöms fortsatt ha goda tillväxtutsikter och
+är därför inte ett skäl att korrigera positionen." Gissa ALDRIG en orsak
+utan att ha sökt fram den – hittar du inget, säg det kort istället.
+
+Skriv en förvaltarkommentar på SVENSKA (10-15 meningar, löpande text, inga
+punktlistor). Den ska vara KONKRET:
   - Nämn MINST 3 SPECIFIKA innehav vid namn med ett konkret skäl ur
     underlaget (t.ex. "Acconeer är upp X% och kvalitetsbetyget är starkt",
     "Swedbank flaggas för hög skuldsättning", "Smart Eye rapporterar om N
     dagar"). Inga vaga formuleringar ("några innehav har gått bra") när
     underlaget har namngivna siffror att peka på.
+  - Kommentera MINST 1-2 SEKTORER med konkret momentum-siffra OCH en
+    research-baserad förklaring till rörelsen (se ovan) – inte bara
+    "sektorn har gått bra/dåligt".
   - Kommentera SEKTOREXPONERING om ett innehav sticker ut (koncentration,
     en sektor som bär större delen av vinsten/förlusten).
   - Nämn kommande RAPPORTER inom de närmaste veckorna om någon finns i
@@ -45,10 +67,12 @@ punktlistor). Den ska vara KONKRET, inte bara hink-fördelning:
     bara som en generisk varningsrad.
   - Avsluta med vad MODELLEN skulle ändra (Nästa köp-planen, i klartext).
 
-VIKTIGT: sammanfatta och förklara siffrorna i underlaget, gissa ALDRIG på ny
-data (ingen sökning tillgänglig här). Skriv ALDRIG en köp/sälj-rekommendation
-utöver vad som redan står i underlaget – det här är en läsvärd sammanfattning
-av redan beräknad data, inte nytt investeringsråd.
+VIKTIGT: sammanfatta och förklara siffrorna i underlaget korrekt – gissa
+aldrig på SIFFROR (bara på ORSAKER får du använda sökning). Skriv ALDRIG en
+ny köp/sälj-rekommendation utöver vad som redan står i underlaget (Nästa
+köp-planen/säljvakten) – du får bedöma om en rörelse ser tillfällig eller
+strukturell ut, men det är fortfarande läsvärd bakgrund, inte nytt
+investeringsråd.
 
 Svara ENDAST med kompakt JSON, ingen markdown: {{"commentary": "..."}}
 
@@ -76,6 +100,31 @@ def _report_calendar(tickers):
                     out[tk] = {"date": d, "type": r.get("next_report_type") or ""}
         except Exception:  # noqa: BLE001
             pass
+    return out
+
+
+def _sector_context(tickers):
+    """Momentum/rankning/rotation för sektorerna portföljen faktiskt är
+    exponerad mot, ur results/sector_momentum.csv (skriven nattligt av
+    main.py). Tom lista om filen saknas – inte en crash, bara mindre
+    underlag. Sektor-ETF:er (fonder) räknas aldrig in i detta – se fixen i
+    backtest.sector_momentum.sector_momentum_snapshot()."""
+    held_sectors = {pf._safe(lambda tk=tk: pf._sector_of(tk), "", "sektor")
+                    for tk in tickers if tk}
+    held_sectors.discard("")
+    if not held_sectors:
+        return []
+    p = pf._results_dir() / "sector_momentum.csv"
+    if not p.exists():
+        return []
+    out = []
+    try:
+        for r in csv.DictReader(open(p, encoding="utf-8")):
+            if r.get("sector") not in held_sectors:
+                continue
+            out.append(r)
+    except Exception:  # noqa: BLE001
+        return []
     return out
 
 
@@ -136,6 +185,20 @@ def _underlag():
             parts.append(f"nyligen: {note}")
         lines.append("  - " + " · ".join(parts))
 
+    sectors = _sector_context({(h.get("ticker") or "").upper() for h in holdings})
+    if sectors:
+        lines.append("\nPER SEKTOR (portföljens sektorer, momentum/rankning/rotation):")
+        for s in sorted(sectors, key=lambda x: int(float(x.get("rank") or 999))):
+            def f(k):
+                try:
+                    return float(s.get(k) or 0)
+                except ValueError:
+                    return 0.0
+            lines.append(
+                f"  - {s.get('sector')}: rank {s.get('rank')} ({s.get('n_stocks')} bolag i sektorn), "
+                f"momentum 4v {f('momentum_4w'):+.1%} · 13v {f('momentum_13w'):+.1%} "
+                f"· 26v {f('momentum_26w'):+.1%}, rotation: {s.get('flow') or 'okänd'}")
+
     if nb.get("rows"):
         lines.append("\nNästa köp-planen (" + str(nb.get("amount")) + " kr): " + "; ".join(
             f"{r['ticker']} {r['kr']} kr ({r['bucket']}) – {r.get('why', '')}" for r in nb["rows"]))
@@ -151,9 +214,11 @@ def build():
         print("[commentary] inga innehav – hoppar.")
         return
     prompt = _PROMPT.format(underlag=_underlag())
-    # Tomt allowedTools + dontAsk = inga verktyg alls tillåtna (ren textsyntes
-    # av underlaget ovan, ingen sökning, ingen filåtkomst).
-    result = ch.run(prompt, "", timeout=150)
+    # WebSearch, INGET annat (ingen Montrose, ingen filåtkomst) - låst via
+    # --allowedTools + --permission-mode dontAsk i claude_headless.run.
+    # Flera sökningar (en per sektor/innehav med tydlig rörelse) -> längre
+    # timeout än insight_report.py:s per-batch-anrop.
+    result = ch.run(prompt, _TOOLS, timeout=240)
     if "error" in result or not result.get("commentary"):
         print(f"[commentary] misslyckades: {result.get('error', 'tomt svar')}")
         return
