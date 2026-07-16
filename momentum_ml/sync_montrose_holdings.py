@@ -134,6 +134,7 @@ def sync(path=None):
     if available is not None:
         pf.save_cash(available, acct_total)
         print(f"[sync_montrose] ISK köpkraft: {available:,.0f} kr".replace(",", " "))
+    pf.check_trade_ticket_ledger(rows)
     total = sum(r["value"] for r in rows)
     print(f"[sync_montrose] {len(rows)} innehav synkade, {total:,.0f} kr totalt".replace(",", " "))
     if added:

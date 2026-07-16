@@ -85,6 +85,8 @@ export const api = {
   // Förifylld Montrose-köpbiljett för EN rad ur Nästa köp-planen. Lägger aldrig
   // en order – returnerar bara en länk du själv öppnar och bekräftar i appen.
   tradeTicket: (ticker, kr) => postJson('/trade-ticket', { ticker, kr }),
+  // "Följde jag planen?" – skapade tickets + om köpet landade (idé 8).
+  tradeTickets: () => getJson('/trade-tickets'),
   portfolioTarget: () => getJson('/portfolio-target'),
   saveTarget: (target) => postJson('/portfolio-target', target),
   // Rank-modell för "nästa köp" (balanced/buffett/momentum). Ren vy-inställning
