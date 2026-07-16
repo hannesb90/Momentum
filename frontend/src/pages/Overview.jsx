@@ -198,6 +198,12 @@ export function OverviewPage() {
         <span className="model-picker__hint">{MODEL_HINTS[model] ?? ''}</span>
       </div>
       {nextBuy.refreshing && <p className="footnote" style={{ margin: '-4px 0 6px' }}>Uppdaterar…</p>}
+      {nextBuy.data?.cash && Number(buyAmount) > nextBuy.data.cash.available_sek && (
+        <p className="footnote neg" style={{ margin: '-4px 0 6px' }}>
+          ⚠ Bara {fmtSek(nextBuy.data.cash.available_sek)} tillgängligt på ISK just nu (av {fmtSek(Number(buyAmount))})
+          – väntar insättningen fortfarande?
+        </p>
+      )}
       <div className="list-card">
         {nextBuy.loading && <div className="list-card__empty">Räknar…</div>}
         {nextBuy.error && <div className="list-card__empty">Kunde inte hämta planen.</div>}

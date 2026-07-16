@@ -66,12 +66,25 @@ def _guess_bucket(ticker, name):
     return "theme"
 
 
+def _accounts(data):
+    return data.get("result", data) if isinstance(data, dict) else data
+
+
 def _flatten_positions(data):
-    accounts = data.get("result", data) if isinstance(data, dict) else data
     out = []
-    for acct in accounts:
+    for acct in _accounts(data):
         out.extend(acct.get("positions", []))
     return out
+
+
+def _isk_cash(data):
+    """Tillgänglig köpkraft på ISK-kontot (config.MONTROSE_ACCOUNT_ID) – None
+    om kontot inte syns i svaret (t.ex. accountId-filtrerad hämtning)."""
+    for acct in _accounts(data):
+        if acct.get("accountId") == getattr(pf.config, "MONTROSE_ACCOUNT_ID", None):
+            summary = acct.get("summary") or {}
+            return _num(summary.get("availableForPurchase")), _num(summary.get("totalValue"))
+    return None, None
 
 
 def montrose_to_rows(data, existing_by_ticker):
@@ -117,6 +130,10 @@ def sync(path=None):
     old_tickers = set(existing_by_ticker)
     added, removed = new_tickers - old_tickers, old_tickers - new_tickers
     pf.save_holdings(rows)
+    available, acct_total = _isk_cash(data)
+    if available is not None:
+        pf.save_cash(available, acct_total)
+        print(f"[sync_montrose] ISK köpkraft: {available:,.0f} kr".replace(",", " "))
     total = sum(r["value"] for r in rows)
     print(f"[sync_montrose] {len(rows)} innehav synkade, {total:,.0f} kr totalt".replace(",", " "))
     if added:
