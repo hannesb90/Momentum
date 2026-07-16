@@ -477,7 +477,7 @@ def _checklist(r: dict):
         "tillväxt": (r["rev_growth_yoy"] > 0) if r.get("rev_growth_yoy") is not None else None,
         "tillväxt-konsistens": (r["growth_consistency"] >= 0.75)
                                if r.get("growth_consistency") is not None else None,
-        "ROE≥15%": r["meets_roe_bar"] if r.get("roe") is not None else None,
+        "ROE sektor-topp": r["meets_roe_bar"] if r.get("roe") is not None else None,
         "ROE-konsistens": (r["roe_consistency"] >= 0.75)
                           if r.get("roe_consistency") is not None else None,
         "EBIT-marginal≥10%": (r["ebit_margin"] >= 0.10) if r.get("ebit_margin") is not None else None,
@@ -626,9 +626,19 @@ def score(segment: Optional[str] = None) -> None:
 
     roe_rank, cons_rank = _ranks(roe_vals), _ranks(cons_vals)
     # Skuld + värdering är sektor-strukturella (banker/fastighet har hög D/E
-    # och låga multiplar av naturen) → sektor-blandad rank. ROE/konsistens/
-    # tillväxt förblir GLOBALA – Buffett-kravet är absolut, inte sektorrelativt.
+    # och låga multiplar av naturen) → sektor-blandad rank för VÄRDE-SCORET.
+    # Konsistens/tillväxt förblir GLOBALA i scoret – de är inte lika
+    # sektor-bundna. roe_rank (ovan) är OCKSÅ kvar global, men bara för
+    # quality_component i value_score-scoret (transparens/regressionsgaranti,
+    # rör inte topplistan). Skuld- OCH roe-BARREN (den hårda Buffett-grinden,
+    # se meets_roe_bar/meets_debt_bar nedan) använder däremot en EGEN
+    # sektor-blandad rank vardera – ett flatt globalt krav (ROE ≥ 15%, D/E ≤
+    # 0.5) straffar strukturellt reglerade/kapitalintensiva sektorer (banker:
+    # Basel-kapitalkrav dämpar ROE jämfört med olevererade tillväxtbolag,
+    # samtidigt som inlåning bokförs som skuld) – jämför bankerna mot VARANDRA
+    # i stället.
     debt_rank = _sector_blend_ranks(debt_vals, sector_map.get)
+    roe_bar_rank = _sector_blend_ranks(roe_vals, sector_map.get)
     growth_rank = _ranks(growth_vals)
     value_rank = _sector_blend_ranks(value_vals, sector_map.get)
 
@@ -638,13 +648,13 @@ def score(segment: Optional[str] = None) -> None:
         comp = (_WEIGHTS["quality"] * quality_component + _WEIGHTS["safety"] * debt_rank[t]
                 + _WEIGHTS["growth"] * growth_rank[t] + _WEIGHTS["value"] * value_rank[t])
         r["value_score"] = round(comp * 100, 1)
-        r["meets_roe_bar"] = bool(r["roe"] is not None and r["roe"] >= config.VALUE_ROE_GOOD)
-        # Sektor-relativ, INTE en global absolut D/E-tröskel (se config.
-        # VALUE_DEBT_RANK_SAFE): banker/finansbolag har strukturellt mycket
-        # högre D/E (inlåning = skuld) och klarade annars ALDRIG barren,
-        # oavsett hälsa. debt_rank är redan sektor-blandad (samma _sector_
-        # blend_ranks som värderingen använder, se kommentaren ovanför den
-        # funktionen) – återanvänds här istället för en ny beräkning.
+        # Sektor-relativa barrer (se kommentaren ovanför roe_bar_rank/debt_rank) –
+        # inte globala absoluta trösklar. Bankernas ROE dämpas strukturellt av
+        # Basel-kapitalkrav och deras D/E är strukturellt hög (inlåning=skuld);
+        # ett flatt globalt krav underkände praktiskt taget hela sektorn oavsett
+        # faktisk hälsa (verkligt fall: Swedbank/Avanza Bank Holding).
+        r["meets_roe_bar"] = bool(r["roe"] is not None
+                                   and roe_bar_rank[t] >= config.VALUE_ROE_RANK_SAFE)
         r["meets_debt_bar"] = bool(r["debt_equity"] is not None
                                     and debt_rank[t] >= config.VALUE_DEBT_RANK_SAFE)
         r["checklist_score"], r["checklist"], r["checklist_miss"] = _checklist(r)
@@ -681,8 +691,9 @@ def score(segment: Optional[str] = None) -> None:
                and r["zone"] in buy_zones and not r["commodity_sector"]
                and not r["rerated_up"] and not r["high_vol"]]
     n_foreign = sum(1 for r in rows if r["currency"] != "SEK")
-    print(f"\n  🎯 KLARAR BUFFETT-BARREN (ROE ≥ {config.VALUE_ROE_GOOD:.0%}, "
-          f"skuld bättre än sektor-percentil {config.VALUE_DEBT_RANK_SAFE:.0%}, zon {'/'.join(buy_zones)} "
+    print(f"\n  🎯 KLARAR BUFFETT-BARREN (ROE bättre än sektor-percentil "
+          f"{config.VALUE_ROE_RANK_SAFE:.0%}, skuld bättre än sektor-percentil "
+          f"{config.VALUE_DEBT_RANK_SAFE:.0%}, zon {'/'.join(buy_zones)} "
           f"(säkerhetsmarginal), EJ råvarusektor ({n_commodity} uteslutna), EJ uppvärderad "
           f"utan resultat ({n_rerated} uteslutna), EJ extremvolatil (> "
           f"{getattr(config, 'VALUE_VOL_MAX', 0.60):.0%}/år, {n_highvol} uteslutna)) "
