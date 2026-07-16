@@ -1,0 +1,12 @@
+[Unit]
+Description=Kör momentum-commentary.service den 1:a varje månad
+
+[Timer]
+# 1:a i månaden kl 04:00 - EFTER både nattträningen (02:00) och den
+# narrativa rapporten (03:30), så kommentaren kan citera båda.
+OnCalendar=*-*-01 04:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

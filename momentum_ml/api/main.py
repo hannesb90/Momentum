@@ -482,6 +482,30 @@ def get_exit_signals():
         return _clean(json.load(f))
 
 
+@app.get("/api/insight")
+def get_insight():
+    """Narrativ per bolag (PM/VD-ord + nyheter/social via WebSearch), nattligt
+    genererad av insight_report.py – ren narrativ, ALDRIG en signal. Tom
+    struktur om jobbet ännu inte körts på Pi:n."""
+    path = Path(config.anchor(config.RESULTS_DIR)) / "insight_report.json"
+    if not path.exists():
+        return {"generated_at": None, "companies": []}
+    with open(path, encoding="utf-8") as f:
+        return _clean(json.load(f))
+
+
+@app.get("/api/commentary")
+def get_commentary():
+    """Månatlig förvaltarkommentar (portfolio_commentary.py) – syntes av
+    hink-drift/varningar/exit-alarm/säljvakt/Nästa köp i klartext. Tom
+    struktur om jobbet ännu inte körts på Pi:n."""
+    path = Path(config.anchor(config.RESULTS_DIR)) / "portfolio_commentary.json"
+    if not path.exists():
+        return {"generated_at": None, "commentary": None}
+    with open(path, encoding="utf-8") as f:
+        return _clean(json.load(f))
+
+
 @app.get("/api/case-changes")
 def get_case_changes():
     """Har investeringscaset förändrats? (altdata/case_tracker.py). Jämför
