@@ -225,7 +225,7 @@ sudo systemctl enable --now momentum-insight.timer
 cd /opt/momentum/momentum_ml && python insight_report.py --limit 4
 ```
 
-## 7c. Månatlig förvaltarkommentar (1:a i månaden, 04:00)
+## 7c. Veckovis förvaltarkommentar (måndagar, 04:00)
 
 `momentum-commentary.timer` kör `portfolio_commentary.py` – EN headless-
 körning, INGA verktyg (ren textsyntes av redan beräknad data: hink-drift,

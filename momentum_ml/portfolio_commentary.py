@@ -1,13 +1,13 @@
 """
-portfolio_commentary.py – en månatlig, läsvärd "förvaltarkommentar" som
+portfolio_commentary.py – en veckovis, läsvärd "förvaltarkommentar" som
 sammanfattar din portfölj i klartext: vad som driver den, vad som skaver,
 vad modellen skulle ändra. Ren syntes av data som redan finns (hink-drift,
 varningar, exit-alarm, säljvakt, Nästa köp-planen) – ingen ny datakälla,
 inget nytt verktyg, inga tools alls i headless-anropet (bara text in, text
 ut). REN NARRATIV, ALDRIG SIGNAL, samma disciplin som insight_report.py.
 
-Körs månadsvis (1:a varje månad), inte nattligt – det här är en syntes över
-tid, inte en daglig uppdatering.
+Körs veckovis (måndagar), inte nattligt – det här är en syntes över tid,
+inte en daglig uppdatering.
 
     python portfolio_commentary.py
 """
