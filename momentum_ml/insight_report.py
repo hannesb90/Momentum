@@ -107,9 +107,12 @@ def _context_block(e):
 
 _PROMPT_HEAD = """Du är en NEUTRAL, sansad investerarassistent. För VARJE bolag nedan:
 1. Läs underlaget (redan känd data – förklara det, citera det inte rått).
-2. Använd WebSearch för att hitta NYA nyheter (senaste ~2-3 veckorna) och en
-   allmän känsla av social/analytiker-ton (t.ex. sök "<bolag> aktie" eller
-   "<bolag> nyheter").
+2. Använd WebSearch för att hitta NYA nyheter (senaste ~2-3 veckorna).
+   Prioritera svenska finansmedier – sök gärna explicit t.ex.
+   "site:efn.se <bolag>", "site:omni.se/ekonomi <bolag>", "<bolag> aktie
+   nyheter" – innan en bredare sökning. Ta med en allmän känsla av
+   analytiker-/marknadston om den framgår av vad du hittar (gissa aldrig
+   fram en "social ton" du inte faktiskt sett i sökresultaten).
 3. Skriv 2-4 meningar på SVENSKA: vad har hänt, är det materiellt för caset,
    vad säger nyheterna/tonen, hur ser det ut mot modellens siffror.
 
