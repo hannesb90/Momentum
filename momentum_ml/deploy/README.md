@@ -153,7 +153,36 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now momentum-avanza-audit.timer momentum-avanza-calendar.timer
 ```
 
-## 7. Hälsokontroll på Pi:n
+## 7. Nattlig innehavssynk från Montrose (midnatt)
+
+`momentum-montrose-holdings.timer` kör `sync_montrose_holdings.py
+--from-montrose` vid 00:00 – hämtar innehaven (läs-läge, headless Claude låst
+till `get_holdings`) och skriver `cache/portfolio_holdings.csv`, samma fil
+appen använder. Körs FÖRE nattträningen (02:00) så portfölj-uppdateringen
+värderar färska innehav. Vägrar skriva vid tomt/trasigt svar (rör aldrig
+befintlig fil då). Befintliga hinkar bevaras; bara nya tickers hink-gissas.
+
+Kräver på Pi:n (engångs, som samma användare som tjänsten kör):
+Claude Code installerad + inloggad (`claude login`, prenumeration – ingen
+API-nyckel) och Montrose-servern LOKALT registrerad:
+
+```bash
+claude mcp add --transport http montrose https://mcp.montrose.io
+claude mcp login montrose   # OAuth – klistra in callback-URL:en SNABBT (~1 min giltighet)
+```
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-montrose-holdings.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-montrose-holdings.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-montrose-holdings.timer
+
+# Testköra direkt:
+sudo systemctl start momentum-montrose-holdings.service
+journalctl -u momentum-montrose-holdings.service -f
+```
+
+## 8. Hälsokontroll på Pi:n
 
 ```bash
 vcgencmd measure_temp        # håll under ~80°C, sätt kylfläns/fläkt annars
