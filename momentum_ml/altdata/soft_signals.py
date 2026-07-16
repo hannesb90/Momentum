@@ -527,13 +527,28 @@ _PARAM_GRID = (
 )
 
 
+# quality_screener (LLM-läraren) täcker AVSIKTLIGT bara microcap ex medtech
+# (config.QUALITY_MARKET_CAP) - Large/Mid Cap och Health Care har därför
+# NOLL facit-underlag. score() applicerar modellen på HELA segmentets
+# universum (inkl. Large/Mid/Health Care) - utan en spärr extrapolerar
+# modellen tyst utanför allt den någonsin sett. MIN_CATEGORY_LABELS = hur
+# många etiketter en sektor/cap-nivå minst behöver för att LITAS på;
+# under det används lexikon-läge för just de raderna (se score()).
+MIN_CATEGORY_LABELS = 5
+
+
 def train() -> None:
     """Destillera: träna LightGBM på (token-fria features → LLM-composite).
     Sveper _PARAM_GRID i 5-fold CV, rapporterar CV-MAE mot alltid-medel-
     baselinen OCH Spearman-rankkorrelation (portföljen använder poängen för
     RANGORDNING – rank-IC är därför det mått som faktiskt betyder något),
-    och vägrar spara en modell som inte slår baselinen."""
+    och vägrar spara en modell som inte slår baselinen. Spårar även VILKA
+    sektorer/cap-nivåer facit-urvalet faktiskt täcker (se MIN_CATEGORY_LABELS
+    ovan) - score() faller tillbaka på lexikon för kategorier utanför det,
+    istället för att tyst extrapolera en modell som aldrig sett exemplet."""
     import numpy as np
+    from collections import Counter
+    from data.data_loader import load_sweden_universe
     labels = _load_labels()
     print(f"[soft_signals train] {len(labels)} LLM-betygsatta bolag som facit")
     if len(labels) < MIN_LABELS:
@@ -554,6 +569,21 @@ def train() -> None:
         return
     X, tickers = _matrix(feats)
     y = np.array([labels[t] for t in tickers])
+
+    # Facit-täckning per sektor/cap-nivå (över HELA universumet, inte ett
+    # enskilt segment - facit-bolagen kan i princip höra till vilket segment
+    # som helst även om quality_screener idag bara körs mot microcap).
+    _, sector_map, cap_map, _ = load_sweden_universe(min_market_cap=None)
+    sec_counts = Counter(sector_map.get(t, "okänd") for t in tickers)
+    cap_counts = Counter(cap_map.get(t, "okänd") for t in tickers)
+    covered_sectors = sorted(s for s, n in sec_counts.items() if n >= MIN_CATEGORY_LABELS)
+    covered_caps = sorted(c for c, n in cap_counts.items() if n >= MIN_CATEGORY_LABELS)
+    uncovered_sec = sorted(s for s, n in sec_counts.items() if 0 < n < MIN_CATEGORY_LABELS)
+    print(f"  Facit-täckning: sektorer {covered_sectors}")
+    print(f"                  cap-nivåer {covered_caps}")
+    if uncovered_sec:
+        print(f"  [tunt facit, <{MIN_CATEGORY_LABELS} etiketter] {uncovered_sec} - "
+              f"körs i lexikon-läge av score() tills fler LLM-betyg finns")
 
     import lightgbm as lgb
     from scipy.stats import spearmanr
@@ -599,6 +629,7 @@ def train() -> None:
         "features": _FEATURE_ORDER, "n_labels": len(y),
         "cv_mae": round(cv_mae, 4), "baseline_mae": round(base_mae, 4),
         "rank_ic": round(rank_ic, 4),
+        "covered_sectors": covered_sectors, "covered_caps": covered_caps,
         "params": {k: v for k, v in params.items() if k in
                    ("num_leaves", "learning_rate", "feature_fraction", "min_data_in_leaf")},
         "trained": dt.date.today().isoformat(),
@@ -647,10 +678,31 @@ def score(segment: Optional[str] = None) -> None:
         print("[soft_signals] ingen MFN-text för segmentet – kör mfn_fetch först.")
         return
 
+    # Facit-täckning (sparad av train(), se MIN_CATEGORY_LABELS): bolag vars
+    # sektor ELLER cap-nivå saknar tillräckligt LLM-facit får INTE en ML-
+    # extrapolerad poäng - de faller på lexikon-läge radvis, samma "hellre
+    # ärligt obedömt än låtsad poäng"-princip som resten av modulen. Saknad
+    # nyckel i äldre meta (innan detta fanns) = ingen spärr (bakåtkompatibelt).
+    covered_sectors = set(meta.get("covered_sectors", [])) if meta else set()
+    covered_caps = set(meta.get("covered_caps", [])) if meta else set()
+    has_coverage_guard = bool(meta and "covered_sectors" in meta)
+
+    def _in_coverage(t: str) -> bool:
+        if not has_coverage_guard:
+            return True
+        return sector_map.get(t) in covered_sectors and cap_map.get(t) in covered_caps
+
     if booster is not None:
-        X, order = _matrix(feats_all)
-        preds = np.clip(booster.predict(X), 0.0, 5.0)
-        pred_by_t = {t: float(p) for t, p in zip(order, preds)}
+        ml_tickers = {t: f for t, f in feats_all.items() if _in_coverage(t)}
+        pred_by_t = {t: _lexicon_score(f) for t, f in feats_all.items()}   # lexikon-golv för alla
+        if ml_tickers:
+            X, order = _matrix(ml_tickers)
+            preds = np.clip(booster.predict(X), 0.0, 5.0)
+            pred_by_t.update({t: float(p) for t, p in zip(order, preds)})
+        n_out = len(feats_all) - len(ml_tickers)
+        if n_out:
+            print(f"  [facit-spärr] {n_out} bolag utanför ML:s facit-täckning "
+                  f"(sektor/cap-nivå) – körs i lexikon-läge istället för extrapolerad ML.")
     else:
         pred_by_t = {t: _lexicon_score(f) for t, f in feats_all.items()}
 
@@ -677,10 +729,11 @@ def score(segment: Optional[str] = None) -> None:
         flags = list(f.get("_flags", []))
         if walk_flag:
             flags.append(walk_flag)
+        row_mode = mode if _in_coverage(t) else mode.replace("destillerad ML", "lexikon (utanför facit)")
         rows.append({
             "ticker": t, "name": name_map.get(t, t),
             "soft_score": round(base_score, 2),
-            "mode": ("LLM" if t in labels else mode),   # facit-bolag märks som LLM-täckta
+            "mode": ("LLM" if t in labels else row_mode),   # facit-bolag märks som LLM-täckta
             "llm_composite": labels.get(t, ""),
             "outcome_prob": ("" if outcome_prob is None else round(outcome_prob, 3)),
             "walk_score": ("" if walk is None else walk),
