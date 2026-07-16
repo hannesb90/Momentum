@@ -24,11 +24,16 @@ Körs på Pi:n EFTER mfn_fetch (för microcap-universumet):
 Manuellt spår (INGA API-krediter – kör i valfri webbaserad AI-chatt istället):
     python altdata/quality_screener.py manual_prompt VOLV-B.ST   # skriv ut klistra-in-prompt
     python altdata/quality_screener.py manual_import VOLV-B.ST   # klistra in AI:ns JSON-svar
+
+Batch-läge (10-50 bolag i EN AI-konversation, t.ex. Gemini/stort kontextfönster):
+    python altdata/quality_screener.py batch_prompt ABB.ST,ALFA.ST,AAK.ST [fil.txt]
+    python altdata/quality_screener.py batch_import [fil-med-svaret.txt]   # utan filnamn: klistra in
 """
 import sys
 import json
 import re
 from pathlib import Path
+from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
@@ -93,6 +98,40 @@ _SYSTEM = (
 
 _SCORE_KEYS = ["understand", "global", "scalable", "moat", "sales", "mgmt",
                "market", "profit_path", "under_radar"]
+
+# ── Batch-läge: flera bolag i EN AI-konversation (t.ex. Gemini, stort
+# kontextfönster) istället för ett anrop per bolag. Splittar _SYSTEM vid
+# dess kända ankarfraser för att ÅTERANVÄNDA exakt samma fältbeskrivningar
+# programmatiskt – schemat kan då ALDRIG driva isär mellan enkel-/batch-läge
+# (en manuell dubblettsträng hade varit en tickande bugg vid nästa ändring
+# av _SYSTEM som glömde uppdatera batch-varianten).
+_FIELD_DESC_ANCHOR = "Svara ENDAST med ett giltigt JSON-objekt (ingen prosa/fences) med fälten:\n"
+_EXAMPLE_ANCHOR = "Exempel: {"
+
+
+def _batch_system_prompt() -> str:
+    role_desc, rest = _SYSTEM.split(_FIELD_DESC_ANCHOR, 1)
+    field_desc = rest.split(_EXAMPLE_ANCHOR, 1)[0]
+    return (
+        role_desc
+        + "Du kommer att bedöma FLERA bolag i det här meddelandet, avgränsade med rader "
+          "på formen '=== TICKER: X.ST ==='. Bedöm VARJE bolag HELT OBEROENDE av de "
+          "övriga – dra inga jämförelser eller slutsatser mellan bolagen.\n\n"
+          "Svara ENDAST med en giltig JSON-LISTA (ingen prosa, inga kodstaket) – EN post "
+          "per bolag ovan, I SAMMA ORDNING de gavs. Varje post ska ha fältet \"ticker\" "
+          "(exakt som i avgränsaren) plus:\n"
+        + field_desc
+        + 'Exempel för TVÅ bolag: [{"ticker":"ABC.ST","understand":4,"global":5,'
+          '"scalable":4,"moat":3,"sales":null,"mgmt":4,"market":4,"profit_path":2,'
+          '"under_radar":4,"revenue_msek":120,"ebitda_msek":-15,"ebit_msek":-19,'
+          '"net_result_msek":-22,"shares_million":18,'
+          '"mentioned_investors":["Carnegie Fonder"],"red_flags":["ännu ej lönsamt"],'
+          '"pitch":"...","memo":"..."}, {"ticker":"XYZ.ST","understand":3,"global":2,'
+          '"scalable":3,"moat":2,"sales":3,"mgmt":3,"market":3,"profit_path":4,'
+          '"under_radar":2,"revenue_msek":890,"ebitda_msek":45,"ebit_msek":30,'
+          '"net_result_msek":21,"shares_million":40,"mentioned_investors":[],'
+          '"red_flags":[],"pitch":"...","memo":"..."}]'
+    )
 
 
 def _company_context(ticker: str):
@@ -746,6 +785,109 @@ def manual_import(ticker: str) -> None:
     print(f"Sparat -> {cp}  (composite={parsed['composite']})")
 
 
+def batch_prompt(tickers: List[str], out_path: Optional[str] = None) -> None:
+    """Skriver EN textfil med FLERA bolags underlag samlat – för en AI med
+    stort kontextfönster (Gemini m.fl.), 10-50 bolag i EN konversation
+    istället för en fråga per bolag (manual_prompt). Hoppar tyst-men-synligt
+    över tickers som redan är bedömda (samma skydd som manual_prompt) eller
+    saknar cachad MFN-text.
+
+        python -m altdata.quality_screener batch_prompt ABB.ST,ALFA.ST,AAK.ST
+        python -m altdata.quality_screener batch_prompt ABB.ST,ALFA.ST batch.txt
+    """
+    from data.data_loader import load_sweden_universe
+    tickers = [t.strip().upper() for t in tickers if t.strip()]
+    _, _, _, name_map = load_sweden_universe(min_market_cap=None)
+
+    already, no_text, blocks = [], [], []
+    for t in tickers:
+        if _cache_path(t).exists():
+            already.append(t)
+            continue
+        ctx = _company_context(t)
+        if not ctx:
+            no_text.append(t)
+            continue
+        name = name_map.get(t, t)
+        blocks.append(f"=== TICKER: {t} ===\nBOLAG: {name} ({t})\n\nUNDERLAG (MFN):\n{ctx}")
+
+    if already:
+        print(f"Hoppar över (redan bedömda): {sorted(already)}")
+    if no_text:
+        print(f"Hoppar över (ingen cachad MFN-text – kör mfn_fetch först): {sorted(no_text)}")
+    if not blocks:
+        print("Inget att skriva – alla angivna tickers hoppades över.")
+        return
+
+    footer = ("\n\n=== SLUT PÅ BOLAG ===\nSvara nu med EN giltig JSON-lista, en post per "
+              "bolag ovan i SAMMA ORDNING, inget annat (ingen prosa, inga kodstaket).")
+    full = _batch_system_prompt() + "\n\n" + "\n\n".join(blocks) + footer
+
+    out = Path(out_path) if out_path else Path(config.anchor("cache")) / "quality_batch_prompt.txt"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(full, encoding="utf-8")
+    print(f"{len(blocks)} bolag skrivna -> {out}")
+    print("Klistra in HELA filens innehåll (eller ladda upp filen) som EN fråga i en "
+          "AI-chatt med stort kontextfönster (t.ex. Gemini). Importera svaret med:\n"
+          f"  python -m altdata.quality_screener batch_import  (klistra JSON-listan, Ctrl-D)\n"
+          f"  python -m altdata.quality_screener batch_import <fil-med-svaret>")
+
+
+def batch_import(path: Optional[str] = None) -> None:
+    """Importerar en AI:s svar på batch_prompt – en JSON-LISTA med en post
+    per bolag (fältet 'ticker' i varje post avgör vilken cache-fil den
+    skrivs till). Samma cache-format/plats som score_company()/manual_import
+    – bolagen blir fullvärdiga facit-bolag för report/chart och
+    soft_signals train (inkl. dess facit-täckningsspärr).
+
+        python -m altdata.quality_screener batch_import              # klistra in, Ctrl-D
+        python -m altdata.quality_screener batch_import svar.txt      # läs från fil
+    """
+    from data.data_loader import load_sweden_universe
+    if path:
+        p = Path(path)
+        if not p.exists():
+            print(f"Filen {p} finns inte.")
+            return
+        raw = p.read_text(encoding="utf-8")
+    else:
+        print("Klistra in AI:ns JSON-LISTA, avsluta med Ctrl-D (Ctrl-Z, Enter på Windows):")
+        raw = sys.stdin.read()
+
+    m = re.search(r"\[.*\]", raw, re.S)
+    if not m:
+        print("Hittade ingen JSON-lista ([...]) i inklistringen/filen – inget sparat.")
+        return
+    try:
+        parsed_list = json.loads(m.group(0))
+    except Exception as e:  # noqa: BLE001
+        print(f"Ogiltig JSON ({e}) – inget sparat.")
+        return
+    if not isinstance(parsed_list, list):
+        print("Toppnivån måste vara en JSON-lista – inget sparat.")
+        return
+
+    _, _, _, name_map = load_sweden_universe(min_market_cap=None)
+    saved, skipped = [], []
+    for item in parsed_list:
+        if not isinstance(item, dict) or not item.get("ticker"):
+            skipped.append(str(item)[:60])
+            continue
+        t = str(item["ticker"]).strip().upper()
+        item["ticker"] = t
+        item["name"] = name_map.get(t, t)
+        item["composite"] = _composite(item)
+        item["manual_import"] = True
+        _cache_path(t).write_text(json.dumps(item, ensure_ascii=False))
+        saved.append((t, item["composite"]))
+
+    print(f"Sparade {len(saved)} bolag:")
+    for t, c in saved:
+        print(f"  {t:<14} composite={c}")
+    if skipped:
+        print(f"Hoppade över {len(skipped)} poster utan giltig 'ticker': {skipped}")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "score"
     if cmd == "score":
@@ -771,6 +913,10 @@ def main():
         manual_prompt(sys.argv[2])
     elif cmd == "manual_import" and len(sys.argv) > 2:
         manual_import(sys.argv[2])
+    elif cmd == "batch_prompt" and len(sys.argv) > 2:
+        batch_prompt(sys.argv[2].split(","), sys.argv[3] if len(sys.argv) > 3 else None)
+    elif cmd == "batch_import":
+        batch_import(sys.argv[2] if len(sys.argv) > 2 else None)
     else:
         print(__doc__)
 
