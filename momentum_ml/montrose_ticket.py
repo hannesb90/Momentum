@@ -10,9 +10,16 @@ säljorder).
 
 --allowedTools + --permission-mode dontAsk låser headless-anropet till EXAKT
 två Montrose-verktyg (search_instruments, create_trade_ticket) – det kan inte
-röra filer, köra Bash eller göra något annat. Verktygsnamnen
-(mcp__Montrose__…) följer namnet servern har i `claude mcp list` på just den
-här maskinen (kolla om det ändras).
+röra filer, köra Bash eller göra något annat.
+
+VIKTIGT om server-registreringen: den kontobundna claude.ai-connectorn syns
+INTE i headless-läge (`claude -p`) – bara i interaktiva sessioner (verifierat;
+headless kan inte köra connectorns OAuth-flöde). Servern måste därför vara
+LOKALT registrerad på maskinen, och verktygsnamnen följer det lokala namnet
+(gemener):
+    claude mcp add --transport http montrose https://mcp.montrose.io
+    claude mcp login montrose     # OAuth: öppna länken, klistra in callback-
+                                  # URL:en SNABBT (engångskoden dör på ~1 min)
 
 Skapar bara en FÖRIFYLLD länk – ingen order läggs här. Användaren öppnar
 länken i Montrose-appen och bekräftar själv innan något köps.
@@ -29,7 +36,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 import config  # noqa: E402
 
-_ALLOWED_TOOLS = "mcp__Montrose__search_instruments,mcp__Montrose__create_trade_ticket"
+_ALLOWED_TOOLS = "mcp__montrose__search_instruments,mcp__montrose__create_trade_ticket"
 
 _PROMPT = """Skapa EN Montrose-trade-ticket:
   - side: Buy
