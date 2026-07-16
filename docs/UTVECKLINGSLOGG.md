@@ -218,11 +218,16 @@ Anthropic-nyckel i `~/.momentum.env`, (2) bekräftelse att Pi:n når mfn.se
    AKTIVT. Diskretionär tratt (LLM mot checklistan + nyckeltals-extraktion →
    OT-style värderingsdiagram). Kör: `mfn_fetch.py fetch quality` → `quality_screener.py
    score` → `chart`. Ej backtestbart; urval, inte bevis.
-8. **D-spår: sektor-/ETF-trendrotation (PARKERAD, designad)** – dual momentum:
-   rida topp-K sektorer (relativ styrka, ej "fånga tidigt") + defensivt ben
-   (ränte-/guld-ETF) när inget trendar (Antonacci-anda). Passar ETF-ägande, låg
-   kostnad, BACKTESTBART. Appen har redan en sektor-momentum-ranking (main STEG 4.5)
-   + sektor-ETF:er i universumet att bygga på. Bygg när C-spår + småbolag är klara.
+8. **D-spår: sektor-/ETF-trendrotation – BYGGT & DÖMT** (`etf_rotation.py`,
+   `tune_etf_rotation.py`, `etf_thesis.py`): dual momentum över 37 ETF:er
+   (region/sektor/tema, `data/rotation_universe.csv`) med absolut-filter +
+   defensivt ben, 40v-regim på MSCI World, VIX+kredit-stress-overlay,
+   korrelationsblockering. Ärliga domen (netto, OOS via tune-svepet): **ACWI
+   slog rotationens alla varianter** → rotationen är integrerad ENBART som
+   tema-satellit i next_buy (risk-on-gatad, max tema-hinken i PORTFOLIO_TARGET),
+   aldrig kärna – appen märker den "Taktiskt – rotationen slår inte index
+   netto". `etf_thesis.py` (kausalt idéträd, enda LLM-inslaget) är uttryckligen
+   EJ signal. Kör: `python etf_rotation.py signal | backtest | flow`.
 
 ---
 
