@@ -705,6 +705,22 @@ def lookback(months=6, n=5) -> None:
     print("\n   Enda ärliga testet: 'snapshot' idag → 'track' framåt.")
 
 
+# Mobila tangentbord (iOS "smarta citattecken" m.fl.) ersätter tyst raka
+# citattecken med kurviga vid inklistring genom vissa appar - trasar sönder
+# JSON-strukturen (json.loads kräver ASCII '"'). Verkligt fall: en batch-
+# import misslyckades med "Expecting ',' delimiter" mitt i en annars giltig
+# lista, spårat till just detta. Normaliserar tyst istället för att be
+# användaren strida mot sin telefons autokorrigering.
+_SMART_QUOTES = str.maketrans({
+    "“": '"', "”": '"',   # “ ”
+    "‘": "'", "’": "'",   # ‘ ’
+})
+
+
+def _normalize_pasted_json(raw: str) -> str:
+    return raw.translate(_SMART_QUOTES)
+
+
 def manual_prompt(ticker: str) -> None:
     """Skriver ut ett klistra-in-färdigt AI-prompt för ETT bolag – för manuell
     bedömning i en WEBBASERAD AI (claude.ai, ChatGPT m.fl.) UTAN att förbruka
@@ -759,7 +775,7 @@ def manual_import(ticker: str) -> None:
     from data.data_loader import load_sweden_universe
     ticker = ticker.upper()
     print(f"Klistra in AI:ns JSON-svar för {ticker}, avsluta med Ctrl-D (Ctrl-Z, Enter på Windows):")
-    raw = sys.stdin.read()
+    raw = _normalize_pasted_json(sys.stdin.read())
     m = re.search(r"\{.*\}", raw, re.S)
     if not m:
         print("Hittade inget JSON-objekt i inklistringen – inget sparat.")
@@ -853,6 +869,7 @@ def batch_import(path: Optional[str] = None) -> None:
     else:
         print("Klistra in AI:ns JSON-LISTA, avsluta med Ctrl-D (Ctrl-Z, Enter på Windows):")
         raw = sys.stdin.read()
+    raw = _normalize_pasted_json(raw)
 
     m = re.search(r"\[.*\]", raw, re.S)
     if not m:
