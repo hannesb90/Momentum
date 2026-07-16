@@ -20,6 +20,7 @@ länken i Montrose-appen och bekräftar själv innan något köps.
     python montrose_ticket.py IUSQ.DE 10000
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -65,22 +66,28 @@ def _extract_json(text: str) -> dict:
         return {"error": f"trasigt JSON-svar från claude: {text[:200]}"}
 
 
-def create_ticket(ticker: str, kr: float, account_id: str = None, timeout: int = 90) -> dict:
+def create_ticket(ticker: str, kr: float, account_id: str = None, timeout: int = 120) -> dict:
     """{"url": ...} eller {"error": ...}. Kör headless Claude Code, låst till
-    Montrose-verktygen via --allowedTools + --permission-mode dontAsk."""
+    Montrose-verktygen via --allowedTools + --permission-mode dontAsk.
+
+    MCP_TIMEOUT höjs från Claude Codes default (30s) – en fjärransluten
+    connector (Montrose är kontobunden, inte lokalt konfigurerad) hann inte
+    alltid ansluta klart inom defaulten i en färsk headless-process, vilket
+    gjorde att verktygen inte var listade när prompten redan besvarats."""
     claude_bin = getattr(config, "CLAUDE_BIN", "claude")
     account_id = account_id or getattr(config, "MONTROSE_ACCOUNT_ID", None)
     if not account_id:
         return {"error": "MONTROSE_ACCOUNT_ID saknas i config.py"}
     prompt = _PROMPT.format(ticker=ticker, base_ticker=_base_ticker(ticker),
                              kr=round(float(kr)), account_id=account_id)
+    env = {**os.environ, "MCP_TIMEOUT": str(getattr(config, "MONTROSE_MCP_TIMEOUT_MS", 60000))}
     try:
         proc = subprocess.run(
             [claude_bin, "-p", prompt,
              "--output-format", "json",
              "--allowedTools", _ALLOWED_TOOLS,
              "--permission-mode", "dontAsk"],
-            capture_output=True, text=True, timeout=timeout,
+            capture_output=True, text=True, timeout=timeout, env=env,
         )
     except FileNotFoundError:
         return {"error": f"claude hittades inte ({claude_bin}) – installerad och rätt sökväg i config.CLAUDE_BIN?"}
