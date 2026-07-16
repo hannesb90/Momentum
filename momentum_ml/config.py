@@ -645,6 +645,9 @@ NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
 # uteslutet ur modellen, se PORTFOLIO_TARGET leverage=0).
 MONTROSE_ACCOUNT_ID = "019d24f8-fe28-7918-95fe-86d1fabe3004"   # ISK
 CLAUDE_BIN = _os.environ.get("CLAUDE_BIN", _os.path.expanduser("~/.local/bin/claude"))
+# Kontobunden connector (inte lokalt .mcp.json) hinner inte alltid ansluta
+# inom Claude Codes default MCP-timeout (30s) i en färsk headless-process.
+MONTROSE_MCP_TIMEOUT_MS = 60000
 # Aktiv rank-modell för "nästa köp" (köp-vakten). Väljer bara viktprofilen i
 # _unified_rank() – ALL underliggande data (kvalitet/kvant/value/momentum)
 # laddas alltid, så man kan växla fram och tillbaka utan omkörning. Sätts av
