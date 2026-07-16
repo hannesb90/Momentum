@@ -653,10 +653,23 @@ def score(segment: Optional[str] = None) -> None:
         # Basel-kapitalkrav och deras D/E är strukturellt hög (inlåning=skuld);
         # ett flatt globalt krav underkände praktiskt taget hela sektorn oavsett
         # faktisk hälsa (verkligt fall: Swedbank/Avanza Bank Holding).
-        r["meets_roe_bar"] = bool(r["roe"] is not None
-                                   and roe_bar_rank[t] >= config.VALUE_ROE_RANK_SAFE)
-        r["meets_debt_bar"] = bool(r["debt_equity"] is not None
-                                    and debt_rank[t] >= config.VALUE_DEBT_RANK_SAFE)
+        #
+        # BUGG (fixad, verkligt fall Swedbank/Avanza): bool(...) kollapsade
+        # SAKNAD data till False – samma som en bekräftad UNDERKÄND bar.
+        # Swedbank saknar roe (extraktionslucka, troligen bankens balansräkning
+        # passar inte industri-schemat) och flaggades ändå "ROE under barren";
+        # Avanza saknar debt_equity och flaggades "skuld över barren" – i
+        # BÅDA fallen fanns ingen siffra att döma av alls. None = obedömbart
+        # ska ALDRIG räknas som en underkänd bar, samma disciplin som
+        # _checklist() redan använder ("data saknas, räknas ALDRIG som vare
+        # sig plus eller minus"). _fund_status() i portfolio.py läser redan
+        # `is False` (inte falsy) så None flaggas korrekt INTE som ett
+        # problem där – men _load_scores_uncached() måste också sluta
+        # kollapsa den tomma CSV-strängen till False vid inläsning (separat fix).
+        r["meets_roe_bar"] = (None if r["roe"] is None
+                               else bool(roe_bar_rank[t] >= config.VALUE_ROE_RANK_SAFE))
+        r["meets_debt_bar"] = (None if r["debt_equity"] is None
+                                else bool(debt_rank[t] >= config.VALUE_DEBT_RANK_SAFE))
         r["checklist_score"], r["checklist"], r["checklist_miss"] = _checklist(r)
         r["commodity_sector"] = sector_map.get(t) in _COMMODITY_SECTORS
 

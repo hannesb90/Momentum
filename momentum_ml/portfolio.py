@@ -214,6 +214,23 @@ def _score_num(v):
         return None
 
 
+def _tri_bool(v):
+    """CSV-sträng → True/False/None (obedömbart – data saknas). BUGG (fixad,
+    verkligt fall Swedbank/Avanza): en flat 'x == "true"'-jämförelse gör att
+    en TOM CSV-cell (ingen data, t.ex. bankens D/E/ROE aldrig extraherad)
+    blir False – identiskt med en FAKTISKT underkänd bar. Swedbank saknar
+    roe och flaggades ändå "ROE under barren"; Avanza saknar debt_equity och
+    flaggades "skuld över barren" – ingen siffra fanns att döma av. Samma
+    disciplin som _score_num/_checklist: saknad data är obedömbart, aldrig
+    en tyst underkänning."""
+    s = str(v).strip().lower()
+    if s == "true":
+        return True
+    if s == "false":
+        return False
+    return None
+
+
 _CLOSES_CACHE: dict = {}
 
 
@@ -1022,8 +1039,8 @@ def _load_scores_uncached() -> dict:
                 e = ent(tk, r.get("name"))
                 e["value_score"] = _score_num(r.get("value_score"))
                 e["value_zone"] = (r.get("zone") or "").strip()
-                e["meets_roe_bar"] = str(r.get("meets_roe_bar")).strip().lower() == "true"
-                e["meets_debt_bar"] = str(r.get("meets_debt_bar")).strip().lower() == "true"
+                e["meets_roe_bar"] = _tri_bool(r.get("meets_roe_bar"))
+                e["meets_debt_bar"] = _tri_bool(r.get("meets_debt_bar"))
                 # Råvarusektor-uteslutningen (value_screener.py:s egen Buffett-bar/
                 # checklista, se _COMMODITY_SECTORS där) LÄSTES ALDRIG in här – denna
                 # köp-motors EGEN is_buffett-grind (se _rank_buy_candidates nedan)
