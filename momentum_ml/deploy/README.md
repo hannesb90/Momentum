@@ -182,6 +182,30 @@ sudo systemctl start momentum-montrose-holdings.service
 journalctl -u momentum-montrose-holdings.service -f
 ```
 
+## 7b. Nattlig narrativ-rapport (PM/VD-ord + nyheter/social, 03:30)
+
+`momentum-insight.timer` kör `insight_report.py` – ren narrativ, ALDRIG en
+signal (se `docs/UTVECKLINGSLOGG.md` §10 om varför social/nyhets-alt-data
+inte får bli en tränings-feature). Läser redan cachad MFN/poängkarte-data
+lokalt och använder headless Claudes inbyggda **WebSearch** (ingen extra
+API-nyckel) för färska nyheter/social ton, för dina innehav + modellens
+topp-10 sammanvägda rankning. Skriver `results/insight_report.json`.
+
+Kostnadstak i `config.py`: `INSIGHT_MAX_TICKERS` (default 20) och
+`INSIGHT_BATCH_SIZE` (default 5, ~4 headless-anrop/natt). Kräver bara
+`claude login` (prenumerationen) – ingen extra MCP-registrering, WebSearch
+är ett inbyggt verktyg.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-insight.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-insight.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-insight.timer
+
+# Testköra direkt (använd --limit vid första testet, snabbare):
+cd /opt/momentum/momentum_ml && python insight_report.py --limit 4
+```
+
 ## 8. Hälsokontroll på Pi:n
 
 ```bash

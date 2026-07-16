@@ -1,0 +1,12 @@
+[Unit]
+Description=Kör momentum-insight.service varje natt efter träningen
+
+[Timer]
+# 03:30 - EFTER nattträningen (02:00, tar normalt <1h) så quality/quant/
+# momentum-poängkartan och rank_note-underlaget är färska.
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=180
+
+[Install]
+WantedBy=timers.target
