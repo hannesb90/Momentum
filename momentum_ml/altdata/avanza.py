@@ -56,6 +56,7 @@ Körs på Pi:n (nät):
     python -m altdata.avanza list_probe2             # chart-djup+upplösning mot ÄLDRE bolag (Yahoo-ersättningsfrågan, avgjord: se kodkommentar ovan list_probe2)
     python -m altdata.avanza list_probe2 VOLV-B.ST   # ...annat chart-testbolag (default AAK.ST)
     python -m altdata.avanza universe_remove T1,T2   # dry-run: ta bort tickers ur sweden_universe.csv (lägg till 'write' för att faktiskt skriva)
+    python -m altdata.avanza probe_etf "VanEck Semiconductor"  # utländsk UCITS-ETF: söktyp + funkar prisdiagrammet?
 
 Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
 Group): altdata/avanza_overrides.csv (ticker,query,comment) – valfri fil,
@@ -1372,6 +1373,64 @@ def list_probe2(chart_ticker: str = "AAK.ST") -> None:
 _UNIVERSE_FILES = ("sweden_universe.csv", "sweden_universe_ngm.csv")
 
 
+def probe_etf(name_or_ticker: str) -> None:
+    """SCHEMA-UPPTÄCKANDE (samma disciplin som probe()/chart_probe() ovan,
+    antar inget): kan Avanza slås upp för en UTLÄNDSK UCITS-ETF (VanEck/
+    WisdomTree/Global X/HANetf m.fl. – innehav utanför Yahoo Finances
+    täckning för dessa nischade London-noteringar)? probe()/chart_probe()
+    filtrerar sök-träffar på type=='STOCK', vilket en ETF troligen INTE är
+    taggad som – vet inte ännu vad den ÄR taggad som, eller om
+    fetch_chart_ohlcv()s väg (/_api/price-chart/stock/{id}) ens funkar för
+    en icke-STOCK-orderBookId. Dumpar allt rått i stället för att gissa.
+
+        python -m altdata.avanza probe_etf "VanEck Semiconductor"
+        python -m altdata.avanza probe_etf "WisdomTree Physical AI"
+    """
+    q = _clean_query(name_or_ticker)
+    print(f"[probe_etf] söker '{q}' (från '{name_or_ticker}')")
+    hits = search(q)
+    all_hits = hits.get("hits") or []
+    print(f"[probe_etf] {len(all_hits)} träff(ar), typer: "
+          f"{sorted({str(h.get('type')) for h in all_hits})}")
+    for h in all_hits[:8]:
+        print(f"    type={str(h.get('type')):<20} orderBookId={str(h.get('orderBookId')):<10} {h.get('title')}")
+    if not all_hits:
+        print("[probe_etf] ingen träff alls - kolla stavningen eller testa 'search' direkt.")
+        return
+
+    hit = all_hits[0]
+    iid = str(hit.get("orderBookId") or "")
+    if not iid:
+        print("[probe_etf] första träffen saknade orderBookId - kolla dumpen ovan.")
+        return
+    print(f"\n[probe_etf] testar prisdiagram för {hit.get('title')!r} (type={hit.get('type')}, id={iid})")
+    time.sleep(_PAUSE_S)
+    df = fetch_chart_ohlcv(iid, "one_month")
+    if df is None or df.empty:
+        print("[probe_etf] fetch_chart_ohlcv() gav INGET – samma endpoint funkar inte rakt av "
+              "för den här träfftypen. Rått försök mot /_api/price-chart/stock/{id}:")
+        try:
+            raw = _get(f"/_api/price-chart/stock/{iid}", {"timePeriod": "one_month"})
+            print(json.dumps(raw, ensure_ascii=False, indent=2)[:2000])
+        except Exception as e:  # noqa: BLE001
+            print(f"  FEL: {e}")
+    else:
+        last = df.iloc[-1]
+        print(f"[probe_etf] FUNKAR – senaste punkt {df.index[-1].date()}: close={last['Close']}")
+        print(df.tail(3))
+
+    time.sleep(_PAUSE_S)
+    print(f"\n[probe_etf] stock-info (id={iid}) – letar efter valuta (behövs för SEK-omräkning):")
+    try:
+        info = _get(f"/_api/market-guide/stock/{iid}")
+        print(f"  toppnycklar: {list(info.keys())}")
+        for k in ("currency", "name", "shortName", "tickerSymbol", "quote", "keyIndicators"):
+            if k in info:
+                print(f"  {k}: {json.dumps(info[k], ensure_ascii=False)[:300]}")
+    except Exception as e:  # noqa: BLE001
+        print(f"  FEL (kan vara väntat om {iid} inte är en 'stock'-typ id): {e}")
+
+
 def universe_remove(tickers: list, dry_run: bool = True) -> None:
     """Tar bort angivna tickers HELT ur BÅDA universum-filerna (vardera
     tickern tas bort ur den fil den faktiskt finns i) – det avsiktliga,
@@ -1448,6 +1507,11 @@ def main():
         list_probe()
     elif cmd == "list_probe2":
         list_probe2(sys.argv[2] if len(sys.argv) > 2 else "AAK.ST")
+    elif cmd == "probe_etf":
+        if len(sys.argv) < 3:
+            print("Ange bolagsnamn: python -m altdata.avanza probe_etf \"VanEck Semiconductor\"")
+            return
+        probe_etf(sys.argv[2])
     elif cmd == "universe_remove":
         if len(sys.argv) < 3:
             print("Ange kommaseparerade tickers: python -m altdata.avanza universe_remove "
