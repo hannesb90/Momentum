@@ -50,6 +50,35 @@ def value_log_path() -> Path:
     return Path(config.anchor(config.PORTFOLIO_VALUE_LOG))
 
 
+def cash_path() -> Path:
+    return Path(config.anchor("cache/montrose_cash.json"))
+
+
+def save_cash(available_sek, total_sek=None) -> None:
+    """Sparar ISK-kontots tillgängliga köpkraft från senaste Montrose-synken
+    (skrivs av sync_montrose_holdings.py --from-montrose). Läses av Nästa
+    köp så en föreslagen biljett kan varnas mot faktisk kassa – t.ex. en
+    månadsinsättning som ännu inte landat."""
+    from datetime import datetime, timezone
+    p = cash_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({
+        "available_sek": round(float(available_sek or 0)),
+        "total_sek": (round(float(total_sek)) if total_sek else None),
+        "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }, ensure_ascii=False), encoding="utf-8")
+
+
+def load_cash() -> Optional[dict]:
+    p = cash_path()
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 – trasig/halvskriven fil → ingen kassa-varning, inte en krasch
+        return None
+
+
 def log_value(total) -> None:
     """Upsert:ar dagens totala portföljvärde i framåt-loggen (en punkt per dag).
     Bygger en äkta personlig utvecklingskurva från och med nu."""
@@ -2056,6 +2085,7 @@ def next_buy(rows, amount=None) -> dict:
         "buckets": {b: (round(buckets[b] / total, 4) if total else 0.0) for b in BUCKETS},
         "target": tgt,
         "has_holdings": bool(rows),
+        "cash": _safe(load_cash, None, "montrose-kassa"),   # None om ingen Montrose-synk kört än
         "note": ("Köp och behåll: nya kronor fyller mot målet – ingen försäljning, ingen timing. "
                  "Enda sälj-regeln är säljvakten: innehav som rusat kraftigt ifrån index på kort tid "
                  "flaggas för att ta hem vinsten (behåll insatsen). Kärnan är evidensbackad; "
