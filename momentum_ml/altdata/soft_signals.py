@@ -13,7 +13,11 @@ LÖSNINGEN – DESTILLATION (lärare→elev):
      mjuk dimension (vallgrav, global skalbarhet, säljmomentum, lönsamhets-
      bana, ton, varningsflaggor) räknas i bolagets senaste 12 månaders
      MFN-texter, normaliserat per 1000 ord. Plus meta-drag (PM-frekvens,
-     rapportlängd, order-PM-andel).
+     rapportlängd, order-PM-andel). Plus HÅRDA nyckeltals-drag (tillväxt,
+     marginal, vinsttecken ur samma fundamentals-CSV:er som value_screener –
+     LLM-läraren läser ju siffrorna i rapporten, så eleven måste också få se
+     dem) och TREND-drag (senaste halvårets ton/säljmomentum mot halvåret
+     före – accelererar eller avtar bolagets egen kommunikation?).
   2. LABELS: de LLM-betyg som REDAN finns (quality_screener-cachen,
      composite 0-5) – redan betalda tokens, återanvänds som facit.
   3. MODELL: LightGBM-regressor (samma bibliotek som huvudpipelinen redan
@@ -105,7 +109,14 @@ _LEX_RE = {k: re.compile(v, re.I) for k, v in _LEXICON.items()}
 _FLAG_RE = {k: re.compile(v, re.I) for k, v in _RED_FLAGS.items()}
 
 _FEATURE_ORDER = (list(_LEXICON.keys())
-                  + ["tone_score", "n_pm_12m", "n_reports_12m", "avg_pm_len", "red_flag_count"])
+                  + ["tone_score", "n_pm_12m", "n_reports_12m", "avg_pm_len", "red_flag_count"]
+                  # Hårda + trend-drag (se _hard_features/_trend_features). Saknat
+                  # värde = NaN, ALDRIG 0.0 – LightGBM hanterar missing nativt,
+                  # medan 0.0 hade betytt "noll tillväxt"/"oförändrad ton" (fejk-
+                  # signal för bolag vi bara saknar data om).
+                  + ["hard_rev_growth", "hard_margin", "hard_np_pos",
+                     "hard_growth_share", "hard_n_reports",
+                     "tone_trend", "sales_trend"])
 _MODEL_PATH = "cache/soft_model.txt"
 _META_PATH = "cache/soft_model_meta.json"
 MIN_LABELS = 20          # färre LLM-facit än så → lexikon-läge (ingen låtsas-ML)
@@ -196,6 +207,78 @@ def _lexicon_score(feats: Dict[str, float]) -> float:
     base = 2.5 + min(core, 5.0) * 0.35 + feats.get("tone_score", 0.0) * 0.75
     base -= 1.2 * feats.get("red_flag_count", 0.0)
     return round(max(0.0, min(5.0, base)), 2)
+
+
+# ── Hårda + trend-drag (destillations-features utöver lexikonen) ─────────────
+_GROWTH_CAP = 3.0        # winsorisering av YoY-tillväxt (+300 % räcker som "extremt")
+_TREND_MIN_WORDS = 150   # tunnare halvårsfönster än så → trend obedömbar (NaN)
+
+
+def _hard_features(rows: list) -> Dict[str, float]:
+    """Hårda nyckeltals-drag ur samma fundamentals-CSV:er som value_screener
+    läser (rows = bolagets rader sorterade på published, ur _fund_rows).
+    LLM-läraren LÄSER siffrorna i rapporttexten när den sätter sitt betyg –
+    en elev som bara ser nyckelords-frekvenser kan därför aldrig komma nära.
+    Alla drag är enhets-oberoende kvoter/tecken av SAMMA rads fält (ingen
+    Mkr/tkr-skalning behövs, samma princip som crosscheck). Saknat = NaN."""
+    nan = float("nan")
+    out = {"hard_rev_growth": nan, "hard_margin": nan, "hard_np_pos": nan,
+           "hard_growth_share": nan, "hard_n_reports": float(len(rows))}
+    if not rows:
+        return out
+    latest = rows[-1]
+    rev, prior = _fnum(latest.get("revenue")), _fnum(latest.get("revenue_prior"))
+    npf = _fnum(latest.get("net_profit"))
+    if rev is not None and prior not in (None, 0.0):
+        out["hard_rev_growth"] = max(-1.0, min((rev - prior) / abs(prior), _GROWTH_CAP))
+    if npf is not None and rev not in (None, 0.0):
+        out["hard_margin"] = max(-1.0, min(npf / abs(rev), 1.0))
+    if npf is not None:
+        out["hard_np_pos"] = 1.0 if npf > 0 else 0.0
+    grew = []
+    for r in rows[-4:]:
+        rv, pv = _fnum(r.get("revenue")), _fnum(r.get("revenue_prior"))
+        if rv is not None and pv not in (None, 0.0):
+            grew.append(rv > pv)
+    if grew:
+        out["hard_growth_share"] = sum(grew) / len(grew)
+    return out
+
+
+def _window_text(ticker: str, start_days: int, end_days: int) -> str:
+    """Sammanslagen PM-text i fönstret [idag-start_days, idag-end_days)."""
+    p = Path(config.MFN_CACHE_DIR) / f"{ticker}.json"
+    if not p.exists():
+        return ""
+    try:
+        items = json.loads(p.read_text(encoding="utf-8")).get("items", [])
+    except Exception:  # noqa: BLE001
+        return ""
+    lo = (dt.date.today() - dt.timedelta(days=start_days)).isoformat()
+    hi = (dt.date.today() - dt.timedelta(days=end_days)).isoformat()
+    return "\n\n".join(str(it.get("title") or "") + "\n" + str(it.get("text") or "")
+                       for it in items if lo <= str(it.get("published") or "")[:10] < hi)
+
+
+def _trend_features(ticker: str) -> Dict[str, float]:
+    """Riktningen i bolagets egen kommunikation: senaste halvåret mot halvåret
+    före. En statisk 12-månaders-frekvens kan inte skilja ett bolag vars ton
+    är på väg upp från ett vars ton är på väg ned – trenden kan. För tunna
+    fönster = NaN (ärligt obedömbart), inte 0 (fejk-stabilitet)."""
+    nan = float("nan")
+    recent, prior = _window_text(ticker, 183, 0), _window_text(ticker, 365, 183)
+    if len(recent.split()) < _TREND_MIN_WORDS or len(prior.split()) < _TREND_MIN_WORDS:
+        return {"tone_trend": nan, "sales_trend": nan}
+    fr, fp = _text_features(recent), _text_features(prior)
+    return {"tone_trend": fr["tone_score"] - fp["tone_score"],
+            "sales_trend": fr["sales_momentum"] - fp["sales_momentum"]}
+
+
+def _enrich(ticker: str, feats: Dict[str, float], fund_map: Dict[str, list]) -> Dict[str, float]:
+    """Lägg hårda + trend-drag ovanpå text-dragen (in-place, returnerar feats)."""
+    feats.update(_hard_features(fund_map.get(ticker) or []))
+    feats.update(_trend_features(ticker))
+    return feats
 
 
 _OUTCOME_FEATURES = list(_LEXICON.keys()) + ["tone_score", "red_flag_count"]
@@ -415,15 +498,41 @@ def _load_labels() -> Dict[str, float]:
 
 def _matrix(feats_by_ticker: Dict[str, dict]):
     import numpy as np
-    X = np.array([[feats_by_ticker[t].get(f, 0.0) for f in _FEATURE_ORDER]
+    # Saknad feature = NaN (LightGBM:s nativa missing-hantering), inte 0.0 –
+    # se kommentaren vid _FEATURE_ORDER. Lexikon-/meta-dragen finns alltid;
+    # det är hård-/trend-dragen som kan saknas för enskilda bolag.
+    X = np.array([[feats_by_ticker[t].get(f, float("nan")) for f in _FEATURE_ORDER]
                   for t in feats_by_ticker], dtype=float)
     return X, list(feats_by_ticker.keys())
 
 
+def _fund_rows_all_segments() -> Dict[str, list]:
+    """Fundamentals-rader över BÅDA segmenten (train/explain är segment-
+    agnostiska – labels kommer ur en gemensam quality-cache)."""
+    fund_all: Dict[str, list] = {}
+    for seg_name in config.SEGMENTS:
+        for t, rows in _fund_rows(seg_name).items():
+            fund_all.setdefault(t, rows)
+    return fund_all
+
+
+# Litet, ärligt svep – varje kandidat utvärderas i SAMMA 5-fold-CV och
+# vinnaren väljs på CV-MAE (inte på träningsdata). Fler kandidater än så
+# vore överanpassning av själva svepet på några hundra labels.
+_PARAM_GRID = (
+    dict(num_leaves=7,  learning_rate=0.08, feature_fraction=0.8),
+    dict(num_leaves=7,  learning_rate=0.05, feature_fraction=0.6),
+    dict(num_leaves=15, learning_rate=0.05, feature_fraction=0.8),
+    dict(num_leaves=31, learning_rate=0.08, feature_fraction=0.9),
+)
+
+
 def train() -> None:
     """Destillera: träna LightGBM på (token-fria features → LLM-composite).
-    Rapporterar 5-fold CV-MAE mot alltid-medel-baselinen och vägrar spara en
-    modell som inte slår den (då används lexikon-läget vid score)."""
+    Sveper _PARAM_GRID i 5-fold CV, rapporterar CV-MAE mot alltid-medel-
+    baselinen OCH Spearman-rankkorrelation (portföljen använder poängen för
+    RANGORDNING – rank-IC är därför det mått som faktiskt betyder något),
+    och vägrar spara en modell som inte slår baselinen."""
     import numpy as np
     labels = _load_labels()
     print(f"[soft_signals train] {len(labels)} LLM-betygsatta bolag som facit")
@@ -433,11 +542,12 @@ def train() -> None:
         _meta_file().unlink(missing_ok=True)
         return
 
+    fund_all = _fund_rows_all_segments()
     feats = {}
     for t in labels:
         f = extract_features(t)
         if f:
-            feats[t] = f
+            feats[t] = _enrich(t, f, fund_all)
     if len(feats) < MIN_LABELS:
         print(f"  Bara {len(feats)} av dem har MFN-text – för få. Lexikon-läge gäller.")
         _model_file().unlink(missing_ok=True)
@@ -446,20 +556,31 @@ def train() -> None:
     y = np.array([labels[t] for t in tickers])
 
     import lightgbm as lgb
+    from scipy.stats import spearmanr
     from sklearn.model_selection import KFold
-    params = dict(objective="regression", metric="mae", verbosity=-1,
-                  num_leaves=7, min_data_in_leaf=max(3, len(y) // 10),
-                  learning_rate=0.08, feature_fraction=0.8, seed=42)
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
-    maes, base_maes = [], []
-    for tr, te in kf.split(X):
-        m = lgb.train(params, lgb.Dataset(X[tr], y[tr]), num_boost_round=200)
-        pred = m.predict(X[te])
-        maes.append(float(np.mean(np.abs(pred - y[te]))))
-        base_maes.append(float(np.mean(np.abs(y[tr].mean() - y[te]))))
-    cv_mae, base_mae = float(np.mean(maes)), float(np.mean(base_maes))
-    print(f"  CV-MAE {cv_mae:.3f} vs baseline (alltid medel) {base_mae:.3f} "
-          f"på {len(y)} bolag, composite-spann {y.min():.1f}-{y.max():.1f}")
+    base_mae = float(np.mean([np.mean(np.abs(y[tr].mean() - y[te]))
+                              for tr, te in kf.split(X)]))
+    best = None   # (cv_mae, params, oof_preds)
+    for g in _PARAM_GRID:
+        params = dict(objective="regression", metric="mae", verbosity=-1,
+                      min_data_in_leaf=max(3, len(y) // 10), seed=42, **g)
+        oof = np.full_like(y, np.nan, dtype=float)
+        for tr, te in kf.split(X):
+            m = lgb.train(params, lgb.Dataset(X[tr], y[tr]), num_boost_round=200)
+            oof[te] = m.predict(X[te])
+        cv_mae = float(np.mean(np.abs(oof - y)))
+        marker = ""
+        if best is None or cv_mae < best[0]:
+            best, marker = (cv_mae, params, oof), "  ← bäst hittills"
+        print(f"    leaves={g['num_leaves']:<3} lr={g['learning_rate']:<5} "
+              f"ff={g['feature_fraction']}  CV-MAE {cv_mae:.3f}{marker}")
+    cv_mae, params, oof = best
+    rho = spearmanr(oof, y).statistic
+    rank_ic = float(rho) if rho == rho else 0.0   # NaN-vakt (konstanta prediktioner)
+    print(f"  Bästa: CV-MAE {cv_mae:.3f} vs baseline (alltid medel) {base_mae:.3f}, "
+          f"rank-IC (Spearman) {rank_ic:+.3f} på {len(y)} bolag, "
+          f"composite-spann {y.min():.1f}-{y.max():.1f}")
     if cv_mae >= base_mae:
         print("  Modellen slår INTE baselinen – sparas inte (ärligt > låtsas-ML). "
               "score kör lexikon-läge tills fler LLM-labels finns.")
@@ -467,11 +588,19 @@ def train() -> None:
         _meta_file().unlink(missing_ok=True)
         return
     booster = lgb.train(params, lgb.Dataset(X, y), num_boost_round=200)
+    imp = sorted(zip(_FEATURE_ORDER, booster.feature_importance("gain")),
+                 key=lambda kv: kv[1], reverse=True)
+    total_gain = sum(v for _, v in imp) or 1.0
+    print("  Viktigaste drag (andel av total gain): "
+          + ", ".join(f"{k} {v / total_gain:.0%}" for k, v in imp[:6]))
     _model_file().parent.mkdir(parents=True, exist_ok=True)
     booster.save_model(str(_model_file()))
     _meta_file().write_text(json.dumps({
         "features": _FEATURE_ORDER, "n_labels": len(y),
         "cv_mae": round(cv_mae, 4), "baseline_mae": round(base_mae, 4),
+        "rank_ic": round(rank_ic, 4),
+        "params": {k: v for k, v in params.items() if k in
+                   ("num_leaves", "learning_rate", "feature_fraction", "min_data_in_leaf")},
         "trained": dt.date.today().isoformat(),
     }, ensure_ascii=False), encoding="utf-8")
     print(f"  Modell sparad → {_model_file()}  (används av 'score')")
@@ -502,6 +631,10 @@ def score(segment: Optional[str] = None) -> None:
     mode = "destillerad ML" if booster is not None else "lexikon"
     labels = _load_labels()
 
+    # Hårda rader: både korskontrollen och hård-/trend-dragen läser dem –
+    # måste därför laddas INNAN feature-bygget (samma segment).
+    hard_rows = _fund_rows(seg_name)
+
     rows = []
     feats_all: Dict[str, dict] = {}
     for t in tickers:
@@ -509,7 +642,7 @@ def score(segment: Optional[str] = None) -> None:
             continue
         f = extract_features(t)
         if f:
-            feats_all[t] = f
+            feats_all[t] = _enrich(t, f, hard_rows)
     if not feats_all:
         print("[soft_signals] ingen MFN-text för segmentet – kör mfn_fetch först.")
         return
@@ -527,8 +660,6 @@ def score(segment: Optional[str] = None) -> None:
     blend_w = float(getattr(config, "SOFT_OUTCOME_BLEND", 0.30))
     if out_booster is not None and blend_w > 0:
         mode += "+utfall"
-    # Hårda rader för korskontrollen (samma segment).
-    hard_rows = _fund_rows(seg_name)
 
     for t, f in feats_all.items():
         base_score = pred_by_t[t]
@@ -581,11 +712,18 @@ def explain(ticker: str) -> None:
     if not f:
         print(f"Ingen MFN-text för {ticker}.")
         return
+    f = _enrich((ticker or "").upper(), f, _fund_rows_all_segments())
     print(f"=== {ticker.upper()} – token-fria mjuk-drag (per 1000 ord) ===")
     for k in _LEXICON:
         print(f"  {k:<16} {f[k]:.2f}")
     print(f"  tone_score       {f['tone_score']:+.3f}")
     print(f"  PM 12m           {f['n_pm_12m']:.0f} (varav {f['n_reports_12m']:.0f} rapporter)")
+
+    def _fmt(v):
+        return "saknas" if v != v else f"{v:+.3f}"
+    print(f"  hård tillväxt    {_fmt(f['hard_rev_growth'])}   marginal {_fmt(f['hard_margin'])}"
+          f"   vinst>0 {_fmt(f['hard_np_pos'])}")
+    print(f"  ton-trend 6m     {_fmt(f['tone_trend'])}   sälj-trend 6m {_fmt(f['sales_trend'])}")
     print(f"  röda flaggor     {f.get('_flags') or 'inga'}")
     print(f"  lexikon-score    {_lexicon_score(f)}/5")
     booster, _ = _load_model()
