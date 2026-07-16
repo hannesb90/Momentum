@@ -82,6 +82,9 @@ export const api = {
   holdings: (amount) => getJson(`/holdings${amount ? `?amount=${amount}` : ''}`),
   // Coret: ETT rangordnat svar på "var ska nästa krona in?" (hemvyns huvudkort).
   nextBuy: (amount) => getJson(`/next-buy${amount ? `?amount=${amount}` : ''}`),
+  // Förifylld Montrose-köpbiljett för EN rad ur Nästa köp-planen. Lägger aldrig
+  // en order – returnerar bara en länk du själv öppnar och bekräftar i appen.
+  tradeTicket: (ticker, kr) => postJson('/trade-ticket', { ticker, kr }),
   portfolioTarget: () => getJson('/portfolio-target'),
   saveTarget: (target) => postJson('/portfolio-target', target),
   // Rank-modell för "nästa köp" (balanced/buffett/momentum). Ren vy-inställning

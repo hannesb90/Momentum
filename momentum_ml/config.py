@@ -634,6 +634,17 @@ PORTFOLIO_TARGET_FILE = "cache/portfolio_target.json"
 # vyn; frontend kan skicka valfritt belopp.
 PORTFOLIO_CORE_ETF = ("IUSQ.DE", "iShares MSCI ACWI (hela världen)")
 NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
+
+# ── Montrose trade-ticket-knapp (headless Claude Code, se montrose_ticket.py) ──
+# Headless `claude -p`, inloggad med Claude-prenumerationen (claude login) på
+# Pi:n – ingen separat Anthropic-API-nyckel. --allowedTools + --permission-mode
+# dontAsk låser anropet till EXAKT search_instruments + create_trade_ticket.
+# Skapar bara en förifylld länk, lägger aldrig en order. BARA köp (side=Buy) –
+# säljvakten/takeprofit i appen är rådgivande, ingen knapp säljer härifrån.
+# Alltid ISK-kontot, ALDRIG kreditkontot (hävstång/marginal är uttryckligen
+# uteslutet ur modellen, se PORTFOLIO_TARGET leverage=0).
+MONTROSE_ACCOUNT_ID = "REDACTED-ACCOUNT-ID"   # ISK
+CLAUDE_BIN = _os.environ.get("CLAUDE_BIN", _os.path.expanduser("~/.local/bin/claude"))
 # Aktiv rank-modell för "nästa köp" (köp-vakten). Väljer bara viktprofilen i
 # _unified_rank() – ALL underliggande data (kvalitet/kvant/value/momentum)
 # laddas alltid, så man kan växla fram och tillbaka utan omkörning. Sätts av

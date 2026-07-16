@@ -341,6 +341,24 @@ def get_next_buy(amount: Optional[float] = None):
     return _clean(pf.next_buy(pf.load_holdings(), amount=amount))
 
 
+@app.post("/api/trade-ticket")
+async def create_trade_ticket_endpoint(request: Request):
+    """Förifylld Montrose-köpbiljett för EN rad ur Nästa köp-planen. Kör
+    headless Claude Code (montrose_ticket.py) mot Montrose-MCP:n, låst till
+    BARA köp – lägger aldrig en order, returnerar bara en länk som öppnas i
+    Montrose-appen för användarens egen bekräftelse."""
+    import montrose_ticket as mt
+    body = await request.json()
+    ticker = str(body.get("ticker", "")).strip()
+    kr = body.get("kr")
+    if not ticker or not kr:
+        raise HTTPException(400, "ticker och kr krävs")
+    result = mt.create_ticket(ticker, float(kr))
+    if "error" in result:
+        raise HTTPException(502, result["error"])
+    return result
+
+
 @app.get("/api/universe")
 def get_universe():
     """Alla sökbara värdepapper appen känner (sök/filtrera vid innehav)."""
