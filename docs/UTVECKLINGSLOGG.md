@@ -187,9 +187,18 @@ Anthropic-nyckel i `~/.momentum.env`, (2) bekräftelse att Pi:n når mfn.se
   manuellt.
 - **Verifiera alltid deploy-kopian** innan du litar på en körning:
   `grep -E "^SIZING_MODE|^VOL_TARGET" /opt/momentum/momentum_ml/config.py`.
-- **Montrose-mäklarorder = riktiga pengar** – bara läs-läge implementerat; varje
-  orderläggning ska gate:as hårt/bekräftas. Användarens riktiga portfölj
-  (~170 k kr) är känslig finansiell data.
+- **Montrose-mäklarorder = riktiga pengar** – integrationen (2026-07-16) är
+  medvetet begränsad: innehavs-LÄSNING (`sync_montrose_holdings.py` → samma
+  portföljfil som appen) + FÖRIFYLLDA köpbiljetter (`montrose_ticket.py` →
+  "Skapa ticket"-knappen i Nästa köp). En biljett lägger ALDRIG en order –
+  användaren bekräftar själv i Montrose-appen. Bara köp (side=Buy), alltid
+  ISK-kontot, aldrig kreditkontot. Teknik: headless `claude -p` på Pi:n
+  (Claude-prenumerationen, ingen API-nyckel), Montrose-MCP:n LOKALT
+  registrerad (`claude mcp add --transport http montrose
+  https://mcp.montrose.io` + `claude mcp login montrose`) – den kontobundna
+  claude.ai-connectorn syns inte i headless-läge. `--allowedTools` låser
+  varje anrop till exakt search_instruments + create_trade_ticket.
+  Användarens riktiga portfölj (~170 k kr) är känslig finansiell data.
 
 ---
 
