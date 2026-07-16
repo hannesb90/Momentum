@@ -1,0 +1,22 @@
+[Unit]
+Description=Momentum – nattlig innehavssynk från Montrose (läs-läge, headless Claude)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+# Läs-läge: hämtar innehav via headless claude låst till mcp__montrose__get_holdings
+# (--allowedTools i montrose_ticket.fetch_holdings) och skriver cache/portfolio_holdings.csv.
+# Lägger aldrig ordrar. Kräver att montrose-servern är LOKALT registrerad + inloggad
+# för användaren ovan (claude mcp add/login, se montrose_ticket.py:s docstring).
+Environment=PATH=/opt/momentum/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/momentum/venv/bin/python sync_montrose_holdings.py --from-montrose
+
+# Lågprioriterat – ska aldrig konkurrera med API:t.
+Nice=15
+IOSchedulingClass=idle
+# Ett headless claude-anrop tar normalt 10–30s; nätstrul ska inte hänga för evigt.
+TimeoutStartSec=10m

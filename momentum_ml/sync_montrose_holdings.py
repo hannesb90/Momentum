@@ -17,6 +17,9 @@ script. Flödet är därför:
 
     python sync_montrose_holdings.py montrose_holdings.json
     cat montrose_holdings.json | python sync_montrose_holdings.py
+    python sync_montrose_holdings.py --from-montrose   # hämta själv (headless
+                                     # claude låst till get_holdings; nattlig
+                                     # timer momentum-montrose-holdings.timer)
 
 Körs från momentum_ml/ (samma katalog som portfolio.py, för att data/
 rotation_universe.csv ska hittas via relativ sökväg).
@@ -94,8 +97,16 @@ def montrose_to_rows(data, existing_by_ticker):
 
 
 def sync(path=None):
-    raw = Path(path).read_text(encoding="utf-8") if path else sys.stdin.read()
-    data = json.loads(raw)
+    if path == "--from-montrose":
+        import montrose_ticket as mt
+        data = mt.fetch_holdings()
+        if "error" in data:
+            print(f"[sync_montrose] hämtning misslyckades: {data['error']} – "
+                  f"rör inte befintlig fil.")
+            raise SystemExit(1)
+    else:
+        raw = Path(path).read_text(encoding="utf-8") if path else sys.stdin.read()
+        data = json.loads(raw)
     prev_rows = pf.load_holdings(refresh=False)
     existing_by_ticker = {r["ticker"]: r for r in prev_rows if r.get("ticker")}
     rows, unresolved = montrose_to_rows(data, existing_by_ticker)

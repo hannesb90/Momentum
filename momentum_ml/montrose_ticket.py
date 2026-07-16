@@ -110,8 +110,57 @@ def create_ticket(ticker: str, kr: float, account_id: str = None, timeout: int =
     return _extract_json(result_text)
 
 
+_FETCH_PROMPT = """Anropa verktyget get_holdings (utan accountId, så alla konton kommer med).
+Svara ENDAST med verktygets råa JSON-resultat, exakt och oavkortat som det
+returnerades – ingen markdown, inga kodstaket, ingen kommentar, inga
+utelämnade fält."""
+
+
+def fetch_holdings(timeout: int = 120) -> dict:
+    """Hämtar innehaven via headless Claude låst till ENBART get_holdings.
+    Returnerar Montrose-svaret ({"result": [konton...]}) eller {"error": ...}.
+    Nattlig konsument: sync_montrose_holdings.py --from-montrose."""
+    claude_bin = getattr(config, "CLAUDE_BIN", "claude")
+    env = {**os.environ, "MCP_TIMEOUT": str(getattr(config, "MONTROSE_MCP_TIMEOUT_MS", 60000))}
+    try:
+        proc = subprocess.run(
+            [claude_bin, "-p", _FETCH_PROMPT,
+             "--output-format", "json",
+             "--allowedTools", "mcp__montrose__get_holdings",
+             "--permission-mode", "dontAsk"],
+            capture_output=True, text=True, timeout=timeout, env=env,
+        )
+    except FileNotFoundError:
+        return {"error": f"claude hittades inte ({claude_bin})"}
+    except subprocess.TimeoutExpired:
+        return {"error": f"claude svarade inte inom {timeout}s"}
+    if proc.returncode != 0:
+        return {"error": f"claude avslutade med fel: {(proc.stderr or '').strip()[:300]}"}
+    try:
+        envelope = json.loads(proc.stdout)
+        result_text = envelope.get("result", proc.stdout)
+    except json.JSONDecodeError:
+        result_text = proc.stdout
+    data = _extract_json(result_text)
+    if "error" in data:
+        return data
+    # Sanity: svaret ska vara kontolistan – texten mellan LLM och oss får
+    # aldrig tyst bli en tom/halv portfölj som sen SKRIVER ÖVER innehavsfilen.
+    accounts = data.get("result") if isinstance(data.get("result"), list) else None
+    if accounts is None:
+        return {"error": f"oväntat svar (saknar 'result'-lista): {str(data)[:200]}"}
+    n_pos = sum(len(a.get("positions") or []) for a in accounts)
+    if n_pos == 0:
+        return {"error": "0 positioner i svaret – vägrar synka (skulle tömma innehavsfilen)"}
+    return data
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("usage: python montrose_ticket.py <ticker> <kr>")
+    if len(sys.argv) >= 2 and sys.argv[1] == "fetch_holdings":
+        print(json.dumps(fetch_holdings(), ensure_ascii=False, indent=2))
+    elif len(sys.argv) >= 3:
+        print(json.dumps(create_ticket(sys.argv[1], float(sys.argv[2])), ensure_ascii=False, indent=2))
+    else:
+        print("usage: python montrose_ticket.py <ticker> <kr>\n"
+              "       python montrose_ticket.py fetch_holdings")
         raise SystemExit(1)
-    print(json.dumps(create_ticket(sys.argv[1], float(sys.argv[2])), ensure_ascii=False, indent=2))
