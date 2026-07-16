@@ -45,7 +45,7 @@ export function AssessmentPage() {
             <p>
               Samlar det som redan finns utspritt (hink-drift, varningar, exit-alarm, säljvakt) plus
               två narrativa lager: en färsk sammanfattning per bolag (pressmeddelanden + nyheter/social
-              ton, hämtat nattligt) och en månatlig förvaltarkommentar.
+              ton, hämtat nattligt) och en veckovis förvaltarkommentar.
             </p>
             <p>
               <b>Rent sammanhang, aldrig en signal.</b> Inget här driver modellens rankningar eller
@@ -62,7 +62,7 @@ export function AssessmentPage() {
         {commentary.loading && <div className="list-card__empty">Hämtar…</div>}
         {!commentary.loading && !commentary.data?.commentary && (
           <div className="list-card__empty">
-            Ingen kommentar genererad än – körs månadsvis på Pi:n (portfolio_commentary.py).
+            Ingen kommentar genererad än – körs veckovis på Pi:n (portfolio_commentary.py).
           </div>
         )}
         {commentary.data?.commentary && (
