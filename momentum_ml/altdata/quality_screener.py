@@ -20,6 +20,10 @@ Körs på Pi:n EFTER mfn_fetch (för microcap-universumet):
     python altdata/quality_screener.py report      # berika med värdering → 'hög kvalitet OCH billig'
     python altdata/quality_screener.py chart        # rita värderingsdiagram av de poängsatta
     python altdata/quality_screener.py one SAAB-B.ST   # ett bolag (test)
+
+Manuellt spår (INGA API-krediter – kör i valfri webbaserad AI-chatt istället):
+    python altdata/quality_screener.py manual_prompt VOLV-B.ST   # skriv ut klistra-in-prompt
+    python altdata/quality_screener.py manual_import VOLV-B.ST   # klistra in AI:ns JSON-svar
 """
 import sys
 import json
@@ -662,6 +666,86 @@ def lookback(months=6, n=5) -> None:
     print("\n   Enda ärliga testet: 'snapshot' idag → 'track' framåt.")
 
 
+def manual_prompt(ticker: str) -> None:
+    """Skriver ut ett klistra-in-färdigt AI-prompt för ETT bolag – för manuell
+    bedömning i en WEBBASERAD AI (claude.ai, ChatGPT m.fl.) UTAN att förbruka
+    API-krediter (webbchatten går på ett separat abonnemang, inte API-nyckeln).
+    Använd t.ex. för Large/Mid Cap eller Health Care – sektorer/cap-nivåer
+    kvalitetsscreenern annars aldrig rör (se config.QUALITY_MARKET_CAP och
+    medtech-exkluderingen i _candidates), vilket gör att soft_signals.py:s
+    destillation extrapolerar dit helt utan facit-stöd (facit-täckningsspärren
+    faller då tillbaka på lexikon-läge för just de bolagen).
+
+    EXAKT samma system-prompt och kontext-urval som score_company() – svaret
+    blir alltså likvärdigt ett riktigt API-anrop.
+
+        python -m altdata.quality_screener manual_prompt VOLV-B.ST
+        # ... klistra HELA utskriften som EN fråga i webb-AI:n ...
+        python -m altdata.quality_screener manual_import VOLV-B.ST   # klistra JSON-svaret, Ctrl-D
+    """
+    from data.data_loader import load_sweden_universe
+    ticker = ticker.upper()
+    _, _, _, name_map = load_sweden_universe(min_market_cap=None)
+    name = name_map.get(ticker, ticker)
+    if _cache_path(ticker).exists():
+        print(f"{ticker} har redan en cachad bedömning – radera "
+              f"{_cache_path(ticker)} först om du vill skriva över den.")
+        return
+    ctx = _company_context(ticker)
+    if not ctx:
+        print(f"Ingen MFN-text cachad för {ticker} – kör "
+              f"'python -m altdata.mfn_fetch fetch <segment>' först.")
+        return
+    print("=" * 78)
+    print("KLISTRA IN ALLT NEDANFÖR SOM EN (1) FRÅGA I EN WEBBASERAD AI-CHATT:")
+    print("=" * 78)
+    print(_SYSTEM)
+    print()
+    print(f"BOLAG: {name} ({ticker})\n\nUNDERLAG (MFN):\n{ctx}")
+    print("=" * 78)
+    print(f"Klistra sedan in AI:ns JSON-svar med:\n"
+          f"  python -m altdata.quality_screener manual_import {ticker}")
+
+
+def manual_import(ticker: str) -> None:
+    """Importerar ett manuellt inhämtat AI-svar (se manual_prompt) till
+    samma cache-fil/format som score_company() skulle skrivit – bolaget blir
+    därmed ett fullvärdigt facit-bolag för quality_screener report/chart OCH
+    soft_signals train (inkl. dess facit-täckningsspärr). Taggat
+    'manual_import': true för spårbarhet, annars identiskt.
+
+        python -m altdata.quality_screener manual_import VOLV-B.ST
+        # (klistra in JSON-svaret, avsluta med Ctrl-D / Ctrl-Z+Enter)
+    """
+    from data.data_loader import load_sweden_universe
+    ticker = ticker.upper()
+    print(f"Klistra in AI:ns JSON-svar för {ticker}, avsluta med Ctrl-D (Ctrl-Z, Enter på Windows):")
+    raw = sys.stdin.read()
+    m = re.search(r"\{.*\}", raw, re.S)
+    if not m:
+        print("Hittade inget JSON-objekt i inklistringen – inget sparat.")
+        return
+    try:
+        parsed = json.loads(m.group(0))
+    except Exception as e:  # noqa: BLE001
+        print(f"Ogiltig JSON ({e}) – inget sparat.")
+        return
+    if not isinstance(parsed, dict):
+        print("Svaret måste vara ett JSON-objekt – inget sparat.")
+        return
+    _, _, _, name_map = load_sweden_universe(min_market_cap=None)
+    parsed["ticker"] = ticker
+    parsed["name"] = name_map.get(ticker, ticker)
+    parsed["composite"] = _composite(parsed)
+    parsed["manual_import"] = True
+    if parsed["composite"] is None:
+        print("VARNING: inget bedömbart kriterium i svaret (composite=None) – "
+              "sparas ändå, men räknas inte som facit av soft_signals.")
+    cp = _cache_path(ticker)
+    cp.write_text(json.dumps(parsed, ensure_ascii=False))
+    print(f"Sparat -> {cp}  (composite={parsed['composite']})")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "score"
     if cmd == "score":
@@ -683,6 +767,10 @@ def main():
         _, _, _, nm = load_sweden_universe(min_market_cap=config.QUALITY_MARKET_CAP)
         t = sys.argv[2]
         print(json.dumps(score_company(t, nm.get(t, t)), ensure_ascii=False, indent=2))
+    elif cmd == "manual_prompt" and len(sys.argv) > 2:
+        manual_prompt(sys.argv[2])
+    elif cmd == "manual_import" and len(sys.argv) > 2:
+        manual_import(sys.argv[2])
     else:
         print(__doc__)
 
