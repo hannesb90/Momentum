@@ -79,6 +79,75 @@ def load_cash() -> Optional[dict]:
         return None
 
 
+def ticket_ledger_path() -> Path:
+    return Path(config.anchor("cache/trade_ticket_ledger.json"))
+
+
+def _load_ledger() -> list:
+    p = ticket_ledger_path()
+    if not p.exists():
+        return []
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _save_ledger(ledger: list) -> None:
+    p = ticket_ledger_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(ledger, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def log_trade_ticket(ticker: str, kr: float, side: str = "Buy") -> None:
+    """Loggar en skapad trade-ticket (idé 8, "följde jag planen?"). shares_before
+    fångas HÄR, innan biljetten ens öppnats/bekräftats i Montrose-appen – nästa
+    Montrose-synk (check_trade_ticket_ledger) avgör sedan om köpet faktiskt
+    landade genom att jämföra mot antalet EFTER."""
+    from datetime import datetime, timezone
+    rows = load_holdings(refresh=False)
+    shares_before = next((r.get("shares") or 0 for r in rows if r.get("ticker") == ticker), 0)
+    ledger = _load_ledger()
+    ledger.append({"ticker": ticker, "kr": round(float(kr)), "side": side,
+                    "shares_before": shares_before, "status": "pending",
+                    "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+    _save_ledger(ledger)
+
+
+def check_trade_ticket_ledger(new_rows, expire_days: int = 14) -> None:
+    """Körs efter varje Montrose-synk: väntande biljetter markeras 'landed'
+    (antal aktier ökade sedan biljetten skapades) eller 'expired' (för gammal
+    utan att ha landat – troligen aldrig bekräftad i Montrose-appen)."""
+    from datetime import datetime, timezone
+    ledger = _load_ledger()
+    if not ledger:
+        return
+    shares_now = {r.get("ticker"): (r.get("shares") or 0) for r in new_rows if r.get("ticker")}
+    now = datetime.now(timezone.utc)
+    changed = False
+    for entry in ledger:
+        if entry.get("status") != "pending":
+            continue
+        if shares_now.get(entry["ticker"], 0) > (entry.get("shares_before") or 0):
+            entry["status"] = "landed"
+            entry["landed_at"] = now.isoformat(timespec="seconds")
+            changed = True
+            continue
+        try:
+            age_days = (now - datetime.fromisoformat(entry["created_at"])).days
+        except Exception:  # noqa: BLE001
+            age_days = 0
+        if age_days >= expire_days:
+            entry["status"] = "expired"
+            changed = True
+    if changed:
+        _save_ledger(ledger)
+
+
+def load_trade_ticket_ledger(limit: int = 30) -> list:
+    return list(reversed(_load_ledger()))[:limit]
+
+
 def log_value(total) -> None:
     """Upsert:ar dagens totala portföljvärde i framåt-loggen (en punkt per dag).
     Bygger en äkta personlig utvecklingskurva från och med nu."""

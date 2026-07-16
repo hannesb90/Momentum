@@ -6,6 +6,11 @@ import { fmtSek, fmtPct } from '../format'
 
 const BUCKET_LABEL = { broad: 'Bred kärna', sweden: 'Sverige', theme: 'Tematiskt', leverage: 'Hävstång' }
 const TIER_ICON = { red: '🔴', amber: '🟡', unknown: '⚪', ok: '🟢' }
+const TICKET_STATUS = {
+  pending: { icon: '⏳', label: 'väntar på Montrose-synk' },
+  landed: { icon: '✅', label: 'landade' },
+  expired: { icon: '✗', label: 'aldrig bekräftad (>14 dagar)' },
+}
 
 function fmtWhen(iso) {
   if (!iso) return null
@@ -19,6 +24,7 @@ export function AssessmentPage() {
   const nextBuy = useApiData(() => api.nextBuy(), [])
   const insight = useApiData(() => api.insight(), [])
   const commentary = useApiData(() => api.commentary(), [])
+  const tickets = useApiData(() => api.tradeTickets(), [])
 
   if (holdings.loading) return <Loading />
   if (holdings.error) return <ErrorBlock error={holdings.error} />
@@ -117,6 +123,40 @@ export function AssessmentPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </>
+      )}
+
+      {/* Följde jag planen? */}
+      {(tickets.data ?? []).length > 0 && (
+        <>
+          <div className="section-head">
+            <h2>
+              Följde jag planen?
+              <InfoButton title="Skapade köpbiljetter">
+                <p>
+                  Varje "Skapa ticket" i Nästa köp loggas här. Vid nästa Montrose-synk kollas om
+                  antalet aktier faktiskt ökade – landade den inte inom 14 dagar räknas den som
+                  aldrig bekräftad i Montrose-appen.
+                </p>
+              </InfoButton>
+            </h2>
+          </div>
+          <div className="list-card">
+            {tickets.data.map((t, i) => {
+              const st = TICKET_STATUS[t.status] ?? TICKET_STATUS.pending
+              return (
+                <div key={i} className="list-row">
+                  <div className="list-row__main">
+                    <span className="list-row__ticker">{st.icon} {t.ticker}</span>
+                    <span className="list-row__sub">{fmtWhen(t.created_at)} · {st.label}</span>
+                  </div>
+                  <div className="list-row__side">
+                    <span className="list-row__num">{fmtSek(t.kr)}</span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </>
       )}

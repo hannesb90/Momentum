@@ -356,7 +356,17 @@ async def create_trade_ticket_endpoint(request: Request):
     result = mt.create_ticket(ticker, float(kr))
     if "error" in result:
         raise HTTPException(502, result["error"])
+    import portfolio as pf
+    pf.log_trade_ticket(ticker, float(kr))
     return result
+
+
+@app.get("/api/trade-tickets")
+def get_trade_tickets():
+    """"Följde jag planen?" – skapade trade-tickets och om köpet landade
+    (idé 8). Status uppdateras vid varje Montrose-synk (sync_montrose_holdings.py)."""
+    import portfolio as pf
+    return _clean(pf.load_trade_ticket_ledger())
 
 
 @app.get("/api/universe")
