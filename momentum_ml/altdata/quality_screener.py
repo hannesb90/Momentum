@@ -28,6 +28,11 @@ Manuellt spår (INGA API-krediter – kör i valfri webbaserad AI-chatt iställe
 Batch-läge (10-50 bolag i EN AI-konversation, t.ex. Gemini/stort kontextfönster):
     python altdata/quality_screener.py batch_prompt ABB.ST,ALFA.ST,AAK.ST [fil.txt]
     python altdata/quality_screener.py batch_import [fil-med-svaret.txt]   # utan filnamn: klistra in
+
+Chunkat batch-läge (stora listor -> flera 10-bolagsfiler i en zip, motverkar
+tyst AI-trunkering av för stora batchar):
+    python altdata/quality_screener.py batch_prompt_chunks ABB.ST,ALFA.ST,... [chunk_size] [fil.zip]
+    python altdata/quality_screener.py batch_import <en-chunks-svarsfil>   # en gång per chunk
 """
 import sys
 import json
@@ -815,16 +820,11 @@ def manual_import(ticker: str) -> None:
     print(f"Sparat -> {cp}  (composite={parsed['composite']})")
 
 
-def batch_prompt(tickers: List[str], out_path: Optional[str] = None) -> None:
-    """Skriver EN textfil med FLERA bolags underlag samlat – för en AI med
-    stort kontextfönster (Gemini m.fl.), 10-50 bolag i EN konversation
-    istället för en fråga per bolag (manual_prompt). Hoppar tyst-men-synligt
-    över tickers som redan är bedömda (samma skydd som manual_prompt) eller
-    saknar cachad MFN-text.
-
-        python -m altdata.quality_screener batch_prompt ABB.ST,ALFA.ST,AAK.ST
-        python -m altdata.quality_screener batch_prompt ABB.ST,ALFA.ST batch.txt
-    """
+def _batch_blocks(tickers: List[str]) -> tuple:
+    """Bygger (ticker, prompt-block)-par för varje ticker som HAR cachad
+    MFN-text och INTE redan är bedömd, plus listorna över uteslutna. Delad
+    mellan batch_prompt och batch_prompt_chunks så exkluderingslogiken
+    aldrig kan driva isär mellan de två."""
     from data.data_loader import load_sweden_universe
     tickers = [t.strip().upper() for t in tickers if t.strip()]
     _, _, _, name_map = load_sweden_universe(min_market_cap=None)
@@ -839,7 +839,30 @@ def batch_prompt(tickers: List[str], out_path: Optional[str] = None) -> None:
             no_text.append(t)
             continue
         name = name_map.get(t, t)
-        blocks.append(f"=== TICKER: {t} ===\nBOLAG: {name} ({t})\n\nUNDERLAG (MFN):\n{ctx}")
+        blocks.append((t, f"=== TICKER: {t} ===\nBOLAG: {name} ({t})\n\nUNDERLAG (MFN):\n{ctx}"))
+    return blocks, already, no_text
+
+
+_BATCH_FOOTER = ("\n\n=== SLUT PÅ BOLAG ===\nSvara nu med EN giltig JSON-lista, en post per "
+                 "bolag ovan i SAMMA ORDNING, inget annat (ingen prosa, inga kodstaket).")
+
+
+def batch_prompt(tickers: List[str], out_path: Optional[str] = None) -> None:
+    """Skriver EN textfil med FLERA bolags underlag samlat – för en AI med
+    stort kontextfönster (Gemini m.fl.), 10-50 bolag i EN konversation
+    istället för en fråga per bolag (manual_prompt). Hoppar tyst-men-synligt
+    över tickers som redan är bedömda (samma skydd som manual_prompt) eller
+    saknar cachad MFN-text.
+
+    VARNING (verkligt fall): stora batchar (~78 bolag) kan få AI:n att tyst
+    trunkera svaret utan felmeddelande (Gemini svarade en gång bara för 19
+    av 78, som en i övrigt fullt giltig – men ofullständig – JSON-lista).
+    Överväg batch_prompt_chunks för partier över ~15-20 bolag istället.
+
+        python -m altdata.quality_screener batch_prompt ABB.ST,ALFA.ST,AAK.ST
+        python -m altdata.quality_screener batch_prompt ABB.ST,ALFA.ST batch.txt
+    """
+    blocks, already, no_text = _batch_blocks(tickers)
 
     if already:
         print(f"Hoppar över (redan bedömda): {sorted(already)}")
@@ -849,9 +872,7 @@ def batch_prompt(tickers: List[str], out_path: Optional[str] = None) -> None:
         print("Inget att skriva – alla angivna tickers hoppades över.")
         return
 
-    footer = ("\n\n=== SLUT PÅ BOLAG ===\nSvara nu med EN giltig JSON-lista, en post per "
-              "bolag ovan i SAMMA ORDNING, inget annat (ingen prosa, inga kodstaket).")
-    full = _batch_system_prompt() + "\n\n" + "\n\n".join(blocks) + footer
+    full = _batch_system_prompt() + "\n\n" + "\n\n".join(b for _, b in blocks) + _BATCH_FOOTER
 
     out = Path(out_path) if out_path else Path(config.anchor("cache")) / "quality_batch_prompt.txt"
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -860,6 +881,58 @@ def batch_prompt(tickers: List[str], out_path: Optional[str] = None) -> None:
     print("Klistra in HELA filens innehåll (eller ladda upp filen) som EN fråga i en "
           "AI-chatt med stort kontextfönster (t.ex. Gemini). Importera svaret med:\n"
           f"  python -m altdata.quality_screener batch_import  (klistra JSON-listan, Ctrl-D)\n"
+          f"  python -m altdata.quality_screener batch_import <fil-med-svaret>")
+
+
+def batch_prompt_chunks(tickers: List[str], chunk_size: int = 10, out_zip: Optional[str] = None) -> None:
+    """Som batch_prompt, men delar upp i FLERA mindre, SJÄLVSTÄNDIGA filer
+    (chunk_size bolag vardera, default 10) och paketerar dem i en zip.
+    Byggd som svar på ett verkligt fel: en enda 78-bolagsbatch fick Gemini
+    att tyst trunkera svaret till 19 bolag (en giltig men ofullständig
+    JSON-lista, inget felmeddelande) – mindre, oberoende batchar är mycket
+    svårare för en AI att av misstag trunkera eller tappa bort delar av.
+
+    Exkluderingen (redan bedömda/ingen MFN-text) körs EN gång över HELA
+    listan innan uppdelningen, inte per chunk – annars hade samma uteslutna
+    ticker kunnat dyka upp i flera chunkars "hoppar över"-utskrift.
+    Zip-arkivet innehåller en manifest.txt som visar vilka tickers som
+    hamnade i vilken fil, till hjälp när du skickar/importerar chunk för
+    chunk.
+
+        python -m altdata.quality_screener batch_prompt_chunks ABB.ST,ALFA.ST,...
+        python -m altdata.quality_screener batch_prompt_chunks ABB.ST,... 10 batches.zip
+    """
+    import zipfile
+
+    blocks, already, no_text = _batch_blocks(tickers)
+
+    if already:
+        print(f"Hoppar över (redan bedömda): {sorted(already)}")
+    if no_text:
+        print(f"Hoppar över (ingen cachad MFN-text – kör mfn_fetch först): {sorted(no_text)}")
+    if not blocks:
+        print("Inget att skriva – alla angivna tickers hoppades över.")
+        return
+
+    chunks = [blocks[i:i + chunk_size] for i in range(0, len(blocks), chunk_size)]
+    n_digits = len(str(len(chunks)))
+
+    out = Path(out_zip) if out_zip else Path(config.anchor("cache")) / "quality_batch_prompts.zip"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    manifest_lines = [f"{len(blocks)} bolag i {len(chunks)} filer (chunk_size={chunk_size})\n"]
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
+        for i, chunk in enumerate(chunks, start=1):
+            fname = f"batch_{i:0{n_digits}d}_of_{len(chunks):0{n_digits}d}.txt"
+            full = (_batch_system_prompt() + "\n\n" + "\n\n".join(b for _, b in chunk)
+                    + _BATCH_FOOTER)
+            zf.writestr(fname, full)
+            tickers_in_chunk = [t for t, _ in chunk]
+            manifest_lines.append(f"{fname}: {tickers_in_chunk}")
+        zf.writestr("manifest.txt", "\n".join(manifest_lines))
+
+    print(f"{len(blocks)} bolag skrivna i {len(chunks)} filer ({chunk_size} bolag/fil) -> {out}")
+    print("Packa upp zip:en, klistra/ladda upp EN fil i taget i en AI-chatt (t.ex. Gemini). "
+          "Importera varje svar för sig med:\n"
           f"  python -m altdata.quality_screener batch_import <fil-med-svaret>")
 
 
@@ -946,6 +1019,10 @@ def main():
         manual_import(sys.argv[2])
     elif cmd == "batch_prompt" and len(sys.argv) > 2:
         batch_prompt(sys.argv[2].split(","), sys.argv[3] if len(sys.argv) > 3 else None)
+    elif cmd == "batch_prompt_chunks" and len(sys.argv) > 2:
+        chunk_size = int(sys.argv[3]) if len(sys.argv) > 3 else 10
+        batch_prompt_chunks(sys.argv[2].split(","), chunk_size,
+                            sys.argv[4] if len(sys.argv) > 4 else None)
     elif cmd == "batch_import":
         batch_import(sys.argv[2] if len(sys.argv) > 2 else None)
     else:
