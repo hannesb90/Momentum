@@ -2680,6 +2680,36 @@ def _tech_signal(close):
             "note": f"{'under' if below else 'över'} 40v-MA · 13v {mom13:+.1%} · 26v {mom26:+.1%}"}
 
 
+def _avanza_weekly_close(ticker):
+    """Reservkälla för exitscan() när Yahoo (fetch_weekly_data) saknar/har
+    hål i täckningen – samma nischade utländska UCITS-ETF:er
+    (WisdomTree/Global X/HANetf m.fl.) som fetch_holding_quotes() redan
+    löste för portföljvärdet, se den funktionens docstring. Matchar EXAKT
+    tickerSymbol (gissar aldrig första sökträffen).
+
+    Returnerar en pandas Close-serie i INSTRUMENTETS EGEN valuta – omvandlas
+    INTE till SEK. exitscans mått (pris/40v-MA, pris N veckor tillbaka) är
+    RATIOS och därför valuta-oberoende så länge FX inte rör sig kraftigt
+    inom fönstret – till skillnad från portföljvärdet, där SEK är
+    nödvändigt, behövs ingen växelkurs här."""
+    import altdata.avanza as av
+    base = ticker.split(".")[0].replace("-", " ")
+    try:
+        hits = av.search(base).get("hits") or []
+    except Exception:  # noqa: BLE001
+        return None
+    hit = next((h for h in hits if str(h.get("tickerSymbol") or "").upper() == base.upper()), None)
+    if not hit or not hit.get("orderBookId"):
+        return None
+    try:
+        df = av.fetch_chart_ohlcv(str(hit["orderBookId"]), "five_years")
+    except Exception:  # noqa: BLE001
+        return None
+    if df is None or df.empty:
+        return None
+    return df["Close"]
+
+
 def exitscan():
     """Skannar innehaven: flaggar RÖTT ('end this now') när sektorn är svag OCH kursen
     tekniskt brutet, GULT när en av dem slår till. Skriver results/exit_signals.json.
@@ -2708,6 +2738,19 @@ def exitscan():
                       if d is not None and not d["Close"].dropna().empty}
         except Exception as e:  # noqa: BLE001
             print(f"[exitscan] kunde inte hämta priser: {e} (kör på Pi:n)")
+        # Avanza-reserv för tickers Yahoo missar helt (samma nischade
+        # utländska UCITS-ETF:er som fetch_holding_quotes() löste för
+        # portföljvärdet – Yahoo har hål i täckningen där).
+        missing = [t for t in tickers if t not in prices]
+        if missing:
+            found = []
+            for t in missing:
+                s = _safe(lambda t=t: _avanza_weekly_close(t), None, f"avanza-fallback {t}")
+                if s is not None and not s.dropna().empty:
+                    prices[t] = s
+                    found.append(t)
+            if found:
+                print(f"[exitscan] Avanza-reserv gav pris för {len(found)}/{len(missing)}: {', '.join(found)}")
     table, total = _sector_table()
     out = []
     for r, tk in resolved:
