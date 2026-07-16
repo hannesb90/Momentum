@@ -182,6 +182,25 @@ sudo systemctl start momentum-montrose-holdings.service
 journalctl -u momentum-montrose-holdings.service -f
 ```
 
+## 7a2. Nattlig watchlist-synk till Montrose (03:00)
+
+`momentum-watchlist.timer` kör `watchlist_sync.py` – speglar modellens
+topp-10 sammanvägda rankning + säljvaktens flaggade innehav som två
+Montrose-watchlists (`config.MONTROSE_WATCHLIST_TOP/_SELL`), så de syns
+direkt i mäklarappen. Rör ALDRIG en order (`create_trade_ticket` ingår inte
+i dess `--allowedTools`). Skriver om listorna helt varje körning (tar bort
+gamla poster, lägger till nya) – ackumulerar aldrig.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-watchlist.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-watchlist.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-watchlist.timer
+
+# Testköra direkt:
+cd /opt/momentum/momentum_ml && python watchlist_sync.py
+```
+
 ## 7b. Nattlig narrativ-rapport (PM/VD-ord + nyheter/social, 03:30)
 
 `momentum-insight.timer` kör `insight_report.py` – ren narrativ, ALDRIG en

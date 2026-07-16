@@ -655,6 +655,12 @@ MONTROSE_MCP_TIMEOUT_MS = 60000
 # st per headless-anrop (innehav prioriteras framför kandidater vid kapning).
 INSIGHT_BATCH_SIZE = 5
 INSIGHT_MAX_TICKERS = 20
+
+# ── Watchlist-synk (watchlist_sync.py, idé 7) – speglar modellens topplista +
+# säljvaktens flaggor som två Montrose-watchlists. Rör bara watchlists,
+# create_trade_ticket ingår ALDRIG i dess --allowedTools.
+MONTROSE_WATCHLIST_TOP = "Momentum - Topplista"
+MONTROSE_WATCHLIST_SELL = "Momentum - Säljvakt"
 # Aktiv rank-modell för "nästa köp" (köp-vakten). Väljer bara viktprofilen i
 # _unified_rank() – ALL underliggande data (kvalitet/kvant/value/momentum)
 # laddas alltid, så man kan växla fram och tillbaka utan omkörning. Sätts av
