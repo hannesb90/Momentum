@@ -1,0 +1,18 @@
+[Unit]
+Description=Momentum – månatlig förvaltarkommentar (syntes, ren narrativ)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+# Ett enda headless-anrop, INGA verktyg (bara textsyntes av redan beräknad
+# data - hink-drift, varningar, exit-alarm, säljvakt, Nästa köp-planen).
+Environment=PATH=/opt/momentum/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/momentum/venv/bin/python portfolio_commentary.py
+
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=10m

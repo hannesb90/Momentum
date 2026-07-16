@@ -206,6 +206,24 @@ sudo systemctl enable --now momentum-insight.timer
 cd /opt/momentum/momentum_ml && python insight_report.py --limit 4
 ```
 
+## 7c. Månatlig förvaltarkommentar (1:a i månaden, 04:00)
+
+`momentum-commentary.timer` kör `portfolio_commentary.py` – EN headless-
+körning, INGA verktyg (ren textsyntes av redan beräknad data: hink-drift,
+varningar, exit-alarm, säljvakt, Nästa köp-planen + insight_report.json).
+Skriver `results/portfolio_commentary.json`, visas överst på Bedömning-
+fliken.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-commentary.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-commentary.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-commentary.timer
+
+# Testköra direkt:
+cd /opt/momentum/momentum_ml && python portfolio_commentary.py
+```
+
 ## 8. Hälsokontroll på Pi:n
 
 ```bash

@@ -49,12 +49,20 @@ const ICONS = {
       <path d="M21 21l-4.3-4.3M8 11h6M11 8v6" />
     </>
   ),
+  assessment: (
+    <>
+      <path d="M9 3h6v4H9z" />
+      <path d="M7 5H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2" />
+      <path d="M8 12h8M8 16h5" />
+    </>
+  ),
 }
 
 const links = [
   { to: '/', label: 'Hem', icon: 'home' },
   { to: '/signaler', label: 'Signaler', icon: 'signals' },
   { to: '/innehav', label: 'Innehav', icon: 'holdings' },
+  { to: '/bedomning', label: 'Bedömning', icon: 'assessment' },
   { to: '/kvalitet', label: 'Kvalitet', icon: 'quality' },
   { to: '/marknad', label: 'Marknad', icon: 'sectors' },
   { to: '/analys', label: 'Analys', icon: 'analysis' },

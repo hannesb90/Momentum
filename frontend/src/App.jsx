@@ -10,6 +10,7 @@ import { QualityPage } from './pages/Quality'
 import { RotationPage } from './pages/Rotation'
 import { MarketPage } from './pages/Market'
 import { HoldingsPage } from './pages/Holdings'
+import { AssessmentPage } from './pages/Assessment'
 import { StockDetailPage } from './pages/StockDetail'
 import { ScannerPage } from './pages/Scanner'
 import { setApiSegment } from './api'
@@ -36,7 +37,7 @@ export default function App() {
   // Rotation (ETF-/marknadsvy – sektordatan är pinnad till bredaste segmentet).
   // På forskningsvyerna (Signaler/Kvalitet/Analys) styr den visat segment.
   const { pathname } = useLocation()
-  const showSegments = !['/', '/innehav', '/marknad', '/sektorer', '/rotation']
+  const showSegments = !['/', '/innehav', '/bedomning', '/marknad', '/sektorer', '/rotation']
     .some((p) => pathname === p || (p !== '/' && pathname.startsWith(p)))
 
   return (
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="/marknad" element={<MarketPage />} />
           <Route path="/kvalitet" element={<QualityPage />} />
           <Route path="/innehav" element={<HoldingsPage />} />
+          <Route path="/bedomning" element={<AssessmentPage />} />
           <Route path="/analys" element={<AnalysisPage />} />
           <Route path="/skanner" element={<ScannerPage />} />
           {/* Deep-link-vägar (nås via sub-flikar men behåller egna URL:er) */}

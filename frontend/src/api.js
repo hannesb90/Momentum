@@ -94,6 +94,9 @@ export const api = {
   universe: () => getJson('/universe'),   // sökbara värdepapper (sök/filtrera vid innehav)
   saveHoldings: (holdings, amount) => postJson('/holdings', { holdings, amount }),
   exitSignals: () => getJson('/exit-signals'),
+  // Bedömning-fliken: narrativ per bolag + månatlig förvaltarkommentar.
+  insight: () => getJson('/insight'),
+  commentary: () => getJson('/commentary'),
   caseChanges: () => getJson('/case-changes'),
   portfolioLog: () => getJson('/portfolio-log'),
   // "Nästa köp" (fyll-mot-mål) vs index – förberäknad på Pi:n (portfolio.py backtest).
