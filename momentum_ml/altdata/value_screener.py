@@ -95,6 +95,29 @@ def _to_msek(value, unit) -> Optional[float]:
     return v * factor
 
 
+def _effective_annualization_factor(row) -> float:
+    """annualization_factor(), men hoppar ÅRSUPPRÄKNINGEN för Avanza-källade
+    kvartalsrader. VERIFIERAT (Avanza Bank Holding/AZA.ST, currency_check
+    2026-07-16): Avanzas 'Q1'/'Q2'/'Q3'-märkta net_profit är redan RULLANDE
+    12 MÅNADER (TTM), inte ett enstaka kvartal – tre kvartal (Q1+Q2+Q3 2025)
+    summerade till 2,86x HELA kalenderårets nettoresultat, fysiskt omöjligt
+    för genuina enstaka kvartal (skulle ge ~1x, inte 2,86x). TTM-tolkningen
+    stämmer perfekt: siffrorna växer JÄMNT kvartal för kvartal (aldrig ett
+    hopp), precis vad TTM ger för ett stadigt växande bolag. Utan denna
+    gren blev ROE ~4x för hög för varje bolag vars senaste rapport kom från
+    Avanza (verkligt fall: Avanza Bank Holding visade 144 % "ROE" i appen,
+    den faktiska TTM-baserade siffran är ~36 %).
+
+    Text-källorna (MFN-PM/PDF-extraktion) ger äkta enstaka kvartal och ska
+    fortfarande årsuppräknas (×4/×2/×4/3, se annualization_factor) – bara
+    Avanza-ursprungna rader (pm_id 'avanza-...', se altdata/fund_merge.py:s
+    docstring om hur den prefixen sätts) är redan årstakt."""
+    from altdata.mfn_fundamentals import annualization_factor
+    if str(row.get("pm_id") or "").startswith("avanza-"):
+        return 1.0
+    return annualization_factor(row.get("period"))
+
+
 def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
     """Per ticker: senaste kända rapportrad + tillväxtkonsistens över de
     senaste (upp till 4) rapporterna vi faktiskt har.
@@ -158,8 +181,6 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
     df["published"] = pd.to_datetime(df["published"], errors="coerce", utc=True)
     df = df.dropna(subset=["ticker", "published"]).sort_values("published")
 
-    from altdata.mfn_fundamentals import annualization_factor
-
     out: Dict[str, dict] = {}
     for t, g in df.groupby("ticker"):
         g = g.sort_values("published")
@@ -179,7 +200,7 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
             np_i = _to_msek(r.get("net_profit"), r.get("net_profit_unit"))
             eq_i = _to_msek(r.get("equity"), r.get("equity_unit"))
             if np_i is not None and eq_i is not None and eq_i > 0:
-                roe_i = (np_i * annualization_factor(r.get("period"))) / eq_i
+                roe_i = (np_i * _effective_annualization_factor(r)) / eq_i
                 roe_flags.append(roe_i >= config.VALUE_ROE_GOOD)
         # KRAVLISTE-underlag (OT-stil) ur ALLT vi extraherat, över rapporterna:
         # EBIT-marginal + trend, EPS-trend, nettoskuld, operativt kassaflöde,
@@ -219,7 +240,7 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
             np_old = _to_msek(r.get("net_profit"), r.get("net_profit_unit"))
             if np_old is None:
                 continue
-            np_old_annual = np_old * annualization_factor(r.get("period"))
+            np_old_annual = np_old * _effective_annualization_factor(r)
             if np_old_annual <= 0:
                 continue
             dist = abs(age_days - target_days)
@@ -244,8 +265,6 @@ def _load_fundamentals(segment: Optional[str]) -> Dict[str, dict]:
 
 
 def _metrics(entry: dict, price: Optional[float]) -> dict:
-    from altdata.mfn_fundamentals import annualization_factor
-
     latest = entry["latest"]
     net_profit = _to_msek(latest.get("net_profit"), latest.get("net_profit_unit"))
     equity = _to_msek(latest.get("equity"), latest.get("equity_unit"))
@@ -263,7 +282,7 @@ def _metrics(entry: dict, price: Optional[float]) -> dict:
     # rapporttiteln (Q→x4, H1→x2, 9M→x4/3, Helår/okänd→x1 – okänd är
     # konservativt åt köpsidan). Balansposter (equity/liabilities) och
     # YoY-tillväxt (kvot av SAMMA period) skalas INTE.
-    factor = annualization_factor(latest.get("period"))
+    factor = _effective_annualization_factor(latest)
     np_annual = net_profit * factor if net_profit is not None else None
     da_annual = da * factor if da is not None else None
     # Capex (om extraherad): gör owner earnings ETT steg närmare Buffetts
