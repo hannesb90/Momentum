@@ -129,6 +129,18 @@ def sync(path=None):
     new_tickers = {r["ticker"] for r in rows if r.get("ticker")}
     old_tickers = set(existing_by_ticker)
     added, removed = new_tickers - old_tickers, old_tickers - new_tickers
+    # Broker-härledd per-andel-kurs i SEK direkt ur Montrose-värderingen
+    # (marketValue.accountCurrency / quantity, färdigväxlad med Montroses egen
+    # fxRate) – SKRIVS FÖRE save_holdings så dess interna fetch_holding_quotes
+    # hoppar över dem. Löser de utländska ETF:erna (VVSM.DE/IUSQ.DE m.fl.) som
+    # inte matchar Avanzas tickerSymbol och saknar Avanza-nåbart id/ISIN – se
+    # portfolio.save_holding_quotes(). Bara innehav med både antal och värde.
+    quote_map = {r["ticker"]: r["value"] / r["shares"]
+                 for r in rows
+                 if r.get("ticker") and r.get("shares") and r.get("value")}
+    if quote_map:
+        pf.save_holding_quotes(quote_map, merge=True)
+        print(f"[sync_montrose] {len(quote_map)} per-andel-kurser (SEK) ur Montrose-värdering")
     pf.save_holdings(rows)
     available, acct_total = _isk_cash(data)
     if available is not None:

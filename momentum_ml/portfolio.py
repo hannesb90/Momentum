@@ -284,17 +284,50 @@ def _latest_closes(include_quotes: bool = True) -> dict:
         if pp.exists():
             out.update(_latest_close_map(pp, "close"))   # sista giltiga per ticker
     if include_quotes:
-        qp = _results_dir() / "holdings_quotes.csv"
-        if qp.exists():
-            try:
-                for r in csv.DictReader(open(qp, encoding="utf-8")):
-                    tk = (r.get("ticker") or "").upper()
-                    v = _num(r.get("close_sek"))
-                    if tk and v:
-                        out.setdefault(tk, v)   # prices.csv vinner om båda finns
-            except Exception:  # noqa: BLE001
-                pass
+        for tk, v in _read_holding_quotes().items():
+            out.setdefault(tk, v)   # prices.csv vinner om båda finns
     return out
+
+
+def _read_holding_quotes() -> dict:
+    """{ticker: close_sek} ur holdings_quotes.csv (tom om filen saknas)."""
+    qp = _results_dir() / "holdings_quotes.csv"
+    out = {}
+    if qp.exists():
+        try:
+            for r in csv.DictReader(open(qp, encoding="utf-8")):
+                tk = (r.get("ticker") or "").upper()
+                v = _num(r.get("close_sek"))
+                if tk and v:
+                    out[tk] = v
+        except Exception:  # noqa: BLE001
+            pass
+    return out
+
+
+def save_holding_quotes(quote_map: dict, merge: bool = True) -> int:
+    """Skriv {ticker: close_sek} (redan i SEK) till holdings_quotes.csv.
+    merge=True BEVARAR befintliga rader och skriver bara över de tickers som
+    finns i quote_map – nödvändigt eftersom två källor skriver hit vid olika
+    tid: Montrose-synken (00:00, broker-härledd per-andel-kurs för ALLA
+    innehav, även utländska ETF:er) och nattpipelinens fetch_holding_quotes
+    (02:00, Avanza-kompletterat för det den kan lösa). Utan merge hade den
+    senare (02:00) klippt bort de förras rader för fonder den inte kan matcha
+    (VVSM.DE m.fl. – Montroses orderbookId ligger i en annan id-rymd än
+    Avanzas, verifierat 404, och Montrose exponerar inget ISIN)."""
+    existing = _read_holding_quotes() if merge else {}
+    for k, v in (quote_map or {}).items():
+        tk = (k or "").upper()
+        if tk and v:
+            existing[tk] = round(float(v), 4)
+    qp = _results_dir() / "holdings_quotes.csv"
+    qp.parent.mkdir(parents=True, exist_ok=True)
+    with open(qp, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["ticker", "close_sek"])
+        for tk, v in sorted(existing.items()):
+            w.writerow([tk, v])
+    return len(existing)
 
 
 def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
@@ -316,12 +349,28 @@ def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
     Matchas på exakt tickerSymbol (inte första träffen – VanEck Semiconductor
     gav t.ex. tre träffar: VVSM/SMH/SMHC). FX-omräkning till SEK görs
     fortfarande via yfinance (stora valutapar, inte en bristkälla här).
+
+    OBS de utländska ETF:erna (VVSM.DE/IUSQ.DE/…) matchar i praktiken INTE
+    Avanzas tickerSymbol och hoppas därför över här – de prissätts i stället
+    av Montrose-synken (sync_montrose_holdings.py → save_holding_quotes(),
+    broker-härledd per-andel-kurs). FÖRKASTADE alternativa uppslag (verifierat
+    2026-07-17): Montroses egna position-'orderbookId' ligger i en ANNAN
+    id-rymd än Avanzas (/_api/market-guide/stock/{montrose-id} gav 404), och
+    Montrose exponerar inget ISIN-fält (Avanza-sök på ISIN gav dessutom 0
+    träffar). Därav Montrose-värderingen som källa för just dessa, inte ett
+    Avanza-återuppslag. Denna funktion hoppar över tickers som redan står i
+    holdings_quotes.csv (skrivna av synken) – inga futila Avanza-anrop.
     """
     if tickers is None:
         rows = load_holdings(refresh=False)
         tickers = [(r.get("ticker") or "").upper() for r in rows]
     have = _latest_closes(include_quotes=False)
-    need = sorted({(t or "").upper() for t in tickers} - set(have) - {""})
+    # Redan Montrose-prissatta innehav (holdings_quotes.csv skrivet av synken)
+    # hoppas över – de utländska ETF:erna matchar ändå inte Avanzas
+    # tickerSymbol, och Montroses egen värdering är färskare/mer korrekt än
+    # en återhämtning. Sparar dessutom futila Avanza-anrop varje natt.
+    have_quotes = set(_read_holding_quotes())
+    need = sorted({(t or "").upper() for t in tickers} - set(have) - have_quotes - {""})
     if not need:
         return {}
     import time as _time
@@ -376,13 +425,9 @@ def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
             continue
         out[tk] = round(float(px) * rate, 4)
     if out:
-        qp = _results_dir() / "holdings_quotes.csv"
-        qp.parent.mkdir(parents=True, exist_ok=True)
-        with open(qp, "w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            w.writerow(["ticker", "close_sek"])
-            for tk, v in sorted(out.items()):
-                w.writerow([tk, v])
+        # merge=True: rör inte Montrose-synkens rader (skrivna 00:00) för
+        # innehav vi inte själva löste här.
+        save_holding_quotes(out, merge=True)
         print(f"[quotes] {len(out)}/{len(need)} kompletterande kurser sparade (SEK): "
               f"{', '.join(sorted(out))}")
     return out
