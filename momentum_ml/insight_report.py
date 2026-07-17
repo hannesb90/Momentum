@@ -1,7 +1,10 @@
 """
 insight_report.py – nattligt narrativt lager ovanpå redan befintlig data:
-senaste pressmeddelande/VD-ord, plus färska nyheter/social ton via
-WebSearch, för dina innehav + modellens topp-10 sammanvägda rankning.
+senaste pressmeddelande/VD-ord, riktiga daterade nyheter/analytikernoter
+via Avanzas /_api/market-guide/news/{id} (verifierat 2026-07-17 – MFN-PM +
+Finwire-telegram, se altdata/avanza.py), plus WebSearch som komplement för
+bredare kontext/ton, för dina innehav + modellens topp-10 sammanvägda
+rankning.
 
 REN NARRATIV, ALDRIG SIGNAL – dev-loggen (#18) visade redan att PM-/rapport-
 /VD-ton inte bär OOS-alfa, och social buzz är en dokumenterat brusig
@@ -46,6 +49,20 @@ def _mfn_latest(ticker, n=1):
              "text": str(it.get("text", ""))[:600]} for it in items]
 
 
+def _avanza_news(ticker, n=5):
+    """Riktiga, daterade nyheter/PM/analytikernoter direkt från Avanza
+    (altdata.avanza.news_for_ticker – verifierat 2026-07-17, MFN-
+    pressmeddelanden + Finwire-telegram, se avanza.py:s _NEWS_ENDPOINT_
+    CANDIDATES-kommentar). GRUNDDATA, inte gissning – headless-Claude ska
+    förklara/kontextualisera dessa, inte hitta på egna. Tom lista vid fel
+    (nätverk/ingen träff) – aldrig en krasch, bara mindre underlag."""
+    import altdata.avanza as av
+    try:
+        return av.news_for_ticker(ticker, limit=n)
+    except Exception:  # noqa: BLE001
+        return []
+
+
 def _universe():
     """Innehav + modellens topp-10 sammanvägda rankning, deduplicerat på
     ticker. Innehav vinner om ett bolag är med i båda (behåller held/cost)."""
@@ -75,7 +92,13 @@ def _universe():
     # Innehav prioriteras om universumet måste kapas (kostnadstak) – de är
     # dina riktiga pengar, kandidaterna bara idéer.
     ordered = sorted(out.values(), key=lambda e: not e.get("held"))
-    return ordered[:MAX_TICKERS]
+    capped = ordered[:MAX_TICKERS]
+    # Avanza-nyheter hämtas EFTER kapningen (live nätverksanrop, till
+    # skillnad från _mfn_latest()s lokala cache-läsning) – slösa aldrig
+    # anrop på bolag som ändå kapas bort.
+    for entry in capped:
+        entry["avanza_news"] = _avanza_news(entry["ticker"])
+    return capped
 
 
 def _context_block(e):
@@ -102,17 +125,27 @@ def _context_block(e):
             lines.append(f"Senaste PM ({pm['date']}): {pm['title']} – {pm['text']}")
     else:
         lines.append("Inget cachat pressmeddelande.")
+    if e.get("avanza_news"):
+        lines.append("Färska nyheter/PM/analytikernoter (Avanza, VERIFIERADE – inte att hitta på egna):")
+        for n in e["avanza_news"]:
+            src = f"{n.get('category') or ''}/{n.get('source') or ''}".strip("/")
+            lines.append(f"  [{n.get('date')}] ({src}) {n.get('headline')} – {n.get('intro')}")
+    else:
+        lines.append("Inga Avanza-nyheter hittade (nätverksfel eller ingen träff).")
     return "\n".join(lines)
 
 
 _PROMPT_HEAD = """Du är en NEUTRAL, sansad investerarassistent. För VARJE bolag nedan:
 1. Läs underlaget (redan känd data – förklara det, citera det inte rått).
-2. Använd WebSearch för att hitta NYA nyheter (senaste ~2-3 veckorna).
-   Prioritera svenska finansmedier – sök gärna explicit t.ex.
-   "site:efn.se <bolag>", "site:omni.se/ekonomi <bolag>", "<bolag> aktie
-   nyheter" – innan en bredare sökning. Ta med en allmän känsla av
-   analytiker-/marknadston om den framgår av vad du hittar (gissa aldrig
-   fram en "social ton" du inte faktiskt sett i sökresultaten).
+2. Basera dig FRÄMST på de "Färska nyheter/PM/analytikernoter"-rader som
+   redan finns i underlaget (riktiga, daterade MFN-pressmeddelanden och
+   Finwire-analytikernoter från Avanza – GRUNDDATA, inte att gissa på).
+   Använd WebSearch bara som KOMPLEMENT: bredare kontext, reaktion/tolkning
+   av det som redan står där, eller om raden ovan saknas/är tunn helt.
+   Prioritera svenska finansmedier i sökningen – sök gärna explicit t.ex.
+   "site:efn.se <bolag>", "site:omni.se/ekonomi <bolag>" – innan en bredare
+   sökning. Ta med en allmän känsla av analytiker-/marknadston om den
+   framgår (gissa aldrig fram en "social ton" du inte faktiskt sett).
 3. Skriv 2-4 meningar på SVENSKA: vad har hänt, är det materiellt för caset,
    vad säger nyheterna/tonen, hur ser det ut mot modellens siffror.
 

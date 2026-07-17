@@ -57,7 +57,7 @@ Körs på Pi:n (nät):
     python -m altdata.avanza list_probe2 VOLV-B.ST   # ...annat chart-testbolag (default AAK.ST)
     python -m altdata.avanza universe_remove T1,T2   # dry-run: ta bort tickers ur sweden_universe.csv (lägg till 'write' för att faktiskt skriva)
     python -m altdata.avanza probe_etf "VanEck Semiconductor"  # utländsk UCITS-ETF: söktyp + funkar prisdiagrammet?
-    python -m altdata.avanza probe_news "Avanza"          # finns nyheter/PM via Avanza? (overifierat, probe först)
+    python -m altdata.avanza probe_news "Avanza"          # dumpa Avanzas /_api/market-guide/news/{id} rått (get_news()/news_for_ticker() i koden är VERIFIERADE och används i insight_report.py/portfolio_commentary.py)
 
 Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
 Group): altdata/avanza_overrides.csv (ticker,query,comment) – valfri fil,
@@ -1456,6 +1456,51 @@ _NEWS_ENDPOINT_CANDIDATES = (
     "/_api/market-guide/stock/{id}/press-releases",
     "/_api/market-guide/stock/{id}/corporate-actions",
 )
+
+
+def get_news(order_book_id: str, limit: int = 8) -> list:
+    """Nyheter/PM/analytikernoter för ett bolag via /_api/market-guide/
+    news/{id} (VERIFIERAT 2026-07-17 mot riktig nätverksbegäran ur
+    webbläsarens DevTools + skarp probe_news-körning, se kommentaren vid
+    _NEWS_ENDPOINT_CANDIDATES). Riktiga MFN-pressmeddelanden och Finwire-
+    telegram (t.ex. riktkursändringar), redan klassificerade av Avanza –
+    ingen egen tolkning/gissning av källa eller typ. Nyast först (Avanzas
+    egen ordning, ej omsorterad här)."""
+    data = _get(f"/_api/market-guide/news/{order_book_id}")
+    arts = data.get("articles") or []
+    out = []
+    for a in arts[:limit]:
+        out.append({
+            "date": str(a.get("timePublished") or "")[:10],
+            "headline": a.get("headline") or "",
+            "category": a.get("category") or a.get("articleType") or "",
+            "source": a.get("newsSource") or "",
+            "intro": a.get("intro") or "",
+            "link": a.get("fullArticleLink") or "",
+        })
+    return out
+
+
+def news_for_ticker(ticker: str, limit: int = 8) -> list:
+    """Bekvämlighets-wrapper för anropare som bara har VÅR ticker (t.ex.
+    AZA.ST) – slår upp orderBookId med EXAKT SAMMA sök+matchningsmönster
+    som portfolio.py:s fetch_holding_quotes() (exakt tickerSymbol-match,
+    gissar aldrig första sökträffen) och hämtar get_news(). Tom lista vid
+    sök-/nätverksfel eller ingen exakt träff – aldrig en krasch, bara mindre
+    underlag (samma disciplin som _mfn_latest() i insight_report.py)."""
+    base = ticker.split(".")[0].replace("-", " ")
+    try:
+        hits = search(base).get("hits") or []
+    except Exception:  # noqa: BLE001
+        return []
+    hit = next((h for h in hits if str(h.get("tickerSymbol") or "").upper() == base.upper()), None)
+    if not hit or not hit.get("orderBookId"):
+        return []
+    time.sleep(_PAUSE_S)   # artig paus mellan sök- och nyhets-anropet
+    try:
+        return get_news(str(hit["orderBookId"]), limit=limit)
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def probe_news(ticker_or_name: str) -> None:
