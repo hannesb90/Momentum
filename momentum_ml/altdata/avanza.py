@@ -1432,18 +1432,21 @@ def probe_etf(name_or_ticker: str) -> None:
         print(f"  FEL (kan vara väntat om {iid} inte är en 'stock'-typ id): {e}")
 
 
-# FÖRKASTAT SPÅR (verifierat 2026-07-16, probe_news mot AZA.ST/orderBookId
-# 5361): ingen av kandidaterna nedan gav en riktig nyttolast - sex gav 404,
-# tre fick anslutningen aktivt stängd (RemoteDisconnected, ett annat sätt
-# att säga "ingen sådan endpoint" på). Huvud-endpointen /_api/market-guide/
-# stock/{id} har heller inga nyhets-/PM-liknande fält bland sina toppnivå-
-# nycklar (orderbookId/name/isin/instrumentId/sectors/tradable/listing/
-# marketPlace/historicalClosingPrices/keyIndicators/quote/type). SLUTSATS:
-# Avanza exponerar ingen publik nyhets-/pressmeddelande-källa vi kan hitta -
-# håll er till WebSearch (redan styrd mot Omni/EFN i insight_report.py/
-# portfolio_commentary.py). Testa INTE om utan ett konkret nytt ledtråd
-# (t.ex. ett verifierat community-projekt som dokumenterar en riktig path).
+# SPÅR ÅTERUPPTAGET (2026-07-17): de 8 gissade kandidaterna nedan gav
+# fortfarande inget (404/RemoteDisconnected, se historiken i git-loggen för
+# den tidigare FÖRKASTAT SPÅR-kommentaren) - men ett KONKRET nytt ledtråd
+# kom in: en riktig nätverksbegäran fångad direkt i webbläsarens DevTools
+# när "Nyheter & Forum"-fliken på en aktiesida laddades gav
+# /_api/market-guide/news/{id} (id skiljer sig per värdepapper, dvs.
+# sannolikt samma orderBookId som /_api/market-guide/stock/{id} redan
+# använder - OVERIFIERAT ännu om det är exakt samma id-rymd). Detta är ett
+# ANNAT mönster än alla tidigare gissningar (ingen av dem hade "news" direkt
+# under market-guide/ som syskon till stock/, bara under stock/{id}/...).
+# Tillagd som förstahandskandidat - kör probe_news igen och verifiera
+# nyttolasten (riktiga fält som titel/datum/rubrik, inte bara 200 OK) innan
+# den används i produktion.
 _NEWS_ENDPOINT_CANDIDATES = (
+    "/_api/market-guide/news/{id}",
     "/_api/market-guide/stock/{id}/news",
     "/_api/press-release/list/{id}",
     "/_api/press-release/{id}",
@@ -1458,10 +1461,11 @@ _NEWS_ENDPOINT_CANDIDATES = (
 def probe_news(ticker_or_name: str) -> None:
     """SCHEMA-UPPTÄCKANDE (samma disciplin som probe_etf()/list_probe()):
     har Avanza en egen nyhets-/pressmeddelande-endpoint vi kan använda i
-    stället för/utöver WebSearch mot Omni/EFN? FÖRKASTAT SPÅR (se kommentaren
-    ovanför _NEWS_ENDPOINT_CANDIDATES) – ingen av kandidaterna gav en riktig
-    nyttolast. Kvar som dokumentation/för ett framtida nytt ledtråd, inte
-    något att köra om utan anledning. Två spår som provades:
+    stället för/utöver WebSearch mot Omni/EFN? Se kommentaren ovanför
+    _NEWS_ENDPOINT_CANDIDATES – ett konkret nytt ledtråd (nätverksbegäran
+    fångad i DevTools) pekar på /_api/market-guide/news/{id}, nu förstahands-
+    kandidat men ännu inte verifierad mot en riktig nyttolast här. Två spår
+    som provas:
       1. Dumpar ALLA toppnivå-nycklar i /_api/market-guide/stock/{id} (redan
          en bekräftad endpoint) – letar efter ett fält vi missat (t.ex.
          'news'/'pressReleases'/'corporateActions') bland dem vi hittills
