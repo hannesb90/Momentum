@@ -1,10 +1,11 @@
 [Unit]
-Description=Kör momentum-commentary.service varje måndag
+Description=Kör momentum-commentary.service varje kväll
 
 [Timer]
-# Måndag kl 04:00 - EFTER både nattträningen (02:00) och den narrativa
-# rapporten (03:30), så veckans kommentar kan citera båda.
-OnCalendar=Mon *-*-* 04:00:00
+# Dagligen 23:00 - EFTER både nattträningen (02:00) och den narrativa
+# rapporten (03:30) SAMMA DAG (18-21 timmar tidigare), så kommentaren
+# alltid kan citera färska hink-/exit-/insight-siffror från morgonens körning.
+OnCalendar=*-*-* 23:00:00
 Persistent=true
 RandomizedDelaySec=300
 
