@@ -180,7 +180,7 @@ def score_company(ticker: str, name: str, client=None) -> dict:
     if not ctx:
         return None
     prompt = f"{_SYSTEM}\n\nBOLAG: {name} ({ticker})\n\nUNDERLAG (MFN):\n{ctx}"
-    parsed = ch.run(prompt, "", timeout=120)
+    parsed = ch.run(prompt, "", timeout=120, model=config.CLAUDE_MODEL_FAST)
     if "error" in parsed:
         print(f"[quality] {ticker}: {parsed['error']}")
         return None

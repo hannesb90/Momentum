@@ -30,20 +30,25 @@ def extract_json(text: str) -> dict:
         return {"error": f"trasigt JSON-svar från claude: {text[:200]}"}
 
 
-def run(prompt: str, allowed_tools: str, timeout: int = 120) -> dict:
+def run(prompt: str, allowed_tools: str, timeout: int = 120, model: str = None) -> dict:
     """Kör `claude -p`, låst till allowed_tools (kommaseparerad
     --allowedTools-lista, t.ex. "WebSearch" eller "mcp__montrose__..."),
-    permission-mode dontAsk (nekar allt utanför listan). Returnerar det
-    tolkade JSON-svaret, eller {"error": ...} vid problem (process, timeout,
-    trasigt svar)."""
+    permission-mode dontAsk (nekar allt utanför listan). model: None ->
+    config.CLAUDE_MODEL_DEFAULT ("sonnet") – ange config.CLAUDE_MODEL_FAST
+    ("haiku") explicit för högvolyms enkel klassificering (se
+    quality_screener.py), aldrig för trade-ticket-/watchlist-anrop där
+    verktygsprecision spelar roll. Returnerar det tolkade JSON-svaret,
+    eller {"error": ...} vid problem (process, timeout, trasigt svar)."""
     claude_bin = getattr(config, "CLAUDE_BIN", "claude")
+    model = model or getattr(config, "CLAUDE_MODEL_DEFAULT", "sonnet")
     env = {**os.environ, "MCP_TIMEOUT": str(getattr(config, "MONTROSE_MCP_TIMEOUT_MS", 60000))}
     try:
         proc = subprocess.run(
             [claude_bin, "-p", prompt,
              "--output-format", "json",
              "--allowedTools", allowed_tools,
-             "--permission-mode", "dontAsk"],
+             "--permission-mode", "dontAsk",
+             "--model", model],
             capture_output=True, text=True, timeout=timeout, env=env,
         )
     except FileNotFoundError:
