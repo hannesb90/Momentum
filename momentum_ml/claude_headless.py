@@ -76,4 +76,20 @@ def run(prompt: str, allowed_tools: str, timeout: int = 120, model: str = None) 
         result_text = envelope.get("result", proc.stdout)
     except json.JSONDecodeError:
         result_text = proc.stdout
+    # BUGG (fixad, verkligt fall: sync_montrose_holdings.py efter att den
+    # LOKALA montrose-registreringen tappats – bara den kontobundna claude.ai-
+    # connectorn fanns kvar, som dontAsk inte kan använda). Då lyckas processen
+    # (kod 0) men modellen svarar i klartext att verktyget nekades – utan JSON,
+    # så det landar som ett obegripligt "inget JSON-svar". Känn igen mönstret
+    # och peka på den faktiska åtgärden istället: registrera om MCP-servern
+    # lokalt (`claude mcp add … && claude mcp login <server>`).
+    low = (result_text or "").lower()
+    if allowed_tools and "mcp__" in allowed_tools and any(
+            w in low for w in ("nekades behörighet", "don't ask", "dontask",
+                               "denied permission", "not authorized", "icke-interaktiva")):
+        server = allowed_tools.split("mcp__", 1)[1].split("__", 1)[0] if "mcp__" in allowed_tools else "<server>"
+        return {"error": f"MCP-verktyg nekades i dontAsk-läge – den LOKALA '{server}'-"
+                f"registreringen saknas troligen (bara kontobunden claude.ai-connector "
+                f"funkar inte headless). Kör: claude mcp add --transport http {server} "
+                f"<url> && claude mcp login {server}"}
     return extract_json(result_text)
