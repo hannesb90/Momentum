@@ -51,7 +51,21 @@ def run(prompt: str, allowed_tools: str, timeout: int = 120) -> dict:
     except subprocess.TimeoutExpired:
         return {"error": f"claude svarade inte inom {timeout}s"}
     if proc.returncode != 0:
-        return {"error": f"claude avslutade med fel: {(proc.stderr or '').strip()[:300]}"}
+        # BUGG (fixad, verkligt fall: 528-bolags quality_screener-körning som
+        # tog slut på prenumerationens användningskvot mitt i): stderr är ofta
+        # TOMT vid en kvot-/rate-limit-avvisning – felmeddelandet blev då
+        # obegripligt kort ("claude avslutade med fel: "). Faller tillbaka på
+        # stdout (kan ha en JSON-envelope med orsaken) och flaggar uttryckligen
+        # om texten ser ut som en användningsgräns, så orsaken syns direkt i
+        # loggen istället för att behöva grävas fram i efterhand.
+        detail = (proc.stderr or "").strip() or (proc.stdout or "").strip()
+        detail = detail[:300]
+        low = detail.lower()
+        if not detail or any(w in low for w in ("usage limit", "rate limit", "quota", "5-hour", "kvot")):
+            hint = " (ser ut som prenumerationens användningsgräns – vänta och kör om)" if not detail else \
+                   " (användningsgräns)"
+            return {"error": f"claude avslutade med fel (kod {proc.returncode}){hint}: {detail or 'inget felmeddelande'}"}
+        return {"error": f"claude avslutade med fel: {detail}"}
     try:
         envelope = json.loads(proc.stdout)
         result_text = envelope.get("result", proc.stdout)
