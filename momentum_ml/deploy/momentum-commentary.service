@@ -1,5 +1,5 @@
 [Unit]
-Description=Momentum – månatlig förvaltarkommentar (syntes, ren narrativ)
+Description=Momentum – daglig förvaltarkommentar (syntes, ren narrativ)
 After=network-online.target
 Wants=network-online.target
 
@@ -7,8 +7,10 @@ Wants=network-online.target
 Type=oneshot
 User=hannesb
 WorkingDirectory=/opt/momentum/momentum_ml
-# Ett enda headless-anrop, INGA verktyg (bara textsyntes av redan beräknad
-# data - hink-drift, varningar, exit-alarm, säljvakt, Nästa köp-planen).
+# Ett enda headless-anrop, låst till WebSearch (inga andra verktyg - ingen
+# Montrose, ingen filåtkomst) - textsyntes av redan beräknad data (hink-
+# drift, varningar, exit-alarm, säljvakt, Nästa köp-planen) plus research-
+# baserad sektor-/bolagsförklaring, se portfolio_commentary.py.
 Environment=PATH=/opt/momentum/venv/bin:/usr/local/bin:/usr/bin:/bin
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/opt/momentum/venv/bin/python portfolio_commentary.py

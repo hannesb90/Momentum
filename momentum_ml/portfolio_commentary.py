@@ -1,5 +1,5 @@
 """
-portfolio_commentary.py – en veckovis, läsvärd "förvaltarkommentar" som
+portfolio_commentary.py – en daglig, läsvärd "förvaltarkommentar" som
 sammanfattar din portfölj i klartext PER INNEHAV (vikt, vinst/förlust,
 kvalitets-/kvant-/momentum-betyg, fundamenta-flaggor, sektor, kommande
 rapportdatum, färsk nyhets-/PM-sammanfattning) OCH PER SEKTOR (momentum
@@ -14,8 +14,9 @@ SIGNAL – gäller fortfarande: kommentaren får resonera om huruvida en rörels
 ser tillfällig/strukturell ut, men ska ALDRIG skriva en ny köp/sälj-instruktion
 utöver vad Nästa köp-planen/säljvakten redan säger.
 
-Körs veckovis (måndagar), inte nattligt – det här är en syntes över tid,
-inte en daglig uppdatering.
+Körs dagligen kl 23:00 (momentum-commentary.timer), EFTER morgonens
+nattträning/watchlist-synk/insight-rapport samma kalenderdag – kommentaren
+citerar alltid färska siffror, inte gårdagens.
 
     python portfolio_commentary.py
 """
