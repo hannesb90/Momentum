@@ -674,6 +674,21 @@ CLAUDE_BIN = _os.environ.get("CLAUDE_BIN", _os.path.expanduser("~/.local/bin/cla
 # inom Claude Codes default MCP-timeout (30s) i en färsk headless-process.
 MONTROSE_MCP_TIMEOUT_MS = 60000
 
+# ── Modellval för headless Claude-anrop (claude_headless.py) – tidigare
+# opinnat (körde bara CLI:ts kontodefault för alla scripts), vilket gjorde
+# quality_screener.py:s 528 ENSKILDA anrop onödigt kvot-dyra (två avbrutna
+# körningar pga användningsgräns mitt i, se claude_headless.py:s
+# felhantering). "sonnet"/"haiku" är CLI:ts egna alias för senaste versionen
+# i respektive familj (inte en låst versionssträng) – följer automatiskt med
+# om Anthropic släpper en ny Sonnet/Haiku utan att den här filen behöver
+# ändras. FAST = billig/snabb, för enkel klassificering i hög volym
+# (quality_screener). DEFAULT = starkare, för narrativ text/WebSearch-
+# resonemang (insight_report/portfolio_commentary) och verktygsanrop där
+# precision spelar roll (montrose_ticket/watchlist_sync – riktiga
+# trade-ticket-/watchlist-anrop, ska INTE nedgraderas för att spara kvot).
+CLAUDE_MODEL_FAST = _os.environ.get("CLAUDE_MODEL_FAST", "haiku")
+CLAUDE_MODEL_DEFAULT = _os.environ.get("CLAUDE_MODEL_DEFAULT", "sonnet")
+
 # ── Nattlig narrativ-rapport (insight_report.py) – REN NARRATIV, ALDRIG SIGNAL,
 # se dev-loggens #18 (PM-/rapport-/VD-ton bär ingen OOS-alfa) och §10 (social
 # buzz = brusig återvändsgränd). Kostnadstak: max MAX_TICKERS bolag, BATCH_SIZE
