@@ -57,6 +57,7 @@ Körs på Pi:n (nät):
     python -m altdata.avanza list_probe2 VOLV-B.ST   # ...annat chart-testbolag (default AAK.ST)
     python -m altdata.avanza universe_remove T1,T2   # dry-run: ta bort tickers ur sweden_universe.csv (lägg till 'write' för att faktiskt skriva)
     python -m altdata.avanza probe_etf "VanEck Semiconductor"  # utländsk UCITS-ETF: söktyp + funkar prisdiagrammet?
+    python -m altdata.avanza probe_news "Avanza"          # finns nyheter/PM via Avanza? (overifierat, probe först)
 
 Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
 Group): altdata/avanza_overrides.csv (ticker,query,comment) – valfri fil,
@@ -1431,6 +1432,79 @@ def probe_etf(name_or_ticker: str) -> None:
         print(f"  FEL (kan vara väntat om {iid} inte är en 'stock'-typ id): {e}")
 
 
+_NEWS_ENDPOINT_CANDIDATES = (
+    "/_api/market-guide/stock/{id}/news",
+    "/_api/press-release/list/{id}",
+    "/_api/press-release/{id}",
+    "/_api/content/press-release/{id}",
+    "/_api/newsfeed/{id}",
+    "/_cqbe/press-release/list/{id}",
+    "/_api/market-guide/stock/{id}/press-releases",
+    "/_api/market-guide/stock/{id}/corporate-actions",
+)
+
+
+def probe_news(ticker_or_name: str) -> None:
+    """SCHEMA-UPPTÄCKANDE (samma disciplin som probe_etf()/list_probe()):
+    har Avanza en egen nyhets-/pressmeddelande-endpoint vi kan använda i
+    stället för/utöver WebSearch mot Omni/EFN? OVERIFIERAT – ingen av
+    kandidaterna nedan är bekräftade mot avanza-mcp-källkoden (till skillnad
+    från /_api/market-guide/stock/{id} och /_api/price-chart/stock/{id},
+    som ÄR det). Två spår:
+      1. Dumpar ALLA toppnivå-nycklar i /_api/market-guide/stock/{id} (redan
+         en bekräftad endpoint) – letar efter ett fält vi missat (t.ex.
+         'news'/'pressReleases'/'corporateActions') bland dem vi hittills
+         bara cherry-plockat specifika nycklar ur.
+      2. Provar en handfull GISSADE dedikerade endpoints (_NEWS_ENDPOINT_
+         CANDIDATES) – rapporterar status/nyckelnamn per kandidat, INGET
+         antas fungera bara för att den svarar 200 (samma lärdom som
+         list_probe()s '_mobile/market/stocks'-falska-positiv: en 200:a kan
+         ändå vara Avanzas SPA-appskal, inte riktig nyttolast – kolla
+         Content-Type/nyckelnamnen i utskriften, inte bara statuskoden).
+
+        python -m altdata.avanza probe_news "Avanza"
+        python -m altdata.avanza probe_news "Swedbank A"
+    """
+    q = _clean_query(ticker_or_name)
+    print(f"[probe_news] söker '{q}' (från '{ticker_or_name}')")
+    hits = (search(q).get("hits") or [])
+    hit = next((h for h in hits if h.get("type") in ("STOCK", "EXCHANGE_TRADED_FUND")), None)
+    if not hit or not hit.get("orderBookId"):
+        print("[probe_news] ingen användbar träff – kolla stavningen eller kör 'search' direkt.")
+        return
+    iid = str(hit["orderBookId"])
+    print(f"[probe_news] vald träff: {hit.get('title')!r} (type={hit.get('type')}, id={iid})\n")
+
+    time.sleep(_PAUSE_S)
+    print(f"[probe_news] === 1. Fullständiga nycklar i /_api/market-guide/stock/{iid} ===")
+    try:
+        info = _get(f"/_api/market-guide/stock/{iid}")
+        print(f"  toppnivå-nycklar: {list(info.keys())}")
+        news_like = [k for k in info if any(w in k.lower() for w in
+                    ("news", "press", "pm", "release", "announce", "corporate"))]
+        if news_like:
+            print(f"  MÖJLIGA nyhets-fält: {news_like}")
+            for k in news_like:
+                print(f"    {k}: {json.dumps(info[k], ensure_ascii=False)[:500]}")
+        else:
+            print("  Inga nyckelnamn som liknar nyheter/PM bland toppnivå-fälten.")
+    except Exception as e:  # noqa: BLE001
+        print(f"  FEL: {e}")
+
+    print(f"\n[probe_news] === 2. Gissade dedikerade endpoints (OVERIFIERADE) ===")
+    for tmpl in _NEWS_ENDPOINT_CANDIDATES:
+        path = tmpl.format(id=iid)
+        time.sleep(_PAUSE_S)
+        try:
+            data = _get(path)
+            keys = list(data.keys()) if isinstance(data, dict) else f"lista, {len(data)} poster"
+            print(f"  {path:<55} 200  nycklar/form: {keys}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  {path:<55} FEL: {e}")
+    print("\n[probe_news] Klistra in HELA utskriften – avgör tillsammans om något av "
+          "detta är en riktig nyttolast (inte bara Avanzas SPA-appskal) innan vi bygger något på det.")
+
+
 def universe_remove(tickers: list, dry_run: bool = True) -> None:
     """Tar bort angivna tickers HELT ur BÅDA universum-filerna (vardera
     tickern tas bort ur den fil den faktiskt finns i) – det avsiktliga,
@@ -1512,6 +1586,11 @@ def main():
             print("Ange bolagsnamn: python -m altdata.avanza probe_etf \"VanEck Semiconductor\"")
             return
         probe_etf(sys.argv[2])
+    elif cmd == "probe_news":
+        if len(sys.argv) < 3:
+            print("Ange bolagsnamn: python -m altdata.avanza probe_news \"Avanza\"")
+            return
+        probe_news(sys.argv[2])
     elif cmd == "universe_remove":
         if len(sys.argv) < 3:
             print("Ange kommaseparerade tickers: python -m altdata.avanza universe_remove "
