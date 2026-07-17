@@ -42,31 +42,7 @@ from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
-from altdata.sentiment import _client   # återanvänd nyckel-hanteringen
-
-
-def _parse(msg) -> dict:
-    """Robust JSON-parse för KVALITETS-svaret. (Återanvänd INTE sentiment._parse_content –
-    den kräver fälten sentiment/materiality som detta schema saknar → allt kastades.)"""
-    for block in msg.content:
-        txt = getattr(block, "text", None)
-        if not txt:
-            continue
-        try:
-            d = json.loads(txt)
-            if isinstance(d, dict):
-                return d
-        except Exception:
-            pass
-        m = re.search(r"\{.*\}", txt, re.S)
-        if m:
-            try:
-                d = json.loads(m.group(0))
-                if isinstance(d, dict):
-                    return d
-            except Exception:
-                pass
-    return None
+import claude_headless as ch   # headless Claude Code (prenumerationen, ingen API-nyckel)
 
 _REPORT_KW = ("delårsrapport", "bokslut", "kvartalsrapport", "halvårsrapport",
               "årsredovisning", "year-end", "interim", "q1", "q2", "q3", "q4")
@@ -192,21 +168,21 @@ def _norm_composite(s: dict) -> dict:
 
 
 def score_company(ticker: str, name: str, client=None) -> dict:
+    """client-parametern är kvar bara för bakåtkompatibla anrop – används
+    inte längre. LLM-anropet görs via headless Claude Code (claude_headless.py,
+    din Claude-prenumeration, ingen Anthropic-API-nyckel) i stället för
+    Anthropic-SDK:t – ingen sökning/verktyg behövs, ren textbedömning av
+    underlaget nedan (samma princip som portfolio_commentary.py:s syntes)."""
     cp = _cache_path(ticker)
     if cp.exists():
         return _norm_composite(json.loads(cp.read_text()))
     ctx = _company_context(ticker)
     if not ctx:
         return None
-    client = client or _client()
-    msg = client.messages.create(
-        model=config.QUALITY_MODEL,
-        max_tokens=1000,
-        system=_SYSTEM,
-        messages=[{"role": "user", "content": f"BOLAG: {name} ({ticker})\n\nUNDERLAG (MFN):\n{ctx}"}],
-    )
-    parsed = _parse(msg)
-    if not parsed:
+    prompt = f"{_SYSTEM}\n\nBOLAG: {name} ({ticker})\n\nUNDERLAG (MFN):\n{ctx}"
+    parsed = ch.run(prompt, "", timeout=120)
+    if "error" in parsed:
+        print(f"[quality] {ticker}: {parsed['error']}")
         return None
     parsed["ticker"] = ticker
     parsed["name"] = name
@@ -235,13 +211,12 @@ def screen() -> None:
     import csv
     cands = _candidates()
     print(f"[screen] {len(cands)} kandidater (microcap, ex medtech/fond/investmentbolag)")
-    client = _client()
     rows, scored, missing = [], 0, 0
     for i, (t, name) in enumerate(cands, 1):
         if not (Path(config.MFN_CACHE_DIR) / f"{t}.json").exists():
             missing += 1
             continue
-        s = score_company(t, name, client)
+        s = score_company(t, name)
         if not s:
             continue
         scored += 1
