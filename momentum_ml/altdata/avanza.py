@@ -1432,6 +1432,17 @@ def probe_etf(name_or_ticker: str) -> None:
         print(f"  FEL (kan vara väntat om {iid} inte är en 'stock'-typ id): {e}")
 
 
+# FÖRKASTAT SPÅR (verifierat 2026-07-16, probe_news mot AZA.ST/orderBookId
+# 5361): ingen av kandidaterna nedan gav en riktig nyttolast - sex gav 404,
+# tre fick anslutningen aktivt stängd (RemoteDisconnected, ett annat sätt
+# att säga "ingen sådan endpoint" på). Huvud-endpointen /_api/market-guide/
+# stock/{id} har heller inga nyhets-/PM-liknande fält bland sina toppnivå-
+# nycklar (orderbookId/name/isin/instrumentId/sectors/tradable/listing/
+# marketPlace/historicalClosingPrices/keyIndicators/quote/type). SLUTSATS:
+# Avanza exponerar ingen publik nyhets-/pressmeddelande-källa vi kan hitta -
+# håll er till WebSearch (redan styrd mot Omni/EFN i insight_report.py/
+# portfolio_commentary.py). Testa INTE om utan ett konkret nytt ledtråd
+# (t.ex. ett verifierat community-projekt som dokumenterar en riktig path).
 _NEWS_ENDPOINT_CANDIDATES = (
     "/_api/market-guide/stock/{id}/news",
     "/_api/press-release/list/{id}",
@@ -1447,10 +1458,10 @@ _NEWS_ENDPOINT_CANDIDATES = (
 def probe_news(ticker_or_name: str) -> None:
     """SCHEMA-UPPTÄCKANDE (samma disciplin som probe_etf()/list_probe()):
     har Avanza en egen nyhets-/pressmeddelande-endpoint vi kan använda i
-    stället för/utöver WebSearch mot Omni/EFN? OVERIFIERAT – ingen av
-    kandidaterna nedan är bekräftade mot avanza-mcp-källkoden (till skillnad
-    från /_api/market-guide/stock/{id} och /_api/price-chart/stock/{id},
-    som ÄR det). Två spår:
+    stället för/utöver WebSearch mot Omni/EFN? FÖRKASTAT SPÅR (se kommentaren
+    ovanför _NEWS_ENDPOINT_CANDIDATES) – ingen av kandidaterna gav en riktig
+    nyttolast. Kvar som dokumentation/för ett framtida nytt ledtråd, inte
+    något att köra om utan anledning. Två spår som provades:
       1. Dumpar ALLA toppnivå-nycklar i /_api/market-guide/stock/{id} (redan
          en bekräftad endpoint) – letar efter ett fält vi missat (t.ex.
          'news'/'pressReleases'/'corporateActions') bland dem vi hittills
