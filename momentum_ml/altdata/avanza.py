@@ -1577,6 +1577,13 @@ def probe_etf_filter() -> None:
             print(f"  {label:<30} 200  {info}")
             if isinstance(data, dict) and data.keys():
                 print(f"    {json.dumps(data, ensure_ascii=False, indent=2)[:2000]}")
+        except requests.exceptions.HTTPError as e:
+            # BUGG (fixad): raise_for_status() ger bara statusraden - ett 400
+            # svarar ofta med EXAKT vilket fält som saknas/är fel i brödtexten,
+            # bortkastad info om vi bara skriver ut e. Läs den härifrån istället
+            # för att fortsätta gissa blint.
+            body = (e.response.text or "")[:500] if e.response is not None else ""
+            print(f"  {label:<30} FEL {e.response.status_code if e.response is not None else '?'}: {body or '(tomt svar)'}")
         except Exception as e:  # noqa: BLE001
             print(f"  {label:<30} FEL: {e}")
     print("\n[probe_etf_filter] Klistra in HELA utskriften – leta efter EN variant som gav en "
