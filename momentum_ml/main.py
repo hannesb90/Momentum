@@ -14,13 +14,12 @@ import json
 import shutil
 import subprocess
 import sys
-import os
 import pandas as pd
 from pathlib import Path
 
 import config
 from data.data_loader import (
-    fetch_weekly_data, build_universe_df, filter_liquid_universe,
+    fetch_weekly_data, filter_liquid_universe,
     filter_active_universe, load_sweden_universe, load_ngm_universe,
 )
 from features.feature_engineering import (
