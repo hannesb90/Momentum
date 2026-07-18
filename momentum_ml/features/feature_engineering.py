@@ -245,8 +245,15 @@ def add_cross_sectional(all_features: Dict[str, pd.DataFrame]) -> Dict[str, pd.D
         r = rets[ticker]
         beta = r.rolling(52).cov(mkt) / (mkt_var + 1e-9)
         resid = r - beta * mkt                                # marknads-neutraliserad avkastning
-        # 48v residual-momentum (hoppar senaste 4v), skalat på residualens vol
-        num = resid.shift(4).rolling(48).sum()
+        # 48v residual-momentum (hoppar senaste 4v), skalat på residualens vol.
+        # BUGFIX: aritmetisk summa av veckovisa residual-avkastningar är bara en
+        # förstaordnings-approximation av 48 veckors FAKTISK kumulativ avkastning -
+        # kan avvika markant från riktig compounding när residualerna är stora.
+        # Geometrisk kedjning (produkt av (1+r), minus 1) är den korrekta 48-veckors
+        # kumulativa residualavkastningen. OBS: modellen är tränad på DEN GAMLA
+        # (arimetisk summa) skalan - kräver omträning innan denna variant faktiskt
+        # syns i signalerna (samma disciplin som config.DROP_FEATURES-kommentaren).
+        num = (1.0 + resid).shift(4).rolling(48).apply(np.prod, raw=True) - 1.0
         den = resid.rolling(52).std() * np.sqrt(52) + 1e-9
         resid_mom[ticker] = num / den
 
