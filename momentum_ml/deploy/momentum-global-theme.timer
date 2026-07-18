@@ -1,0 +1,12 @@
+[Unit]
+Description=Kör momentum-global-theme.service varje natt
+
+[Timer]
+# 02:45 - fristående av nattträningen (kräver den inte), men innan
+# förvaltarbrevet (23:00 samma dag) som läser resultatet.
+OnCalendar=*-*-* 02:45:00
+Persistent=true
+RandomizedDelaySec=180
+
+[Install]
+WantedBy=timers.target

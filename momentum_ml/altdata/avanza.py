@@ -49,6 +49,7 @@ Körs på Pi:n (nät):
     python -m altdata.avanza extract quality        # ...till results/quality/ (rör ej large/small)
     python -m altdata.avanza audit                  # månatlig avnoterings-/uppköpsrevision + överlevnadsliggare
     python -m altdata.avanza calendar large          # rapportkalender (nextReport ur keyIndicators)
+    python -m altdata.avanza sectors                 # finkornig Avanza-sektortaxonomi -> cache/avanza_sectors.csv (utforskningssteg)
     python -m altdata.avanza revalidate              # engångsstädning: purga gamla felmatchningar
     python -m altdata.avanza check_marketplace       # Avanzas EGET listing.marketPlaceName/countryCode, ALLA matchade bolag
     python -m altdata.avanza check_marketplace suspects  # ...bara de ~109 ASA/A-S/Oyj/P-F-misstänkta (snabbare)
@@ -56,6 +57,10 @@ Körs på Pi:n (nät):
     python -m altdata.avanza list_probe2             # chart-djup+upplösning mot ÄLDRE bolag (Yahoo-ersättningsfrågan, avgjord: se kodkommentar ovan list_probe2)
     python -m altdata.avanza list_probe2 VOLV-B.ST   # ...annat chart-testbolag (default AAK.ST)
     python -m altdata.avanza universe_remove T1,T2   # dry-run: ta bort tickers ur sweden_universe.csv (lägg till 'write' för att faktiskt skriva)
+    python -m altdata.avanza probe_etf "VanEck Semiconductor"  # utländsk UCITS-ETF: söktyp + funkar prisdiagrammet?
+    python -m altdata.avanza probe_etf_filter          # dumpa /_api/market-etf-filter/ rått (fund_categories() nedan är den VERIFIERADE, produktionsklara varianten)
+    python -m altdata.avanza fund_categories           # Avanzas HELA fonduniversum (1493 fonder) per bransch-kategori -> cache/avanza_fund_categories.csv
+    python -m altdata.avanza probe_news "Avanza"          # dumpa Avanzas /_api/market-guide/news/{id} rått (get_news()/news_for_ticker() i koden är VERIFIERADE och används i insight_report.py/portfolio_commentary.py)
 
 Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
 Group): altdata/avanza_overrides.csv (ticker,query,comment) – valfri fil,
@@ -1044,6 +1049,107 @@ def calendar(segment: Optional[str] = None) -> None:
                   f"{r['next_report_type']} ({conf})")
 
 
+def sectors_extract(segment: Optional[str] = None) -> None:
+    """FINKORNIG SEKTORTAXONOMI – hämtar Avanzas eget 'sectors'-fält per bolag
+    (VERIFIERAT 2026-07-18 mot skarp AZA.ST-körning: en LISTA ordnad MEST
+    SPECIFIK FÖRST, t.ex. [{"sectorId":"22","sectorName":"Sparande &
+    Investering"}, {"sectorId":"23","sectorName":"Bank"}, {"sectorId":"21",
+    "sectorName":"Finans"}]; samma mönster syns i Avanza-appens gröna
+    taggar "Halvledare / Hårdvara / Teknologi" för ett halvledarbolag).
+    Detta är Avanzas EGEN klassificering, på svenska, betydligt mer
+    granulär än universumets breda GICS-hinkar ("Information Technology"
+    klumpar ihop halvledare, drönare och humanoida robotar).
+
+    Skriver cache/avanza_sectors.csv (ticker,name,sector_fine,sector_mid,
+    sector_broad,sector_path) – universum-gemensam metadata (inte per
+    segment-results, samma resonemang som avanza_map.json i cache/).
+
+    SYFTE (utforskningssteg, inget konsumeras ännu): se den VERKLIGA
+    fördelningen – hur många unika underteman, hur många bolag per tema –
+    innan något kopplas in i appen. GICS-hinkarna i sweden_universe.csv
+    rörs INTE av detta: sektor-relativa screening-barrar (ROE/skuld,
+    SECTOR_RANK_MIN_PEERS=5) behöver breda, stabila jämförelsegrupper och
+    fortsätter läsa GICS. Det här lagret är för tematisk visning/rotation.
+
+        python -m altdata.avanza sectors               # hela universumet
+        python -m altdata.avanza sectors large         # bara ett segment
+    """
+    import csv as _csv
+    from collections import Counter
+
+    mp = _map_path()
+    if not mp.exists():
+        print(f"Ingen {mp} – kör 'match' först.")
+        return
+    mapping = json.loads(mp.read_text())
+    tickers, sector_map, cap_map, name_map, _results_dir = _resolve_universe(segment)
+    wanted = {t for t in tickers if cap_map.get(t) != "Fond" and sector_map.get(t) != "Fond"}
+    candidates = sorted(t for t in wanted & mapping.keys()
+                        if mapping[t].get("confirmed") and mapping[t].get("orderBookId"))
+
+    rows, fail, empty = [], 0, 0
+    print(f"[sectors] hämtar Avanza-sektortaggar för {len(candidates)} bolag "
+          f"(~{len(candidates) * _PAUSE_S / 60:.0f} min i artig takt)...")
+    for i, t in enumerate(candidates, 1):
+        try:
+            info = _get(f"/_api/market-guide/stock/{mapping[t]['orderBookId']}")
+        except Exception:  # noqa: BLE001
+            fail += 1
+            continue
+        finally:
+            time.sleep(_PAUSE_S)
+        secs = [str(s.get("sectorName") or "").strip()
+                for s in (info.get("sectors") or []) if s.get("sectorName")]
+        if not secs:
+            empty += 1
+            continue
+        rows.append({
+            "ticker": t, "name": name_map.get(t, t),
+            "sector_fine": secs[0],                    # mest specifik (först i listan)
+            "sector_mid": secs[1] if len(secs) > 2 else "",
+            "sector_broad": secs[-1],                  # bredast (sist i listan)
+            "sector_path": " | ".join(secs),
+        })
+        if i % 50 == 0:
+            print(f"  ...{i}/{len(candidates)}")
+
+    out = Path(config.anchor("cache")) / "avanza_sectors.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    # MERGE, inte överskrivning: filen är universum-gemensam men körningarna
+    # är per segment ('sectors' = large, 'sectors quality' = Small/Micro/Nano)
+    # - utan merge skulle andra körningen klippa bort första körningens rader.
+    # Ny hämtning vinner per ticker (färskast klassificering).
+    merged = {}
+    if out.exists():
+        try:
+            for r in _csv.DictReader(open(out, encoding="utf-8")):
+                if r.get("ticker"):
+                    merged[r["ticker"]] = r
+        except Exception:  # noqa: BLE001
+            merged = {}
+    for r in rows:
+        merged[r["ticker"]] = r
+    all_rows = sorted(merged.values(), key=lambda r: r["ticker"])
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=["ticker", "name", "sector_fine",
+                                           "sector_mid", "sector_broad", "sector_path"])
+        w.writeheader()
+        w.writerows(all_rows)
+    print(f"\n[sectors] {len(rows)} bolag taggade i denna körning ({fail} fel, {empty} utan "
+          f"sectors-fält), {len(all_rows)} totalt i filen -> {out}")
+
+    fine = Counter(r["sector_fine"] for r in all_rows)
+    broad = Counter(r["sector_broad"] for r in all_rows)
+    print(f"\n  {len(fine)} unika FINA underteman (topp 30, antal bolag):")
+    for name, n in fine.most_common(30):
+        print(f"   {n:>4}  {name}")
+    print(f"\n  {len(broad)} unika BREDA toppsektorer:")
+    for name, n in broad.most_common():
+        print(f"   {n:>4}  {name}")
+    print("\n[sectors] Klistra in fördelningen ovan – utifrån den avgör vi hur"
+          " temalagret kopplas in (visning/rotation), GICS-screeningen rörs inte.")
+
+
 # Bolagsformer som otvetydigt INTE är svenska (ASA=norskt publikt bolag,
 # A/S=danskt, Oyj=finskt, P/F=färöiskt) – VERIFIERAT bättre signal än att
 # gissa på tickerformat: en naiv "tickern slutar på O"-regel fångar äkta
@@ -1372,6 +1478,331 @@ def list_probe2(chart_ticker: str = "AAK.ST") -> None:
 _UNIVERSE_FILES = ("sweden_universe.csv", "sweden_universe_ngm.csv")
 
 
+def probe_etf(name_or_ticker: str) -> None:
+    """SCHEMA-UPPTÄCKANDE (samma disciplin som probe()/chart_probe() ovan,
+    antar inget): kan Avanza slås upp för en UTLÄNDSK UCITS-ETF (VanEck/
+    WisdomTree/Global X/HANetf m.fl. – innehav utanför Yahoo Finances
+    täckning för dessa nischade London-noteringar)? probe()/chart_probe()
+    filtrerar sök-träffar på type=='STOCK', vilket en ETF troligen INTE är
+    taggad som – vet inte ännu vad den ÄR taggad som, eller om
+    fetch_chart_ohlcv()s väg (/_api/price-chart/stock/{id}) ens funkar för
+    en icke-STOCK-orderBookId. Dumpar allt rått i stället för att gissa.
+
+        python -m altdata.avanza probe_etf "VanEck Semiconductor"
+        python -m altdata.avanza probe_etf "WisdomTree Physical AI"
+    """
+    q = _clean_query(name_or_ticker)
+    print(f"[probe_etf] söker '{q}' (från '{name_or_ticker}')")
+    hits = search(q)
+    all_hits = hits.get("hits") or []
+    print(f"[probe_etf] {len(all_hits)} träff(ar), typer: "
+          f"{sorted({str(h.get('type')) for h in all_hits})}")
+    for h in all_hits[:8]:
+        print(f"    type={str(h.get('type')):<20} orderBookId={str(h.get('orderBookId')):<10} {h.get('title')}")
+    if not all_hits:
+        print("[probe_etf] ingen träff alls - kolla stavningen eller testa 'search' direkt.")
+        return
+
+    hit = all_hits[0]
+    iid = str(hit.get("orderBookId") or "")
+    if not iid:
+        print("[probe_etf] första träffen saknade orderBookId - kolla dumpen ovan.")
+        return
+    print(f"\n[probe_etf] testar prisdiagram för {hit.get('title')!r} (type={hit.get('type')}, id={iid})")
+    time.sleep(_PAUSE_S)
+    df = fetch_chart_ohlcv(iid, "one_month")
+    if df is None or df.empty:
+        print("[probe_etf] fetch_chart_ohlcv() gav INGET – samma endpoint funkar inte rakt av "
+              "för den här träfftypen. Rått försök mot /_api/price-chart/stock/{id}:")
+        try:
+            raw = _get(f"/_api/price-chart/stock/{iid}", {"timePeriod": "one_month"})
+            print(json.dumps(raw, ensure_ascii=False, indent=2)[:2000])
+        except Exception as e:  # noqa: BLE001
+            print(f"  FEL: {e}")
+    else:
+        last = df.iloc[-1]
+        print(f"[probe_etf] FUNKAR – senaste punkt {df.index[-1].date()}: close={last['Close']}")
+        print(df.tail(3))
+
+    time.sleep(_PAUSE_S)
+    print(f"\n[probe_etf] stock-info (id={iid}) – letar efter valuta (behövs för SEK-omräkning):")
+    try:
+        info = _get(f"/_api/market-guide/stock/{iid}")
+        print(f"  toppnycklar: {list(info.keys())}")
+        for k in ("currency", "name", "shortName", "tickerSymbol", "quote", "keyIndicators"):
+            if k in info:
+                print(f"  {k}: {json.dumps(info[k], ensure_ascii=False)[:300]}")
+    except Exception as e:  # noqa: BLE001
+        print(f"  FEL (kan vara väntat om {iid} inte är en 'stock'-typ id): {e}")
+
+
+def _etf_filter_page(sub_category: Optional[str], offset: int, limit: int) -> dict:
+    """EN sida ur /_api/market-etf-filter/ (VERIFIERAD body-form, se
+    probe_etf_filter()). sub_category=None -> ingen filtrering (alla
+    1493 fonder). sub_category tar filterOptions.subCategories[i]["value"]
+    (gemener, t.ex. "nuclear"/"försvarsindustri"/"teknologi") - INTE
+    displayName."""
+    payload = {
+        "filter": {
+            "assetCategories": [], "subCategories": [sub_category] if sub_category else [],
+            "exposures": [], "riskScores": [], "directions": [], "issuers": [], "currencyCodes": [],
+        },
+        "limit": limit, "offset": offset,
+        "sortBy": {"field": "numberOfOwners", "order": "desc"},
+    }
+    return _post("/_api/market-etf-filter/", payload)
+
+
+def fund_categories() -> None:
+    """Bygger cache/avanza_fund_categories.csv – Avanzas HELA fonduniversum
+    (1493 fonder VERIFIERAT 2026-07-18, se probe_etf_filter()) itererat per
+    subCategory-filter (~40 VERIFIERADE kategorivärden ur filterOptions:
+    teknologi/sjukvård/energi/nuclear/försvarsindustri/hållbarhet/
+    industrimetaller/ädelmetaller/... – inga gissade namn). En fond kan
+    tillhöra FLERA kategorier – varje rad är (fond, kategori), samma
+    orderbookId kan alltså synas på flera rader.
+
+    Detta är den branschlika fondkartan som saknats: ersätter/utökar den
+    handplockade sector_etfs.csv (bara 22 rader, en enda europeisk
+    iShares-serie) med Avanzas FULLSTÄNDIGA utbud per bransch. Täcker DOCK
+    INTE de hyperspecifika globala teman (humanoider/rymd/kvantdatorer) som
+    global_theme_momentum.py:s 10 handplockade nischfonder redan gör –
+    Avanzas egna kategorier är bredare (t.ex. "teknologi" 95 fonder,
+    blandar halvledare/AI/robotik/moln i en enda hink).
+
+        python -m altdata.avanza fund_categories
+    """
+    print("[fund_categories] hämtar kategori-facit...")
+    first = _etf_filter_page(None, 0, 1)
+    cats = [(c["value"], c["displayName"], c["numberOfOrderbooks"])
+            for c in (first.get("filterOptions") or {}).get("subCategories") or []]
+    print(f"[fund_categories] {len(cats)} kategorier, "
+          f"{first.get('totalNumberOfOrderbooks')} fonder totalt i Avanzas ETF-torg")
+
+    rows = []
+    for value, display, n in cats:
+        offset, got = 0, 0
+        while True:
+            time.sleep(_PAUSE_S)
+            data = _etf_filter_page(value, offset, 50)
+            etfs = data.get("etfs") or []
+            for e in etfs:
+                rows.append({"orderbookId": e.get("orderbookId"), "name": e.get("name"),
+                             "countryCode": e.get("countryCode"), "riskScore": e.get("riskScore"),
+                             "numberOfOwners": e.get("numberOfOwners"),
+                             "managementFee": e.get("managementFee"), "productFee": e.get("productFee"),
+                             "category_value": value, "category_display": display})
+            got += len(etfs)
+            offset += 50
+            if not etfs or got >= n:
+                break
+        print(f"  {display:<30} {got}/{n} fonder")
+
+    out = Path(config.anchor("cache")) / "avanza_fund_categories.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    import csv as _csv
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=["orderbookId", "name", "countryCode", "riskScore",
+                                           "numberOfOwners", "managementFee", "productFee",
+                                           "category_value", "category_display"])
+        w.writeheader()
+        w.writerows(rows)
+    print(f"\n[fund_categories] {len(rows)} (fond, kategori)-rader -> {out}")
+
+
+def probe_etf_filter() -> None:
+    """SCHEMA-UPPTÄCKANDE (samma disciplin som probe_news()/probe_etf()):
+    ledtråd från Avanzas EGET fondfilter i sök-UI:t pekade på
+    /_api/market-etf-filter/ – kan den ge oss HELA Avanzas fond-/ETF-
+    universum taggat per kategori (samma kategorier som synts i filter-
+    dropdownen: "Nuclear" 1, "Försvarsindustri" 19, "Ädelmetaller" 10,
+    "Teknologi" 95, "Hållbarhet" 209, ...) i stället för vår nuvarande
+    handplockade lista (~38 ETF:er totalt över sector_etfs.csv/_CURATED/
+    global_theme_momentum.py)?
+
+    BODY-FORMEN VERIFIERAD (2026-07-18, ur ett riktigt DevTools-fångat
+    anrop – GET gav 405, POST med gissade platta bodies gav 400 utan
+    detalj, den RIKTIGA bodyn har filtren i ett nästlat "filter"-objekt med
+    SJU nycklar som alla måste finnas, även tomma):
+        {"filter": {"assetCategories": [], "subCategories": [], "exposures": [],
+                     "riskScores": [], "directions": [], "issuers": [], "currencyCodes": []},
+         "limit": 20, "offset": 0, "sortBy": {"field": "numberOfOwners", "order": "desc"}}
+    Alla filter tomma = ingen filtrering (hämta allt, paginerat via limit/offset).
+    OKÄNT ÄNNU: vilket fält ("subCategories"? "assetCategories"? "exposures"?)
+    som motsvarar kategorierna vi såg i UI:t ("Nuclear"/"Sjukvård"/...), och i
+    vilken FORM (klartextnamn eller ett internt id). Dumpar hela svaret för att
+    se både fondposternas fält OCH om svaret självt listar giltiga filter-
+    värden (facets) – annars behövs ett till DevTools-fångst av en KATEGORI-
+    FILTRERAD sökning för att se hur ett ifyllt filter faktiskt ser ut.
+
+        python -m altdata.avanza probe_etf_filter
+    """
+    payload = {
+        "filter": {"assetCategories": [], "subCategories": [], "exposures": [],
+                   "riskScores": [], "directions": [], "issuers": [], "currencyCodes": []},
+        "limit": 20, "offset": 0,
+        "sortBy": {"field": "numberOfOwners", "order": "desc"},
+    }
+    print("[probe_etf_filter] === POST /_api/market-etf-filter/ (VERIFIERAD body-form) ===")
+    try:
+        data = _post("/_api/market-etf-filter/", payload)
+        if not isinstance(data, dict):
+            print(f"  OVÄNTAT: svaret var {type(data)}, inte en dict – {str(data)[:1000]}")
+            return
+        print(f"  toppnivå-nycklar: {list(data.keys())}")
+        print(f"  totalNumberOfOrderbooks: {data.get('totalNumberOfOrderbooks')}")
+        print(f"  pagination: {json.dumps(data.get('pagination'), ensure_ascii=False)}")
+        print(f"\n  --- filterOptions (VÄRDENA vi behöver för att filtrera per kategori) ---")
+        print(json.dumps(data.get("filterOptions"), ensure_ascii=False, indent=2)[:8000])
+        etfs = data.get("etfs") or []
+        print(f"\n  --- etfs: {len(etfs)} poster i DENNA sida, exempel (1 st) ---")
+        if etfs:
+            print(f"  fältnamn per fond: {list(etfs[0].keys())}")
+            print(json.dumps(etfs[0], ensure_ascii=False, indent=2))
+    except requests.exceptions.HTTPError as e:
+        body = (e.response.text or "")[:1000] if e.response is not None else ""
+        print(f"  FEL {e.response.status_code if e.response is not None else '?'}: {body or '(tomt svar)'}")
+    except Exception as e:  # noqa: BLE001
+        print(f"  FEL: {e}")
+    print("\n[probe_etf_filter] Klistra in HELA utskriften – filterOptions bör lista de giltiga "
+          "värdena för assetCategories/subCategories/exposures/riskScores/directions/issuers/"
+          "currencyCodes (klartextnamn eller id?), och totalNumberOfOrderbooks visar hur många "
+          "fonder som finns totalt (för paginering via offset).")
+
+
+# SPÅR ÅTERUPPTAGET (2026-07-17): de 8 gissade kandidaterna nedan gav
+# fortfarande inget (404/RemoteDisconnected, se historiken i git-loggen för
+# den tidigare FÖRKASTAT SPÅR-kommentaren) - men ett KONKRET nytt ledtråd
+# kom in: en riktig nätverksbegäran fångad direkt i webbläsarens DevTools
+# när "Nyheter & Forum"-fliken på en aktiesida laddades gav
+# /_api/market-guide/news/{id} (id skiljer sig per värdepapper, dvs.
+# sannolikt samma orderBookId som /_api/market-guide/stock/{id} redan
+# använder - OVERIFIERAT ännu om det är exakt samma id-rymd). Detta är ett
+# ANNAT mönster än alla tidigare gissningar (ingen av dem hade "news" direkt
+# under market-guide/ som syskon till stock/, bara under stock/{id}/...).
+# Tillagd som förstahandskandidat - kör probe_news igen och verifiera
+# nyttolasten (riktiga fält som titel/datum/rubrik, inte bara 200 OK) innan
+# den används i produktion.
+_NEWS_ENDPOINT_CANDIDATES = (
+    "/_api/market-guide/news/{id}",
+    "/_api/market-guide/stock/{id}/news",
+    "/_api/press-release/list/{id}",
+    "/_api/press-release/{id}",
+    "/_api/content/press-release/{id}",
+    "/_api/newsfeed/{id}",
+    "/_cqbe/press-release/list/{id}",
+    "/_api/market-guide/stock/{id}/press-releases",
+    "/_api/market-guide/stock/{id}/corporate-actions",
+)
+
+
+def get_news(order_book_id: str, limit: int = 8) -> list:
+    """Nyheter/PM/analytikernoter för ett bolag via /_api/market-guide/
+    news/{id} (VERIFIERAT 2026-07-17 mot riktig nätverksbegäran ur
+    webbläsarens DevTools + skarp probe_news-körning, se kommentaren vid
+    _NEWS_ENDPOINT_CANDIDATES). Riktiga MFN-pressmeddelanden och Finwire-
+    telegram (t.ex. riktkursändringar), redan klassificerade av Avanza –
+    ingen egen tolkning/gissning av källa eller typ. Nyast först (Avanzas
+    egen ordning, ej omsorterad här)."""
+    data = _get(f"/_api/market-guide/news/{order_book_id}")
+    arts = data.get("articles") or []
+    out = []
+    for a in arts[:limit]:
+        out.append({
+            "date": str(a.get("timePublished") or "")[:10],
+            "headline": a.get("headline") or "",
+            "category": a.get("category") or a.get("articleType") or "",
+            "source": a.get("newsSource") or "",
+            "intro": a.get("intro") or "",
+            "link": a.get("fullArticleLink") or "",
+        })
+    return out
+
+
+def news_for_ticker(ticker: str, limit: int = 8) -> list:
+    """Bekvämlighets-wrapper för anropare som bara har VÅR ticker (t.ex.
+    AZA.ST) – slår upp orderBookId med EXAKT SAMMA sök+matchningsmönster
+    som portfolio.py:s fetch_holding_quotes() (exakt tickerSymbol-match,
+    gissar aldrig första sökträffen) och hämtar get_news(). Tom lista vid
+    sök-/nätverksfel eller ingen exakt träff – aldrig en krasch, bara mindre
+    underlag (samma disciplin som _mfn_latest() i insight_report.py)."""
+    base = ticker.split(".")[0].replace("-", " ")
+    try:
+        hits = search(base).get("hits") or []
+    except Exception:  # noqa: BLE001
+        return []
+    hit = next((h for h in hits if str(h.get("tickerSymbol") or "").upper() == base.upper()), None)
+    if not hit or not hit.get("orderBookId"):
+        return []
+    time.sleep(_PAUSE_S)   # artig paus mellan sök- och nyhets-anropet
+    try:
+        return get_news(str(hit["orderBookId"]), limit=limit)
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def probe_news(ticker_or_name: str) -> None:
+    """SCHEMA-UPPTÄCKANDE (samma disciplin som probe_etf()/list_probe()):
+    har Avanza en egen nyhets-/pressmeddelande-endpoint vi kan använda i
+    stället för/utöver WebSearch mot Omni/EFN? Se kommentaren ovanför
+    _NEWS_ENDPOINT_CANDIDATES – ett konkret nytt ledtråd (nätverksbegäran
+    fångad i DevTools) pekar på /_api/market-guide/news/{id}, nu förstahands-
+    kandidat men ännu inte verifierad mot en riktig nyttolast här. Två spår
+    som provas:
+      1. Dumpar ALLA toppnivå-nycklar i /_api/market-guide/stock/{id} (redan
+         en bekräftad endpoint) – letar efter ett fält vi missat (t.ex.
+         'news'/'pressReleases'/'corporateActions') bland dem vi hittills
+         bara cherry-plockat specifika nycklar ur.
+      2. Provar en handfull GISSADE dedikerade endpoints (_NEWS_ENDPOINT_
+         CANDIDATES) – rapporterar status/nyckelnamn per kandidat, INGET
+         antas fungera bara för att den svarar 200 (samma lärdom som
+         list_probe()s '_mobile/market/stocks'-falska-positiv: en 200:a kan
+         ändå vara Avanzas SPA-appskal, inte riktig nyttolast – kolla
+         Content-Type/nyckelnamnen i utskriften, inte bara statuskoden).
+
+        python -m altdata.avanza probe_news "Avanza"
+        python -m altdata.avanza probe_news "Swedbank A"
+    """
+    q = _clean_query(ticker_or_name)
+    print(f"[probe_news] söker '{q}' (från '{ticker_or_name}')")
+    hits = (search(q).get("hits") or [])
+    hit = next((h for h in hits if h.get("type") in ("STOCK", "EXCHANGE_TRADED_FUND")), None)
+    if not hit or not hit.get("orderBookId"):
+        print("[probe_news] ingen användbar träff – kolla stavningen eller kör 'search' direkt.")
+        return
+    iid = str(hit["orderBookId"])
+    print(f"[probe_news] vald träff: {hit.get('title')!r} (type={hit.get('type')}, id={iid})\n")
+
+    time.sleep(_PAUSE_S)
+    print(f"[probe_news] === 1. Fullständiga nycklar i /_api/market-guide/stock/{iid} ===")
+    try:
+        info = _get(f"/_api/market-guide/stock/{iid}")
+        print(f"  toppnivå-nycklar: {list(info.keys())}")
+        news_like = [k for k in info if any(w in k.lower() for w in
+                    ("news", "press", "pm", "release", "announce", "corporate"))]
+        if news_like:
+            print(f"  MÖJLIGA nyhets-fält: {news_like}")
+            for k in news_like:
+                print(f"    {k}: {json.dumps(info[k], ensure_ascii=False)[:500]}")
+        else:
+            print("  Inga nyckelnamn som liknar nyheter/PM bland toppnivå-fälten.")
+    except Exception as e:  # noqa: BLE001
+        print(f"  FEL: {e}")
+
+    print(f"\n[probe_news] === 2. Gissade dedikerade endpoints (OVERIFIERADE) ===")
+    for tmpl in _NEWS_ENDPOINT_CANDIDATES:
+        path = tmpl.format(id=iid)
+        time.sleep(_PAUSE_S)
+        try:
+            data = _get(path)
+            keys = list(data.keys()) if isinstance(data, dict) else f"lista, {len(data)} poster"
+            print(f"  {path:<55} 200  nycklar/form: {keys}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  {path:<55} FEL: {e}")
+    print("\n[probe_news] Klistra in HELA utskriften – avgör tillsammans om något av "
+          "detta är en riktig nyttolast (inte bara Avanzas SPA-appskal) innan vi bygger något på det.")
+
+
 def universe_remove(tickers: list, dry_run: bool = True) -> None:
     """Tar bort angivna tickers HELT ur BÅDA universum-filerna (vardera
     tickern tas bort ur den fil den faktiskt finns i) – det avsiktliga,
@@ -1440,6 +1871,8 @@ def main():
         audit()
     elif cmd == "calendar":
         calendar(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif cmd == "sectors":
+        sectors_extract(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "revalidate":
         revalidate()
     elif cmd == "check_marketplace":
@@ -1448,6 +1881,20 @@ def main():
         list_probe()
     elif cmd == "list_probe2":
         list_probe2(sys.argv[2] if len(sys.argv) > 2 else "AAK.ST")
+    elif cmd == "probe_etf":
+        if len(sys.argv) < 3:
+            print("Ange bolagsnamn: python -m altdata.avanza probe_etf \"VanEck Semiconductor\"")
+            return
+        probe_etf(sys.argv[2])
+    elif cmd == "probe_etf_filter":
+        probe_etf_filter()
+    elif cmd == "fund_categories":
+        fund_categories()
+    elif cmd == "probe_news":
+        if len(sys.argv) < 3:
+            print("Ange bolagsnamn: python -m altdata.avanza probe_news \"Avanza\"")
+            return
+        probe_news(sys.argv[2])
     elif cmd == "universe_remove":
         if len(sys.argv) < 3:
             print("Ange kommaseparerade tickers: python -m altdata.avanza universe_remove "

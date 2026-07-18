@@ -35,6 +35,7 @@ from backtest.bootstrap import print_robustness_report, robustness_report
 from backtest.drift_monitor import attach_realized_outcomes, rolling_drift_report, print_drift_summary
 from backtest.regime import classify_regimes, regime_breakdown, print_regime_breakdown
 from backtest.sector_momentum import sector_momentum_snapshot, print_sector_momentum
+from backtest.theme_momentum import theme_momentum_snapshot, print_theme_momentum
 from backtest.threshold_opt import optimize_buy_threshold, print_threshold_search
 from backtest.benchmark import benchmark_report
 from backtest.paper_trader import PaperTrader
@@ -377,9 +378,17 @@ def main():
 
     # ── 4.5 Sektor-momentum ───────────────────────────────────────────────────
     print("\nSTEG 4.5: Sektor-momentum...")
-    sector_df = sector_momentum_snapshot(all_features)
+    sector_df = sector_momentum_snapshot(all_features, cap_tier_map=cap_tier_map)
     print_sector_momentum(sector_df)
     sector_df.to_csv(f"{config.RESULTS_DIR}/sector_momentum.csv", index=False)
+
+    # Finkorniga Avanza-underteman ovanpå GICS (se backtest/theme_momentum.py)
+    # – tomt/hoppar över sig själv om cache/avanza_sectors.csv inte byggts än
+    # (altdata.avanza sectors), ingen krasch.
+    theme_df = theme_momentum_snapshot(all_features, cap_tier_map=cap_tier_map)
+    print_theme_momentum(theme_df)
+    if not theme_df.empty:
+        theme_df.to_csv(f"{config.RESULTS_DIR}/theme_momentum.csv", index=False)
 
     # ── 5. Ensemble + full output ─────────────────────────────────────────────
     print("\nSTEG 5: Ensemble + positionssizing...")

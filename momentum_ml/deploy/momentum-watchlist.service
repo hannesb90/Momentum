@@ -1,0 +1,17 @@
+[Unit]
+Description=Momentum – nattlig watchlist-synk till Montrose (topplista + säljvakt)
+After=network-online.target momentum-train.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+# Rör bara watchlists - create_trade_ticket ingår ALDRIG i --allowedTools här.
+Environment=PATH=/opt/momentum/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/momentum/venv/bin/python watchlist_sync.py
+
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=15m

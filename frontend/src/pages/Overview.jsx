@@ -101,6 +101,16 @@ export function OverviewPage() {
   const [buyAmount, setBuyAmount] = useState('10000')
   const [reloadKey, setReloadKey] = useState(0)
   const nextBuy = useApiData(() => api.nextBuy(buyAmount), [buyAmount, reloadKey])
+  // Trade-ticket-knappen per rad: {[ticker]: {loading, url, error}}. Skapar
+  // BARA en förifylld Montrose-länk (headless Claude, se montrose_ticket.py) –
+  // ingen order läggs förrän du själv bekräftar i Montrose-appen.
+  const [tickets, setTickets] = useState({})
+  function createTicket(r) {
+    setTickets((t) => ({ ...t, [r.ticker]: { loading: true } }))
+    api.tradeTicket(r.ticker, r.kr)
+      .then((d) => setTickets((t) => ({ ...t, [r.ticker]: { url: d.url } })))
+      .catch((e) => setTickets((t) => ({ ...t, [r.ticker]: { error: e.message } })))
+  }
   const targetData = useApiData(() => api.portfolioTarget(), [reloadKey])
   const [model, setModel] = useState('balanced')
   const [models, setModels] = useState(['balanced'])
@@ -188,6 +198,12 @@ export function OverviewPage() {
         <span className="model-picker__hint">{MODEL_HINTS[model] ?? ''}</span>
       </div>
       {nextBuy.refreshing && <p className="footnote" style={{ margin: '-4px 0 6px' }}>Uppdaterar…</p>}
+      {nextBuy.data?.cash && Number(buyAmount) > nextBuy.data.cash.available_sek && (
+        <p className="footnote neg" style={{ margin: '-4px 0 6px' }}>
+          ⚠ Bara {fmtSek(nextBuy.data.cash.available_sek)} tillgängligt på ISK just nu (av {fmtSek(Number(buyAmount))})
+          – väntar insättningen fortfarande?
+        </p>
+      )}
       <div className="list-card">
         {nextBuy.loading && <div className="list-card__empty">Räknar…</div>}
         {nextBuy.error && <div className="list-card__empty">Kunde inte hämta planen.</div>}
@@ -204,6 +220,19 @@ export function OverviewPage() {
             </div>
             <div className="list-row__side">
               <span className="list-row__num">{fmtSek(r.kr)}</span>
+              {tickets[r.ticker]?.url ? (
+                <a className="btn" href={tickets[r.ticker].url} target="_blank" rel="noreferrer">
+                  Öppna i Montrose ↗
+                </a>
+              ) : (
+                <button className="btn" disabled={tickets[r.ticker]?.loading}
+                  onClick={() => createTicket(r)}>
+                  {tickets[r.ticker]?.loading ? 'Skapar…' : 'Skapa ticket'}
+                </button>
+              )}
+              {tickets[r.ticker]?.error && (
+                <span className="footnote neg">{tickets[r.ticker].error}</span>
+              )}
             </div>
           </div>
         ))}
@@ -231,6 +260,16 @@ export function OverviewPage() {
         </p>
       )}
       {nextBuy.data?.note && <p className="footnote">{nextBuy.data.note}</p>}
+      {nextBuy.data?.theme_niche_note && (
+        <p className="footnote" style={{ opacity: 0.7 }}>
+          {nextBuy.data.theme_niche_note.note}
+        </p>
+      )}
+      {nextBuy.data?.global_theme_note && (
+        <p className="footnote" style={{ opacity: 0.7 }}>
+          {nextBuy.data.global_theme_note.note}
+        </p>
+      )}
 
       {targetData.data?.target && (
         <AllocationEditor initial={targetData.data.target} onSaved={() => setReloadKey((k) => k + 1)} />

@@ -82,6 +82,11 @@ export const api = {
   holdings: (amount) => getJson(`/holdings${amount ? `?amount=${amount}` : ''}`),
   // Coret: ETT rangordnat svar på "var ska nästa krona in?" (hemvyns huvudkort).
   nextBuy: (amount) => getJson(`/next-buy${amount ? `?amount=${amount}` : ''}`),
+  // Förifylld Montrose-köpbiljett för EN rad ur Nästa köp-planen. Lägger aldrig
+  // en order – returnerar bara en länk du själv öppnar och bekräftar i appen.
+  tradeTicket: (ticker, kr) => postJson('/trade-ticket', { ticker, kr }),
+  // "Följde jag planen?" – skapade tickets + om köpet landade (idé 8).
+  tradeTickets: () => getJson('/trade-tickets'),
   portfolioTarget: () => getJson('/portfolio-target'),
   saveTarget: (target) => postJson('/portfolio-target', target),
   // Rank-modell för "nästa köp" (balanced/buffett/momentum). Ren vy-inställning
@@ -91,6 +96,12 @@ export const api = {
   universe: () => getJson('/universe'),   // sökbara värdepapper (sök/filtrera vid innehav)
   saveHoldings: (holdings, amount) => postJson('/holdings', { holdings, amount }),
   exitSignals: () => getJson('/exit-signals'),
+  // Bedömning-fliken: narrativ per bolag + månatlig förvaltarkommentar.
+  insight: () => getJson('/insight'),
+  commentary: () => getJson('/commentary'),
+  // AI-boxen under Förvaltarkommentaren: fri följdfråga, på-begäran headless
+  // Claude (WebSearch), kan ta upp till ~2 min - samma mönster som scannerAnalyze.
+  commentaryAsk: (question) => postJson('/commentary/ask', { question }),
   caseChanges: () => getJson('/case-changes'),
   portfolioLog: () => getJson('/portfolio-log'),
   // "Nästa köp" (fyll-mot-mål) vs index – förberäknad på Pi:n (portfolio.py backtest).
@@ -104,4 +115,9 @@ export const api = {
   // det via query-param), så det måste in i body:n explicit.
   scannerScan: (ticker, overrides, segment) =>
     postJson('/scanner/scan', { ticker, overrides, segment: segment ?? currentSegment }),
+  // AI-analysrutan i Skanner: på-begäran headless Claude (WebSearch), kan
+  // ta upp till ~2 min - anropas separat från scannerScan (inte varje
+  // skanning ska kosta ett LLM-anrop, bara när du uttryckligen vill ha det).
+  scannerAnalyze: (ticker, overrides, segment, amount) =>
+    postJson('/scanner/analyze', { ticker, overrides, segment: segment ?? currentSegment, amount }),
 }
