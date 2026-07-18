@@ -32,7 +32,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 import config  # noqa: E402
 import etf_rotation as er  # noqa: E402
-from backtest.accumulation import simulate_accumulation, simulate_rotating_accumulation  # noqa: E402
+from backtest.accumulation import (  # noqa: E402
+    normalize_weekly_panel, simulate_accumulation, simulate_rotating_accumulation,
+)
 
 CORE_TICKER, CORE_NAME = getattr(config, "PORTFOLIO_CORE_ETF", ("IUSQ.DE", "iShares MSCI ACWI"))
 
@@ -61,7 +63,13 @@ def main():
           f"{', '.join(theme_tickers)}")
 
     extra = [x for x in (config.ETF_ROT_DEFENSIVE, config.ETF_ROT_REGIME_TICKER, CORE_TICKER) if x]
-    panel = er._panel(theme_tickers + extra)
+    raw_panel = er._panel(theme_tickers + extra)
+    # er._panel() gör bara ffill(limit=1) på en rå multi-ticker-join - täcker INTE att
+    # olika tickers veckostaplar kan vara ankrade på olika veckodagar (samma rotbugg
+    # som fixades i backtest/accumulation.py:_weekly_closes(), se normalize_weekly_panel()
+    # för varför den annars smyger in en TYST snedvridning av rel_mom:s .shift(w)-fönster,
+    # inte bara av vecko-/år-räkningen).
+    panel = normalize_weekly_panel(raw_panel)
     have_theme = [t for t in theme_tickers if t in panel.columns]
     if len(have_theme) < 2:
         print(f"[backtest_theme_satellite] för få tema-ETF:er med prisdata ({len(have_theme)}).")
