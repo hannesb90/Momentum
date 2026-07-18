@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
@@ -16,6 +17,87 @@ function fmtWhen(iso) {
   if (!iso) return null
   const d = new Date(iso)
   return d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+// AI-box för fria följdfrågor på förvaltarkommentaren – på-begäran headless
+// Claude (WebSearch), samma mönster som Skannerns AI-analysruta. Håller en
+// egen liten historik i state (inte sparad någonstans) så flera följdfrågor
+// i rad syns i tur och ordning, senaste sist.
+function CommentaryAskBox() {
+  const [question, setQuestion] = useState('')
+  const [thread, setThread] = useState([])
+  const [asking, setAsking] = useState(false)
+
+  async function submit(e) {
+    e.preventDefault()
+    const q = question.trim()
+    if (!q || asking) return
+    setAsking(true)
+    setQuestion('')
+    try {
+      const r = await api.commentaryAsk(q)
+      if (r.error && !r.answer) {
+        setThread((t) => [...t, { question: q, error: r.error }])
+      } else {
+        setThread((t) => [...t, { question: q, answer: r.answer }])
+      }
+    } catch (err) {
+      setThread((t) => [...t, { question: q, error: err.message }])
+    } finally {
+      setAsking(false)
+    }
+  }
+
+  return (
+    <div className="list-card" style={{ marginTop: 12, padding: 12 }}>
+      <h3 className="section-title" style={{ marginTop: 0 }}>
+        Fråga om analysen
+        <InfoButton title="Följdfrågor på förvaltarkommentaren">
+          <p>
+            Ställ en fri fråga om kommentaren ovan eller portföljen – headless Claude svarar
+            grundat i samma underlag kommentaren byggdes från, och söker vid behov (WebSearch)
+            för att förklara VARFÖR något hänt.
+          </p>
+          <p>
+            Samma "ren narrativ, aldrig signal"-disciplin som resten av appen: inget nytt
+            köp/sälj-råd, bara vad datan/planen redan säger i klartext. Kan ta upp till ~2
+            minuter att svara.
+          </p>
+        </InfoButton>
+      </h3>
+
+      {thread.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          {thread.map((t, i) => (
+            <div key={i} style={{ marginBottom: 12 }}>
+              <p style={{ margin: 0, fontWeight: 600 }}>{t.question}</p>
+              {t.answer && <p style={{ margin: '4px 0 0' }}>{t.answer}</p>}
+              {t.error && (
+                <div className="status-block status-block--error" style={{ marginTop: 6 }}>
+                  Kunde inte svara: {t.error}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <form onSubmit={submit} style={{ display: 'flex', gap: 8 }}>
+        <input
+          className="pf-in"
+          style={{ flex: 1 }}
+          type="text"
+          placeholder="T.ex. varför föll Acconeer den här veckan?"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          disabled={asking}
+        />
+        <button type="submit" className="btn" disabled={asking || !question.trim()}>
+          {asking ? 'Svarar…' : 'Fråga'}
+        </button>
+      </form>
+    </div>
+  )
 }
 
 export function AssessmentPage() {
@@ -74,6 +156,7 @@ export function AssessmentPage() {
           </div>
         )}
       </div>
+      <CommentaryAskBox />
 
       {/* Hink-drift + varningar */}
       <div className="section-head"><h2>Hink-drift</h2></div>

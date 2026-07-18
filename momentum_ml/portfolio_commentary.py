@@ -380,5 +380,57 @@ def build():
     print(f"[commentary] skriven → {p}")
 
 
+_ASK_PROMPT = """Du är en NEUTRAL, sansad portföljanalytiker som just skrev
+förvaltarkommentaren nedan om användarens portfölj. Användaren har en
+FÖLJDFRÅGA på den – svara direkt på FRÅGAN, grundat i underlaget (samma
+data kommentaren byggdes från). Använd WebSearch bara om frågan kräver
+research du inte redan har i underlaget (t.ex. "varför" en rörelse skett) –
+gissa aldrig en orsak utan att ha sökt fram den, säg då kort att du inte
+hittade något i stället.
+
+VIKTIGT: Skriv ALDRIG en köp/sälj-rekommendation – bara vad som redan syns
+i underlaget/planen eller vad research faktiskt visar. Om frågan ber om
+rådgivning ("ska jag sälja X?"), svara med vad DATAN/planen redan säger
+(t.ex. vad säljvakten/Nästa köp-planen visar) utan att själv formulera ett
+nytt råd. Om frågan är orelaterad till portföljen/marknaden, säg det kort.
+
+Svara koncist på SVENSKA (1-4 meningar, löpande text – längre bara om
+frågan kräver det). Svara ENDAST med kompakt JSON, ingen markdown:
+{{"answer": "..."}}
+
+FÖRVALTARKOMMENTAREN (redan skriven):
+{commentary}
+
+UNDERLAG (samma data kommentaren byggdes från):
+{underlag}
+
+FÖLJDFRÅGA: {question}
+"""
+
+
+def ask(question: str) -> dict:
+    """På-begäran svar på en fri följdfråga om förvaltarkommentaren/
+    portföljen – samma underlag som build() men EN fråga i taget, synkront
+    (samma mönster som security_analysis.analyze()). Skriver ALDRIG till
+    portfolio_commentary.json - ren fråga/svar, ingen cache."""
+    question = (question or "").strip()
+    if not question:
+        return {"answer": None, "error": "ingen fråga angiven"}
+    rows = pf.load_holdings()
+    if not rows:
+        return {"answer": None, "error": "inga innehav"}
+    p = pf._results_dir() / "portfolio_commentary.json"
+    prior = json.loads(p.read_text(encoding="utf-8")).get("commentary") if p.exists() else None
+    prompt = _ASK_PROMPT.format(commentary=prior or "(ingen genererad än)",
+                                 underlag=_underlag(), question=question)
+    result = ch.run(prompt, _TOOLS, timeout=120)
+    if "error" in result or not result.get("answer"):
+        return {"answer": None, "error": result.get("error", "tomt svar")}
+    return {"answer": result["answer"]}
+
+
 if __name__ == "__main__":
-    build()
+    if len(sys.argv) > 2 and sys.argv[1] == "--ask":
+        print(json.dumps(ask(" ".join(sys.argv[2:])), ensure_ascii=False, indent=2))
+    else:
+        build()

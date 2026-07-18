@@ -99,6 +99,9 @@ export const api = {
   // Bedömning-fliken: narrativ per bolag + månatlig förvaltarkommentar.
   insight: () => getJson('/insight'),
   commentary: () => getJson('/commentary'),
+  // AI-boxen under Förvaltarkommentaren: fri följdfråga, på-begäran headless
+  // Claude (WebSearch), kan ta upp till ~2 min - samma mönster som scannerAnalyze.
+  commentaryAsk: (question) => postJson('/commentary/ask', { question }),
   caseChanges: () => getJson('/case-changes'),
   portfolioLog: () => getJson('/portfolio-log'),
   // "Nästa köp" (fyll-mot-mål) vs index – förberäknad på Pi:n (portfolio.py backtest).
