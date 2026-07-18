@@ -43,7 +43,7 @@ from data.data_loader import (
 from features.feature_engineering import (
     build_all_features, attach_categorical_features, to_model_df, FEATURE_COLS,
 )
-from models.lgbm_model import MomentumLGBM, walk_forward_splits
+from models.lgbm_model import MomentumLGBM
 
 
 META_FEATURES = FEATURE_COLS + ["prob_up", "pred_return"]
