@@ -402,6 +402,7 @@ async def post_scanner_scan(request: Request):
     altdata/manual_scan.py:s docstring). Ogiltig indata (t.ex. tom ticker) ger
     400, inte en opak 500."""
     from altdata import manual_scan as ms
+    from fastapi.concurrency import run_in_threadpool
     body = await request.json()
     ticker = str(body.get("ticker") or "").strip()
     if not ticker:
@@ -409,7 +410,7 @@ async def post_scanner_scan(request: Request):
     overrides = body.get("overrides") or {}
     segment = body.get("segment")
     try:
-        result = ms.scan(ticker, overrides, segment=segment)
+        result = await run_in_threadpool(ms.scan, ticker, overrides, segment=segment)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return _clean(result)
