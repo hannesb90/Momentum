@@ -260,6 +260,11 @@ export function OverviewPage() {
         </p>
       )}
       {nextBuy.data?.note && <p className="footnote">{nextBuy.data.note}</p>}
+      {nextBuy.data?.theme_niche_note && (
+        <p className="footnote" style={{ opacity: 0.7 }}>
+          {nextBuy.data.theme_niche_note.note}
+        </p>
+      )}
       {nextBuy.data?.global_theme_note && (
         <p className="footnote" style={{ opacity: 0.7 }}>
           {nextBuy.data.global_theme_note.note}
