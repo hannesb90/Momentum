@@ -159,3 +159,117 @@ def simulate_accumulation(
         "weeks": len(dates),
         "years": round(len(dates) / 52, 1),
     }
+
+
+def simulate_rotating_accumulation(
+    universe: list,
+    rel: "pd.DataFrame",
+    prices: "pd.DataFrame",
+    monthly_contribution: float = None,
+    cost_oneway: float = None,
+    risk_on: Optional["pd.Series"] = None,
+    fallback_ticker: Optional[str] = None,
+    start: Optional[str] = None,
+) -> Optional[Dict]:
+    """
+    next_buy()s FAKTISKA tema-satellit-mekanik: varje kontributionsmånad,
+    plocka den KAUSALT högst rankade tickern i `universe` enligt `rel` just
+    DEN dagen (ingen framtidsdata - `rel` måste redan vara beräknad
+    point-in-time, t.ex. via etf_rotation.py:s _scores()), lägg HELA
+    insättningen där. Säljer ALDRIG en tidigare köpt position även om den
+    tappar rank senare - portföljen ackumulerar över åren vilka "månadens
+    vinnare" än råkade vara, exakt vad next_buy()/_candidates() gör
+    (theme_pick = topp-1 varje gång, ingen ombalansering).
+
+    Detta är MEDVETET en annan strategi än etf_rotation.py:s backtest()
+    (som SÄLJER/roterar bort positioner som faller ur topp-K var 4:e
+    vecka) - den senare är redan testad och dömd "slog aldrig index
+    netto" i next_buy()s egen kärn-motivering, men det är en annan
+    mekanik än den next_buy() FAKTISKT kör för tema-satelliten. Den här
+    funktionen testar den verkliga mekaniken, inte en närliggande.
+
+    risk_on: valfri kausal bool-serie (SAMMA index som rel/prices) - False
+    en given vecka → hela insättningen går till `fallback_ticker` i stället
+    (mirrorar next_buy()s "risk-off → kronorna går till kärnan"). None =
+    ingen regim-gate (temat får alltid pengar).
+    fallback_ticker: måste finnas i `prices` om risk_on används, eller om
+    `universe` saknar en giltig kandidat en given månad.
+
+    Returnerar samma struktur som simulate_accumulation(), plus `picks`:
+    {ticker: antal månader den vann insättningen} - visar KONCENTRATIONEN
+    (rider rotationen på några få vinnare, eller sprids den brett?).
+    """
+    monthly_contribution = float(monthly_contribution or getattr(config, "NEXT_BUY_DEFAULT_AMOUNT", 10000))
+    cost_oneway = float(cost_oneway if cost_oneway is not None else getattr(config, "ETF_ROT_COST_ONEWAY", 0.0015))
+
+    cols = [t for t in universe if t in prices.columns]
+    if fallback_ticker and fallback_ticker not in cols and fallback_ticker in prices.columns:
+        cols = cols + [fallback_ticker]
+    idx = rel.index.intersection(prices.index)
+    if risk_on is not None:
+        idx = idx.intersection(risk_on.index)
+    idx = idx.sort_values()
+    if start is not None:
+        idx = idx[idx >= pd.Timestamp(start)]
+    if len(idx) < MIN_WEEKS:
+        return None
+
+    months = idx.to_period("M")
+    is_contrib_week = ~months.duplicated()
+
+    units: Dict[str, float] = {}
+    nav = 1.0
+    prev_value: Optional[float] = None
+    nav_series, value_series, dates = [], [], []
+    total_contributed = 0.0
+    picks: Dict[str, int] = {}
+
+    def _px(date, t):
+        v = prices.at[date, t] if t in prices.columns else None
+        return float(v) if v is not None and pd.notna(v) and v > 0 else None
+
+    for i, date in enumerate(idx):
+        value_before = sum(u * (_px(date, t) or 0.0) for t, u in units.items())
+
+        if prev_value is not None and prev_value > 0:
+            nav *= (1.0 + (value_before / prev_value - 1.0))
+
+        if is_contrib_week[i]:
+            target = None
+            if risk_on is None or bool(risk_on.loc[date]):
+                cand = rel.loc[date, [t for t in universe if t in rel.columns]].dropna()
+                if not cand.empty:
+                    top = cand.sort_values(ascending=False).index[0]
+                    if _px(date, top) is not None:
+                        target = top
+            if target is None:
+                target = fallback_ticker
+            p = _px(date, target) if target else None
+            if p is not None:
+                units[target] = units.get(target, 0.0) + (monthly_contribution * (1.0 - cost_oneway)) / p
+                picks[target] = picks.get(target, 0) + 1
+            total_contributed += monthly_contribution
+            value_after = sum(u * (_px(date, t) or 0.0) for t, u in units.items())
+        else:
+            value_after = value_before
+
+        prev_value = value_after
+        nav_series.append(nav)
+        value_series.append(value_after)
+        dates.append(date)
+
+    nav_s = pd.Series(nav_series, index=pd.DatetimeIndex(dates))
+    nav_stats = MomentumBacktester._compute_stats(nav_s, 1.0)
+    end_value = value_series[-1]
+
+    return {
+        "nav_stats": nav_stats,
+        "end_value": round(end_value, 0),
+        "total_contributed": round(total_contributed, 0),
+        "gain_over_contributed": round(end_value / total_contributed - 1.0, 4) if total_contributed > 0 else None,
+        "start": dates[0].strftime("%Y-%m-%d"),
+        "end": dates[-1].strftime("%Y-%m-%d"),
+        "weeks": len(dates),
+        "years": round(len(dates) / 52, 1),
+        "picks": dict(sorted(picks.items(), key=lambda kv: -kv[1])),
+    }
