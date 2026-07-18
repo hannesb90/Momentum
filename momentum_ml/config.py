@@ -696,6 +696,12 @@ CLAUDE_MODEL_DEFAULT = _os.environ.get("CLAUDE_MODEL_DEFAULT", "sonnet")
 INSIGHT_BATCH_SIZE = 5
 INSIGHT_MAX_TICKERS = 20
 
+# ── Fond-nischtema-klassificering (altdata/fund_theme_classifier.py) – inom
+# ett nischtema väljs den PRIMÄRA fonden som lägst totalavgift bland fonder
+# med minst så här många ägare (likviditets-/förtroende-proxy, inte en
+# handelsvolymsiffra vi faktiskt har) – annars billigast av alla oavsett.
+FUND_THEME_MIN_OWNERS = 200
+
 # ── Watchlist-synk (watchlist_sync.py, idé 7) – speglar modellens topplista +
 # säljvaktens flaggor som två Montrose-watchlists. Rör bara watchlists,
 # create_trade_ticket ingår ALDRIG i dess --allowedTools.
