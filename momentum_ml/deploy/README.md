@@ -153,7 +153,97 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now momentum-avanza-audit.timer momentum-avanza-calendar.timer
 ```
 
-## 7. Hälsokontroll på Pi:n
+## 7. Nattlig innehavssynk från Montrose (midnatt)
+
+`momentum-montrose-holdings.timer` kör `sync_montrose_holdings.py
+--from-montrose` vid 00:00 – hämtar innehaven (läs-läge, headless Claude låst
+till `get_holdings`) och skriver `cache/portfolio_holdings.csv`, samma fil
+appen använder. Körs FÖRE nattträningen (02:00) så portfölj-uppdateringen
+värderar färska innehav. Vägrar skriva vid tomt/trasigt svar (rör aldrig
+befintlig fil då). Befintliga hinkar bevaras; bara nya tickers hink-gissas.
+
+Kräver på Pi:n (engångs, som samma användare som tjänsten kör):
+Claude Code installerad + inloggad (`claude login`, prenumeration – ingen
+API-nyckel) och Montrose-servern LOKALT registrerad:
+
+```bash
+claude mcp add --transport http montrose https://mcp.montrose.io
+claude mcp login montrose   # OAuth – klistra in callback-URL:en SNABBT (~1 min giltighet)
+```
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-montrose-holdings.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-montrose-holdings.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-montrose-holdings.timer
+
+# Testköra direkt:
+sudo systemctl start momentum-montrose-holdings.service
+journalctl -u momentum-montrose-holdings.service -f
+```
+
+## 7a2. Nattlig watchlist-synk till Montrose (03:00)
+
+`momentum-watchlist.timer` kör `watchlist_sync.py` – speglar modellens
+topp-10 sammanvägda rankning + säljvaktens flaggade innehav som två
+Montrose-watchlists (`config.MONTROSE_WATCHLIST_TOP/_SELL`), så de syns
+direkt i mäklarappen. Rör ALDRIG en order (`create_trade_ticket` ingår inte
+i dess `--allowedTools`). Skriver om listorna helt varje körning (tar bort
+gamla poster, lägger till nya) – ackumulerar aldrig.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-watchlist.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-watchlist.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-watchlist.timer
+
+# Testköra direkt:
+cd /opt/momentum/momentum_ml && python watchlist_sync.py
+```
+
+## 7b. Nattlig narrativ-rapport (PM/VD-ord + nyheter/social, 03:30)
+
+`momentum-insight.timer` kör `insight_report.py` – ren narrativ, ALDRIG en
+signal (se `docs/UTVECKLINGSLOGG.md` §10 om varför social/nyhets-alt-data
+inte får bli en tränings-feature). Läser redan cachad MFN/poängkarte-data
+lokalt och använder headless Claudes inbyggda **WebSearch** (ingen extra
+API-nyckel) för färska nyheter/social ton, för dina innehav + modellens
+topp-10 sammanvägda rankning. Skriver `results/insight_report.json`.
+
+Kostnadstak i `config.py`: `INSIGHT_MAX_TICKERS` (default 20) och
+`INSIGHT_BATCH_SIZE` (default 5, ~4 headless-anrop/natt). Kräver bara
+`claude login` (prenumerationen) – ingen extra MCP-registrering, WebSearch
+är ett inbyggt verktyg.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-insight.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-insight.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-insight.timer
+
+# Testköra direkt (använd --limit vid första testet, snabbare):
+cd /opt/momentum/momentum_ml && python insight_report.py --limit 4
+```
+
+## 7c. Veckovis förvaltarkommentar (måndagar, 04:00)
+
+`momentum-commentary.timer` kör `portfolio_commentary.py` – EN headless-
+körning, INGA verktyg (ren textsyntes av redan beräknad data: hink-drift,
+varningar, exit-alarm, säljvakt, Nästa köp-planen + insight_report.json).
+Skriver `results/portfolio_commentary.json`, visas överst på Bedömning-
+fliken.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-commentary.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-commentary.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-commentary.timer
+
+# Testköra direkt:
+cd /opt/momentum/momentum_ml && python portfolio_commentary.py
+```
+
+## 8. Hälsokontroll på Pi:n
 
 ```bash
 vcgencmd measure_temp        # håll under ~80°C, sätt kylfläns/fläkt annars

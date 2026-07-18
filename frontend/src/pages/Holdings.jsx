@@ -243,9 +243,10 @@ export function HoldingsPage() {
           Min portfölj
           <InfoButton title="Portfölj-medveten planering">
             <p>
-              Lägg in dina innehav manuellt (Montrose saknar API). Appen klassar dem per hink,
-              jämför mot en diversifierad mål-fördelning och riktar <b>nytt kapital</b> mot det
-              du är underviktad i – fyll-mot-mål via inflöden, ingen försäljning.
+              Innehaven kan synkas direkt från Montrose (sync_montrose_holdings.py på Pi:n)
+              eller läggas in manuellt här. Appen klassar dem per hink, jämför mot en
+              diversifierad mål-fördelning och riktar <b>nytt kapital</b> mot det du är
+              underviktad i – fyll-mot-mål via inflöden, ingen försäljning.
             </p>
           </InfoButton>
         </h1>

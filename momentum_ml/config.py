@@ -89,6 +89,21 @@ REBALANCE_WEEKS    = FORWARD_WEEKS  # följer prognoshorisonten (13v)
 ASYMMETRIC_EXIT    = False
 EXIT_SMA_WEEKS     = 20
 
+# ATR-baserad trailing stop (individnivå, mellan schemalagda rebalanseringar,
+# samma "sälj utan att köpa nytt"-princip som ASYMMETRIC_EXIT ovan). Skiljer
+# sig från den SMA-baserade _trend_exit genom att vara VOLATILITETSNORMALISERAD
+# och PER POSITION: sälj ett innehav om priset faller ATR_STOP_MULT × ATR
+# (Average True Range, ATR_WINDOW_WEEKS rullande) från sin HÖGSTA notering
+# SEDAN KÖP - kapar en enskild "raket" som rekylerar snabbt, oavsett om
+# bredare SMA-trend eller marknadsregim hunnit reagera än. En hög-vol-aktie
+# får automatiskt en vidare stop (i kronor) än en låg-vol-aktie - samma
+# princip som SIZING_MODE="inverse_vol" fast för EXIT i stället för sizing.
+# Default AV: måste A/B:as (tune_atr_stop.py, in-sample/OOS) innan adoption -
+# se SIZING_MODE/VOL_TARGET_ENABLED för hur "adopterat" dokumenteras här.
+ATR_STOP_ENABLED   = False
+ATR_STOP_MULT      = 2.5      # antal ATR under peak innan sälj (svep 1.5-4.0)
+ATR_WINDOW_WEEKS   = 10       # rullande fönster för True Range-snittet
+
 # Rebalanseringsläge:
 #   "calendar" – rebalansera var REBALANCE_WEEKS:e vecka (bevisad baslinje).
 #   "event"    – HÄNDELSESTYRD rotation: tekniken avgör hålltiden, inte kalendern.
@@ -303,6 +318,47 @@ COMMISSION         = 0.001     # 0.1% per trade
 SLIPPAGE           = 0.001     # 0.1% slippage
 INITIAL_CAPITAL    = 1_000_000 # 1 MSEK startkapital
 
+# ── ISK-schablonskatt (kapitaldrag i SJÄLVA backtest-equity-kurvan) ───────────
+# Ett svenskt ISK schablonbeskattas ÅRLIGEN oavsett om något sålts - kontanter
+# urholkas alltså av skatt precis som investerat kapital, en "cash drag" som
+# annars saknas helt i run()s kapitaltillväxt (INITIAL_CAPITAL bara växer/
+# krymper av handel, aldrig av skatt). Skiljt från PORTFOLIO_ISK_LIMIT
+# (portfolio.py) - den är en KVALITATIV input till säljvakts-RÅDGIVNINGEN i
+# skarpt läge, den här är ett KVANTITATIVT avdrag i backtestens siffror.
+#
+# schablonintäkt-andel = max(SLR(30 nov FÖREGÅENDE år) + 1 %-enhet, golv 1.25%)
+# skatt = kapitalunderlag (kvartalsmedel 1/1,1/4,1/7,1/10) × andelen × 30%.
+# Formel/golv verifierat mot Skatteverket/Riksgälden (WebSearch 2026-07-18).
+#
+# ISK_SLR_BY_YEAR: KÄNDA värden (källa Riksgälden pressmeddelanden/Skatte-
+# verket, samma verifiering). 2010-2013 kunde INTE verifieras härifrån
+# (Riksgäldens historiska Excel-fil gick inte att nå från den här sessionen)
+# - lämnade MEDVETET utanför i stället för att gissa. Backtester som täcker
+# de åren faller tillbaka på lagstadgade golvet (ISK_SCHABLON_FLOOR) och
+# VARNAR en gång i loggen - komplettera tabellen om den perioden spelar roll.
+ISK_TAX_ENABLED    = False
+ISK_SLR_BY_YEAR = {
+    2014: 0.90, 2015: 0.65, 2016: 0.27, 2017: 0.49, 2018: 0.51,
+    2019: -0.09, 2020: -0.10, 2021: 0.23, 2022: 1.94, 2023: 2.62,
+    2024: 1.96, 2025: 2.55,
+}
+ISK_SCHABLON_FLOOR = 0.0125    # lagstadgat golv, 1.25% (gäller ISK sedan inkomstår 2018)
+ISK_TAX_RATE        = 0.30     # kapitalinkomstskatt på schablonintäkten
+
+# Fribelopp (skattefritt kapitalunderlag): en HELT NY regel, fanns INTE innan
+# inkomstår 2025 (då var HELA kapitalunderlaget skattepliktigt, precis vad
+# koden gjorde innan denna rad fanns). 150 000 kr för 2025, höjt till
+# 300 000 kr fr.o.m. 2026 (gäller per person, alla ISK+KF sammanräknat -
+# den här backtesten modellerar EN portfölj så hela fribeloppet tillämpas
+# rakt av). WebSearch-verifierat 2026-07-18 (Avanza/Handelsbanken/SEB).
+# Saknat år (före 2025, eller framtida år lagstiftaren ännu inte satt) →
+# 0 kr fribelopp - det är den KÄNDA, korrekta defaulten för de åren, inte
+# en gissning (till skillnad från ISK_SLR_BY_YEAR:s luckor ovan).
+ISK_FRIBELOPP_BY_YEAR = {
+    2025: 150_000,
+    2026: 300_000,
+}
+
 # ── Risk management ───────────────────────────────────────────────────────────
 DRAWDOWN_GUARD_THRESHOLD   = 0.15   # vid -15% drawdown, börja de-leverage
 DRAWDOWN_GUARD_FLOOR       = 0.30   # min kvarvarande exponering vid 2x tröskeln (-30% DD)
@@ -369,6 +425,19 @@ MARKET_IMPACT_MAX          = 0.05   # tak för impact-kostnad per trade (5%)
 SPREAD_ADV_REF = 5_000_000   # ADV (lokal valuta/vecka) där spreaden är "normal"
 SPREAD_MIN     = 0.0005      # 0.05% halv-spread för mycket likvida bolag
 SPREAD_MAX     = 0.020       # 2% tak för de tunnaste namnen
+
+# VIX-driven dynamisk spread/slippage: ovanstående _half_spread fångar TVÄR-
+# SNITTS-variation (småbolag dyrare att handla än storbolag, via ADV) men
+# INTE TIDSVARIATION - implicit spread vidgas historiskt kraftigt när
+# marknaden panikar, oavsett ett enskilt bolags egen likviditet. Multiplicerar
+# slippage+halv-spread (INTE courtage, INTE impact-termen - se docstring i
+# _execution_cost_rate) med SLIPPAGE_VIX_STRESS_MULT under samma stress-flagga
+# etf_rotation.py:s regim-gate redan använder (macro_data.stress_series: VIX +
+# kreditspread, ingen ny datakälla). Eftersom _half_spread redan är störst för
+# småbolag blir den ABSOLUTA ökningen automatiskt störst där också - ingen
+# separat småbolags-term behövs. Default AV: måste A/B:as innan adoption.
+SLIPPAGE_VIX_ENABLED     = False
+SLIPPAGE_VIX_STRESS_MULT = 2.0   # multiplikator under stress (svep 1.5-3.0)
 
 # ── Universumfilter (förfilter innan feature engineering/träning) ────────────
 # Tunt handlade bolag drar ner datakvalitet och ökar beräkningstid utan att
@@ -527,8 +596,33 @@ QUALITY_PS_FAIR        = 4.0       # P/S <= rimlig, över = dyr
 # skillnad från quality_screener (LLM) och quant_screener (TradingView).
 # Trösklar grundade i väldokumenterade, publikt citerade Buffett-kriterier
 # (inte gissade): ROE > 15% konsekvent, Debt/Equity < 0.5 konservativt.
-VALUE_ROE_GOOD         = 0.15      # ROE-tröskel (15%) för "kvalitetsbolag"-flaggan
-VALUE_DEBT_EQUITY_SAFE = 0.5       # Debt/Equity under detta = konservativt skuldsatt
+VALUE_ROE_GOOD         = 0.15      # ROE-tröskel (15%) – ANVÄNDS EJ längre för meets_roe_bar
+                                    # (se VALUE_ROE_RANK_SAFE nedan), kvar för dokumentationssyfte.
+VALUE_DEBT_EQUITY_SAFE = 0.5       # Debt/Equity under detta = konservativt skuldsatt (ANVÄNDS EJ
+                                    # längre för meets_debt_bar, se VALUE_DEBT_RANK_SAFE nedan –
+                                    # kvar bara för print-texten/dokumentationssyfte).
+# Sektor-blandad percentil (roe_bar_rank) krävs vara ≥ detta för att klara
+# ROE-barren. BUGG (fixad 2026-07-xx): meets_roe_bar jämförde tidigare ROE
+# mot EN global absolut tröskel (VALUE_ROE_GOOD=15%) – banker/finansbolag
+# har strukturellt dämpad ROE (Basel-kapitalkrav begränsar hävstången som
+# annars boostar ROE, till skillnad från olevererade tillväxtbolag), så
+# välskötta banker kunde ändå falla på en tröskel satt för industri-/
+# konsumentbolag. Samma fix-princip som VALUE_DEBT_RANK_SAFE: jämför
+# banker mot ANDRA banker, inte mot hela börsen.
+VALUE_ROE_RANK_SAFE = 0.5
+# Sektor-blandad percentil (debt_rank, se value_screener._sector_blend_ranks)
+# krävs vara ≥ detta för att klara skuld-barren. BUGG (fixad 2026-07-xx):
+# meets_debt_bar jämförde tidigare debt_equity mot EN global absolut tröskel
+# (VALUE_DEBT_EQUITY_SAFE), kalibrerad för industri-/konsumentbolag. Banker
+# har strukturellt mycket högre D/E (inlåning bokförs som skuld) – varje
+# bank i universumet föll ALLTID på den barren oavsett faktisk hälsa
+# (verkligt fall: Swedbank/Avanza Bank Holding flaggade "skuld över barren"
+# trots att de är väletablerade, lönsamma banker). 0.5 = kräver bättre än
+# medianen inom sin SEKTOR-jämförelse (redan beräknad, samma logik som
+# värderings-percentilen) – inte back-testad mot holdouten separat, bara en
+# rimlig startpunkt som ersätter en bar som var strukturellt omöjlig för en
+# hel sektor att klara.
+VALUE_DEBT_RANK_SAFE = 0.5
 # "Owner earnings"-multipel (börsvärde/owner earnings) – EGNA trösklar, inte
 # samma som QUALITY_MULT_* (owner earnings är lägre än EBITDA eftersom
 # avskrivningar redan är kvar i det, så samma multipel motsvarar INTE samma
@@ -628,12 +722,80 @@ PORTFOLIO_TARGET = {"broad": 0.65, "sweden": 0.15, "theme": 0.20, "leverage": 0.
 # åsidosätter default ovan. GITIGNORERAD (personlig, som innehaven). Saknas den
 # används PORTFOLIO_TARGET. leverage hålls alltid 0 (evidens: hävstång = ruinrisk).
 PORTFOLIO_TARGET_FILE = "cache/portfolio_target.json"
-# "Nästa köp"-Coret (hemvyns huvudkort): EN global kärn-ETF som förstahandsval –
-# bredast+billigast vann varje netto-jämförelse vi kört (ACWI slog rotationens
-# alla varianter OOS och aktiemodellens holdout). Beloppet är bara default för
-# vyn; frontend kan skicka valfritt belopp.
+# "Nästa köp"-Coret (hemvyns huvudkort): fallback/enkel-ticker-kärnan om
+# PORTFOLIO_CORE_SPLIT nedan är tom. Bredast+billigast vann varje netto-
+# jämförelse vi kört mot AKTIVA varianter (ACWI slog rotationens alla
+# varianter OOS och aktiemodellens holdout) - den jämförelsen står fast.
+# Används också som den EXAKTA, odelade kärnan av backtest_bear_hedge.py/
+# backtest_bull_hedge.py (regim-hedge-frågan gäller EN kärninstrument, inte
+# uppdelningen nedan - en annan fråga). Beloppet är bara default för vyn;
+# frontend kan skicka valfritt belopp.
 PORTFOLIO_CORE_ETF = ("IUSQ.DE", "iShares MSCI ACWI (hela världen)")
+# Kärnans FAKTISKA uppdelning i next_buy() (Nästa köp-kortet), om satt.
+# World+EM (~88/12, samma kapvikt-exponering som ACWI fast i två fonder)
+# slog EN enda ACWI-fond på VARJE mått i ett matchat fönster (samma start-
+# datum för båda, se backtest_core_allocation.py): NAV-CAGR 11,8% vs 11,6%,
+# Sharpe 0,82 vs 0,81, slutvärde +120,6% vs +119,0% (2011-10-17→idag,
+# köp-och-behåll-ackumulering, ingen försäljning - se
+# backtest/accumulation.py:simulate_accumulation). Andra granulära splittar
+# (EM+Europa 50/50, World+USA+EM+Europa 25/25/25/25, World+EM+Kina+Indien)
+# förlorade klart mot ACWI i samma test - BARA World+EM-kapvikten hade
+# evidens, inte "fler innehav" i allmänhet. Tom lista/None → faller tillbaka
+# på PORTFOLIO_CORE_ETF (en enda ticker). Ben under NEXT_BUY_MIN_TRADE_SEK
+# viks in i det största benet i stället för att handlas för en struntsumma.
+PORTFOLIO_CORE_SPLIT = [
+    ("EUNL.DE", "iShares Core MSCI World", 0.88),
+    ("IS3N.DE", "iShares Core MSCI EM IMI", 0.12),
+]
 NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
+
+# ── Montrose trade-ticket-knapp (headless Claude Code, se montrose_ticket.py) ──
+# Headless `claude -p`, inloggad med Claude-prenumerationen (claude login) på
+# Pi:n – ingen separat Anthropic-API-nyckel. --allowedTools + --permission-mode
+# dontAsk låser anropet till EXAKT search_instruments + create_trade_ticket.
+# Skapar bara en förifylld länk, lägger aldrig en order. BARA köp (side=Buy) –
+# säljvakten/takeprofit i appen är rådgivande, ingen knapp säljer härifrån.
+# Alltid ISK-kontot, ALDRIG kreditkontot (hävstång/marginal är uttryckligen
+# uteslutet ur modellen, se PORTFOLIO_TARGET leverage=0).
+MONTROSE_ACCOUNT_ID = "REDACTED-ACCOUNT-ID"   # ISK
+CLAUDE_BIN = _os.environ.get("CLAUDE_BIN", _os.path.expanduser("~/.local/bin/claude"))
+# Kontobunden connector (inte lokalt .mcp.json) hinner inte alltid ansluta
+# inom Claude Codes default MCP-timeout (30s) i en färsk headless-process.
+MONTROSE_MCP_TIMEOUT_MS = 60000
+
+# ── Modellval för headless Claude-anrop (claude_headless.py) – tidigare
+# opinnat (körde bara CLI:ts kontodefault för alla scripts), vilket gjorde
+# quality_screener.py:s 528 ENSKILDA anrop onödigt kvot-dyra (två avbrutna
+# körningar pga användningsgräns mitt i, se claude_headless.py:s
+# felhantering). "sonnet"/"haiku" är CLI:ts egna alias för senaste versionen
+# i respektive familj (inte en låst versionssträng) – följer automatiskt med
+# om Anthropic släpper en ny Sonnet/Haiku utan att den här filen behöver
+# ändras. FAST = billig/snabb, för enkel klassificering i hög volym
+# (quality_screener). DEFAULT = starkare, för narrativ text/WebSearch-
+# resonemang (insight_report/portfolio_commentary) och verktygsanrop där
+# precision spelar roll (montrose_ticket/watchlist_sync – riktiga
+# trade-ticket-/watchlist-anrop, ska INTE nedgraderas för att spara kvot).
+CLAUDE_MODEL_FAST = _os.environ.get("CLAUDE_MODEL_FAST", "haiku")
+CLAUDE_MODEL_DEFAULT = _os.environ.get("CLAUDE_MODEL_DEFAULT", "sonnet")
+
+# ── Nattlig narrativ-rapport (insight_report.py) – REN NARRATIV, ALDRIG SIGNAL,
+# se dev-loggens #18 (PM-/rapport-/VD-ton bär ingen OOS-alfa) och §10 (social
+# buzz = brusig återvändsgränd). Kostnadstak: max MAX_TICKERS bolag, BATCH_SIZE
+# st per headless-anrop (innehav prioriteras framför kandidater vid kapning).
+INSIGHT_BATCH_SIZE = 5
+INSIGHT_MAX_TICKERS = 20
+
+# ── Fond-nischtema-klassificering (altdata/fund_theme_classifier.py) – inom
+# ett nischtema väljs den PRIMÄRA fonden som lägst totalavgift bland fonder
+# med minst så här många ägare (likviditets-/förtroende-proxy, inte en
+# handelsvolymsiffra vi faktiskt har) – annars billigast av alla oavsett.
+FUND_THEME_MIN_OWNERS = 200
+
+# ── Watchlist-synk (watchlist_sync.py, idé 7) – speglar modellens topplista +
+# säljvaktens flaggor som två Montrose-watchlists. Rör bara watchlists,
+# create_trade_ticket ingår ALDRIG i dess --allowedTools.
+MONTROSE_WATCHLIST_TOP = "Momentum - Topplista"
+MONTROSE_WATCHLIST_SELL = "Momentum - Säljvakt"
 # Aktiv rank-modell för "nästa köp" (köp-vakten). Väljer bara viktprofilen i
 # _unified_rank() – ALL underliggande data (kvalitet/kvant/value/momentum)
 # laddas alltid, så man kan växla fram och tillbaka utan omkörning. Sätts av

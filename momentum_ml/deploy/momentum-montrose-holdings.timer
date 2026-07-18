@@ -1,0 +1,13 @@
+[Unit]
+Description=Kör momentum-montrose-holdings.service varje natt vid midnatt
+
+[Timer]
+# 00:00 – FÖRE nattträningen (02:00) så main.py:s portfölj-uppdatering värderar
+# de FÄRSKA innehaven mot nattens kurser, inte gårdagens innehavslista.
+OnCalendar=*-*-* 00:00:00
+# Pi:n av/sov vid midnatt → kör så snart den är uppe igen.
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

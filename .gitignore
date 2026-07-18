@@ -3,3 +3,4 @@ __pycache__/
 momentum_ml/cache/
 momentum_ml/results/
 /cache/
+.venv/
