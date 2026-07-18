@@ -189,16 +189,18 @@ def simulate_rotating_accumulation(
     risk_on: Optional["pd.Series"] = None,
     fallback_ticker: Optional[str] = None,
     start: Optional[str] = None,
+    take_profit_gain: Optional[float] = None,
 ) -> Optional[Dict]:
     """
     next_buy()s FAKTISKA tema-satellit-mekanik: varje kontributionsmånad,
     plocka den KAUSALT högst rankade tickern i `universe` enligt `rel` just
     DEN dagen (ingen framtidsdata - `rel` måste redan vara beräknad
     point-in-time, t.ex. via etf_rotation.py:s _scores()), lägg HELA
-    insättningen där. Säljer ALDRIG en tidigare köpt position även om den
-    tappar rank senare - portföljen ackumulerar över åren vilka "månadens
-    vinnare" än råkade vara, exakt vad next_buy()/_candidates() gör
-    (theme_pick = topp-1 varje gång, ingen ombalansering).
+    insättningen där. Säljer ALDRIG en tidigare köpt position (utöver ev.
+    take_profit_gain nedan) även om den tappar rank senare - portföljen
+    ackumulerar över åren vilka "månadens vinnare" än råkade vara, exakt
+    vad next_buy()/_candidates() gör (theme_pick = topp-1 varje gång,
+    ingen ombalansering).
 
     Detta är MEDVETET en annan strategi än etf_rotation.py:s backtest()
     (som SÄLJER/roterar bort positioner som faller ur topp-K var 4:e
@@ -214,9 +216,24 @@ def simulate_rotating_accumulation(
     fallback_ticker: måste finnas i `prices` om risk_on används, eller om
     `universe` saknar en giltig kandidat en given månad.
 
-    Returnerar samma struktur som simulate_accumulation(), plus `picks`:
-    {ticker: antal månader den vann insättningen} - visar KONCENTRATIONEN
-    (rider rotationen på några få vinnare, eller sprids den brett?).
+    take_profit_gain: valfri tröskel (t.ex. 0.90 = +90%) - samma disciplin
+    som appens EGNA säljvakt (config.TAKEPROFIT_GAIN, default 0.50), fast
+    utan dess eskaleringsstege (bevaka → ta hem vinsten → sälj) - en enkel
+    platt tröskel. Kollas VARJE vecka (inte bara kontributionsmånader) mot
+    en viktad SNITTKOSTNAD per ticker (flera köp av samma tema över åren,
+    olika pris varje gång, ger en genomsnittlig anskaffningskostnad - inte
+    bara senaste priset). Passerar en hållen tema-position tröskeln säljs
+    HELA positionen (kostnad_oneway på säljbenet också) och hela behållningen
+    rullas direkt in i `fallback_ticker` (kärnan) - "ta hem vinsten" i den
+    här appens mening är alltid hem till kärnan, aldrig en ny satellitsats.
+    Kärnan själv omfattas ALDRIG av detta - appen har ingen säljregel för
+    den breda kärnan någonstans, bara för satelliter. None = ingen säljregel
+    alls (gamla beteendet, ren köp-och-behåll).
+
+    Returnerar samma struktur som simulate_accumulation(), plus `picks`
+    ({ticker: antal månader den vann insättningen}, visar KONCENTRATIONEN)
+    och `take_profits` ({ticker: antal gånger den träffade tröskeln}) om
+    take_profit_gain angavs.
     """
     monthly_contribution = float(monthly_contribution or getattr(config, "NEXT_BUY_DEFAULT_AMOUNT", 10000))
     cost_oneway = float(cost_oneway if cost_oneway is not None else getattr(config, "ETF_ROT_COST_ONEWAY", 0.0015))
@@ -237,17 +254,46 @@ def simulate_rotating_accumulation(
     is_contrib_week = ~months.duplicated()
 
     units: Dict[str, float] = {}
+    cost_basis: Dict[str, float] = {}   # viktad snittkostnad/andel, BARA för icke-fallback-tickers
     nav = 1.0
     prev_value: Optional[float] = None
     nav_series, value_series, dates = [], [], []
     total_contributed = 0.0
     picks: Dict[str, int] = {}
+    take_profits: Dict[str, int] = {}
 
     def _px(date, t):
         v = prices.at[date, t] if t in prices.columns else None
         return float(v) if v is not None and pd.notna(v) and v > 0 else None
 
+    def _buy(t, kr, date):
+        p = _px(date, t)
+        if p is None or kr <= 0:
+            return
+        new_units = (kr * (1.0 - cost_oneway)) / p
+        prev_units = units.get(t, 0.0)
+        if t != fallback_ticker and take_profit_gain is not None:
+            prev_kr = cost_basis.get(t, p) * prev_units
+            total_units = prev_units + new_units
+            cost_basis[t] = (prev_kr + kr * (1.0 - cost_oneway)) / total_units if total_units > 0 else None
+        units[t] = prev_units + new_units
+
     for i, date in enumerate(idx):
+        # TAKE-PROFIT: kollas VARJE vecka, innan resten av veckans logik - en
+        # position kan passera tröskeln vilken vecka som helst, inte bara
+        # kontributionsmånader.
+        if take_profit_gain is not None and fallback_ticker:
+            for t in [t for t, u in units.items() if t != fallback_ticker and u > 0]:
+                p, cb = _px(date, t), cost_basis.get(t)
+                if p is None or not cb or cb <= 0:
+                    continue
+                if p / cb - 1.0 >= take_profit_gain:
+                    proceeds = units[t] * p * (1.0 - cost_oneway)
+                    units[t] = 0.0
+                    cost_basis.pop(t, None)
+                    _buy(fallback_ticker, proceeds, date)
+                    take_profits[t] = take_profits.get(t, 0) + 1
+
         value_before = sum(u * (_px(date, t) or 0.0) for t, u in units.items())
 
         if prev_value is not None and prev_value > 0:
@@ -263,9 +309,8 @@ def simulate_rotating_accumulation(
                         target = top
             if target is None:
                 target = fallback_ticker
-            p = _px(date, target) if target else None
-            if p is not None:
-                units[target] = units.get(target, 0.0) + (monthly_contribution * (1.0 - cost_oneway)) / p
+            if target and _px(date, target) is not None:
+                _buy(target, monthly_contribution, date)
                 picks[target] = picks.get(target, 0) + 1
             total_contributed += monthly_contribution
             value_after = sum(u * (_px(date, t) or 0.0) for t, u in units.items())
@@ -291,4 +336,5 @@ def simulate_rotating_accumulation(
         "weeks": len(dates),
         "years": round(len(dates) / 52, 1),
         "picks": dict(sorted(picks.items(), key=lambda kv: -kv[1])),
+        "take_profits": dict(sorted(take_profits.items(), key=lambda kv: -kv[1])),
     }
