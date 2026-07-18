@@ -1,18 +1,21 @@
 """
-portfolio_commentary.py – en daglig, läsvärd "förvaltarkommentar" som
-sammanfattar din portfölj i klartext PER INNEHAV (vikt, vinst/förlust,
-kvalitets-/kvant-/momentum-betyg, fundamenta-flaggor, sektor, kommande
-rapportdatum, färsk nyhets-/PM-sammanfattning) OCH PER SEKTOR (momentum
-senaste 4/13/26 veckor, rotation in/ut) för sektorerna dina innehav faktiskt
-tillhör – inte bara hink-fördelning.
+portfolio_commentary.py – ett dagligt, läsvärt RESEARCH-brev om portföljen.
+
+MEDVETET INTE en sammanfattning av portföljfördelning/vikt/kvalitets-betyg
+– den datan syns redan i Översikt/Innehav/Sektorer, och brevet ska aldrig
+bara recitera den (verklig lärdom 2026-07-18: tidigare version blev till
+stor del en upprepning av vad varje annan vy redan visar). Underlaget
+(_underlag()) ger fortfarande PER INNEHAV/PER SEKTOR-siffror som GRUND för
+resonemanget, men prompten (_PROMPT) kräver uttryckligen att varje mening
+ska tillföra research-baserad insikt – annars utelämnas den posten.
 
 Använder headless Claudes inbyggda WebSearch (låst, se _TOOLS nedan) för att
-förklara VARFÖR en sektor/ett bolag rört sig ("X har fallit senaste tiden
-till följd av Y, men bedöms fortsatt ha Z – därför inget skäl att korrigera
-positionen"), inte bara vad siffrorna redan visar. REN NARRATIV, ALDRIG
-SIGNAL – gäller fortfarande: kommentaren får resonera om huruvida en rörelse
-ser tillfällig/strukturell ut, men ska ALDRIG skriva en ny köp/sälj-instruktion
-utöver vad Nästa köp-planen/säljvakten redan säger.
+förklara VARFÖR en sektor/ett bolag/ett globalt tema rört sig ("X har
+fallit senaste tiden till följd av Y, men bedöms fortsatt ha Z – därför
+inget skäl att korrigera positionen"), inte bara vad siffrorna redan visar.
+REN NARRATIV, ALDRIG SIGNAL – gäller fortfarande: kommentaren får resonera
+om huruvida en rörelse ser tillfällig/strukturell ut, men ska ALDRIG skriva
+en ny köp/sälj-instruktion utöver vad Nästa köp-planen/säljvakten redan säger.
 
 Körs dagligen kl 23:00 (momentum-commentary.timer), EFTER morgonens
 nattträning/watchlist-synk/insight-rapport samma kalenderdag – kommentaren
@@ -50,39 +53,48 @@ fritt tillgängliga dagliga analyser/veckobrev) – innan en bredare sökning
 som "<sektor> aktier <senaste händelse>" eller "<bolag> nyheter". FÖR DE
 GLOBALA TEMANA (halvledare/AI/rymdteknik m.fl. – ofta amerikanskt
 dominerade, där svenska medier har tunn täckning) sök i stället mot
-etablerade, i huvudsak FRIA engelskspråkiga källor: "site:cnbc.com
-<tema>", "site:marketwatch.com <tema>", "site:seekingalpha.com <tema>".
-Skriv sedan analytiker-stil, konkret
+etablerade, i huvudsak FRIA engelskspråkiga källor – använd ETF:ENS EGET
+NAMN eller bransch som sökord (INTE den svenska temaetiketten, den ger
+inga träffar på engelskspråkiga sajter), t.ex. "site:cnbc.com VanEck
+Semiconductor" eller "site:seekingalpha.com semiconductor ETF" – se
+etf_name i underlaget för respektive tema. Skriv sedan analytiker-stil, konkret
 orsak + bedömning, i stil med: "Halvledarsektorn har fallit tungt senaste
 veckorna till följd av X, men bedöms fortsatt ha goda tillväxtutsikter och
 är därför inte ett skäl att korrigera positionen." Gissa ALDRIG en orsak
 utan att ha sökt fram den – hittar du inget, säg det kort istället.
 
-Skriv en förvaltarkommentar på SVENSKA (10-15 meningar, löpande text, inga
-punktlistor). Den ska vara KONKRET:
-  - Nämn MINST 3 SPECIFIKA innehav vid namn med ett konkret skäl ur
-    underlaget (t.ex. "Acconeer är upp X% och kvalitetsbetyget är starkt",
-    "Swedbank flaggas för hög skuldsättning", "Smart Eye rapporterar om N
-    dagar"). Inga vaga formuleringar ("några innehav har gått bra") när
-    underlaget har namngivna siffror att peka på.
-  - Kommentera MINST 1-2 SEKTORER/UNDERTEMAN med konkret momentum-siffra
-    OCH en research-baserad förklaring till rörelsen (se ovan) – inte bara
-    "sektorn har gått bra/dåligt". Använd UNDERLAGETS mest specifika nivå
-    du har siffror för (PER FINT UNDERTEMA om det finns för innehavet,
-    annars PER SEKTOR/GICS) – "Medicinsk utrustning" är mer läsvärt och
-    precist än "Health Care" när båda finns.
-  - Kommentera SEKTOREXPONERING om ett innehav sticker ut (koncentration,
-    en sektor som bär större delen av vinsten/förlusten).
-  - Nämn kommande RAPPORTER inom de närmaste veckorna om någon finns i
-    underlaget ("förväntningar").
-  - Väv in exit-alarm/säljvakt/fundamenta-flaggor på innehavsnivå, inte
-    bara som en generisk varningsrad.
+VIKTIGAST AV ALLT: appen visar redan hink-fördelning, vikt per innehav,
+kvalitets-/kvant-betyg och sektorexponering i egna vyer (Översikt/Innehav/
+Sektorer) – UPPREPA DEM INTE i brevet, de tillför inget den redan inte
+sett. Brevets enda existensberättigande är RESEARCH-baserad ANALYS
+(WebSearch-underbyggd VARFÖR) som INTE syns någon annanstans i appen.
+Varje mening ska tillföra ny insikt, inte recitera en siffra ur underlaget.
+
+Skriv en förvaltarkommentar på SVENSKA (8-12 meningar, löpande text, inga
+punktlistor). Den ska vara KONKRET och ANALYSTUNG:
+  - Nämn MINST 3 SPECIFIKA innehav/teman vid namn, men ENDAST med skäl du
+    faktiskt hittat via sökning (VARFÖR de rört sig, vad branschen/
+    analytiker säger) – inte "Acconeer har starkt kvalitetsbetyg" (redan
+    synligt i appen) utan "Acconeer är upp X% efter att [källa] rapporterat
+    Y". Hittar du ingen research-grundad förklaring för ett innehav, hoppa
+    över det och välj ett annat du faktiskt kan förklara – gissa aldrig.
+  - Kommentera MINST 1-2 SEKTORER/UNDERTEMAN med en research-baserad
+    förklaring till rörelsen (se ovan). Använd UNDERLAGETS mest specifika
+    nivå (PER FINT UNDERTEMA om det finns, annars PER SEKTOR/GICS) –
+    "Medicinsk utrustning" är mer läsvärt och precist än "Health Care".
+  - Nämn kommande RAPPORTER inom de närmaste veckorna kort, ENDAST om du
+    kan koppla dem till en förväntning du faktiskt hittat via sökning –
+    annars utelämna, ett bart datum utan sammanhang är redan synligt i
+    appen.
+  - Väv in exit-alarm/säljvakt/fundamenta-flaggor BARA om du kan lägga
+    till en research-baserad förklaring till varför – annars är den
+    tekniska flaggan redan synlig i Bedömning-fliken, upprepa den inte
+    utan ny insikt.
   - Om GLOBALA TEMAN finns i underlaget: nämn kort vilket tema som leder/
-    släpar just nu (t.ex. "humanoida robotar" vs "rymd/drönare"), särskilt
-    om det påverkar bedömningen av ett INNEHAVT temaB-ETF. De teman som
-    INTE är markerade "(INNEHAV)" är bara bevakning – nämn dem gärna som
-    kontext, men se nästa stycke.
-  - Avsluta med vad MODELLEN skulle ändra (Nästa köp-planen, i klartext).
+    släpar just nu OCH varför (se sökinstruktionen ovan), särskilt om det
+    påverkar bedömningen av ett INNEHAVT tema-ETF.
+  - Avsluta med EN mening om vad MODELLEN skulle ändra (Nästa köp-planen,
+    i klartext) – inte en upprepning av hela planen, bara skälet.
 
 VIKTIGT: sammanfatta och förklara siffrorna i underlaget korrekt – gissa
 aldrig på SIFFROR (bara på ORSAKER får du använda sökning). Skriv ALDRIG en
