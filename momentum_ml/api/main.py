@@ -529,7 +529,7 @@ def get_insight():
 
 @app.get("/api/commentary")
 def get_commentary():
-    """Månatlig förvaltarkommentar (portfolio_commentary.py) – syntes av
+    """Daglig förvaltarkommentar (portfolio_commentary.py) – syntes av
     hink-drift/varningar/exit-alarm/säljvakt/Nästa köp i klartext. Tom
     struktur om jobbet ännu inte körts på Pi:n."""
     path = Path(config.anchor(config.RESULTS_DIR)) / "portfolio_commentary.json"
