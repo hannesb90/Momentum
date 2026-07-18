@@ -89,6 +89,21 @@ REBALANCE_WEEKS    = FORWARD_WEEKS  # följer prognoshorisonten (13v)
 ASYMMETRIC_EXIT    = False
 EXIT_SMA_WEEKS     = 20
 
+# ATR-baserad trailing stop (individnivå, mellan schemalagda rebalanseringar,
+# samma "sälj utan att köpa nytt"-princip som ASYMMETRIC_EXIT ovan). Skiljer
+# sig från den SMA-baserade _trend_exit genom att vara VOLATILITETSNORMALISERAD
+# och PER POSITION: sälj ett innehav om priset faller ATR_STOP_MULT × ATR
+# (Average True Range, ATR_WINDOW_WEEKS rullande) från sin HÖGSTA notering
+# SEDAN KÖP - kapar en enskild "raket" som rekylerar snabbt, oavsett om
+# bredare SMA-trend eller marknadsregim hunnit reagera än. En hög-vol-aktie
+# får automatiskt en vidare stop (i kronor) än en låg-vol-aktie - samma
+# princip som SIZING_MODE="inverse_vol" fast för EXIT i stället för sizing.
+# Default AV: måste A/B:as (tune_atr_stop.py, in-sample/OOS) innan adoption -
+# se SIZING_MODE/VOL_TARGET_ENABLED för hur "adopterat" dokumenteras här.
+ATR_STOP_ENABLED   = False
+ATR_STOP_MULT      = 2.5      # antal ATR under peak innan sälj (svep 1.5-4.0)
+ATR_WINDOW_WEEKS   = 10       # rullande fönster för True Range-snittet
+
 # Rebalanseringsläge:
 #   "calendar" – rebalansera var REBALANCE_WEEKS:e vecka (bevisad baslinje).
 #   "event"    – HÄNDELSESTYRD rotation: tekniken avgör hålltiden, inte kalendern.
@@ -303,6 +318,33 @@ COMMISSION         = 0.001     # 0.1% per trade
 SLIPPAGE           = 0.001     # 0.1% slippage
 INITIAL_CAPITAL    = 1_000_000 # 1 MSEK startkapital
 
+# ── ISK-schablonskatt (kapitaldrag i SJÄLVA backtest-equity-kurvan) ───────────
+# Ett svenskt ISK schablonbeskattas ÅRLIGEN oavsett om något sålts - kontanter
+# urholkas alltså av skatt precis som investerat kapital, en "cash drag" som
+# annars saknas helt i run()s kapitaltillväxt (INITIAL_CAPITAL bara växer/
+# krymper av handel, aldrig av skatt). Skiljt från PORTFOLIO_ISK_LIMIT
+# (portfolio.py) - den är en KVALITATIV input till säljvakts-RÅDGIVNINGEN i
+# skarpt läge, den här är ett KVANTITATIVT avdrag i backtestens siffror.
+#
+# schablonintäkt-andel = max(SLR(30 nov FÖREGÅENDE år) + 1 %-enhet, golv 1.25%)
+# skatt = kapitalunderlag (kvartalsmedel 1/1,1/4,1/7,1/10) × andelen × 30%.
+# Formel/golv verifierat mot Skatteverket/Riksgälden (WebSearch 2026-07-18).
+#
+# ISK_SLR_BY_YEAR: KÄNDA värden (källa Riksgälden pressmeddelanden/Skatte-
+# verket, samma verifiering). 2010-2013 kunde INTE verifieras härifrån
+# (Riksgäldens historiska Excel-fil gick inte att nå från den här sessionen)
+# - lämnade MEDVETET utanför i stället för att gissa. Backtester som täcker
+# de åren faller tillbaka på lagstadgade golvet (ISK_SCHABLON_FLOOR) och
+# VARNAR en gång i loggen - komplettera tabellen om den perioden spelar roll.
+ISK_TAX_ENABLED    = False
+ISK_SLR_BY_YEAR = {
+    2014: 0.90, 2015: 0.65, 2016: 0.27, 2017: 0.49, 2018: 0.51,
+    2019: -0.09, 2020: -0.10, 2021: 0.23, 2022: 1.94, 2023: 2.62,
+    2024: 1.96, 2025: 2.55,
+}
+ISK_SCHABLON_FLOOR = 0.0125    # lagstadgat golv, 1.25% (gäller ISK sedan inkomstår 2018)
+ISK_TAX_RATE        = 0.30     # kapitalinkomstskatt på schablonintäkten
+
 # ── Risk management ───────────────────────────────────────────────────────────
 DRAWDOWN_GUARD_THRESHOLD   = 0.15   # vid -15% drawdown, börja de-leverage
 DRAWDOWN_GUARD_FLOOR       = 0.30   # min kvarvarande exponering vid 2x tröskeln (-30% DD)
@@ -369,6 +411,19 @@ MARKET_IMPACT_MAX          = 0.05   # tak för impact-kostnad per trade (5%)
 SPREAD_ADV_REF = 5_000_000   # ADV (lokal valuta/vecka) där spreaden är "normal"
 SPREAD_MIN     = 0.0005      # 0.05% halv-spread för mycket likvida bolag
 SPREAD_MAX     = 0.020       # 2% tak för de tunnaste namnen
+
+# VIX-driven dynamisk spread/slippage: ovanstående _half_spread fångar TVÄR-
+# SNITTS-variation (småbolag dyrare att handla än storbolag, via ADV) men
+# INTE TIDSVARIATION - implicit spread vidgas historiskt kraftigt när
+# marknaden panikar, oavsett ett enskilt bolags egen likviditet. Multiplicerar
+# slippage+halv-spread (INTE courtage, INTE impact-termen - se docstring i
+# _execution_cost_rate) med SLIPPAGE_VIX_STRESS_MULT under samma stress-flagga
+# etf_rotation.py:s regim-gate redan använder (macro_data.stress_series: VIX +
+# kreditspread, ingen ny datakälla). Eftersom _half_spread redan är störst för
+# småbolag blir den ABSOLUTA ökningen automatiskt störst där också - ingen
+# separat småbolags-term behövs. Default AV: måste A/B:as innan adoption.
+SLIPPAGE_VIX_ENABLED     = False
+SLIPPAGE_VIX_STRESS_MULT = 2.0   # multiplikator under stress (svep 1.5-3.0)
 
 # ── Universumfilter (förfilter innan feature engineering/träning) ────────────
 # Tunt handlade bolag drar ner datakvalitet och ökar beräkningstid utan att
