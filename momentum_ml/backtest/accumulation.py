@@ -367,28 +367,47 @@ def simulate_regime_hedge_accumulation(
     prices: "pd.DataFrame",
     regime: "pd.Series",
     hedge_ticker: Optional[str] = None,
+    target_regime: str = "bear",
+    baseline_is_cash: bool = True,
     monthly_contribution: float = None,
     cost_oneway: float = None,
     start: Optional[str] = None,
 ) -> Optional[Dict]:
     """
-    Testar: i BEAR-regim (backtest.regime.classify_regimes - SAMMA klassificerare
-    backtestern redan använder för _market_exposure_factor), ska nytt kapital
-    parkeras i KONTANTER (dagens beteende, hedge_ticker=None) eller aktivt i en
-    invers Bear-ETF (hedge_ticker="XACT-BEAR.ST" e.dyl.)? SÄLJER HELA
-    hedge-positionen ("sell out") samma VECKA regimen lämnar bear - proceeds
-    rullar direkt in i `core_ticker`, aldrig en kvardröjande satsning.
+    Testar: i en given regim (`target_regime`, från backtest.regime.classify_regimes
+    - SAMMA klassificerare backtestern redan använder för _market_exposure_factor),
+    ska nytt kapital gå till en HÄVSTÅNGAD/INVERS ETF (hedge_ticker) i stället för
+    dagens beteende? SÄLJER HELA hedge-positionen ("sell out") samma VECKA regimen
+    lämnar target_regime - proceeds rullar direkt in i `core_ticker`, aldrig en
+    kvardröjande satsning. Generaliserad från den ursprungliga BEAR-frågan (kontanter
+    vs. invers Bear-ETF) för att även svara på den SPEGELVÄNDA BULL-frågan (köp kärnan
+    direkt vs. hävstångad Bull-ETF) med samma disciplin - se backtest_bull_hedge.py.
 
-    hedge_ticker=None: bear-veckors insättning läggs i en väntande kontantpott
-    (0% avkastning, exakt vad next_buy()/MARKET_FILTER_EXPOSURE faktiskt gör
-    idag) - släpps in i kärnan samma vecka regimen lämnar bear. Detta är
-    JÄMFÖRELSE-BASLINJEN, inte en gissning på vad "dagens beteende" gör.
+    target_regime: vilken regim-etikett ('bear'/'bull'/'sideways') som triggar
+    overlay-logiken. Utanför denna regim är beteendet ALLTID "köp kärnan direkt"
+    (oförändrat av target_regime/baseline_is_cash).
+
+    hedge_ticker=None UNDER target_regime-veckor betyder olika saker beroende på
+    baseline_is_cash, eftersom "dagens beteende" faktiskt SKILJER SIG mellan bear
+    och bull i produktion:
+      baseline_is_cash=True  (BEAR-fallet): insättningen läggs i en väntande
+        kontantpott (0% avkastning, exakt vad next_buy()/MARKET_FILTER_EXPOSURE
+        faktiskt gör i bear idag) - släpps in i kärnan samma vecka regimen vänder.
+      baseline_is_cash=False (BULL-fallet): insättningen köper kärnan DIREKT, ingen
+        särbehandling - exakt vad som händer i bull idag (full exponering, ingen
+        kontantparkering att jämföra mot). hedge_ticker=None blir då bara en
+        identitets-baslinje (samma som simulate_accumulation på en enda ticker).
+    Båda är JÄMFÖRELSE-BASLINJER för sin respektive regim, inte en gissning.
 
     VARNING (se data/data_loader.py:load_sweden_universe-docstring och
     etf_rotation.py:leverage()): dagligt ombalanserade Bear/Bull-produkter har
-    volatilitetsdecay i skakiga perioder - drabbar en -1x Bear-position också,
-    inte bara hävstångsprodukter. Den här funktionen mäter NETTOEFFEKTEN
-    (regimens faktiska varaktighet minus decay) på riktig data, gissar inte.
+    volatilitetsdecay i skakiga perioder - drabbar BÅDA riktningarna (och en
+    -1x/+1x-position också, inte bara högre hävstång). I en LÅNG, JÄMN trend
+    (låg realiserad volatilitet, mest samma riktning) kan compoundingen tvärtom
+    gynna en hävstångad position - decay är en funktion av VOLATILITET (chop),
+    inte av att vara hävstångad i sig. Den här funktionen mäter NETTOEFFEKTEN
+    (regimens faktiska varaktighet/volatilitet minus decay) på riktig data,
+    gissar inte åt någotdera hållet.
 
     regime: kausal serie (pd.Series av 'bull'/'bear'/'sideways', SAMMA index
     som prices) från backtest.regime.classify_regimes().
@@ -441,7 +460,7 @@ def simulate_regime_hedge_accumulation(
     prev_value: Optional[float] = None
     nav_series, value_series, dates = [], [], []
     total_contributed = 0.0
-    bear_contrib_months = 0
+    target_contrib_months = 0
     sellouts = 0
 
     def _px(date, t):
@@ -464,11 +483,11 @@ def simulate_regime_hedge_accumulation(
     for i, date in enumerate(idx):
         cur_regime = regime.loc[date] if date in regime.index else prev_regime
 
-        # SELL OUT: regimen lämnade just bear -> lös upp hedge-positionen ELLER
-        # den väntande kontantpotten samma vecka, in i kärnan. Väntar INTE till
-        # nästa kontributionsvecka - "sell out i marknadsförändring" ska hända
-        # direkt när regimen faktiskt vänder.
-        if prev_regime == "bear" and cur_regime != "bear":
+        # SELL OUT: regimen lämnade just target_regime -> lös upp hedge-positionen
+        # ELLER den väntande kontantpotten samma vecka, in i kärnan. Väntar INTE
+        # till nästa kontributionsvecka - "sell out i marknadsförändring" ska
+        # hända direkt när regimen faktiskt vänder.
+        if prev_regime == target_regime and cur_regime != target_regime:
             if hedge_ticker and units.get(hedge_ticker, 0.0) > 0:
                 p = _px(date, hedge_ticker)
                 if p is not None:
@@ -487,17 +506,25 @@ def simulate_regime_hedge_accumulation(
             nav *= (1.0 + (value_before / prev_value - 1.0))
 
         if is_contrib_week[i]:
-            if cur_regime == "bear":
-                bear_contrib_months += 1
+            if cur_regime == target_regime:
+                target_contrib_months += 1
                 if hedge_ticker:
                     p = _px(date, hedge_ticker)
                     if p is not None:
                         units[hedge_ticker] = units.get(hedge_ticker, 0.0) + \
                             (monthly_contribution * (1.0 - cost_oneway)) / p
                     else:
-                        pending_cash += monthly_contribution   # hedge saknar pris denna vecka -> kontanter
-                else:
+                        # hedge saknar pris denna vecka -> falla tillbaka på respektive
+                        # regims egen baslinje i stället för att bara stå still
+                        if baseline_is_cash:
+                            pending_cash += monthly_contribution
+                        elif not _buy_core(date, monthly_contribution):
+                            pending_cash += monthly_contribution
+                elif baseline_is_cash:
                     pending_cash += monthly_contribution
+                else:
+                    if not _buy_core(date, monthly_contribution):
+                        pending_cash += monthly_contribution
             else:
                 if not _buy_core(date, monthly_contribution):
                     pending_cash += monthly_contribution   # kärnan saknade pris denna vecka - vänta, kasta inte bort
@@ -525,6 +552,6 @@ def simulate_regime_hedge_accumulation(
         "end": dates[-1].strftime("%Y-%m-%d"),
         "weeks": len(dates),
         "years": round(len(dates) / 52, 1),
-        "bear_contrib_months": bear_contrib_months,
+        "target_contrib_months": target_contrib_months,
         "sellouts": sellouts,
     }
