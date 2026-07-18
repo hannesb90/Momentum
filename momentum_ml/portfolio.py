@@ -2238,7 +2238,7 @@ def _dca_backtest(px, targets, start_book, monthly):
 _BACKTEST_CACHE: dict = {}
 
 
-def backtest_result(monthly=5000, months=None):
+def backtest_result(monthly=10000, months=None):
     """Ren beräkning (ingen print/IO förutom prispanelens egen cache) – används
     av både CLI:t (backtest()) och API:t. None om prisdata saknas (kräver nät,
     körs på Pi:n). Cachas per (belopp, fönster, data_mtime) – API:t ska ALDRIG
@@ -2283,7 +2283,7 @@ def backtest_result(monthly=5000, months=None):
     return out
 
 
-def backtest(monthly=5000, months=None):
+def backtest(monthly=10000, months=None):
     out = backtest_result(monthly, months)
     if out is None:
         print("[backtest] för lite prisdata för proxyserierna – cachea ETF:erna först (kör på Pi:n).")
@@ -2690,7 +2690,7 @@ def main():
     elif cmd == "newcapital":
         newcapital(float(sys.argv[2]) if len(sys.argv) > 2 else 10000)
     elif cmd == "backtest":
-        monthly = float(sys.argv[2]) if len(sys.argv) > 2 else 5000
+        monthly = float(sys.argv[2]) if len(sys.argv) > 2 else 10000
         months = int(sys.argv[3]) if len(sys.argv) > 3 else None
         backtest(monthly, months)
     elif cmd == "exitscan":
