@@ -50,6 +50,104 @@ def value_log_path() -> Path:
     return Path(config.anchor(config.PORTFOLIO_VALUE_LOG))
 
 
+def cash_path() -> Path:
+    return Path(config.anchor("cache/montrose_cash.json"))
+
+
+def save_cash(available_sek, total_sek=None) -> None:
+    """Sparar ISK-kontots tillgängliga köpkraft från senaste Montrose-synken
+    (skrivs av sync_montrose_holdings.py --from-montrose). Läses av Nästa
+    köp så en föreslagen biljett kan varnas mot faktisk kassa – t.ex. en
+    månadsinsättning som ännu inte landat."""
+    from datetime import datetime, timezone
+    p = cash_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({
+        "available_sek": round(float(available_sek or 0)),
+        "total_sek": (round(float(total_sek)) if total_sek else None),
+        "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }, ensure_ascii=False), encoding="utf-8")
+
+
+def load_cash() -> Optional[dict]:
+    p = cash_path()
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 – trasig/halvskriven fil → ingen kassa-varning, inte en krasch
+        return None
+
+
+def ticket_ledger_path() -> Path:
+    return Path(config.anchor("cache/trade_ticket_ledger.json"))
+
+
+def _load_ledger() -> list:
+    p = ticket_ledger_path()
+    if not p.exists():
+        return []
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _save_ledger(ledger: list) -> None:
+    p = ticket_ledger_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(ledger, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def log_trade_ticket(ticker: str, kr: float, side: str = "Buy") -> None:
+    """Loggar en skapad trade-ticket (idé 8, "följde jag planen?"). shares_before
+    fångas HÄR, innan biljetten ens öppnats/bekräftats i Montrose-appen – nästa
+    Montrose-synk (check_trade_ticket_ledger) avgör sedan om köpet faktiskt
+    landade genom att jämföra mot antalet EFTER."""
+    from datetime import datetime, timezone
+    rows = load_holdings(refresh=False)
+    shares_before = next((r.get("shares") or 0 for r in rows if r.get("ticker") == ticker), 0)
+    ledger = _load_ledger()
+    ledger.append({"ticker": ticker, "kr": round(float(kr)), "side": side,
+                    "shares_before": shares_before, "status": "pending",
+                    "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
+    _save_ledger(ledger)
+
+
+def check_trade_ticket_ledger(new_rows, expire_days: int = 14) -> None:
+    """Körs efter varje Montrose-synk: väntande biljetter markeras 'landed'
+    (antal aktier ökade sedan biljetten skapades) eller 'expired' (för gammal
+    utan att ha landat – troligen aldrig bekräftad i Montrose-appen)."""
+    from datetime import datetime, timezone
+    ledger = _load_ledger()
+    if not ledger:
+        return
+    shares_now = {r.get("ticker"): (r.get("shares") or 0) for r in new_rows if r.get("ticker")}
+    now = datetime.now(timezone.utc)
+    changed = False
+    for entry in ledger:
+        if entry.get("status") != "pending":
+            continue
+        if shares_now.get(entry["ticker"], 0) > (entry.get("shares_before") or 0):
+            entry["status"] = "landed"
+            entry["landed_at"] = now.isoformat(timespec="seconds")
+            changed = True
+            continue
+        try:
+            age_days = (now - datetime.fromisoformat(entry["created_at"])).days
+        except Exception:  # noqa: BLE001
+            age_days = 0
+        if age_days >= expire_days:
+            entry["status"] = "expired"
+            changed = True
+    if changed:
+        _save_ledger(ledger)
+
+
+def load_trade_ticket_ledger(limit: int = 30) -> list:
+    return list(reversed(_load_ledger()))[:limit]
+
+
 def log_value(total) -> None:
     """Upsert:ar dagens totala portföljvärde i framåt-loggen (en punkt per dag).
     Bygger en äkta personlig utvecklingskurva från och med nu."""
@@ -118,6 +216,23 @@ def _score_num(v):
         return None
 
 
+def _tri_bool(v):
+    """CSV-sträng → True/False/None (obedömbart – data saknas). BUGG (fixad,
+    verkligt fall Swedbank/Avanza): en flat 'x == "true"'-jämförelse gör att
+    en TOM CSV-cell (ingen data, t.ex. bankens D/E/ROE aldrig extraherad)
+    blir False – identiskt med en FAKTISKT underkänd bar. Swedbank saknar
+    roe och flaggades ändå "ROE under barren"; Avanza saknar debt_equity och
+    flaggades "skuld över barren" – ingen siffra fanns att döma av. Samma
+    disciplin som _score_num/_checklist: saknad data är obedömbart, aldrig
+    en tyst underkänning."""
+    s = str(v).strip().lower()
+    if s == "true":
+        return True
+    if s == "false":
+        return False
+    return None
+
+
 _CLOSES_CACHE: dict = {}
 
 
@@ -171,52 +286,113 @@ def _latest_closes(include_quotes: bool = True) -> dict:
         if pp.exists():
             out.update(_latest_close_map(pp, "close"))   # sista giltiga per ticker
     if include_quotes:
-        qp = _results_dir() / "holdings_quotes.csv"
-        if qp.exists():
-            try:
-                mt = qp.stat().st_mtime
-                key = f"{qp}::close_sek"
-                hit = _CLOSES_CACHE.get(key)
-                if hit is not None and hit[0] == mt:
-                    quotes = hit[1]
-                else:
-                    quotes = {}
-                    with open(qp, encoding="utf-8") as f:
-                        for r in csv.DictReader(f):
-                            tk = (r.get("ticker") or "").upper()
-                            v = _num(r.get("close_sek"))
-                            if tk and v:
-                                quotes[tk] = v
-                    _CLOSES_CACHE[key] = (mt, quotes)
-
-                for tk, v in quotes.items():
-                    out.setdefault(tk, v)   # prices.csv vinner om båda finns
-            except Exception:  # noqa: BLE001
-                pass
+        for tk, v in _read_holding_quotes().items():
+            out.setdefault(tk, v)   # prices.csv vinner om båda finns
     return out
+
+
+def _read_holding_quotes() -> dict:
+    """{ticker: close_sek} ur holdings_quotes.csv (tom om filen saknas).
+    Memoiserad per (fil, mtime) i _CLOSES_CACHE - samma mönster som
+    _latest_close_map(), annan nyckel-namespace (path-nyckeln är redan
+    unik per fil så ingen kollisionsrisk). Anropas flera gånger per
+    körning (_latest_closes, save_holding_quotes, universumkoll) - filen
+    är typiskt liten men onödigt att läsa om den flera gånger per request."""
+    qp = _results_dir() / "holdings_quotes.csv"
+    if not qp.exists():
+        return {}
+    try:
+        mt = qp.stat().st_mtime
+    except OSError:
+        return {}
+    key = f"{qp}::close_sek"
+    hit = _CLOSES_CACHE.get(key)
+    if hit is not None and hit[0] == mt:
+        return hit[1]
+    out = {}
+    try:
+        with open(qp, encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                tk = (r.get("ticker") or "").upper()
+                v = _num(r.get("close_sek"))
+                if tk and v:
+                    out[tk] = v
+    except Exception:  # noqa: BLE001
+        out = {}
+    _CLOSES_CACHE[key] = (mt, out)
+    return out
+
+
+def save_holding_quotes(quote_map: dict, merge: bool = True) -> int:
+    """Skriv {ticker: close_sek} (redan i SEK) till holdings_quotes.csv.
+    merge=True BEVARAR befintliga rader och skriver bara över de tickers som
+    finns i quote_map – nödvändigt eftersom två källor skriver hit vid olika
+    tid: Montrose-synken (00:00, broker-härledd per-andel-kurs för ALLA
+    innehav, även utländska ETF:er) och nattpipelinens fetch_holding_quotes
+    (02:00, Avanza-kompletterat för det den kan lösa). Utan merge hade den
+    senare (02:00) klippt bort de förras rader för fonder den inte kan matcha
+    (VVSM.DE m.fl. – Montroses orderbookId ligger i en annan id-rymd än
+    Avanzas, verifierat 404, och Montrose exponerar inget ISIN)."""
+    existing = _read_holding_quotes() if merge else {}
+    for k, v in (quote_map or {}).items():
+        tk = (k or "").upper()
+        if tk and v:
+            existing[tk] = round(float(v), 4)
+    qp = _results_dir() / "holdings_quotes.csv"
+    qp.parent.mkdir(parents=True, exist_ok=True)
+    with open(qp, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["ticker", "close_sek"])
+        for tk, v in sorted(existing.items()):
+            w.writerow([tk, v])
+    return len(existing)
 
 
 def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
     """
     Hämtar senaste kurs (omräknad till SEK) för innehav vars ticker INTE täcks
     av modellens prices.csv: utländska ETF:er (EUR/USD/GBp) och svenska bolag
-    utanför segmentens universum (micro caps). Direkt från samma kurskälla som
-    resten av pipelinen (Yahoo) – kräver nät. Körs dels nattligt via main.py
+    utanför segmentens universum (micro caps). Körs dels nattligt via main.py
     STEG 5 (tickers=None → läser load_holdings() från disk), dels direkt från
     save_holdings() med en explicit ticker-lista – det senare täcker fallet
     "nyss tillagt innehav" vars ticker ÄNNU inte finns på disk (raden har inte
     skrivits än) och som annars inte fått något pris förrän nästa nattkörning.
     Skriver results/holdings_quotes.csv som _latest_closes() plockar upp.
-    Valutor: fast_info.currency; GBp (pence) → /100 → GBP; växlas via <CUR>SEK=X.
+
+    Prisdata: Avanza (altdata.avanza), INTE Yahoo – verifierat 2026-07-xx att
+    Yahoo saknar/har hål i täckningen för flera nischade London-noterade
+    UCITS-ETF:er (WisdomTree/Global X/HANetf m.fl.). Avanza taggar dem
+    EXCHANGE_TRADED_FUND (inte STOCK) i sökträffar, men samma pris-endpoint
+    (market-guide/stock/{id}) fungerar rakt av – se altdata.avanza.probe_etf().
+    Matchas på exakt tickerSymbol (inte första träffen – VanEck Semiconductor
+    gav t.ex. tre träffar: VVSM/SMH/SMHC). FX-omräkning till SEK görs
+    fortfarande via yfinance (stora valutapar, inte en bristkälla här).
+
+    OBS de utländska ETF:erna (VVSM.DE/IUSQ.DE/…) matchar i praktiken INTE
+    Avanzas tickerSymbol och hoppas därför över här – de prissätts i stället
+    av Montrose-synken (sync_montrose_holdings.py → save_holding_quotes(),
+    broker-härledd per-andel-kurs). FÖRKASTADE alternativa uppslag (verifierat
+    2026-07-17): Montroses egna position-'orderbookId' ligger i en ANNAN
+    id-rymd än Avanzas (/_api/market-guide/stock/{montrose-id} gav 404), och
+    Montrose exponerar inget ISIN-fält (Avanza-sök på ISIN gav dessutom 0
+    träffar). Därav Montrose-värderingen som källa för just dessa, inte ett
+    Avanza-återuppslag. Denna funktion hoppar över tickers som redan står i
+    holdings_quotes.csv (skrivna av synken) – inga futila Avanza-anrop.
     """
     if tickers is None:
         rows = load_holdings(refresh=False)
         tickers = [(r.get("ticker") or "").upper() for r in rows]
     have = _latest_closes(include_quotes=False)
-    need = sorted({(t or "").upper() for t in tickers} - set(have) - {""})
+    # Redan Montrose-prissatta innehav (holdings_quotes.csv skrivet av synken)
+    # hoppas över – de utländska ETF:erna matchar ändå inte Avanzas
+    # tickerSymbol, och Montroses egen värdering är färskare/mer korrekt än
+    # en återhämtning. Sparar dessutom futila Avanza-anrop varje natt.
+    have_quotes = set(_read_holding_quotes())
+    need = sorted({(t or "").upper() for t in tickers} - set(have) - have_quotes - {""})
     if not need:
         return {}
-    import yfinance as yf
+    import time as _time
+    import altdata.avanza as av
 
     fx_cache = {"SEK": 1.0}
 
@@ -224,6 +400,7 @@ def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
         cur = (cur or "SEK").upper()
         if cur not in fx_cache:
             try:
+                import yfinance as yf
                 h = yf.Ticker(f"{cur}SEK=X").history(period="5d")["Close"].dropna()
                 fx_cache[cur] = float(h.iloc[-1]) if len(h) else None
             except Exception:  # noqa: BLE001
@@ -232,44 +409,43 @@ def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
 
     out = {}
     for tk in need:
+        base = tk.split(".")[0].replace("-", " ")
         try:
-            t = yf.Ticker(tk)
-            h = t.history(period="7d")["Close"].dropna()
-            if not len(h):
-                continue
-            px = float(h.iloc[-1])
-            try:
-                fi = t.fast_info
-                cur = fi.get("currency") if hasattr(fi, "get") else getattr(fi, "currency", None)
-            except Exception:  # noqa: BLE001
-                cur = None
-            # BUGG (fixad): föll tidigare tyst tillbaka till "SEK" när
-            # valutan inte gick att slå upp – för en icke-svensk ticker
-            # (exakt fallet detta ska hantera) ger det ett TYST FEL värde,
-            # inte bara ett saknat: en $150-aktie visades som 150 kr i
-            # stället för ~1500 kr, en 10x undervärdering utan varning.
-            # Bättre att hoppa över tickern helt (behåller manuellt/
-            # inköpsvärde) än att spara ett säkert felaktigt pris.
-            if not cur:
-                print(f"[quotes] {tk}: kunde inte slå upp valuta, hoppar (ingen SEK-gissning)")
-                continue
-            if cur == "GBp":                      # London-notering i pence
-                px, cur = px / 100.0, "GBP"
-            rate = fx(cur)
-            if not rate:
-                print(f"[quotes] {tk}: kunde inte hämta växelkurs för {cur}, hoppar")
-                continue
-            out[tk] = round(px * rate, 4)
+            hits = av.search(base).get("hits") or []
         except Exception as e:  # noqa: BLE001
-            print(f"[quotes] {tk}: {e}")
+            print(f"[quotes] {tk}: Avanza-sök misslyckades: {e}")
+            continue
+        # Matcha EXAKT tickerSymbol – flera kandidater kan dela namn (t.ex.
+        # "VanEck Semiconductor" -> VVSM/SMH/SMHC), gissa aldrig första träffen.
+        hit = next((h for h in hits if str(h.get("tickerSymbol") or "").upper() == base.upper()), None)
+        if not hit:
+            print(f"[quotes] {tk}: ingen exakt Avanza-träff på ticker '{base}', hoppar")
+            continue
+        iid = str(hit.get("orderBookId") or "")
+        if not iid:
+            continue
+        _time.sleep(0.5)   # artig paus mot Avanza (samma som altdata.avanza._PAUSE_S)
+        try:
+            info = av._get(f"/_api/market-guide/stock/{iid}")
+        except Exception as e:  # noqa: BLE001
+            print(f"[quotes] {tk}: Avanza-info misslyckades: {e}")
+            continue
+        px = (info.get("quote") or {}).get("last")
+        cur = (info.get("listing") or {}).get("currency")
+        # Samma disciplin som den gamla Yahoo-koden: hoppa hellre över tickern
+        # helt (behåller manuellt/inköpsvärde) än att spara ett gissat/fel pris.
+        if px is None or not cur:
+            print(f"[quotes] {tk}: pris/valuta saknades i Avanza-svaret, hoppar")
+            continue
+        rate = fx(cur)
+        if not rate:
+            print(f"[quotes] {tk}: kunde inte hämta växelkurs för {cur}, hoppar")
+            continue
+        out[tk] = round(float(px) * rate, 4)
     if out:
-        qp = _results_dir() / "holdings_quotes.csv"
-        qp.parent.mkdir(parents=True, exist_ok=True)
-        with open(qp, "w", newline="", encoding="utf-8") as f:
-            w = csv.writer(f)
-            w.writerow(["ticker", "close_sek"])
-            for tk, v in sorted(out.items()):
-                w.writerow([tk, v])
+        # merge=True: rör inte Montrose-synkens rader (skrivna 00:00) för
+        # innehav vi inte själva löste här.
+        save_holding_quotes(out, merge=True)
         print(f"[quotes] {len(out)}/{len(need)} kompletterande kurser sparade (SEK): "
               f"{', '.join(sorted(out))}")
     return out
@@ -440,7 +616,8 @@ _CURATED = {
     "global x blockchain": "BLCH.L",
     "global x data center": "V9N.DE",
     "wisdomtree uranium": "WNUC.L",
-    "wisdomtree ai": "PAIW.L",
+    "wisdomtree physical ai": "PAIW.L",
+    "ishares msci acwi": "IUSQ.DE",
     "vaneck space": "JEDI.L",
     "future of defence": "ASWC.L",
     "xact bull 2": "XACTBULL2.ST",
@@ -482,6 +659,45 @@ def _sector_of(ticker) -> str:
     if _SECTOR_MAP is None:
         _SECTOR_MAP = {t: sec for t, _, sec in _universe()}
     return _SECTOR_MAP.get((ticker or "").upper(), "")
+
+
+_THEME_MAP = None
+
+
+def _theme_of(ticker) -> str:
+    """Avanzas FINA undertema (cache/avanza_sectors.csv, se
+    backtest/theme_momentum.py) – t.ex. "Medicinsk utrustning" istället för
+    breda GICS-"Health Care". Faller tillbaka på _sector_of() (GICS) om
+    Avanza-taggning saknas för tickern (t.ex. utländska ETF:er, ej ännu
+    körd 'sectors'-extraktion). Aldrig en krasch – tom sträng om inget alls
+    hittas, samma disciplin som _sector_of()."""
+    global _THEME_MAP
+    if _THEME_MAP is None:
+        _THEME_MAP = {}
+        p = Path(config.anchor("cache")) / "avanza_sectors.csv"
+        if p.exists():
+            try:
+                for r in csv.DictReader(open(p, encoding="utf-8")):
+                    tk = (r.get("ticker") or "").upper()
+                    if tk and r.get("sector_fine"):
+                        _THEME_MAP[tk] = r["sector_fine"]
+            except Exception:  # noqa: BLE001
+                pass
+    tk = (ticker or "").upper()
+    return _THEME_MAP.get(tk) or _sector_of(tk)
+
+
+def _theme_of_labeled(ticker) -> tuple:
+    """Som _theme_of() men säger VILKEN nivå värdet faktiskt är:
+    ("tema", "Medicinsk utrustning") för en riktig Avanza-fintagg, annars
+    ("sektor", "Health Care") vid GICS-fallback. ("", "") om inget alls."""
+    _theme_of(ticker)   # bygger _THEME_MAP om den inte redan finns
+    tk = (ticker or "").upper()
+    fine = _THEME_MAP.get(tk)
+    if fine:
+        return "tema", fine
+    broad = _sector_of(tk)
+    return ("sektor", broad) if broad else ("", "")
 
 
 def _kinds():
@@ -925,8 +1141,8 @@ def _load_scores_uncached() -> dict:
                 e = ent(tk, r.get("name"))
                 e["value_score"] = _score_num(r.get("value_score"))
                 e["value_zone"] = (r.get("zone") or "").strip()
-                e["meets_roe_bar"] = str(r.get("meets_roe_bar")).strip().lower() == "true"
-                e["meets_debt_bar"] = str(r.get("meets_debt_bar")).strip().lower() == "true"
+                e["meets_roe_bar"] = _tri_bool(r.get("meets_roe_bar"))
+                e["meets_debt_bar"] = _tri_bool(r.get("meets_debt_bar"))
                 # Råvarusektor-uteslutningen (value_screener.py:s egen Buffett-bar/
                 # checklista, se _COMMODITY_SECTORS där) LÄSTES ALDRIG in här – denna
                 # köp-motors EGEN is_buffett-grind (se _rank_buy_candidates nedan)
@@ -1058,6 +1274,130 @@ def _load_flows() -> dict:
         except Exception:  # noqa: BLE001
             pass
     return out
+
+
+# etf_rotation.py:s rotation_universe.csv "group"-etikett (engelska, kan
+# redan vara nischgranulär, t.ex. "Semiconductors" – inte bara breda GICS-
+# sektorer) -> vårt eget nischtema-namn (svenska, ur fund_theme_classifier.py:s
+# LLM-klassificering) – bara de par där namnen otvetydigt är SAMMA sak.
+# Ofullständig med flit: hellre inget svar än en felaktig ihopkoppling.
+_ROTATION_GROUP_TO_NICHE_THEME = {
+    "Semiconductors": "Halvledare",
+    "Cybersecurity": "Cybersäkerhet",
+    "EV & Battery": "Batterier & Elbilar",
+    "Uranium & Nuclear": "Uran & Kärnkraft",
+    "Biotech": "Bioteknik",
+    "Clean Energy": "Förnybar energi",
+}
+
+
+def _niche_context_for_theme_pick(theme_pick: Optional[dict]) -> Optional[dict]:
+    """REN KONTEXT, ALDRIG SIGNAL (samma disciplin som _global_theme_note) –
+    kopplad specifikt till den satellit next_buy() REDAN valt via den
+    backtestade rotationen (etf_rotation.py), inte fristående. Visar om en
+    ANNAN nisch inom SAMMA bransch (samma Avanza-kategori i
+    fund_niche_themes.csv) just nu har starkare momentum än den valda
+    satellitens egen nisch – ANDRA mätmetod än rotationens rel_mom (
+    global_theme_momentum.py:s momentum_4w), redovisas separat, ingen
+    uppfunnen "avvikelse-poäng". ÄNDRAR ALDRIG vilket instrument som får
+    pengarna – bara vad du läser om det. Gäller NYTT kapital (satelliten är
+    redan rotationens val; det här byter aldrig ut ett befintligt innehav).
+
+    None om: satellitens grupp saknar en känd nisch-motsvarighet
+    (_ROTATION_GROUP_TO_NICHE_THEME), eller nischdata saknas, eller ingen
+    syskon-nisch faktiskt har högre momentum just nu (inget att säga)."""
+    if not theme_pick:
+        return None
+    self_theme = _ROTATION_GROUP_TO_NICHE_THEME.get(theme_pick.get("name") or "")
+    if not self_theme:
+        return None
+
+    themes_p = Path(config.anchor("cache")) / "fund_niche_themes.csv"
+    gtm_p = _results_dir() / "global_theme_momentum.csv"
+    if not themes_p.exists() or not gtm_p.exists():
+        return None
+    try:
+        niche_rows = list(csv.DictReader(open(themes_p, encoding="utf-8")))
+    except Exception:  # noqa: BLE001
+        return None
+    self_cat = next((r.get("category_value") for r in niche_rows
+                     if r.get("theme") == self_theme and str(r.get("is_primary_pick")).lower() == "true"), None)
+    if not self_cat:
+        return None
+    sibling_themes = {r["theme"] for r in niche_rows
+                      if r.get("category_value") == self_cat and r.get("theme") != self_theme
+                      and str(r.get("is_primary_pick")).lower() == "true"}
+    if not sibling_themes:
+        return None
+
+    try:
+        gtm_rows = {r["theme"]: r for r in csv.DictReader(open(gtm_p, encoding="utf-8"))}
+    except Exception:  # noqa: BLE001
+        return None
+
+    def m4(r):
+        try:
+            return float(r.get("momentum_4w") or 0)
+        except (TypeError, ValueError):
+            return None
+
+    self_row = gtm_rows.get(self_theme)
+    self_mom = m4(self_row) if self_row else None
+    candidates = [(t, gtm_rows[t]) for t in sibling_themes if t in gtm_rows]
+    if not candidates:
+        return None
+    best_theme, best_row = max(candidates, key=lambda kv: (m4(kv[1]) if m4(kv[1]) is not None else float("-inf")))
+    best_mom = m4(best_row)
+    if best_mom is None or self_mom is None or best_mom <= self_mom:
+        return None  # inget syskon sticker ut - inget att säga
+
+    return {
+        "satellite_group": theme_pick.get("name"), "satellite_rel_mom": theme_pick.get("note"),
+        "self_theme": self_theme, "self_momentum_4w": self_mom,
+        "sibling_theme": best_theme, "sibling_etf_name": best_row.get("etf_name"),
+        "sibling_momentum_4w": best_mom,
+        "note": (f"Rotationens satellit just nu är \"{theme_pick.get('name')}\" ({theme_pick.get('note')}). "
+                 f"Inom samma bransch har \"{best_theme}\" ({best_row.get('etf_name')}) starkare "
+                 f"4-veckorsmomentum ({best_mom:+.1%} mot {self_theme}s {self_mom:+.1%}, annan mätmetod) "
+                 f"– samma trend, snävare specifik. Ren kontext, ändrar inget i köpplanen."),
+    }
+
+
+def _global_theme_note() -> Optional[dict]:
+    """REN KONTEXT, ALDRIG SIGNAL – toppen av global_theme_momentum.py:s
+    rankning (results/global_theme_momentum.csv), som en läsvärd notis i
+    Nästa köp-kortet. PÅVERKAR INTE hur kronorna i out_rows/plan fördelas:
+    global_theme_momentum.py saknar backtest helt (till skillnad från
+    etf_rotation.py:s tema-hink, som är medvetet konstruerad för att vara
+    ärligt backtestbar – dual momentum, absolut+relativ, se den modulens
+    docstring) och flera av nischfonderna har <1 års handelshistorik.
+    Att låta den styra riktiga köp vore att smyga in en overifierad signal
+    i en pipeline som annars konsekvent kräver bevis innan pengar rör sig
+    (samma princip som redan avfärdat sentiment-score/social buzz här).
+    None om filen saknas – inte en crash, bara ingen notis."""
+    p = _results_dir() / "global_theme_momentum.csv"
+    if not p.exists():
+        return None
+    try:
+        rows = list(csv.DictReader(open(p, encoding="utf-8")))
+    except Exception:  # noqa: BLE001
+        return None
+    if not rows:
+        return None
+    top = sorted(rows, key=lambda r: int(float(r.get("rank") or 999)))[:3]
+    out_top = []
+    for r in top:
+        try:
+            fee = float(r.get("fee") or 0) if r.get("fee") not in (None, "", "None") else None
+        except (TypeError, ValueError):
+            fee = None
+        out_top.append({"theme": r.get("theme"), "rank": int(float(r.get("rank") or 0)),
+                        "etf_name": r.get("etf_name"), "fee": fee})
+    leader = out_top[0]
+    fee_note = f", {leader['fee']:.2%} avgift" if leader.get("fee") is not None else ""
+    note = (f"Just nu leder \"{leader['theme']}\" ({leader.get('etf_name')}{fee_note}) i den globala "
+            f"temarankningen – ren kontext, INTE en köpsignal (ovaliderat, påverkar inte köpplanen ovan).")
+    return {"top": out_top, "note": note}
 
 
 def _opportunity(rows, amount) -> dict:
@@ -1922,13 +2262,45 @@ def _dynamic_fill_split(bucket_vals, amount, targets, attr, meta_out=None):
     return final
 
 
+def _core_split_allocation(broad_kr: float, min_trade: float) -> list:
+    """Delar `broad_kr` mellan kärnans korg (config.PORTFOLIO_CORE_SPLIT, World+EM
+    ~88/12 - se dess docstring i config.py för evidensen). Ett ben under
+    min-köp handlas inte för en struntsumma utan viks in i det STÖRSTA
+    benet, samma disciplin som min-köp-hanteringen för satelliterna. Tom/
+    saknad PORTFOLIO_CORE_SPLIT → faller tillbaka på den enkla
+    PORTFOLIO_CORE_ETF-tickern (oförändrat beteende).
+
+    Returnerar [(ticker, name, kr), ...], bara ben > 0.5 kr."""
+    split = getattr(config, "PORTFOLIO_CORE_SPLIT", None)
+    if not split:
+        core_tk, core_name = getattr(config, "PORTFOLIO_CORE_ETF",
+                                     ("IUSQ.DE", "iShares MSCI ACWI (hela världen)"))
+        return [(core_tk, core_name, broad_kr)] if broad_kr > 0.5 else []
+    wsum = sum(w for _, _, w in split) or 1.0
+    legs = [[tk, name, broad_kr * w / wsum] for tk, name, w in split]
+    small = [l for l in legs if l[2] < min_trade]
+    if small:
+        legs = [l for l in legs if l not in small]
+        orphaned = sum(l[2] for l in small)
+        if legs:
+            legs.sort(key=lambda l: -l[2])
+            legs[0][2] += orphaned
+        else:   # allt under min-köp (litet totalbelopp) → hela summan till störst-viktade benet
+            biggest = max(split, key=lambda s: s[2])
+            legs = [[biggest[0], biggest[1], broad_kr]]
+    return [(tk, name, kr) for tk, name, kr in legs if kr > 0.5]
+
+
 def next_buy(rows, amount=None) -> dict:
     """
     KÄRNAN ("Nästa köp"): ETT rangordnat, konkret svar på var nästa krona ska in.
 
     Hierarkin är evidensordningen från våra egna tester, inte tycke:
-      1. BRED KÄRNA – en enda global fond. I varje netto-test vi kört (aktie-
-         holdout, ETF-rotationens OOS-svep) slog den varje aktiv variant.
+      1. BRED KÄRNA – World+EM i kapvikt (~88/12, config.PORTFOLIO_CORE_SPLIT).
+         Slog en enda ACWI-fond på varje mått i ett matchat fönster
+         (backtest_core_allocation.py) OCH slog varje AKTIV variant i tidigare
+         tester (aktie-holdout, ETF-rotationens OOS-svep) - se
+         PORTFOLIO_CORE_SPLIT-docstringen i config.py för siffrorna.
       2. SVERIGE-SATELLIT – modellens bästa kandidat. Ärligt stämplad OBEVISAD
          (holdouten var negativ); får bara den kapacitet målfördelningen ger.
       3. TEMA-SATELLIT – rotationens starkaste tema, bara i risk-on. Rotationen
@@ -1949,8 +2321,6 @@ def next_buy(rows, amount=None) -> dict:
     for r in rows:
         buckets[r["bucket"] if r["bucket"] in buckets else "theme"] += r.get("value", 0.0)
 
-    core_tk, core_name = getattr(config, "PORTFOLIO_CORE_ETF",
-                                 ("IUSQ.DE", "iShares MSCI ACWI (hela världen)"))
     risk_on = None
     try:
         meta = json.loads((_results_dir() / "etf_rotation_meta.json").read_text(encoding="utf-8"))
@@ -1976,6 +2346,7 @@ def next_buy(rows, amount=None) -> dict:
 
     theme_kr = plan.get("theme", 0.0)
     theme_pick = (cands.get("theme") or [None])[0]
+    theme_niche_note = _safe(lambda: _niche_context_for_theme_pick(theme_pick), None, "nisch-kontext")
     if theme_kr > 0 and risk_on is False:
         skipped.append({"bucket": "theme", "reason": "risk-off i rotationens regim → kronorna går till kärnan"})
         broad_kr += theme_kr
@@ -2023,10 +2394,11 @@ def next_buy(rows, amount=None) -> dict:
         _safe(lambda: _log_sweden_picks(sweden_picks), None, "sverige-punkt-i-tid-logg")
 
     out_rows = []
-    if broad_kr > 0.5:
+    for tk, name, kr in _core_split_allocation(broad_kr, min_trade):
         out_rows.append({
-            "kr": round(broad_kr), "ticker": core_tk, "name": core_name, "bucket": "broad",
-            "why": "Bred global kärna – slog varje aktiv variant netto i våra tester. Här byggs förmögenheten.",
+            "kr": round(kr), "ticker": tk, "name": name, "bucket": "broad",
+            "why": "Bred global kärna (World+EM, kapvikt) – slog en enda ACWI-fond i vårt matchade "
+                   "backtest. Här byggs förmögenheten.",
             "evidence": "kärna",
         })
     if sweden_kr >= min_trade and sweden_picks:
@@ -2069,6 +2441,14 @@ def next_buy(rows, amount=None) -> dict:
         "buckets": {b: (round(buckets[b] / total, 4) if total else 0.0) for b in BUCKETS},
         "target": tgt,
         "has_holdings": bool(rows),
+        "cash": _safe(load_cash, None, "montrose-kassa"),   # None om ingen Montrose-synk kört än
+        # REN KONTEXT (se _global_theme_note-docstring) - påverkar ALDRIG
+        # out_rows/plan ovan, bara en läsvärd notis om vilket globalt
+        # nischtema som leder just nu.
+        "global_theme_note": _safe(_global_theme_note, None, "globalt tema"),
+        # REN KONTEXT, kopplad till den REDAN valda tema-satelliten (inte
+        # fristående) - se _niche_context_for_theme_pick-docstring.
+        "theme_niche_note": theme_niche_note,
         "note": ("Köp och behåll: nya kronor fyller mot målet – ingen försäljning, ingen timing. "
                  "Enda sälj-regeln är säljvakten: innehav som rusat kraftigt ifrån index på kort tid "
                  "flaggas för att ta hem vinsten (behåll insatsen). Kärnan är evidensbackad; "
@@ -2582,6 +2962,36 @@ def _tech_signal(close):
             "note": f"{'under' if below else 'över'} 40v-MA · 13v {mom13:+.1%} · 26v {mom26:+.1%}"}
 
 
+def _avanza_weekly_close(ticker):
+    """Reservkälla för exitscan() när Yahoo (fetch_weekly_data) saknar/har
+    hål i täckningen – samma nischade utländska UCITS-ETF:er
+    (WisdomTree/Global X/HANetf m.fl.) som fetch_holding_quotes() redan
+    löste för portföljvärdet, se den funktionens docstring. Matchar EXAKT
+    tickerSymbol (gissar aldrig första sökträffen).
+
+    Returnerar en pandas Close-serie i INSTRUMENTETS EGEN valuta – omvandlas
+    INTE till SEK. exitscans mått (pris/40v-MA, pris N veckor tillbaka) är
+    RATIOS och därför valuta-oberoende så länge FX inte rör sig kraftigt
+    inom fönstret – till skillnad från portföljvärdet, där SEK är
+    nödvändigt, behövs ingen växelkurs här."""
+    import altdata.avanza as av
+    base = ticker.split(".")[0].replace("-", " ")
+    try:
+        hits = av.search(base).get("hits") or []
+    except Exception:  # noqa: BLE001
+        return None
+    hit = next((h for h in hits if str(h.get("tickerSymbol") or "").upper() == base.upper()), None)
+    if not hit or not hit.get("orderBookId"):
+        return None
+    try:
+        df = av.fetch_chart_ohlcv(str(hit["orderBookId"]), "five_years")
+    except Exception:  # noqa: BLE001
+        return None
+    if df is None or df.empty:
+        return None
+    return df["Close"]
+
+
 def exitscan():
     """Skannar innehaven: flaggar RÖTT ('end this now') när sektorn är svag OCH kursen
     tekniskt brutet, GULT när en av dem slår till. Skriver results/exit_signals.json.
@@ -2610,6 +3020,19 @@ def exitscan():
                       if d is not None and not d["Close"].dropna().empty}
         except Exception as e:  # noqa: BLE001
             print(f"[exitscan] kunde inte hämta priser: {e} (kör på Pi:n)")
+        # Avanza-reserv för tickers Yahoo missar helt (samma nischade
+        # utländska UCITS-ETF:er som fetch_holding_quotes() löste för
+        # portföljvärdet – Yahoo har hål i täckningen där).
+        missing = [t for t in tickers if t not in prices]
+        if missing:
+            found = []
+            for t in missing:
+                s = _safe(lambda t=t: _avanza_weekly_close(t), None, f"avanza-fallback {t}")
+                if s is not None and not s.dropna().empty:
+                    prices[t] = s
+                    found.append(t)
+            if found:
+                print(f"[exitscan] Avanza-reserv gav pris för {len(found)}/{len(missing)}: {', '.join(found)}")
     table, total = _sector_table()
     out = []
     for r, tk in resolved:

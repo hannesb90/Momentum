@@ -1,0 +1,20 @@
+[Unit]
+Description=Momentum – globalt temamomentum (tematiska ETF:er: rymd/drönare, humanoider, halvledare, robotik, cybersäkerhet, kvant, ...)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+# Fristående från nattträningen - hämtar priser direkt från Avanza (samma
+# väg som portfolio.py:s fetch_holding_quotes/_avanza_weekly_close), ingen
+# beroende av all_features/main.py. Skriver results/global_theme_momentum.csv,
+# som portfolio_commentary.py (23:00, samma dag) läser.
+Environment=PATH=/opt/momentum/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/momentum/venv/bin/python global_theme_momentum.py
+
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=10m

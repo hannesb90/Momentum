@@ -341,6 +341,57 @@ def get_next_buy(amount: Optional[float] = None):
     return _clean(pf.next_buy(pf.load_holdings(), amount=amount))
 
 
+@app.post("/api/scanner/analyze")
+async def post_scanner_analyze(request: Request):
+    """AI-analysrutan i Skanner: på-begäran headless Claude-sammanfattning
+    (WebSearch, REN NARRATIV samma disciplin som förvaltarbrevet) FÖR ETT
+    bolag + hur en hypotetisk ny position skulle påverka portföljen som
+    helhet. Body: {ticker, overrides?, segment?, amount?}. Kör synkront
+    (samma mönster som /api/trade-ticket - headless-anrop inom requesten),
+    kan ta upp till ~2 min pga WebSearch."""
+    import security_analysis as sa
+    body = await request.json()
+    ticker = str(body.get("ticker") or "").strip()
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker saknas.")
+    overrides = body.get("overrides") or {}
+    segment = body.get("segment")
+    amount = body.get("amount")
+    try:
+        result = sa.analyze(ticker, overrides, segment=segment, amount=amount)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return _clean(result)
+
+
+@app.post("/api/trade-ticket")
+async def create_trade_ticket_endpoint(request: Request):
+    """Förifylld Montrose-köpbiljett för EN rad ur Nästa köp-planen. Kör
+    headless Claude Code (montrose_ticket.py) mot Montrose-MCP:n, låst till
+    BARA köp – lägger aldrig en order, returnerar bara en länk som öppnas i
+    Montrose-appen för användarens egen bekräftelse."""
+    import montrose_ticket as mt
+    body = await request.json()
+    ticker = str(body.get("ticker", "")).strip()
+    kr = body.get("kr")
+    if not ticker or not kr:
+        raise HTTPException(400, "ticker och kr krävs")
+    result = mt.create_ticket(ticker, float(kr))
+    if "error" in result:
+        raise HTTPException(502, result["error"])
+    import portfolio as pf
+    pf.log_trade_ticket(ticker, float(kr))
+    return result
+
+
+@app.get("/api/trade-tickets")
+def get_trade_tickets():
+    """"Följde jag planen?" – skapade trade-tickets och om köpet landade
+    (idé 8). Status uppdateras vid varje Montrose-synk (sync_montrose_holdings.py)."""
+    import portfolio as pf
+    return _clean(pf.load_trade_ticket_ledger())
+
+
 @app.get("/api/universe")
 def get_universe():
     """Alla sökbara värdepapper appen känner (sök/filtrera vid innehav)."""
@@ -464,6 +515,47 @@ def get_exit_signals():
         return {"generated": None, "holdings": []}
     with open(path, encoding="utf-8") as f:
         return _clean(json.load(f))
+
+
+@app.get("/api/insight")
+def get_insight():
+    """Narrativ per bolag (PM/VD-ord + nyheter/social via WebSearch), nattligt
+    genererad av insight_report.py – ren narrativ, ALDRIG en signal. Tom
+    struktur om jobbet ännu inte körts på Pi:n."""
+    path = Path(config.anchor(config.RESULTS_DIR)) / "insight_report.json"
+    if not path.exists():
+        return {"generated_at": None, "companies": []}
+    with open(path, encoding="utf-8") as f:
+        return _clean(json.load(f))
+
+
+@app.get("/api/commentary")
+def get_commentary():
+    """Daglig förvaltarkommentar (portfolio_commentary.py) – syntes av
+    hink-drift/varningar/exit-alarm/säljvakt/Nästa köp i klartext. Tom
+    struktur om jobbet ännu inte körts på Pi:n."""
+    path = Path(config.anchor(config.RESULTS_DIR)) / "portfolio_commentary.json"
+    if not path.exists():
+        return {"generated_at": None, "commentary": None}
+    with open(path, encoding="utf-8") as f:
+        return _clean(json.load(f))
+
+
+@app.post("/api/commentary/ask")
+async def post_commentary_ask(request: Request):
+    """AI-boxen under Förvaltarkommentaren: fri följdfråga på analysen,
+    på-begäran headless Claude (WebSearch, samma REN NARRATIV-disciplin som
+    brevet självt). Body: {question}. Kör synkront (samma mönster som
+    /api/scanner/analyze) - kan ta upp till ~2 min pga WebSearch."""
+    import portfolio_commentary as pc
+    body = await request.json()
+    question = str(body.get("question") or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Fråga saknas.")
+    result = pc.ask(question)
+    if result.get("error") and not result.get("answer"):
+        raise HTTPException(status_code=502, detail=result["error"])
+    return _clean(result)
 
 
 @app.get("/api/case-changes")

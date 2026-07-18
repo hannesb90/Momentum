@@ -65,6 +65,7 @@ def sector_momentum_snapshot(
     all_features: Dict[str, pd.DataFrame],
     sector_map: Optional[Dict[str, str]] = None,
     rotation_lookback_weeks: int = ROTATION_LOOKBACK_WEEKS,
+    cap_tier_map: Optional[Dict[str, str]] = None,
 ) -> pd.DataFrame:
     """
     Returnerar en DataFrame (en rad per sektor) med senaste roc_Nw-median
@@ -78,14 +79,29 @@ def sector_momentum_snapshot(
     Detta är en relativ rotationsproxy (rank mot resten av universumet just
     nu), inte ett faktiskt mått på kapitalflöden in/ut ur sektorn – ingen
     fonddata om nettoflöden finns i pipelinen.
+
+    cap_tier_map (market_cap_category per ticker, från load_sweden_universe):
+    BUGG (fixad, verifierad 2026-07-16): fonder/ETF:er ska aldrig räknas in
+    i sin egen sektors momentum-signal – de är bara en handelsbar PROXY
+    (SECTOR_ETF_MAP/etf_ticker-kolumnen), inte en datapunkt. Det gamla
+    filtret kollade `sector_map[ticker] == "Fond"`, vilket stämmer för
+    sweden_funds.csv (sector='Fond' där) men INTE för data/sector_etfs.csv –
+    de raderna har en riktig GICS-liknande sektor ("Technology") i
+    sector-kolumnen och 'Fond' bara i market_cap_category. Resultatet: en
+    europeisk/amerikansk tech-ETF (EXV3.DE/ZPDT.DE) blandades in som en EGEN
+    "Technology"-sektor, skild från bolagens verkliga "Information
+    Technology" – två rader för samma sektor med helt olika momentum.
+    cap_tier_map fångar båda filerna korrekt (market_cap_category='Fond' i
+    både sweden_funds.csv och sector_etfs.csv).
     """
     sector_map = sector_map or config.SECTOR_MAP
+    cap_tier_map = cap_tier_map or {}
     windows = config.MOMENTUM_WINDOWS
 
     by_sector: Dict[str, list] = {}
     for ticker, feat in all_features.items():
         sector = sector_map.get(ticker, "Okänd")
-        if sector == "Fond":
+        if sector == "Fond" or cap_tier_map.get(ticker) == "Fond":
             continue  # fonder/ETF:er ska inte räknas in i sin egen sektor-signal
         by_sector.setdefault(sector, []).append(feat)
 
