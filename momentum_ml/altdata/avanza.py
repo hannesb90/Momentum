@@ -49,6 +49,7 @@ Körs på Pi:n (nät):
     python -m altdata.avanza extract quality        # ...till results/quality/ (rör ej large/small)
     python -m altdata.avanza audit                  # månatlig avnoterings-/uppköpsrevision + överlevnadsliggare
     python -m altdata.avanza calendar large          # rapportkalender (nextReport ur keyIndicators)
+    python -m altdata.avanza sectors                 # finkornig Avanza-sektortaxonomi -> cache/avanza_sectors.csv (utforskningssteg)
     python -m altdata.avanza revalidate              # engångsstädning: purga gamla felmatchningar
     python -m altdata.avanza check_marketplace       # Avanzas EGET listing.marketPlaceName/countryCode, ALLA matchade bolag
     python -m altdata.avanza check_marketplace suspects  # ...bara de ~109 ASA/A-S/Oyj/P-F-misstänkta (snabbare)
@@ -1046,6 +1047,91 @@ def calendar(segment: Optional[str] = None) -> None:
                   f"{r['next_report_type']} ({conf})")
 
 
+def sectors_extract(segment: Optional[str] = None) -> None:
+    """FINKORNIG SEKTORTAXONOMI – hämtar Avanzas eget 'sectors'-fält per bolag
+    (VERIFIERAT 2026-07-18 mot skarp AZA.ST-körning: en LISTA ordnad MEST
+    SPECIFIK FÖRST, t.ex. [{"sectorId":"22","sectorName":"Sparande &
+    Investering"}, {"sectorId":"23","sectorName":"Bank"}, {"sectorId":"21",
+    "sectorName":"Finans"}]; samma mönster syns i Avanza-appens gröna
+    taggar "Halvledare / Hårdvara / Teknologi" för ett halvledarbolag).
+    Detta är Avanzas EGEN klassificering, på svenska, betydligt mer
+    granulär än universumets breda GICS-hinkar ("Information Technology"
+    klumpar ihop halvledare, drönare och humanoida robotar).
+
+    Skriver cache/avanza_sectors.csv (ticker,name,sector_fine,sector_mid,
+    sector_broad,sector_path) – universum-gemensam metadata (inte per
+    segment-results, samma resonemang som avanza_map.json i cache/).
+
+    SYFTE (utforskningssteg, inget konsumeras ännu): se den VERKLIGA
+    fördelningen – hur många unika underteman, hur många bolag per tema –
+    innan något kopplas in i appen. GICS-hinkarna i sweden_universe.csv
+    rörs INTE av detta: sektor-relativa screening-barrar (ROE/skuld,
+    SECTOR_RANK_MIN_PEERS=5) behöver breda, stabila jämförelsegrupper och
+    fortsätter läsa GICS. Det här lagret är för tematisk visning/rotation.
+
+        python -m altdata.avanza sectors               # hela universumet
+        python -m altdata.avanza sectors large         # bara ett segment
+    """
+    import csv as _csv
+    from collections import Counter
+
+    mp = _map_path()
+    if not mp.exists():
+        print(f"Ingen {mp} – kör 'match' först.")
+        return
+    mapping = json.loads(mp.read_text())
+    tickers, sector_map, cap_map, name_map, _results_dir = _resolve_universe(segment)
+    wanted = {t for t in tickers if cap_map.get(t) != "Fond" and sector_map.get(t) != "Fond"}
+    candidates = sorted(t for t in wanted & mapping.keys()
+                        if mapping[t].get("confirmed") and mapping[t].get("orderBookId"))
+
+    rows, fail, empty = [], 0, 0
+    print(f"[sectors] hämtar Avanza-sektortaggar för {len(candidates)} bolag "
+          f"(~{len(candidates) * _PAUSE_S / 60:.0f} min i artig takt)...")
+    for i, t in enumerate(candidates, 1):
+        try:
+            info = _get(f"/_api/market-guide/stock/{mapping[t]['orderBookId']}")
+        except Exception:  # noqa: BLE001
+            fail += 1
+            continue
+        finally:
+            time.sleep(_PAUSE_S)
+        secs = [str(s.get("sectorName") or "").strip()
+                for s in (info.get("sectors") or []) if s.get("sectorName")]
+        if not secs:
+            empty += 1
+            continue
+        rows.append({
+            "ticker": t, "name": name_map.get(t, t),
+            "sector_fine": secs[0],                    # mest specifik (först i listan)
+            "sector_mid": secs[1] if len(secs) > 2 else "",
+            "sector_broad": secs[-1],                  # bredast (sist i listan)
+            "sector_path": " | ".join(secs),
+        })
+        if i % 50 == 0:
+            print(f"  ...{i}/{len(candidates)}")
+
+    out = Path(config.anchor("cache")) / "avanza_sectors.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=["ticker", "name", "sector_fine",
+                                           "sector_mid", "sector_broad", "sector_path"])
+        w.writeheader()
+        w.writerows(rows)
+    print(f"\n[sectors] {len(rows)} bolag taggade ({fail} fel, {empty} utan sectors-fält) -> {out}")
+
+    fine = Counter(r["sector_fine"] for r in rows)
+    broad = Counter(r["sector_broad"] for r in rows)
+    print(f"\n  {len(fine)} unika FINA underteman (topp 30, antal bolag):")
+    for name, n in fine.most_common(30):
+        print(f"   {n:>4}  {name}")
+    print(f"\n  {len(broad)} unika BREDA toppsektorer:")
+    for name, n in broad.most_common():
+        print(f"   {n:>4}  {name}")
+    print("\n[sectors] Klistra in fördelningen ovan – utifrån den avgör vi hur"
+          " temalagret kopplas in (visning/rotation), GICS-screeningen rörs inte.")
+
+
 # Bolagsformer som otvetydigt INTE är svenska (ASA=norskt publikt bolag,
 # A/S=danskt, Oyj=finskt, P/F=färöiskt) – VERIFIERAT bättre signal än att
 # gissa på tickerformat: en naiv "tickern slutar på O"-regel fångar äkta
@@ -1633,6 +1719,8 @@ def main():
         audit()
     elif cmd == "calendar":
         calendar(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif cmd == "sectors":
+        sectors_extract(sys.argv[2] if len(sys.argv) > 2 else None)
     elif cmd == "revalidate":
         revalidate()
     elif cmd == "check_marketplace":
