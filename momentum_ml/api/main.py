@@ -539,6 +539,23 @@ def get_commentary():
         return _clean(json.load(f))
 
 
+@app.post("/api/commentary/ask")
+async def post_commentary_ask(request: Request):
+    """AI-boxen under Förvaltarkommentaren: fri följdfråga på analysen,
+    på-begäran headless Claude (WebSearch, samma REN NARRATIV-disciplin som
+    brevet självt). Body: {question}. Kör synkront (samma mönster som
+    /api/scanner/analyze) - kan ta upp till ~2 min pga WebSearch."""
+    import portfolio_commentary as pc
+    body = await request.json()
+    question = str(body.get("question") or "").strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Fråga saknas.")
+    result = pc.ask(question)
+    if result.get("error") and not result.get("answer"):
+        raise HTTPException(status_code=502, detail=result["error"])
+    return _clean(result)
+
+
 @app.get("/api/case-changes")
 def get_case_changes():
     """Har investeringscaset förändrats? (altdata/case_tracker.py). Jämför
