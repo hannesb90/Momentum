@@ -2244,13 +2244,45 @@ def _dynamic_fill_split(bucket_vals, amount, targets, attr, meta_out=None):
     return final
 
 
+def _core_split_allocation(broad_kr: float, min_trade: float) -> list:
+    """Delar `broad_kr` mellan kärnans korg (config.PORTFOLIO_CORE_SPLIT, World+EM
+    ~88/12 - se dess docstring i config.py för evidensen). Ett ben under
+    min-köp handlas inte för en struntsumma utan viks in i det STÖRSTA
+    benet, samma disciplin som min-köp-hanteringen för satelliterna. Tom/
+    saknad PORTFOLIO_CORE_SPLIT → faller tillbaka på den enkla
+    PORTFOLIO_CORE_ETF-tickern (oförändrat beteende).
+
+    Returnerar [(ticker, name, kr), ...], bara ben > 0.5 kr."""
+    split = getattr(config, "PORTFOLIO_CORE_SPLIT", None)
+    if not split:
+        core_tk, core_name = getattr(config, "PORTFOLIO_CORE_ETF",
+                                     ("IUSQ.DE", "iShares MSCI ACWI (hela världen)"))
+        return [(core_tk, core_name, broad_kr)] if broad_kr > 0.5 else []
+    wsum = sum(w for _, _, w in split) or 1.0
+    legs = [[tk, name, broad_kr * w / wsum] for tk, name, w in split]
+    small = [l for l in legs if l[2] < min_trade]
+    if small:
+        legs = [l for l in legs if l not in small]
+        orphaned = sum(l[2] for l in small)
+        if legs:
+            legs.sort(key=lambda l: -l[2])
+            legs[0][2] += orphaned
+        else:   # allt under min-köp (litet totalbelopp) → hela summan till störst-viktade benet
+            biggest = max(split, key=lambda s: s[2])
+            legs = [[biggest[0], biggest[1], broad_kr]]
+    return [(tk, name, kr) for tk, name, kr in legs if kr > 0.5]
+
+
 def next_buy(rows, amount=None) -> dict:
     """
     KÄRNAN ("Nästa köp"): ETT rangordnat, konkret svar på var nästa krona ska in.
 
     Hierarkin är evidensordningen från våra egna tester, inte tycke:
-      1. BRED KÄRNA – en enda global fond. I varje netto-test vi kört (aktie-
-         holdout, ETF-rotationens OOS-svep) slog den varje aktiv variant.
+      1. BRED KÄRNA – World+EM i kapvikt (~88/12, config.PORTFOLIO_CORE_SPLIT).
+         Slog en enda ACWI-fond på varje mått i ett matchat fönster
+         (backtest_core_allocation.py) OCH slog varje AKTIV variant i tidigare
+         tester (aktie-holdout, ETF-rotationens OOS-svep) - se
+         PORTFOLIO_CORE_SPLIT-docstringen i config.py för siffrorna.
       2. SVERIGE-SATELLIT – modellens bästa kandidat. Ärligt stämplad OBEVISAD
          (holdouten var negativ); får bara den kapacitet målfördelningen ger.
       3. TEMA-SATELLIT – rotationens starkaste tema, bara i risk-on. Rotationen
@@ -2271,8 +2303,6 @@ def next_buy(rows, amount=None) -> dict:
     for r in rows:
         buckets[r["bucket"] if r["bucket"] in buckets else "theme"] += r.get("value", 0.0)
 
-    core_tk, core_name = getattr(config, "PORTFOLIO_CORE_ETF",
-                                 ("IUSQ.DE", "iShares MSCI ACWI (hela världen)"))
     risk_on = None
     try:
         meta = json.loads((_results_dir() / "etf_rotation_meta.json").read_text(encoding="utf-8"))
@@ -2346,10 +2376,11 @@ def next_buy(rows, amount=None) -> dict:
         _safe(lambda: _log_sweden_picks(sweden_picks), None, "sverige-punkt-i-tid-logg")
 
     out_rows = []
-    if broad_kr > 0.5:
+    for tk, name, kr in _core_split_allocation(broad_kr, min_trade):
         out_rows.append({
-            "kr": round(broad_kr), "ticker": core_tk, "name": core_name, "bucket": "broad",
-            "why": "Bred global kärna – slog varje aktiv variant netto i våra tester. Här byggs förmögenheten.",
+            "kr": round(kr), "ticker": tk, "name": name, "bucket": "broad",
+            "why": "Bred global kärna (World+EM, kapvikt) – slog en enda ACWI-fond i vårt matchade "
+                   "backtest. Här byggs förmögenheten.",
             "evidence": "kärna",
         })
     if sweden_kr >= min_trade and sweden_picks:
