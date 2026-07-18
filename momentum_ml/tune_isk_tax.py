@@ -19,7 +19,9 @@ import config
 from data.data_loader import (
     fetch_weekly_data, filter_liquid_universe, filter_active_universe, load_sweden_universe,
 )
-from features.feature_engineering import build_all_features, attach_categorical_features, FEATURE_COLS
+from features.feature_engineering import (
+    build_all_features, attach_categorical_features, attach_fundamentals_features, FEATURE_COLS,
+)
 from models.lgbm_model import MomentumLGBM
 from models.ensemble import MomentumEnsemble, build_full_output
 from backtest.backtester import MomentumBacktester
@@ -42,6 +44,11 @@ def main():
 
     feats = build_all_features(data)
     feats = attach_categorical_features(feats, sector_map=config.SECTOR_MAP, cap_tier_map=cap_tier_map)
+    # Tillväxt-features (rev_growth_yoy/eps_growth_yoy/days_since_report) ur MFN-
+    # rapporternas hårddata - modellen förväntar sig dessa kolumner (FEATURE_COLS),
+    # se main.py:s STEG 2 (samma anropsordning). Saknas underlaget blir kolumnerna
+    # bara NaN, ingen krasch.
+    feats = attach_fundamentals_features(feats, segment=segment)
     feature_dfs = {t: f.assign(ticker=t) for t, f in feats.items()}
 
     lgbm = MomentumLGBM.load(f"{config.RESULTS_DIR}/lgbm_model.pkl")
