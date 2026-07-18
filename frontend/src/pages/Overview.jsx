@@ -260,6 +260,11 @@ export function OverviewPage() {
         </p>
       )}
       {nextBuy.data?.note && <p className="footnote">{nextBuy.data.note}</p>}
+      {nextBuy.data?.global_theme_note && (
+        <p className="footnote" style={{ opacity: 0.7 }}>
+          {nextBuy.data.global_theme_note.note}
+        </p>
+      )}
 
       {targetData.data?.target && (
         <AllocationEditor initial={targetData.data.target} onSaved={() => setReloadKey((k) => k + 1)} />
