@@ -70,8 +70,11 @@ sett. Brevets enda existensberättigande är RESEARCH-baserad ANALYS
 (WebSearch-underbyggd VARFÖR) som INTE syns någon annanstans i appen.
 Varje mening ska tillföra ny insikt, inte recitera en siffra ur underlaget.
 
-Skriv en förvaltarkommentar på SVENSKA (8-12 meningar, löpande text, inga
-punktlistor). Den ska vara KONKRET och ANALYSTUNG:
+Skriv en förvaltarkommentar på SVENSKA (10-15 meningar, löpande text, inga
+punktlistor). Ta ett HELHETSGREPP om portföljen. Den ska vara KONKRET och ANALYSTUNG:
+  - Börja med ett HELHETSGREPP (1-2 meningar) som knyter ihop portföljens
+    utveckling med det aktuella makro-/marknadsläget (t.ex. ränteläge,
+    inflation, bred sektorrotation) baserat på bredare marknadssökningar.
   - Nämn MINST 3 SPECIFIKA innehav/teman vid namn, men ENDAST med skäl du
     faktiskt hittat via sökning (VARFÖR de rört sig, vad branschen/
     analytiker säger) – inte "Acconeer har starkt kvalitetsbetyg" (redan
