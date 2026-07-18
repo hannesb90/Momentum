@@ -31,29 +31,48 @@ from backtest.backtester import MomentumBacktester
 MIN_WEEKS = 156   # ~3 år gemensam historik - kortare är för brusigt för att säga något
 
 
+def normalize_weekly_panel(panel: pd.DataFrame) -> pd.DataFrame:
+    """Normaliserar en flerkolumns pris-/score-panel till en GEMENSAM
+    måndagsankrad veckokalender, per kolumn, med ffill för veckor
+    resamplingen inte träffar en exakt kursdag.
+
+    BUGG (fixad, verkligt fall: backtest_theme_satellite.py:s första körning
+    rapporterade "33.2 år" för fönstret 2009-2026, dvs dubbelt så många
+    rader som kalenderveckor faktiskt fanns). Roten: yfinance:s per-ticker
+    veckostaplar kan vara ankrade på olika veckodagar (skiljer sig per
+    instrument/handelskalender även inom SAMMA batch-nedladdning) - en rå
+    multi-ticker-panel (t.ex. etf_rotation.py:s _panel(), som bara gör
+    ffill(limit=1) utan att normalisera till en gemensam kalender) får då
+    ~dubbelt så många rader som verkliga veckor, med olika tickers värden
+    utspridda på nästan-dubblerade datum. Det förstör INTE bara vecko-/
+    år-räkningen (kosmetiskt) utan även rel_mom:s .shift(w)-fönster: en
+    "52-veckors" lookback blir bara ~26 KALENDERveckor om indexet är
+    dubblerat - en tyst, allvarlig snedvridning av själva momentum-måttet,
+    inte bara rapporteringen av det. Samma fix som simulate_accumulation()
+    redan använder via denna funktion - kör den på VARJE panel innan
+    momentum/NAV beräknas på den."""
+    cols = {}
+    for t in panel.columns:
+        s = panel[t].dropna()
+        if s.empty:
+            continue
+        cols[t] = s.sort_index().resample("W-MON").last().ffill()
+    return pd.DataFrame(cols).sort_index()
+
+
 def _weekly_closes(weights: Dict[str, float], prices: Dict[str, "pd.DataFrame"]) -> pd.DataFrame:
     """Close-panel för EXAKT tickers i weights, avgränsat till datum där ALLA
     har pris (kortaste seriens inception styr fönstret - transparent i
-    resultatet, aldrig dolt/extrapolerat bakåt).
-
-    BUGG (fixad, verkligt fall: EM+Europa/4-vägssplitten gav "<3 år gemensam
-    historik" trots att EXSA.DE (2008-2026) och IS3N.DE (2014-2026) VAR för
-    sig hade 0 interna luckor). yfinance:s per-ticker veckostaplar kan vara
-    ankrade på olika veckodagar (skiljer sig per instrument/handelskalender
-    även inom SAMMA batch-nedladdning) - en strikt datum-för-datum-join
-    (gamla koden) matchade då nästan ingenting, trots att båda serierna var
-    kompletta var för sig. Fixen: normalisera varje serie till en gemensam
-    veckokalender (måndagsankrad) FÖRE join, med ffill för veckor där
-    resamplingen inte träffar en exakt kursdag - absorberar veckodags-
-    skillnaden i stället för att låta den tysta bort nästan hela överlappet."""
+    resultatet, aldrig dolt/extrapolerat bakåt). Se normalize_weekly_panel()
+    för varför måndags-normaliseringen krävs innan join."""
     cols = {}
     for t in weights:
         df = prices.get(t)
-        s = None if df is None or "Close" not in df else df["Close"].dropna()
-        if s is None or s.empty:
+        s = None if df is None or "Close" not in df else df["Close"]
+        if s is None or s.dropna().empty:
             return pd.DataFrame()
-        cols[t] = s.sort_index().resample("W-MON").last().ffill()
-    panel = pd.DataFrame(cols).sort_index()
+        cols[t] = s
+    panel = normalize_weekly_panel(pd.DataFrame(cols))
     return panel.dropna(how="any")
 
 
