@@ -42,7 +42,15 @@ CORE_TICKER, CORE_NAME = getattr(config, "PORTFOLIO_CORE_ETF", ("IUSQ.DE", "iSha
 # vad den får in - med en enda ticker blir "likavikten" helt enkelt den fondens
 # egen avkastning, ett rimligt förenklat proxy för just den här frågan).
 MARKET_PROXY_TICKER = "XACT-SVERIGE.ST"
-HEDGE_TICKER, HEDGE_NAME = "XACT-BEAR.ST", "XACT Bear (-1x OMXS30, dagligen ombalanserad)"
+# (ticker, namn) - körs som separata varianter mot samma kontant-baslinje.
+# XACT Bear 2 är den HÄVSTÅNGADE (-2x OMXS30) varianten av samma mekanik -
+# dagligt ombalanserad, samma volatilitetsdecay-oro men KVADRERAD (decay
+# skalar ~kvadratiskt med hävstången, inte linjärt) - relevant eftersom
+# -1x redan förlorade mot kontanter (se körningen som ledde hit).
+HEDGE_VARIANTS = [
+    ("XACT-BEAR.ST",   "XACT Bear (-1x OMXS30, dagligen ombalanserad)"),
+    ("XACT-BEAR-2.ST", "XACT Bear 2 (-2x OMXS30, dagligen ombalanserad)"),
+]
 
 
 def _fmt_pct(x):
@@ -74,7 +82,8 @@ def _print_result(label, r):
 
 
 def main():
-    tickers = [CORE_TICKER, MARKET_PROXY_TICKER, HEDGE_TICKER]
+    hedge_tickers = [t for t, _ in HEDGE_VARIANTS]
+    tickers = [CORE_TICKER, MARKET_PROXY_TICKER] + hedge_tickers
     print(f"[backtest_bear_hedge] hämtar veckodata för: {', '.join(tickers)}")
     prices = fetch_weekly_data(tickers, start="2005-01-01", end=None, use_cache=True)
     missing = [t for t in tickers if t not in prices]
@@ -83,8 +92,8 @@ def main():
         return
 
     panel = normalize_weekly_panel(pd.DataFrame({t: prices[t]["Close"] for t in tickers}))
-    if CORE_TICKER not in panel.columns or HEDGE_TICKER not in panel.columns:
-        print("[backtest_bear_hedge] kärna eller hedge saknas efter normalisering - kan inte köra.")
+    if CORE_TICKER not in panel.columns:
+        print("[backtest_bear_hedge] kärna saknas efter normalisering - kan inte köra.")
         return
     _diagnose_tickers(panel)
 
@@ -105,31 +114,51 @@ def main():
           f"{n_bear} veckor klassade som bear av {len(regime)} totalt "
           f"({n_bear / len(regime):.0%}).")
 
-    r_cash_own = simulate_regime_hedge_accumulation(CORE_TICKER, panel, regime, hedge_ticker=None)
-    r_hedge_own = simulate_regime_hedge_accumulation(CORE_TICKER, panel, regime, hedge_ticker=HEDGE_TICKER)
-    if r_cash_own is None or r_hedge_own is None:
-        print("[backtest_bear_hedge] < 3 år gemensam historik - kan inte testa.")
+    variants = [(None, "Kontanter under bear (dagens beteende)")] + \
+               [(t, f"{name} under bear") for t, name in HEDGE_VARIANTS if t in panel.columns]
+    skipped = [name for t, name in HEDGE_VARIANTS if t not in panel.columns]
+    if skipped:
+        print(f"[backtest_bear_hedge] hoppar över (saknar prisdata efter normalisering): {', '.join(skipped)}")
+
+    results_own = {}
+    for hedge_ticker, label in variants:
+        r = simulate_regime_hedge_accumulation(CORE_TICKER, panel, regime, hedge_ticker=hedge_ticker)
+        if r is None:
+            print(f"[backtest_bear_hedge] {label}: < 3 år gemensam historik - kan inte testa.")
+            continue
+        results_own[hedge_ticker] = (label, r)
+    if len(results_own) < 2:   # kontanter + minst en hedge-variant krävs för jämförelse
+        print("[backtest_bear_hedge] för få jämförbara varianter - avbryter.")
         return
 
     print("\n  EGET FÖNSTER (respektive variants maximala tillgängliga historik):\n")
-    _print_result(f"Kontanter under bear (dagens beteende)", r_cash_own)
-    _print_result(f"{HEDGE_NAME} under bear", r_hedge_own)
+    for hedge_ticker, (label, r) in results_own.items():
+        _print_result(label, r)
 
-    matched_start = max(r_cash_own["start"], r_hedge_own["start"])
-    r_cash = simulate_regime_hedge_accumulation(CORE_TICKER, panel, regime, hedge_ticker=None, start=matched_start)
-    r_hedge = simulate_regime_hedge_accumulation(CORE_TICKER, panel, regime, hedge_ticker=HEDGE_TICKER,
-                                                  start=matched_start)
-    if r_cash is None or r_hedge is None:
-        print(f"\n[backtest_bear_hedge] för kort efter klippning till {matched_start}.")
+    matched_start = max(r["start"] for _, r in results_own.values())
+    results_matched = {}
+    for hedge_ticker, (label, _) in results_own.items():
+        r = simulate_regime_hedge_accumulation(CORE_TICKER, panel, regime, hedge_ticker=hedge_ticker,
+                                                start=matched_start)
+        if r is None:
+            print(f"\n[backtest_bear_hedge] {label}: för kort efter klippning till {matched_start}.")
+            continue
+        results_matched[hedge_ticker] = (label, r)
+    if len(results_matched) < 2:
+        print("[backtest_bear_hedge] för få varianter kvar efter fönster-matchning - avbryter.")
         return
 
-    print(f"\n  MATCHAT FÖNSTER: {r_cash['start']} → {r_cash['end']} ({r_cash['years']} år)\n")
-    _print_result("Kontanter under bear (dagens beteende)", r_cash)
-    _print_result(f"{HEDGE_NAME} under bear", r_hedge)
+    any_r = next(iter(results_matched.values()))[1]
+    print(f"\n  MATCHAT FÖNSTER: {any_r['start']} → {any_r['end']} ({any_r['years']} år)\n")
+    for hedge_ticker, (label, r) in results_matched.items():
+        _print_result(label, r)
 
-    print("\n(NAV-CAGR/Sharpe/MaxDD är insättnings-neutrala. Skillnaden mellan de två "
-          "raderna ISOLERAR bear-hedgens effekt - allt annat (kärnans egna köp under "
-          "bull/sidledes, kostnader) är identiskt mellan varianterna. OBS: klassificeringen "
+    print("\n(NAV-CAGR/Sharpe/MaxDD är insättnings-neutrala. Skillnaden mellan raderna "
+          "ISOLERAR bear-hedgens effekt - allt annat (kärnans egna köp under bull/sidledes, "
+          "kostnader) är identiskt mellan varianterna. XACT Bear 2 är HÄVSTÅNGAD (-2x) - "
+          "samma dagliga ombalanserings-decay som -1x-varianten, men den skalar ungefär "
+          "kvadratiskt med hävstången, inte linjärt, så en eventuell förlust mot kontanter "
+          "väntas vara STÖRRE här, inte mindre. OBS: klassificeringen "
           "(backtest.regime.classify_regimes) är EN metod bland flera möjliga - en snävare/"
           "bredare SMA hade gett andra bear-fönster. Det här mäter den befintliga, redan i "
           "produktion använda klassificeraren, inte ett optimerat facit.)")
