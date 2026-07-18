@@ -78,6 +78,14 @@ def alpha_beta(strategy_value: pd.Series, benchmark_value: pd.Series) -> Dict[st
     return {"beta": beta, "alpha_annual": alpha_week * 52}
 
 
+def pct_to_float(s: str) -> float:
+    """Konverterar procentsträng (t.ex. '10.5%') till float (0.105)."""
+    try:
+        return float(str(s).strip().rstrip("%")) / 100.0
+    except (ValueError, AttributeError):
+        return float("nan")
+
+
 def benchmark_report(
     strategy_value: pd.Series,
     prices: Dict[str, pd.DataFrame],
@@ -99,15 +107,8 @@ def benchmark_report(
     bench_stats = MomentumBacktester._compute_stats(bench.dropna(), initial_capital)
     ab = alpha_beta(strategy_value, bench)
 
-    # Alfa som ren CAGR-differens (lättare att kommunicera än regressionsalfan).
-    def _pct_to_float(s: str) -> float:
-        try:
-            return float(str(s).strip().rstrip("%")) / 100.0
-        except (ValueError, AttributeError):
-            return float("nan")
-
     strat_stats = MomentumBacktester._compute_stats(strategy_value.dropna(), initial_capital)
-    cagr_diff = _pct_to_float(strat_stats["CAGR"]) - _pct_to_float(bench_stats["CAGR"])
+    cagr_diff = pct_to_float(strat_stats.get("CAGR", "NaN")) - pct_to_float(bench_stats.get("CAGR", "NaN"))
 
     return {
         "label":        label,
