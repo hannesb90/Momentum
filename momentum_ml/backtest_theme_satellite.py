@@ -162,6 +162,81 @@ def main():
           "som köpts flera månader i rad drar upp sin egen tröskel i takt med priset, se "
           "simulate_rotating_accumulation()s docstring.)")
 
+    sweep(have_theme, rel, panel, regime, matched_start, r_core["end"])
+
+
+def _cagr(r):
+    try:
+        return float(r["nav_stats"]["CAGR"].rstrip("%")) / 100.0
+    except (KeyError, ValueError, AttributeError):
+        return float("nan")
+
+
+def _sharpe(r):
+    try:
+        return float(r["nav_stats"]["Sharpe"])
+    except (KeyError, ValueError, TypeError):
+        return float("nan")
+
+
+def sweep(have_theme, rel, panel, regime, matched_start, matched_end):
+    """Sveper take_profit_gain i 10%-steg - MEN rankar på IN-SAMPLE och
+    verifierar mot OOS, exakt samma disciplin som etf_rotation.py:s egen
+    sweep(). Med bara en handfull sälj-händelser totalt över hela fönstret
+    (se take_profits-räkningarna ovan) är "bästa tröskel på hela historiken"
+    ett klassiskt efterhands-facit - en tröskel som råkade träffa rätt EN
+    gång är inte bevisat bättre, bara en gång tur. In-sample/OOS-splitten
+    avslöjar om vinnaren håller på OSEDD data eller bara var brus."""
+    full_idx = panel.loc[matched_start:matched_end].index
+    if len(full_idx) < 2 * 156:
+        print("\n[sweep] för kort fönster för en meningsfull in-sample/OOS-split - hoppar sveper.")
+        return
+    split = int(len(full_idx) * 0.6)
+    is_end, oos_start = full_idx[split - 1], full_idx[split]
+
+    grid = [None] + [round(0.10 * k, 2) for k in range(1, 16)]   # None, 10%, 20%, ..., 150%
+    print(f"\n===== TAKE-PROFIT-SVEP (10%-steg) - IN-SAMPLE/OOS, samma disciplin som etf_rotation.py:s sweep() =====")
+    print(f"  IN-SAMPLE {matched_start} – {is_end.date()}  |  OOS {oos_start.date()} – {matched_end}")
+    print(f"  Rankat på IN-SAMPLE NAV-CAGR. OOS = osedd data (det enda som räknas).\n")
+
+    rows = []
+    for tp in grid:
+        r_is = simulate_rotating_accumulation(have_theme, rel, panel, risk_on=regime, fallback_ticker=CORE_TICKER,
+                                               start=matched_start, end=str(is_end.date()), take_profit_gain=tp)
+        r_oos = simulate_rotating_accumulation(have_theme, rel, panel, risk_on=regime, fallback_ticker=CORE_TICKER,
+                                                start=str(oos_start.date()), end=matched_end, take_profit_gain=tp)
+        rows.append((tp, r_is, r_oos))
+    rows.sort(key=lambda x: _cagr(x[1]) if x[1] else -9, reverse=True)
+
+    baseline_oos = next((r_oos for tp, _r_is, r_oos in rows if tp is None), None)
+    base_oos_cagr = _cagr(baseline_oos) if baseline_oos else float("nan")
+
+    label = lambda tp: "ingen säljregel" if tp is None else f"+{tp:.0%}"
+    print(f"  {'tröskel':>15} | {'IS CAGR':>8} {'IS Sharpe':>10} | {'OOS CAGR':>9} {'OOS Sharpe':>11}  slår ingen-säljregel OOS?")
+    beats = 0
+    for tp, r_is, r_oos in rows:
+        if r_is is None or r_oos is None:
+            print(f"  {label(tp):>15} |  (för kort efter split)")
+            continue
+        win = _cagr(r_oos) > base_oos_cagr
+        beats += int(win and tp is not None)
+        print(f"  {label(tp):>15} | {_cagr(r_is):>+7.1%} {_sharpe(r_is):>10.2f} | "
+              f"{_cagr(r_oos):>+8.1%} {_sharpe(r_oos):>11.2f}  {'JA' if win else 'nej'}")
+
+    valid = [x for x in rows if x[1] is not None and x[2] is not None]
+    if valid:
+        best_tp, best_is, best_oos = valid[0]
+        print(f"\n  → Bästa IN-SAMPLE ({label(best_tp)}): OOS CAGR {_cagr(best_oos):+.1%} vs "
+              f"ingen-säljregel OOS {base_oos_cagr:+.1%} → "
+              f"{'HÅLLER OOS' if _cagr(best_oos) > base_oos_cagr else 'HÅLLER INTE OOS - troligen bara brus'}")
+        n_thresholds = len([x for x in valid if x[0] is not None])
+        print(f"  → {beats}/{n_thresholds} trösklar slår ingen-säljregel på OOS "
+              f"({'nästan alla - ett äkta mönster' if beats >= n_thresholds * 0.7 else 'blandat/svagt - dra inte för stora slutsatser av EN vinnare'}).")
+    print("\n  Litet urval (en handfull sälj-events totalt i hela fönstret) - läs det här som en "
+          "indikation, inte ett facit. Om många trösklar slår baslinjen OOS är mönstret äkta "
+          "(disciplinerad vinsthemtagning hjälper generellt); om bara EN enstaka tröskel vinner "
+          "och resten inte gör det är det sannolikt efterhandskonstruktion.")
+
 
 if __name__ == "__main__":
     main()
