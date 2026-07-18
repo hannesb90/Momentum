@@ -341,6 +341,29 @@ def get_next_buy(amount: Optional[float] = None):
     return _clean(pf.next_buy(pf.load_holdings(), amount=amount))
 
 
+@app.post("/api/scanner/analyze")
+async def post_scanner_analyze(request: Request):
+    """AI-analysrutan i Skanner: på-begäran headless Claude-sammanfattning
+    (WebSearch, REN NARRATIV samma disciplin som förvaltarbrevet) FÖR ETT
+    bolag + hur en hypotetisk ny position skulle påverka portföljen som
+    helhet. Body: {ticker, overrides?, segment?, amount?}. Kör synkront
+    (samma mönster som /api/trade-ticket - headless-anrop inom requesten),
+    kan ta upp till ~2 min pga WebSearch."""
+    import security_analysis as sa
+    body = await request.json()
+    ticker = str(body.get("ticker") or "").strip()
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker saknas.")
+    overrides = body.get("overrides") or {}
+    segment = body.get("segment")
+    amount = body.get("amount")
+    try:
+        result = sa.analyze(ticker, overrides, segment=segment, amount=amount)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return _clean(result)
+
+
 @app.post("/api/trade-ticket")
 async def create_trade_ticket_endpoint(request: Request):
     """Förifylld Montrose-köpbiljett för EN rad ur Nästa köp-planen. Kör

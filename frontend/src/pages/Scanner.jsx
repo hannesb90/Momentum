@@ -30,6 +30,13 @@ export function ScannerPage() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  // AI-analysrutan – separat state/knapp från skanningen ovan (den kör ett
+  // headless Claude-anrop med WebSearch, kan ta upp till ~2 min, ska ALDRIG
+  // triggas automatiskt vid varje skanning).
+  const [aiAmount, setAiAmount] = useState(10000)
+  const [aiResult, setAiResult] = useState(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState(null)
 
   useEffect(() => {
     api.scannerFields()
@@ -95,7 +102,32 @@ export function ScannerPage() {
     const overrides = Object.fromEntries(
       Object.entries(values).filter(([, v]) => v !== '' && v != null),
     )
+    setAiResult(null)
+    setAiError(null)
     doScan(ticker, overrides)
+  }
+
+  async function runAiAnalysis() {
+    if (!result || aiLoading) return
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const overrides = Object.fromEntries(
+        Object.entries(values).filter(([, v]) => v !== '' && v != null),
+      )
+      const r = await api.scannerAnalyze(result.ticker, overrides, undefined, Number(aiAmount) || undefined)
+      if (r.error && !r.analysis) {
+        setAiError(r.error)
+        setAiResult(null)
+      } else {
+        setAiResult(r)
+      }
+    } catch (err) {
+      setAiError(err.message)
+      setAiResult(null)
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   return (
@@ -206,7 +238,14 @@ export function ScannerPage() {
       </form>
 
       {error && <div className="status-block status-block--error">Kunde inte skanna: {error}</div>}
-      {result && <ScanResult result={result} />}
+      {result && (
+        <ScanResult
+          result={result}
+          aiAmount={aiAmount} setAiAmount={setAiAmount}
+          aiResult={aiResult} aiLoading={aiLoading} aiError={aiError}
+          onAnalyze={runAiAnalysis}
+        />
+      )}
     </section>
   )
 }
@@ -237,7 +276,63 @@ function Gauge({ score }) {
   )
 }
 
-function ScanResult({ result }) {
+function AiAnalysisBox({ ticker, aiAmount, setAiAmount, aiResult, aiLoading, aiError, onAnalyze }) {
+  const impact = aiResult?.impact
+  return (
+    <div className="list-card" style={{ marginTop: 16, padding: 12 }}>
+      <h3 className="section-title" style={{ marginTop: 0 }}>
+        AI-analys
+        <InfoButton title="AI-analys av bolaget">
+          <p>
+            Headless Claude läser modellens poäng ovan + färska Avanza-nyheter + WebSearch,
+            och skriver en sammanfattning – SAMMA "ren narrativ, aldrig signal"-disciplin som
+            förvaltarbrevet: ingen ny köp/sälj-rekommendation, bara en förklaring av läget.
+          </p>
+          <p>
+            Beräknar dessutom hur en NY position på beloppet nedan skulle påverka DIN
+            portfölj som helhet (hink-balans, om bolaget delar tema med redan stora
+            positioner) – rent lokalt, ingen AI behövs för siffrorna, bara för att förklara dem.
+            Kan ta upp till ~2 minuter (WebSearch).
+          </p>
+        </InfoButton>
+      </h3>
+      <div className="scan-form__field" style={{ maxWidth: 220, marginBottom: 10 }}>
+        <span>Hypotetiskt köpbelopp (kr)</span>
+        <input
+          className="pf-in pf-num" type="number" min="0" step="500"
+          value={aiAmount} onChange={(e) => setAiAmount(e.target.value)}
+        />
+      </div>
+      <button type="button" className="btn" onClick={onAnalyze} disabled={aiLoading}>
+        {aiLoading ? 'Analyserar… (kan ta upp till 2 min)' : 'Kör AI-analys'}
+      </button>
+      {aiError && (
+        <div className="status-block status-block--error" style={{ marginTop: 10 }}>
+          Kunde inte analysera: {aiError}
+        </div>
+      )}
+      {aiResult?.analysis && (
+        <div style={{ marginTop: 12 }}>
+          <p>{aiResult.analysis}</p>
+          {impact && (
+            <p className="footnote">
+              Hypotetisk position: {fmtSek(impact.amount)} i hinken "{BUCKET_LABEL[impact.bucket] ?? impact.bucket}"
+              {impact.theme && <> · tema: {impact.theme}</>}
+              {impact.new_position_share_of_portfolio != null && (
+                <> · {fmtPct(impact.new_position_share_of_portfolio)} av portföljen efter köp</>
+              )}
+              {impact.same_theme_existing_share_before != null && (
+                <> · {fmtPct(impact.same_theme_existing_share_before)} redan i samma tema innan</>
+              )}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ScanResult({ result, aiAmount, setAiAmount, aiResult, aiLoading, aiError, onAnalyze }) {
   const vm = result.value_metrics
   const anyExcludedButScored = Object.values(result.models)
     .some((mo) => mo.excluded_reason && mo.score != null)
@@ -332,6 +427,13 @@ function ScanResult({ result }) {
           kvalificerat sig i den riktiga Buffett-grinden i Nästa köp.
         </p>
       )}
+
+      <AiAnalysisBox
+        ticker={result.ticker}
+        aiAmount={aiAmount} setAiAmount={setAiAmount}
+        aiResult={aiResult} aiLoading={aiLoading} aiError={aiError}
+        onAnalyze={onAnalyze}
+      />
 
       <details className="alloc-editor" style={{ marginTop: 12 }}>
         <summary>Fält som användes (källa)</summary>
