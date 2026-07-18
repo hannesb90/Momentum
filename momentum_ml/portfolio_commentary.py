@@ -166,6 +166,28 @@ def _theme_context(tickers):
     return out
 
 
+def _theme_fund_names() -> dict:
+    """theme -> [alla fondnamn i temat] ur cache/fund_niche_themes.csv, INTE
+    bara temats primärval. Fixar en verklig lucka: "(INNEHAV)" i GLOBALA
+    TEMAN matchade tidigare bara mot primärvalets etf_name (billigast
+    avgift), så ett tema visades som "ej ägt" om du äger EN ANNAN fond i
+    samma tema (t.ex. WisdomTree Uranium när primärvalet är VanEck Uranium
+    & Nuclear – samma tema, olika instrument, samma faktiska exponering).
+    Tom dict om filen saknas – inte en crash, bara fallback till etf_name."""
+    p = Path(config.anchor("cache")) / "fund_niche_themes.csv"
+    out: dict = {}
+    if not p.exists():
+        return out
+    try:
+        for r in csv.DictReader(open(p, encoding="utf-8")):
+            theme, name = r.get("theme"), r.get("name")
+            if theme and name:
+                out.setdefault(theme, []).append(name)
+    except Exception:  # noqa: BLE001
+        return {}
+    return out
+
+
 def _global_theme_context():
     """Momentum/rankning/rotation för de GLOBALA temana (rymd/drönare,
     humanoider, halvledare, robotik, cybersäkerhet, kvant, ... – se
@@ -278,10 +300,18 @@ def _underlag():
         # (fondnamn kan skilja lite i formulering mellan Montrose/Avanza) –
         # bara en läsvärd etikett, inget som beräkningar hänger på.
         held_names = [(h.get("name") or "").lower() for h in holdings if h.get("name")]
+        theme_names = _theme_fund_names()
 
-        def _is_held(etf_name: str) -> bool:
-            n = (etf_name or "").lower()
-            return bool(n) and any(n in hn or hn in n for hn in held_names)
+        def _is_held(theme: str, etf_name: str) -> bool:
+            # Hela temats fondlista i första hand (fångar "äger en ANNAN
+            # fond i samma tema än primärvalet") – etf_name bara som
+            # fallback när temat saknas i fund_niche_themes.csv (t.ex. den
+            # gamla handplockade GLOBAL_THEMES-fallbacken i global_theme_
+            # momentum.py om klassificeraren aldrig körts).
+            names = theme_names.get(theme) or ([etf_name] if etf_name else [])
+            return any((n or "").lower() and
+                      any((n or "").lower() in hn or hn in (n or "").lower() for hn in held_names)
+                      for n in names)
 
         lines.append("\nGLOBALA TEMAN (tematiska ETF:er, rankade mot VARANDRA – omfattar teman "
                       "utan svensk motsvarighet, t.ex. rymd/drönare vs humanoida robotar; "
@@ -293,7 +323,7 @@ def _underlag():
                     return float(gt.get(k) or 0)
                 except ValueError:
                     return 0.0
-            held_flag = " (INNEHAV)" if _is_held(gt.get("etf_name")) else ""
+            held_flag = " (INNEHAV)" if _is_held(gt.get("theme"), gt.get("etf_name")) else ""
             fee = gt.get("fee")
             fee_note = f", avgift {float(fee):.2%}" if fee not in (None, "", "None") else ""
             lines.append(
