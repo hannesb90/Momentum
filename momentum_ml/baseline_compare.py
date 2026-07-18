@@ -20,7 +20,7 @@ sys.path.insert(0, '.')
 import pandas as pd
 import config
 from data.data_loader import (
-    fetch_weekly_data, filter_liquid_universe, filter_active_universe, load_sweden_universe,
+    fetch_weekly_data, filter_liquid_universe, load_sweden_universe,
 )
 from features.feature_engineering import build_all_features
 from backtest.backtester import MomentumBacktester
