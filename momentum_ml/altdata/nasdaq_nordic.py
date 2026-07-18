@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional
 from xml.etree import ElementTree as ET
+import concurrent.futures
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
@@ -87,16 +88,25 @@ def raw(market: Optional[str] = None) -> None:
 
 
 def _fetch_all() -> List[dict]:
+    if not config.NASDAQ_MARKETS:
+        return []
     out: List[dict] = []
-    for m in config.NASDAQ_MARKETS:
+
+    def safe_get_market(m):
         try:
-            insts = _get_market(m)
-        except Exception as e:  # noqa: BLE001
-            print(f"  [{m}] FEL: {e}")
-            continue
-        print(f"  [{m}] {len(insts)} instrument")
-        out.extend(insts)
-        time.sleep(config.NASDAQ_REQUEST_PAUSE_S)
+            return m, _get_market(m)
+        except Exception as e: # noqa: BLE001
+            return m, e
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(config.NASDAQ_MARKETS)) as executor:
+        # Använd map för att behålla ordningen på resultaten
+        results = executor.map(safe_get_market, config.NASDAQ_MARKETS)
+        for m, res in results:
+            if isinstance(res, Exception):
+                print(f"  [{m}] FEL: {res}")
+            else:
+                print(f"  [{m}] {len(res)} instrument")
+                out.extend(res)
     return out
 
 
@@ -129,23 +139,34 @@ def probe(market: Optional[str] = None) -> None:
     """Dumpar de RÅA attributen så vi kan identifiera aktieantal/börsvärde/kurs.
     Sätt sedan NASDAQ_ATTR_MCAP / _SHARES / _PRICE i config utifrån detta."""
     markets = [market] if market else config.NASDAQ_MARKETS
-    for m in markets:
-        print(f"\n[probe] marknad {m}")
+    if not markets:
+        return
+
+    def safe_get_market(m):
         try:
-            insts = _get_market(m)
-        except Exception as e:  # noqa: BLE001
-            print(f"  FEL: {e}")
-            continue
-        print(f"  {len(insts)} instrument")
-        if not insts:
-            continue
-        keys = sorted({k for it in insts for k in it})
-        print(f"  attribut: {keys}")
-        # Numeriska attribut (kandidater för aktieantal/börsvärde/kurs):
-        numeric = [k for k in keys if sum(1 for it in insts[:50] if _to_float(it.get(k)) is not None) > 25]
-        print(f"  numeriska attribut: {numeric}")
-        for it in insts[:3]:
-            print(f"   • {json.dumps(it, ensure_ascii=False)}")
+            return m, _get_market(m)
+        except Exception as e: # noqa: BLE001
+            return m, e
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(markets)) as executor:
+        # Använd map för att behålla ordningen på resultaten
+        results = executor.map(safe_get_market, markets)
+        for m, res in results:
+            print(f"\n[probe] marknad {m}")
+            if isinstance(res, Exception):
+                print(f"  FEL: {res}")
+                continue
+            insts = res
+            print(f"  {len(insts)} instrument")
+            if not insts:
+                continue
+            keys = sorted({k for it in insts for k in it})
+            print(f"  attribut: {keys}")
+            # Numeriska attribut (kandidater för aktieantal/börsvärde/kurs):
+            numeric = [k for k in keys if sum(1 for it in insts[:50] if _to_float(it.get(k)) is not None) > 25]
+            print(f"  numeriska attribut: {numeric}")
+            for it in insts[:3]:
+                print(f"   • {json.dumps(it, ensure_ascii=False)}")
     print("\n  Identifiera fälten och sätt NASDAQ_ATTR_MCAP/_SHARES/_PRICE i config, "
           "kör sedan 'fill'.")
 
