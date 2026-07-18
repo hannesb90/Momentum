@@ -412,10 +412,20 @@ def simulate_regime_hedge_accumulation(
     # giltiga notering - samma "kortaste seriens inception styr fönstret"-
     # princip som _weekly_closes() redan använder, fast tillämpad på den ENDA
     # tickern som MÅSTE ha pris varje vecka (proxy/hedge behövs bara situationellt).
+    # Samma resonemang gäller SISTA veckan: unions-panelen kan sträcka sig
+    # bortom kärnans egen sista giltiga notering (t.ex. proxy/hedge har en
+    # extra vecka efter kärnans senaste - verkligt fall: IUSQ.DE (Xetra)
+    # slutade 2026-07-13, XACT-tickers (OMX) fortsatte till 2026-07-20).
+    # Den sista simulerade veckan blev då just den luckveckan - _px() gav
+    # None för kärnan, och `_px(...) or 0.0` tolkade tyst "inget pris denna
+    # vecka" som "innehavet är värt noll", vilket gav exakt slutvärde 0 och
+    # (via NAV:s multiplikativa uppdatering) permanent -100% CAGR/MaxDD.
+    # Klipp därför fönstret till kärnans EGNA giltiga intervall i BÅDA
+    # ändar - aldrig extrapolera bortom vad kärnan faktiskt har notering för.
     core_valid = prices[core_ticker].dropna().index if core_ticker in prices.columns else pd.DatetimeIndex([])
     if len(core_valid) == 0:
         return None
-    idx = idx[idx >= core_valid.min()]
+    idx = idx[(idx >= core_valid.min()) & (idx <= core_valid.max())]
     if start is not None:
         idx = idx[idx >= pd.Timestamp(start)]
     if len(idx) < MIN_WEEKS:
