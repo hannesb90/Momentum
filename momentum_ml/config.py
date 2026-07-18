@@ -39,7 +39,8 @@ DONCHIAN_WEEKS     = 20         # utbrottsfönster (pris bryter N-veckors high/l
 # borttagen grupp höjde capture-spreaden, och "tidig_entry" var aktivt skadlig
 # på holdouten (−5.1% → +1.5%). För att re-validera den borttagningen med FULLA
 # pipelinen (LGBM+LSTM+tröskel), avkommentera och kör en omträning:
-DROP_FEATURES: list = ["donchian_pos", "breakout_nw", "roc_accel_4w", "pullback"]
+#   DROP_FEATURES = ["donchian_pos", "breakout_nw", "roc_accel_4w", "pullback"]
+DROP_FEATURES: list = []
 
 # Klassisk "12-1"-momentum: formation 52v, hoppa över senaste 4v (skip-month).
 # Skip-fönstret är avgörande – på 1-4 veckors sikt dominerar REVERSAL (aktier som
