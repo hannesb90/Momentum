@@ -58,6 +58,7 @@ Körs på Pi:n (nät):
     python -m altdata.avanza list_probe2 VOLV-B.ST   # ...annat chart-testbolag (default AAK.ST)
     python -m altdata.avanza universe_remove T1,T2   # dry-run: ta bort tickers ur sweden_universe.csv (lägg till 'write' för att faktiskt skriva)
     python -m altdata.avanza probe_etf "VanEck Semiconductor"  # utländsk UCITS-ETF: söktyp + funkar prisdiagrammet?
+    python -m altdata.avanza probe_etf_filter          # /_api/market-etf-filter/ - hela Avanzas fonduniversum taggat per kategori? (overifierat, probe först)
     python -m altdata.avanza probe_news "Avanza"          # dumpa Avanzas /_api/market-guide/news/{id} rått (get_news()/news_for_ticker() i koden är VERIFIERADE och används i insight_report.py/portfolio_commentary.py)
 
 Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
@@ -1534,6 +1535,52 @@ def probe_etf(name_or_ticker: str) -> None:
         print(f"  FEL (kan vara väntat om {iid} inte är en 'stock'-typ id): {e}")
 
 
+def probe_etf_filter() -> None:
+    """SCHEMA-UPPTÄCKANDE (samma disciplin som probe_news()/probe_etf()):
+    ledtråd från Avanzas EGET fondfilter i sök-UI:t pekade på
+    /_api/market-etf-filter/ – kan den ge oss HELA Avanzas fond-/ETF-
+    universum taggat per kategori (samma kategorier som synts i filter-
+    dropdownen: "Nuclear" 1, "Försvarsindustri" 19, "Ädelmetaller" 10,
+    "Teknologi" 95, "Hållbarhet" 209, ...) i stället för vår nuvarande
+    handplockade lista (~38 ETF:er totalt över sector_etfs.csv/_CURATED/
+    global_theme_momentum.py)? INGET AV DETTA ÄR VERIFIERAT ÄN – dumpar
+    rått GET-svar, sedan ett par gissade query-param-varianter (kategori-
+    filtrering är ofta en facet-sökning, exakt parameternamn okänt).
+    Kolla Content-Type/nyckelnamnen i utskriften, inte bara statuskoden
+    (samma lärdom som list_probe()s falska 200:or mot SPA-appskalet).
+
+        python -m altdata.avanza probe_etf_filter
+    """
+    print("[probe_etf_filter] === 1. Rått GET /_api/market-etf-filter/ ===")
+    try:
+        data = _get("/_api/market-etf-filter/")
+        if isinstance(data, dict):
+            print(f"  toppnivå-nycklar: {list(data.keys())}")
+        elif isinstance(data, list):
+            print(f"  lista, {len(data)} poster, första: "
+                  f"{json.dumps(data[0], ensure_ascii=False)[:400] if data else '(tom)'}")
+        print(json.dumps(data, ensure_ascii=False, indent=2)[:3000])
+    except Exception as e:  # noqa: BLE001
+        print(f"  FEL: {e}")
+
+    print("\n[probe_etf_filter] === 2. Gissade kategori-filtrerande varianter (OVERIFIERADE) ===")
+    for label, path, params in (
+        ("query-param 'category'", "/_api/market-etf-filter/", {"category": "Nuclear"}),
+        ("query-param 'categoryName'", "/_api/market-etf-filter/", {"categoryName": "Nuclear"}),
+        ("sub-path /Nuclear", "/_api/market-etf-filter/Nuclear", None),
+    ):
+        time.sleep(_PAUSE_S)
+        try:
+            r = _get(path, params)
+            keys = list(r.keys()) if isinstance(r, dict) else f"lista, {len(r)} poster"
+            print(f"  {label:<30} 200  {keys}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  {label:<30} FEL: {e}")
+    print("\n[probe_etf_filter] Klistra in HELA utskriften – avgör tillsammans om det här ger "
+          "hela fonduniversumet taggat per kategori, eller bara filterdefinitionerna (namn+antal) "
+          "utan en väg till de faktiska fonderna bakom varje kategori.")
+
+
 # SPÅR ÅTERUPPTAGET (2026-07-17): de 8 gissade kandidaterna nedan gav
 # fortfarande inget (404/RemoteDisconnected, se historiken i git-loggen för
 # den tidigare FÖRKASTAT SPÅR-kommentaren) - men ett KONKRET nytt ledtråd
@@ -1750,6 +1797,8 @@ def main():
             print("Ange bolagsnamn: python -m altdata.avanza probe_etf \"VanEck Semiconductor\"")
             return
         probe_etf(sys.argv[2])
+    elif cmd == "probe_etf_filter":
+        probe_etf_filter()
     elif cmd == "probe_news":
         if len(sys.argv) < 3:
             print("Ange bolagsnamn: python -m altdata.avanza probe_news \"Avanza\"")
