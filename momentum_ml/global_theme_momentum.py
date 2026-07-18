@@ -4,25 +4,22 @@ svensk motsvarighet (humanoida robotar, rymd/drönare, uran, ...) – spår 2
 i sektorgranularitets-arbetet, vid sidan av backtest/theme_momentum.py
 (svenska Avanza-underteman, spår 1).
 
-Varje tema representeras av EN tematisk UCITS-ETF (handelsbar via Avanza/
-Montrose) – redan verifierade tickers, samma som portfolio.py:s _CURATED-
-karta (dessa 7 är redan innehav i portföljen, se sync_montrose_holdings.py):
+PRIMÄR KÄLLA (2026-07-18➜): cache/fund_niche_themes.csv, byggd av
+altdata/fund_theme_classifier.py – headless Claude (Haiku) läser Avanzas
+FULLSTÄNDIGA fondutbud (avanza_fund_categories.csv, 1493 fonder) och taggar
+varje fond inom de breda blandkategorierna (teknologi/sjukvård/energi/
+industri/strategi/multi-asset) med ett specifikt nischtema. Inom varje
+tema väljs den fond med lägst totalavgift bland tillräckligt ägda
+(is_primary_pick=True) – VERIFIERAT mot skarp körning 2026-07-18: 230
+fonder -> 33 nischteman (Halvledare/AI & Robotik/Rymdteknik/Uran &
+Kärnkraft/Bioteknik/Läkemedel/Olja & Gas/Väte/Solenergi/Fintech/...),
+0 misslyckade. Matchas på orderbookId, ALDRIG tickerSymbol (en fond kan ha
+en icke-uppenbar ticker, t.ex. iShares Digital Security = "L0CK" med
+SIFFRAN noll – strängmatchning är onödigt skört när id:t redan är känt).
 
-    VVSM.DE  Halvledare              VanEck Semiconductor
-    PAIW.L   AI & Humanoida robotar  WisdomTree Physical AI
-    JEDI.L   Rymd & Drönare          VanEck Space
-    BLCH.L   Blockchain              Global X Blockchain
-    V9N.DE   Datacenter-infra        Global X Data Center
-    WNUC.L   Uran & Kärnkraft        WisdomTree Uranium
-    ASWC.L   Försvar                 Future of Defence
-
-Plus tre EJ ägda teman (GLOBAL_THEMES_BY_ID, verifierade via skarp
-probe_etf 2026-07-18, matchade på orderBookId – INTE tickerSymbol, se
-kodkommentaren där för varför, t.ex. "L0CK" med siffran noll):
-
-    id 1064125  Robotik & Automation    iShares Automation & Robotics (2B76)
-    id 1063876  Cybersäkerhet           iShares Digital Security (L0CK)
-    id 2071329  Kvantdatorer            VanEck Quantum Computing (QUTM)
+FALLBACK (om fund_niche_themes.csv saknas – klassificeraren inte körd än):
+en liten handplockad lista (GLOBAL_THEMES/GLOBAL_THEMES_BY_ID nedan) med
+samma teman som redan var innehav eller tidigt verifierade via probe_etf.
 
 Till skillnad från theme_momentum.py (median över MÅNGA aktier per tema)
 är momentumet här EN enskild ETF:s prisrörelse – enklare, men också
@@ -30,15 +27,13 @@ känsligare för den enskilda fondens brus (spreads/likviditet i tunna
 nischfonder). Använd hellre som en riktningsindikator ("är AI-humanoider
 hetare än rymdtemat just nu") än ett precisionsmått.
 
-UTÖKNING: fler teman kräver en NY verifierad ETF (probe_etf-disciplin,
-sen läggs id:t i GLOBAL_THEMES_BY_ID) – gissa aldrig en ticker/id rakt av.
-
     python global_theme_momentum.py
 """
 import csv
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -47,8 +42,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 import config  # noqa: E402
 import portfolio as pf  # noqa: E402
 
-# ticker -> (temanamn, ETF-namn) – redan innehav, matchas via sök+exakt
-# tickerSymbol (samma väg som portfolio.py:s fetch_holding_quotes/
+# FALLBACK ENDAST (se docstring) – används bara om fund_niche_themes.csv
+# inte finns än. ticker -> (temanamn, ETF-namn), redan innehav, matchas via
+# sök+exakt tickerSymbol (samma väg som portfolio.py:s fetch_holding_quotes/
 # _avanza_weekly_close, redan bevisat pålitlig för dessa).
 GLOBAL_THEMES = {
     "VVSM.DE": ("Halvledare", "VanEck Semiconductor"),
@@ -60,17 +56,41 @@ GLOBAL_THEMES = {
     "ASWC.L":  ("Försvar", "Future of Defence"),
 }
 
-# orderBookId -> (temanamn, ETF-namn) – INGA innehav, alltså ingen tickerSymbol
-# att matcha mot (t.ex. iShares Digital Security visade sig ha tickern
-# "L0CK" med SIFFRAN noll, inte bokstaven O – strängmatchning är onödigt
-# skört när id:t redan är verifierat). Id:na är VERIFIERADE via skarp
-# probe_etf-körning 2026-07-18 (se konversationshistoriken/commit-loggen),
-# gissa aldrig ett nytt id hit utan samma probe_etf-verifiering.
+# FALLBACK ENDAST (se docstring) – orderBookId -> (temanamn, ETF-namn),
+# VERIFIERADE via skarp probe_etf-körning 2026-07-18.
 GLOBAL_THEMES_BY_ID = {
     "1064125": ("Robotik & Automation", "iShares Automation & Robotics (2B76)"),
     "1063876": ("Cybersäkerhet", "iShares Digital Security (L0CK)"),
     "2071329": ("Kvantdatorer", "VanEck Quantum Computing (QUTM)"),
 }
+
+
+def _load_niche_theme_entries() -> Optional[List[dict]]:
+    """{theme, orderbookId, etf_name, fee} för varje is_primary_pick=True-rad
+    i cache/fund_niche_themes.csv (se altdata/fund_theme_classifier.py).
+    None om filen saknas (klassificeraren inte körd än) – snapshot()
+    faller då tillbaka på GLOBAL_THEMES/GLOBAL_THEMES_BY_ID istället."""
+    p = Path(config.anchor("cache")) / "fund_niche_themes.csv"
+    if not p.exists():
+        return None
+    out = []
+    try:
+        for r in csv.DictReader(open(p, encoding="utf-8")):
+            if str(r.get("is_primary_pick")).strip().lower() != "true":
+                continue
+            oid = (r.get("orderbookId") or "").strip()
+            theme = (r.get("theme") or "").strip()
+            if not oid or not theme:
+                continue
+            try:
+                fee = float(r.get("managementFee") or 0) + float(r.get("productFee") or 0)
+            except (TypeError, ValueError):
+                fee = None
+            out.append({"theme": theme, "orderbookId": oid,
+                        "etf_name": r.get("name") or "", "fee": fee})
+    except Exception:  # noqa: BLE001
+        return None
+    return out or None
 
 ROTATION_LOOKBACK_WEEKS = 4
 ROTATION_FLAG_THRESHOLD = 2
@@ -104,29 +124,51 @@ def _weekly_close_by_id(order_book_id: str):
 def snapshot() -> pd.DataFrame:
     windows = config.MOMENTUM_WINDOWS
     rows = []
-    for ticker, (theme, etf_name) in GLOBAL_THEMES.items():
-        close = pf._safe(lambda tk=ticker: pf._avanza_weekly_close(tk), None, f"global-tema {ticker}")
-        if close is None or close.dropna().empty:
-            print(f"[global_theme] {ticker} ({theme}): ingen prisdata, hoppar")
-            continue
-        row = {"theme": theme, "ticker": ticker, "etf_name": etf_name, "n_stocks": 1}
-        for w in windows:
-            row[f"momentum_{w}w"] = _roc(close, w)
-        row["_composite_prev"] = float(np.nanmean(
-            [_roc(close, w, offset=ROTATION_LOOKBACK_WEEKS) for w in windows]))
-        rows.append(row)
+    niche_entries = _load_niche_theme_entries()
 
-    for oid, (theme, etf_name) in GLOBAL_THEMES_BY_ID.items():
-        close = pf._safe(lambda i=oid: _weekly_close_by_id(i), None, f"global-tema id={oid}")
-        if close is None or close.dropna().empty:
-            print(f"[global_theme] id={oid} ({theme}): ingen prisdata, hoppar")
-            continue
-        row = {"theme": theme, "ticker": f"id:{oid}", "etf_name": etf_name, "n_stocks": 1}
-        for w in windows:
-            row[f"momentum_{w}w"] = _roc(close, w)
-        row["_composite_prev"] = float(np.nanmean(
-            [_roc(close, w, offset=ROTATION_LOOKBACK_WEEKS) for w in windows]))
-        rows.append(row)
+    if niche_entries is not None:
+        print(f"[global_theme] {len(niche_entries)} tema(n) ur fund_niche_themes.csv "
+              f"(fee-optimerade primärval, se altdata/fund_theme_classifier.py)")
+        for e in niche_entries:
+            close = pf._safe(lambda i=e["orderbookId"]: _weekly_close_by_id(i), None,
+                              f"global-tema id={e['orderbookId']}")
+            if close is None or close.dropna().empty:
+                print(f"[global_theme] id={e['orderbookId']} ({e['theme']}): ingen prisdata, hoppar")
+                continue
+            row = {"theme": e["theme"], "ticker": f"id:{e['orderbookId']}",
+                   "etf_name": e["etf_name"], "fee": e["fee"], "n_stocks": 1}
+            for w in windows:
+                row[f"momentum_{w}w"] = _roc(close, w)
+            row["_composite_prev"] = float(np.nanmean(
+                [_roc(close, w, offset=ROTATION_LOOKBACK_WEEKS) for w in windows]))
+            rows.append(row)
+    else:
+        print("[global_theme] cache/fund_niche_themes.csv saknas – faller tillbaka på "
+              "handplockad lista (kör altdata.avanza fund_categories + "
+              "altdata/fund_theme_classifier.py classify för det rikare, fee-optimerade urvalet)")
+        for ticker, (theme, etf_name) in GLOBAL_THEMES.items():
+            close = pf._safe(lambda tk=ticker: pf._avanza_weekly_close(tk), None, f"global-tema {ticker}")
+            if close is None or close.dropna().empty:
+                print(f"[global_theme] {ticker} ({theme}): ingen prisdata, hoppar")
+                continue
+            row = {"theme": theme, "ticker": ticker, "etf_name": etf_name, "fee": None, "n_stocks": 1}
+            for w in windows:
+                row[f"momentum_{w}w"] = _roc(close, w)
+            row["_composite_prev"] = float(np.nanmean(
+                [_roc(close, w, offset=ROTATION_LOOKBACK_WEEKS) for w in windows]))
+            rows.append(row)
+
+        for oid, (theme, etf_name) in GLOBAL_THEMES_BY_ID.items():
+            close = pf._safe(lambda i=oid: _weekly_close_by_id(i), None, f"global-tema id={oid}")
+            if close is None or close.dropna().empty:
+                print(f"[global_theme] id={oid} ({theme}): ingen prisdata, hoppar")
+                continue
+            row = {"theme": theme, "ticker": f"id:{oid}", "etf_name": etf_name, "fee": None, "n_stocks": 1}
+            for w in windows:
+                row[f"momentum_{w}w"] = _roc(close, w)
+            row["_composite_prev"] = float(np.nanmean(
+                [_roc(close, w, offset=ROTATION_LOOKBACK_WEEKS) for w in windows]))
+            rows.append(row)
 
     df = pd.DataFrame(rows)
     if df.empty:
@@ -162,7 +204,7 @@ def build():
     p.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(p, index=False)
     print(f"\n  === GLOBALA TEMAN (rankat, senaste data) ===")
-    cols = ["rank", "theme", "ticker", "composite_score", "rank_change", "flow"]
+    cols = ["rank", "theme", "ticker", "fee", "composite_score", "rank_change", "flow"]
     print(df[cols].to_string(index=False, float_format="{:.3f}".format))
     print(f"\n[global_theme] {len(df)} tema(n) -> {p}")
 
