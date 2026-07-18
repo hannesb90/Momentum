@@ -112,4 +112,9 @@ export const api = {
   // det via query-param), så det måste in i body:n explicit.
   scannerScan: (ticker, overrides, segment) =>
     postJson('/scanner/scan', { ticker, overrides, segment: segment ?? currentSegment }),
+  // AI-analysrutan i Skanner: på-begäran headless Claude (WebSearch), kan
+  // ta upp till ~2 min - anropas separat från scannerScan (inte varje
+  // skanning ska kosta ett LLM-anrop, bara när du uttryckligen vill ha det).
+  scannerAnalyze: (ticker, overrides, segment, amount) =>
+    postJson('/scanner/analyze', { ticker, overrides, segment: segment ?? currentSegment, amount }),
 }
