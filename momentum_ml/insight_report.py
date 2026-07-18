@@ -145,8 +145,12 @@ _PROMPT_HEAD = """Du är en NEUTRAL, sansad investerarassistent. För VARJE bola
    Prioritera svenska finansmedier i sökningen – sök gärna explicit t.ex.
    "site:efn.se <bolag>", "site:omni.se/ekonomi <bolag>",
    "site:swedbank-aktiellt.se <bolag>" (Swedbanks fritt tillgängliga dagliga
-   analyser/veckobrev) – innan en bredare sökning. Ta med en allmän känsla
-   av analytiker-/marknadston om den
+   analyser/veckobrev) – innan en bredare sökning. FÖR UTLÄNDSKA bolag/
+   tematiska ETF:er (t.ex. halvledare/AI/rymdteknik-fonder) där svenska
+   medier sällan har täckning, sök i stället mot etablerade, i huvudsak
+   FRIA engelskspråkiga källor: "site:cnbc.com <bolag>",
+   "site:marketwatch.com <bolag>", "site:seekingalpha.com <bolag>". Ta med
+   en allmän känsla av analytiker-/marknadston om den
    framgår (gissa aldrig fram en "social ton" du inte faktiskt sett).
 3. Skriv 2-4 meningar på SVENSKA: vad har hänt, är det materiellt för caset,
    vad säger nyheterna/tonen, hur ser det ut mot modellens siffror.
