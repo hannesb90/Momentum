@@ -373,11 +373,10 @@ def get_portfolio_model():
 
 
 @app.post("/api/portfolio-model")
-async def set_portfolio_model(request: Request):
+def set_portfolio_model(body: dict):
     """Sätter vald rank-modell. Body: {model: 'balanced'|'buffett'|'momentum'}.
     Okänt namn ignoreras (behåller nuvarande)."""
     import portfolio as pf
-    body = await request.json()
     return _clean({"model": pf.set_active_model(str(body.get("model", "")))})
 
 
