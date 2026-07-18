@@ -15,7 +15,6 @@ kontant som byggs; holdout/alfa avgör om det lönar sig. Kör på Pi:n efter tr
 """
 import sys
 sys.path.insert(0, '.')
-import pandas as pd
 import config
 from data.data_loader import (
     fetch_weekly_data, filter_liquid_universe, filter_active_universe, load_sweden_universe,
