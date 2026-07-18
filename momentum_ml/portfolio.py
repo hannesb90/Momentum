@@ -172,11 +172,23 @@ def _latest_closes(include_quotes: bool = True) -> dict:
         qp = _results_dir() / "holdings_quotes.csv"
         if qp.exists():
             try:
-                for r in csv.DictReader(open(qp, encoding="utf-8")):
-                    tk = (r.get("ticker") or "").upper()
-                    v = _num(r.get("close_sek"))
-                    if tk and v:
-                        out.setdefault(tk, v)   # prices.csv vinner om båda finns
+                mt = qp.stat().st_mtime
+                key = f"{qp}::close_sek"
+                hit = _CLOSES_CACHE.get(key)
+                if hit is not None and hit[0] == mt:
+                    quotes = hit[1]
+                else:
+                    quotes = {}
+                    with open(qp, encoding="utf-8") as f:
+                        for r in csv.DictReader(f):
+                            tk = (r.get("ticker") or "").upper()
+                            v = _num(r.get("close_sek"))
+                            if tk and v:
+                                quotes[tk] = v
+                    _CLOSES_CACHE[key] = (mt, quotes)
+
+                for tk, v in quotes.items():
+                    out.setdefault(tk, v)   # prices.csv vinner om båda finns
             except Exception:  # noqa: BLE001
                 pass
     return out
