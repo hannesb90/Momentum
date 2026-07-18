@@ -47,7 +47,12 @@ rankad/het sektor) faktiskt rört sig. Prioritera svenska finansmedier – sök
 gärna explicit t.ex. "site:efn.se <sektor/bolag>", "site:omni.se/ekonomi
 <sektor/bolag>", "site:swedbank-aktiellt.se <sektor/bolag>" (Swedbanks
 fritt tillgängliga dagliga analyser/veckobrev) – innan en bredare sökning
-som "<sektor> aktier <senaste händelse>" eller "<bolag> nyheter". Skriv sedan analytiker-stil, konkret
+som "<sektor> aktier <senaste händelse>" eller "<bolag> nyheter". FÖR DE
+GLOBALA TEMANA (halvledare/AI/rymdteknik m.fl. – ofta amerikanskt
+dominerade, där svenska medier har tunn täckning) sök i stället mot
+etablerade, i huvudsak FRIA engelskspråkiga källor: "site:cnbc.com
+<tema>", "site:marketwatch.com <tema>", "site:seekingalpha.com <tema>".
+Skriv sedan analytiker-stil, konkret
 orsak + bedömning, i stil med: "Halvledarsektorn har fallit tungt senaste
 veckorna till följd av X, men bedöms fortsatt ha goda tillväxtutsikter och
 är därför inte ett skäl att korrigera positionen." Gissa ALDRIG en orsak
