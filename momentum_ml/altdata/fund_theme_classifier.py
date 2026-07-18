@@ -42,7 +42,8 @@ import claude_headless as ch  # noqa: E402
 # ÄR ett tema (t.ex. "nuclear", "ädelmetaller") behöver ingen omklassning.
 MIXED_CATEGORIES = ("teknologi", "sjukvård", "energi", "industri", "strategi", "multi-asset")
 
-BATCH_SIZE = 15
+BATCH_SIZE = 10   # sänkt från 15 (verklig körning: 2/7 batchar fick timeout på 15)
+BATCH_TIMEOUT = 180   # höjt från 120 (samma orsak)
 MIN_OWNERS = getattr(config, "FUND_THEME_MIN_OWNERS", 200)
 
 _SYSTEM = """Du är en fondanalytiker. För VARJE fond nedan (bara namnet att gå på):
@@ -76,11 +77,23 @@ def _load_categories() -> List[dict]:
 def _classify_batch(funds: List[dict]) -> Dict[str, str]:
     lines = [f'  {{"orderbookId": "{f["orderbookId"]}", "name": "{f["name"]}"}}' for f in funds]
     prompt = _SYSTEM + "\n".join(lines)
-    result = ch.run(prompt, "", timeout=120, model=config.CLAUDE_MODEL_FAST)
+    result = ch.run(prompt, "", timeout=BATCH_TIMEOUT, model=config.CLAUDE_MODEL_FAST)
     if "error" in result:
         print(f"[fund_theme] batch ({len(funds)} fonder) misslyckades: {result['error']}")
         return {}
     return {k: v for k, v in result.items() if isinstance(v, str)}
+
+
+def _classify_with_retry(funds: List[dict]) -> Dict[str, str]:
+    """En gång om (verkligt fall: 2/7 batchar fick timeout på 120s/15-fonder
+    – höjt till 180s/10 nu, men EN kort omförsök här kostar nästan inget
+    och räddar data om det ändå händer igen)."""
+    got = _classify_batch(funds)
+    missing = [f for f in funds if f["orderbookId"] not in got]
+    if missing:
+        print(f"  {len(missing)} fonder saknade svar, försöker en gång till...")
+        got.update(_classify_batch(missing))
+    return got
 
 
 def classify(category_filter: Optional[str] = None) -> None:
@@ -104,7 +117,7 @@ def classify(category_filter: Optional[str] = None) -> None:
     for i in range(0, len(funds), BATCH_SIZE):
         batch = funds[i:i + BATCH_SIZE]
         print(f"  batch {i // BATCH_SIZE + 1}/{-(-len(funds) // BATCH_SIZE)}...")
-        themes.update(_classify_batch(batch))
+        themes.update(_classify_with_retry(batch))
 
     out_rows = []
     for f in funds:

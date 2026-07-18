@@ -1590,6 +1590,7 @@ def fund_categories() -> None:
                 rows.append({"orderbookId": e.get("orderbookId"), "name": e.get("name"),
                              "countryCode": e.get("countryCode"), "riskScore": e.get("riskScore"),
                              "numberOfOwners": e.get("numberOfOwners"),
+                             "managementFee": e.get("managementFee"), "productFee": e.get("productFee"),
                              "category_value": value, "category_display": display})
             got += len(etfs)
             offset += 50
@@ -1602,7 +1603,8 @@ def fund_categories() -> None:
     import csv as _csv
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = _csv.DictWriter(f, fieldnames=["orderbookId", "name", "countryCode", "riskScore",
-                                           "numberOfOwners", "category_value", "category_display"])
+                                           "numberOfOwners", "managementFee", "productFee",
+                                           "category_value", "category_display"])
         w.writeheader()
         w.writerows(rows)
     print(f"\n[fund_categories] {len(rows)} (fond, kategori)-rader -> {out}")
