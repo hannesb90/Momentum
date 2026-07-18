@@ -39,7 +39,7 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
@@ -694,43 +694,65 @@ def _backfill_inner(segment: Optional[str] = None, limit: Optional[int] = None) 
     if limit and len(candidates) < len(candidates_all):
         print(f"[mfn_pdf backfill] bearbetar {len(candidates)} av dem denna körning (limit={limit})")
 
-    rows, ok, dl_fail, empty = [], 0, 0, 0
-    for i, it in enumerate(candidates, 1):
+    def process_candidate(it):
         att = pick_attachment(it["attachments"])
         text = get_pdf_text(it["id"], att["url"])
         if text is None:
-            dl_fail += 1
-        else:
-            # Narrativ-mönstret (samma parser som körs mot PM-textens
-            # "X uppgick till Y (Z) Mkr"-meningar) OCH tabell-mönstret
-            # (resultat-/balansräkning i tabellformat, sett djupt in i
-            # årsredovisningar) – tabellträffar fyller bara i FÄLT SOM
-            # SAKNAS, narrativa träffar vinner om båda hittar samma fält
-            # (redan validerade mot fler verkliga exempel).
-            facts = extract_hard_facts(text)
-            for field, d in extract_table_facts(text).items():
-                facts.setdefault(field, d)
-            if facts:
-                ok += 1
-                row = {"ticker": it.get("ticker"), "published": it.get("published"),
-                       "period": detect_period(it.get("title") or ""), "pm_id": it.get("id"),
-                       "title": it.get("title"), "pdf_url": att["url"]}
-                for field, d in facts.items():
-                    row[field] = d.get("value")
-                    row[f"{field}_unit"] = d.get("unit", "")
-                    if "prior_period" in d:
-                        row[f"{field}_prior"] = d["prior_period"]
-                rows.append(row)
-            else:
+            return "dl_fail", None
+        facts = extract_hard_facts(text)
+        for field, d in extract_table_facts(text).items():
+            facts.setdefault(field, d)
+        if facts:
+            row = {"ticker": it.get("ticker"), "published": it.get("published"),
+                   "period": detect_period(it.get("title") or ""), "pm_id": it.get("id"),
+                   "title": it.get("title"), "pdf_url": att["url"]}
+            for field, d in facts.items():
+                row[field] = d.get("value")
+                row[f"{field}_unit"] = d.get("unit", "")
+                if "prior_period" in d:
+                    row[f"{field}_prior"] = d["prior_period"]
+            return "ok", row
+        return "empty", None
+
+    rows, ok, dl_fail, empty = [], 0, 0, 0
+    import concurrent.futures
+
+    # Använd max 2 workers för att inte uttömma 2GB-Pi:ns minne med parallella
+    # PDF-extraktioner, men vi kringgår O(N) nätverksväntan.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        import threading
+
+        # Enforce rate limits via a token bucket / simple lock mechanism
+        last_request_time = [0.0]
+        rate_lock = threading.Lock()
+
+        def paced_process_candidate(it):
+            with rate_lock:
+                now = time.time()
+                elapsed = now - last_request_time[0]
+                if elapsed < _PDF_REQUEST_PAUSE_S:
+                    time.sleep(_PDF_REQUEST_PAUSE_S - elapsed)
+                last_request_time[0] = time.time()
+            return process_candidate(it)
+
+        futures = {executor.submit(paced_process_candidate, it): it for it in candidates}
+
+        for i, future in enumerate(concurrent.futures.as_completed(futures), 1):
+            status, row = future.result()
+            if status == "dl_fail":
+                dl_fail += 1
+            elif status == "empty":
                 empty += 1
-        if i % 20 == 0:
-            print(f"  ...{i}/{len(candidates)} ({ok} ok, {dl_fail} nedladdningsfel, "
-                  f"{empty} tomma efter extraktion)")
-            # Extra försäkran mot minnesfragmentering på 2GB-Pi:n – tvinga en
-            # gc-cykel var 20:e PDF (billigt jämfört med _PDF_REQUEST_PAUSE_S).
-            import gc
-            gc.collect()
-        time.sleep(_PDF_REQUEST_PAUSE_S)
+            elif status == "ok":
+                ok += 1
+                if row:
+                    rows.append(row)
+
+            if i % 20 == 0:
+                print(f"  ...{i}/{len(candidates)} ({ok} ok, {dl_fail} nedladdningsfel, "
+                      f"{empty} tomma efter extraktion)")
+                import gc
+                gc.collect()
 
     print(f"\n[mfn_pdf backfill] klart: {ok} PM fick nya fält ur PDF, {dl_fail} kunde inte laddas "
           f"ner/öppnas, {empty} gav ändå tomt (t.ex. en skannad bild utan textlager)")

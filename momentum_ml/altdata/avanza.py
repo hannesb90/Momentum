@@ -460,7 +460,9 @@ def _title_ticker_matches(title: str, variant: str) -> bool:
     m = _TITLE_TICKER_RE.search(title)
     if m:
         return _norm_ticker(m.group(1)) == tn
-    return _norm_ticker(title) == tn   # ingen parentes -> hela titeln, EXAKT
+    if "(" not in title and ")" not in title:
+        return _norm_ticker(title) == tn   # ingen parentes -> hela titeln, EXAKT
+    return False
 
 
 def _search_variant(variant: str) -> tuple:

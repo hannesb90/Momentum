@@ -111,7 +111,6 @@ def selftest(segment: Optional[str] = None) -> None:
     """Mäter FAKTISK besparing mot redan hämtad MFN-cache – inget nätanrop,
     inga LLM-anrop. Visar: andel PM där boilerplate hittades + snittantal
     tecken sparade, samt hur många PM som klassas 'routine' (helt gratis)."""
-    import json
     from altdata.sentiment import _load_cached_releases
     seg = segment or config.DEFAULT_SEGMENT
     items = _load_cached_releases(seg)

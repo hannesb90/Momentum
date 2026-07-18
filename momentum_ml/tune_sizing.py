@@ -12,7 +12,6 @@ Kör på Pi:n från /opt/momentum/momentum_ml EFTER att segmentet tränats:
 """
 import sys
 sys.path.insert(0, '.')
-import pandas as pd
 import config
 from data.data_loader import (
     fetch_weekly_data, filter_liquid_universe, filter_active_universe, load_sweden_universe,

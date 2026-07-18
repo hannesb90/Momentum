@@ -23,7 +23,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import pandas as pd
-import numpy as np
 import config
 from data.data_loader import (
     fetch_weekly_data, filter_liquid_universe, filter_active_universe, load_sweden_universe,

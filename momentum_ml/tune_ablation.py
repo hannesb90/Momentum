@@ -32,11 +32,9 @@ innan den adopteras.
 import sys
 import json
 import subprocess
-from pathlib import Path
 
 sys.path.insert(0, '.')
 import pandas as pd
-import numpy as np
 import config
 import features.feature_engineering as fe
 import models.lgbm_model as lgbm_mod
