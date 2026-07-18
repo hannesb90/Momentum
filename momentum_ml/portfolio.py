@@ -1258,6 +1258,93 @@ def _load_flows() -> dict:
     return out
 
 
+# etf_rotation.py:s rotation_universe.csv "group"-etikett (engelska, kan
+# redan vara nischgranulär, t.ex. "Semiconductors" – inte bara breda GICS-
+# sektorer) -> vårt eget nischtema-namn (svenska, ur fund_theme_classifier.py:s
+# LLM-klassificering) – bara de par där namnen otvetydigt är SAMMA sak.
+# Ofullständig med flit: hellre inget svar än en felaktig ihopkoppling.
+_ROTATION_GROUP_TO_NICHE_THEME = {
+    "Semiconductors": "Halvledare",
+    "Cybersecurity": "Cybersäkerhet",
+    "EV & Battery": "Batterier & Elbilar",
+    "Uranium & Nuclear": "Uran & Kärnkraft",
+    "Biotech": "Bioteknik",
+    "Clean Energy": "Förnybar energi",
+}
+
+
+def _niche_context_for_theme_pick(theme_pick: Optional[dict]) -> Optional[dict]:
+    """REN KONTEXT, ALDRIG SIGNAL (samma disciplin som _global_theme_note) –
+    kopplad specifikt till den satellit next_buy() REDAN valt via den
+    backtestade rotationen (etf_rotation.py), inte fristående. Visar om en
+    ANNAN nisch inom SAMMA bransch (samma Avanza-kategori i
+    fund_niche_themes.csv) just nu har starkare momentum än den valda
+    satellitens egen nisch – ANDRA mätmetod än rotationens rel_mom (
+    global_theme_momentum.py:s momentum_4w), redovisas separat, ingen
+    uppfunnen "avvikelse-poäng". ÄNDRAR ALDRIG vilket instrument som får
+    pengarna – bara vad du läser om det. Gäller NYTT kapital (satelliten är
+    redan rotationens val; det här byter aldrig ut ett befintligt innehav).
+
+    None om: satellitens grupp saknar en känd nisch-motsvarighet
+    (_ROTATION_GROUP_TO_NICHE_THEME), eller nischdata saknas, eller ingen
+    syskon-nisch faktiskt har högre momentum just nu (inget att säga)."""
+    if not theme_pick:
+        return None
+    self_theme = _ROTATION_GROUP_TO_NICHE_THEME.get(theme_pick.get("name") or "")
+    if not self_theme:
+        return None
+
+    themes_p = Path(config.anchor("cache")) / "fund_niche_themes.csv"
+    gtm_p = _results_dir() / "global_theme_momentum.csv"
+    if not themes_p.exists() or not gtm_p.exists():
+        return None
+    try:
+        niche_rows = list(csv.DictReader(open(themes_p, encoding="utf-8")))
+    except Exception:  # noqa: BLE001
+        return None
+    self_cat = next((r.get("category_value") for r in niche_rows
+                     if r.get("theme") == self_theme and str(r.get("is_primary_pick")).lower() == "true"), None)
+    if not self_cat:
+        return None
+    sibling_themes = {r["theme"] for r in niche_rows
+                      if r.get("category_value") == self_cat and r.get("theme") != self_theme
+                      and str(r.get("is_primary_pick")).lower() == "true"}
+    if not sibling_themes:
+        return None
+
+    try:
+        gtm_rows = {r["theme"]: r for r in csv.DictReader(open(gtm_p, encoding="utf-8"))}
+    except Exception:  # noqa: BLE001
+        return None
+
+    def m4(r):
+        try:
+            return float(r.get("momentum_4w") or 0)
+        except (TypeError, ValueError):
+            return None
+
+    self_row = gtm_rows.get(self_theme)
+    self_mom = m4(self_row) if self_row else None
+    candidates = [(t, gtm_rows[t]) for t in sibling_themes if t in gtm_rows]
+    if not candidates:
+        return None
+    best_theme, best_row = max(candidates, key=lambda kv: (m4(kv[1]) if m4(kv[1]) is not None else float("-inf")))
+    best_mom = m4(best_row)
+    if best_mom is None or self_mom is None or best_mom <= self_mom:
+        return None  # inget syskon sticker ut - inget att säga
+
+    return {
+        "satellite_group": theme_pick.get("name"), "satellite_rel_mom": theme_pick.get("note"),
+        "self_theme": self_theme, "self_momentum_4w": self_mom,
+        "sibling_theme": best_theme, "sibling_etf_name": best_row.get("etf_name"),
+        "sibling_momentum_4w": best_mom,
+        "note": (f"Rotationens satellit just nu är \"{theme_pick.get('name')}\" ({theme_pick.get('note')}). "
+                 f"Inom samma bransch har \"{best_theme}\" ({best_row.get('etf_name')}) starkare "
+                 f"4-veckorsmomentum ({best_mom:+.1%} mot {self_theme}s {self_mom:+.1%}, annan mätmetod) "
+                 f"– samma trend, snävare specifik. Ren kontext, ändrar inget i köpplanen."),
+    }
+
+
 def _global_theme_note() -> Optional[dict]:
     """REN KONTEXT, ALDRIG SIGNAL – toppen av global_theme_momentum.py:s
     rankning (results/global_theme_momentum.csv), som en läsvärd notis i
@@ -2211,6 +2298,7 @@ def next_buy(rows, amount=None) -> dict:
 
     theme_kr = plan.get("theme", 0.0)
     theme_pick = (cands.get("theme") or [None])[0]
+    theme_niche_note = _safe(lambda: _niche_context_for_theme_pick(theme_pick), None, "nisch-kontext")
     if theme_kr > 0 and risk_on is False:
         skipped.append({"bucket": "theme", "reason": "risk-off i rotationens regim → kronorna går till kärnan"})
         broad_kr += theme_kr
@@ -2309,6 +2397,9 @@ def next_buy(rows, amount=None) -> dict:
         # out_rows/plan ovan, bara en läsvärd notis om vilket globalt
         # nischtema som leder just nu.
         "global_theme_note": _safe(_global_theme_note, None, "globalt tema"),
+        # REN KONTEXT, kopplad till den REDAN valda tema-satelliten (inte
+        # fristående) - se _niche_context_for_theme_pick-docstring.
+        "theme_niche_note": theme_niche_note,
         "note": ("Köp och behåll: nya kronor fyller mot målet – ingen försäljning, ingen timing. "
                  "Enda sälj-regeln är säljvakten: innehav som rusat kraftigt ifrån index på kort tid "
                  "flaggas för att ta hem vinsten (behåll insatsen). Kärnan är evidensbackad; "
