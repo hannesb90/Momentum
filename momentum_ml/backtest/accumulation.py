@@ -398,6 +398,24 @@ def simulate_regime_hedge_accumulation(
 
     idx = prices.index.intersection(regime.index)
     idx = idx.sort_values()
+    # BUGG (fixad, verkligt fall: backtest_bear_hedge.py 2008-06-30-fönstret gav
+    # slutvärde 0/-100% MaxDD för BÅDA varianterna). `prices` här är en UNIONS-
+    # panel över core/proxy/hedge (normalize_weekly_panel unionar datumen, den
+    # gör INTE panel.dropna(how="any") - se _weekly_closes() som gör det för
+    # simulate_accumulation()). Regimserien kan därför sträcka sig långt innan
+    # `core_ticker` självt har någon prisdata (t.ex. IUSQ.DE: verklig historik
+    # från 2011-10-17, medan marknadsproxyn/hedgen går längre tillbaka). Kärnan
+    # håller ALL kapital utanför bear - saknas dess pris blir varje _buy_core()
+    # ett no-op medan `total_contributed` ändå räknas upp, och ett sell-out som
+    # råkar landa i den luckan (se _buy_core-anropen nedan) kastade tidigare
+    # bort hela behållningen tyst. Klipp bort allt FÖRE kärnans egen första
+    # giltiga notering - samma "kortaste seriens inception styr fönstret"-
+    # princip som _weekly_closes() redan använder, fast tillämpad på den ENDA
+    # tickern som MÅSTE ha pris varje vecka (proxy/hedge behövs bara situationellt).
+    core_valid = prices[core_ticker].dropna().index if core_ticker in prices.columns else pd.DatetimeIndex([])
+    if len(core_valid) == 0:
+        return None
+    idx = idx[idx >= core_valid.min()]
     if start is not None:
         idx = idx[idx >= pd.Timestamp(start)]
     if len(idx) < MIN_WEEKS:
@@ -407,7 +425,8 @@ def simulate_regime_hedge_accumulation(
     is_contrib_week = ~months.duplicated()
 
     units: Dict[str, float] = {}
-    pending_cash = 0.0   # bara använd när hedge_ticker=None (kontant-baslinjen)
+    pending_cash = 0.0   # väntande kapital: kontant-baslinjens bear-insättningar,
+    # ELLER kapital som INTE kunde placeras i kärnan en given vecka (se _buy_core)
     nav = 1.0
     prev_value: Optional[float] = None
     nav_series, value_series, dates = [], [], []
@@ -420,9 +439,16 @@ def simulate_regime_hedge_accumulation(
         return float(v) if v is not None and pd.notna(v) and v > 0 else None
 
     def _buy_core(date, kr):
+        """Returnerar True vid lyckat köp. Kärnans fönster är nu klippt till
+        dess egen giltiga historik (ovan) så detta SKA alltid lyckas i
+        praktiken - men om ett enstaka veckopris ändå saknas (Yahoo-lucka)
+        får anroparen lägga `kr` i `pending_cash` i stället för att tyst
+        kasta bort det (se sell-out- och bidragslogiken nedan)."""
         p = _px(date, core_ticker)
         if p is not None and kr > 0:
             units[core_ticker] = units.get(core_ticker, 0.0) + (kr * (1.0 - cost_oneway)) / p
+            return True
+        return False
 
     prev_regime = None
     for i, date in enumerate(idx):
@@ -438,11 +464,12 @@ def simulate_regime_hedge_accumulation(
                 if p is not None:
                     proceeds = units[hedge_ticker] * p * (1.0 - cost_oneway)
                     units[hedge_ticker] = 0.0
-                    _buy_core(date, proceeds)
+                    if not _buy_core(date, proceeds):
+                        pending_cash += proceeds   # kärnan saknade pris denna vecka - vänta, kasta inte bort
                     sellouts += 1
             elif pending_cash > 0:
-                _buy_core(date, pending_cash)
-                pending_cash = 0.0
+                if _buy_core(date, pending_cash):
+                    pending_cash = 0.0
                 sellouts += 1
 
         value_before = sum(u * (_px(date, t) or 0.0) for t, u in units.items()) + pending_cash
@@ -462,7 +489,8 @@ def simulate_regime_hedge_accumulation(
                 else:
                     pending_cash += monthly_contribution
             else:
-                _buy_core(date, monthly_contribution)
+                if not _buy_core(date, monthly_contribution):
+                    pending_cash += monthly_contribution   # kärnan saknade pris denna vecka - vänta, kasta inte bort
             total_contributed += monthly_contribution
             value_after = sum(u * (_px(date, t) or 0.0) for t, u in units.items()) + pending_cash
         else:
