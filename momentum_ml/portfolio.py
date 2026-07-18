@@ -1258,6 +1258,43 @@ def _load_flows() -> dict:
     return out
 
 
+def _global_theme_note() -> Optional[dict]:
+    """REN KONTEXT, ALDRIG SIGNAL – toppen av global_theme_momentum.py:s
+    rankning (results/global_theme_momentum.csv), som en läsvärd notis i
+    Nästa köp-kortet. PÅVERKAR INTE hur kronorna i out_rows/plan fördelas:
+    global_theme_momentum.py saknar backtest helt (till skillnad från
+    etf_rotation.py:s tema-hink, som är medvetet konstruerad för att vara
+    ärligt backtestbar – dual momentum, absolut+relativ, se den modulens
+    docstring) och flera av nischfonderna har <1 års handelshistorik.
+    Att låta den styra riktiga köp vore att smyga in en overifierad signal
+    i en pipeline som annars konsekvent kräver bevis innan pengar rör sig
+    (samma princip som redan avfärdat sentiment-score/social buzz här).
+    None om filen saknas – inte en crash, bara ingen notis."""
+    p = _results_dir() / "global_theme_momentum.csv"
+    if not p.exists():
+        return None
+    try:
+        rows = list(csv.DictReader(open(p, encoding="utf-8")))
+    except Exception:  # noqa: BLE001
+        return None
+    if not rows:
+        return None
+    top = sorted(rows, key=lambda r: int(float(r.get("rank") or 999)))[:3]
+    out_top = []
+    for r in top:
+        try:
+            fee = float(r.get("fee") or 0) if r.get("fee") not in (None, "", "None") else None
+        except (TypeError, ValueError):
+            fee = None
+        out_top.append({"theme": r.get("theme"), "rank": int(float(r.get("rank") or 0)),
+                        "etf_name": r.get("etf_name"), "fee": fee})
+    leader = out_top[0]
+    fee_note = f", {leader['fee']:.2%} avgift" if leader.get("fee") is not None else ""
+    note = (f"Just nu leder \"{leader['theme']}\" ({leader.get('etf_name')}{fee_note}) i den globala "
+            f"temarankningen – ren kontext, INTE en köpsignal (ovaliderat, påverkar inte köpplanen ovan).")
+    return {"top": out_top, "note": note}
+
+
 def _opportunity(rows, amount) -> dict:
     """
     OPPORTUNISTISKT KÖP (denna månad): låt den bästa satelliten front-loada en del
@@ -2268,6 +2305,10 @@ def next_buy(rows, amount=None) -> dict:
         "target": tgt,
         "has_holdings": bool(rows),
         "cash": _safe(load_cash, None, "montrose-kassa"),   # None om ingen Montrose-synk kört än
+        # REN KONTEXT (se _global_theme_note-docstring) - påverkar ALDRIG
+        # out_rows/plan ovan, bara en läsvärd notis om vilket globalt
+        # nischtema som leder just nu.
+        "global_theme_note": _safe(_global_theme_note, None, "globalt tema"),
         "note": ("Köp och behåll: nya kronor fyller mot målet – ingen försäljning, ingen timing. "
                  "Enda sälj-regeln är säljvakten: innehav som rusat kraftigt ifrån index på kort tid "
                  "flaggas för att ta hem vinsten (behåll insatsen). Kärnan är evidensbackad; "
