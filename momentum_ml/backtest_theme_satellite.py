@@ -111,28 +111,53 @@ def main():
     _print_result("Tema-satellit (100% i rotationens #1-tema varje månad, aldrig sälj)", r_theme_own)
 
     matched_start = max(r_theme_own["start"], r_core_own["start"])
-    r_theme = simulate_rotating_accumulation(have_theme, rel, panel, risk_on=regime,
-                                              fallback_ticker=CORE_TICKER, start=matched_start)
     r_core = simulate_accumulation({CORE_TICKER: 1.0}, core_prices, start=matched_start)
-    if r_theme is None or r_core is None:
+    if r_core is None:
         print(f"\n[backtest_theme_satellite] för kort efter klippning till {matched_start} - "
               "ingen matchad jämförelse möjlig.")
         return
 
-    print(f"\n  MATCHAT FÖNSTER (klippt till senaste av de två egna starterna): "
-          f"{r_theme['start']} → {r_theme['end']} ({r_theme['years']} år)\n")
-    _print_result(f"Endast {CORE_NAME} (100% kärna hela tiden)", r_core)
-    _print_result("Tema-satellit (100% i rotationens #1-tema varje månad, aldrig sälj)", r_theme)
+    # Tre säljvarianter på SAMMA fönster: ingen säljregel alls (gamla beteendet),
+    # appens EGEN konfigurerade säljvakts-tröskel (config.TAKEPROFIT_GAIN, 50%),
+    # och en snävare 90%-tröskel. "Ta hem vinsten" rullas alltid in i kärnan
+    # (se simulate_rotating_accumulation()s docstring) - aldrig en ny satellitsats.
+    app_tp = float(getattr(config, "TAKEPROFIT_GAIN", 0.50))
+    variants = [("Ingen säljregel (rent köp-och-behåll)", None),
+                (f"Säljvakt vid +{app_tp:.0%} (appens EGEN config.TAKEPROFIT_GAIN)", app_tp),
+                ("Säljvakt vid +90%", 0.90)]
 
-    print("\n  Insättningar per tema-ETF (hur koncentrerat 'rider vinnarna' faktiskt blev):")
-    total_months = sum(r_theme["picks"].values())
-    for t, n in r_theme["picks"].items():
-        name = next((nm for tk, _, nm in uni if tk == t), t)
-        print(f"    {t:<10} {name:<45} {n:>3} månader ({n / total_months:.0%})")
+    print(f"\n  MATCHAT FÖNSTER (klippt till senaste av de två egna starterna): "
+          f"{r_core['start']} → {r_core['end']} ({r_core['years']} år)\n")
+    _print_result(f"Endast {CORE_NAME} (100% kärna hela tiden)", r_core)
+
+    results = []
+    for label, tp in variants:
+        r = simulate_rotating_accumulation(have_theme, rel, panel, risk_on=regime,
+                                            fallback_ticker=CORE_TICKER, start=matched_start,
+                                            take_profit_gain=tp)
+        if r is None:
+            print(f"  Tema-satellit – {label:<55} HOPPAD (för kort)")
+            continue
+        results.append((label, r))
+        _print_result(f"Tema-satellit – {label}", r)
+        if r.get("take_profits"):
+            hits = ", ".join(f"{t} ({n}×)" for t, n in r["take_profits"].items())
+            print(f"    → sålde vid tröskeln: {hits}")
+
+    base = results[0][1] if results else None
+    if base:
+        print("\n  Insättningar per tema-ETF, ingen säljregel (hur koncentrerat 'rider vinnarna' faktiskt blev):")
+        total_months = sum(base["picks"].values())
+        for t, n in base["picks"].items():
+            name = next((nm for tk, _, nm in uni if tk == t), t)
+            print(f"    {t:<10} {name:<45} {n:>3} månader ({n / total_months:.0%})")
 
     print("\n(100% i endera - INTE next_buy()s faktiska blandning av kärna/Sverige/tema samtidigt - "
           "det här isolerar TEMA-MEKANIKENS egen merit, oberoende av hur stor andel av insättningen "
-          "som faktiskt går dit i skarpt läge. NAV-CAGR/Sharpe/MaxDD är insättnings-neutrala.)")
+          "som faktiskt går dit i skarpt läge. NAV-CAGR/Sharpe/MaxDD är insättnings-neutrala. "
+          "Säljvakten kollas mot en VIKTAD SNITTKOSTNAD per ticker, inte senaste köpet - en position "
+          "som köpts flera månader i rad drar upp sin egen tröskel i takt med priset, se "
+          "simulate_rotating_accumulation()s docstring.)")
 
 
 if __name__ == "__main__":
