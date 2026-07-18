@@ -122,28 +122,30 @@ def main():
           "samma månadsinsättning i just den korgen. OBS olika scenarier kan ha olika fönster - "
           "kortast gemensam historik i korgen styr, se datumen ovan.)")
 
-    # ── MATCHAT FÖNSTER: den enda RIKTIGT rättvisa jämförelsen ────────────────
-    # Ovanstående kör varje scenario på sin EGNA maximala historik - Endast-ACWI
-    # får då ~2.6 extra år (2011-2014) World+EM aldrig testas mot, vilket gör
-    # "vem vann på slutvärde" missvisande (mer tid att räntan-på-räntan, inte
-    # nödvändigtvis bättre allokering). Klipper här ALLA körbara scenarier till
-    # det KORTASTE gemensamma fönstret bland dem, så CAGR/Sharpe/MaxDD OCH
-    # slutvärde jämförs på EXAKT samma datum, samma marknadsregimer.
-    common_start = max(r["start"] for _, r in rows)
-    print(f"\n===== MATCHAT FÖNSTER (alla scenarier klippta till samma startdatum: {common_start}) =====")
-    for label, weights in SCENARIOS.items():
-        if any(t not in prices for t in weights):
+    # ── MATCHAT FÖNSTER: PARVIS mot Endast ACWI, inte ett globalt minimum ────
+    # BUGG (fixad): förra versionen klippte ALLA scenarier till det kortaste
+    # gemensamma fönstret bland dem (2018, styrt av Kina/Indien-scenariot) -
+    # det kastade bort 2014-2018 helt i onödan för ACWI-vs-World+EM-paret, som
+    # kunde delat ett mycket längre fönster (2014-2026) sinsemellan. Rätt sätt
+    # att göra en rättvis jämförelse är PARVIS: klipp ACWI till VARJE scenarios
+    # EGNA fönster för sig, inte till det snävaste gemensamma för alla på en gång.
+    acwi_label = "Endast ACWI (dagens kärna)"
+    acwi_weights = SCENARIOS[acwi_label]
+    print("\n===== MATCHAT FÖNSTER (Endast ACWI parvis klippt till varje scenarios EGET fönster) =====")
+    for label, r in rows:
+        if label == acwi_label:
             continue
-        r = simulate_accumulation(weights, prices, start=common_start)
-        if r is None:
-            print(f"  {label:<70} HOPPAD (för kort efter klippning)")
+        r_acwi = simulate_accumulation(acwi_weights, prices, start=r["start"])
+        if r_acwi is None:
+            print(f"  {label:<70} HOPPAD (ACWI för kort efter klippning)")
             continue
-        s = r["nav_stats"]
-        print(f"  {label}")
-        print(f"    fönster {r['start']} → {r['end']} ({r['years']} år) · "
-              f"NAV-CAGR {s['CAGR']} · Sharpe {s['Sharpe']} · MaxDD {s['Max Drawdown']} · "
-              f"slutvärde {r['end_value']:,.0f} av {r['total_contributed']:,.0f} insatt "
-              f"({_fmt_pct(r['gain_over_contributed'])})".replace(",", " "))
+        print(f"  vs. {label}  (fönster {r['start']} → {r['end']}, {r['years']} år)")
+        for sub_label, rr in ((acwi_label, r_acwi), (label, r)):
+            s = rr["nav_stats"]
+            print(f"    {sub_label:<68} NAV-CAGR {s['CAGR']} · Sharpe {s['Sharpe']} · "
+                  f"MaxDD {s['Max Drawdown']} · slutvärde {rr['end_value']:,.0f} av "
+                  f"{rr['total_contributed']:,.0f} insatt "
+                  f"({_fmt_pct(rr['gain_over_contributed'])})".replace(",", " "))
 
 
 if __name__ == "__main__":
