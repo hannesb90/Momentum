@@ -1545,49 +1545,46 @@ def probe_etf_filter() -> None:
     handplockade lista (~38 ETF:er totalt över sector_etfs.csv/_CURATED/
     global_theme_momentum.py)?
 
-    STEG 1 VERIFIERAT (2026-07-18): GET gav 405 Method Not Allowed (INTE
-    404) – endpointen FINNS, kräver bara en annan HTTP-metod. POST är
-    troligast (samma mönster som search()s POST /_api/search/filtered-
-    search, se _post()). Body-formen är OVERIFIERAD – provar ett par
-    rimliga varianter (tom body, sök-liknande body à la search(), en
-    kategori-filtrerande body). Kolla Content-Type/nyckelnamnen i
-    utskriften, inte bara statuskoden (samma lärdom som list_probe()s
-    falska 200:or mot SPA-appskalet).
+    BODY-FORMEN VERIFIERAD (2026-07-18, ur ett riktigt DevTools-fångat
+    anrop – GET gav 405, POST med gissade platta bodies gav 400 utan
+    detalj, den RIKTIGA bodyn har filtren i ett nästlat "filter"-objekt med
+    SJU nycklar som alla måste finnas, även tomma):
+        {"filter": {"assetCategories": [], "subCategories": [], "exposures": [],
+                     "riskScores": [], "directions": [], "issuers": [], "currencyCodes": []},
+         "limit": 20, "offset": 0, "sortBy": {"field": "numberOfOwners", "order": "desc"}}
+    Alla filter tomma = ingen filtrering (hämta allt, paginerat via limit/offset).
+    OKÄNT ÄNNU: vilket fält ("subCategories"? "assetCategories"? "exposures"?)
+    som motsvarar kategorierna vi såg i UI:t ("Nuclear"/"Sjukvård"/...), och i
+    vilken FORM (klartextnamn eller ett internt id). Dumpar hela svaret för att
+    se både fondposternas fält OCH om svaret självt listar giltiga filter-
+    värden (facets) – annars behövs ett till DevTools-fångst av en KATEGORI-
+    FILTRERAD sökning för att se hur ett ifyllt filter faktiskt ser ut.
 
         python -m altdata.avanza probe_etf_filter
     """
-    print("[probe_etf_filter] === POST /_api/market-etf-filter/ med olika body-gissningar (OVERIFIERADE) ===")
-    for label, payload in (
-        ("tom body {}", {}),
-        ("query+limit (à la search())", {"query": "", "limit": 20}),
-        ("category-lista", {"categories": ["Nuclear"]}),
-        ("category-sträng", {"category": "Nuclear"}),
-        ("filters-wrapper", {"filters": {"category": ["Nuclear"]}}),
-        ("from/size (Elasticsearch-stil)", {"from": 0, "size": 20}),
-    ):
-        time.sleep(_PAUSE_S)
-        try:
-            data = _post("/_api/market-etf-filter/", payload)
-            if isinstance(data, dict):
-                info = f"dict, nycklar: {list(data.keys())}"
-            elif isinstance(data, list):
-                info = f"lista, {len(data)} poster"
-            else:
-                info = str(type(data))
-            print(f"  {label:<30} 200  {info}")
-            if isinstance(data, dict) and data.keys():
-                print(f"    {json.dumps(data, ensure_ascii=False, indent=2)[:2000]}")
-        except requests.exceptions.HTTPError as e:
-            # BUGG (fixad): raise_for_status() ger bara statusraden - ett 400
-            # svarar ofta med EXAKT vilket fält som saknas/är fel i brödtexten,
-            # bortkastad info om vi bara skriver ut e. Läs den härifrån istället
-            # för att fortsätta gissa blint.
-            body = (e.response.text or "")[:500] if e.response is not None else ""
-            print(f"  {label:<30} FEL {e.response.status_code if e.response is not None else '?'}: {body or '(tomt svar)'}")
-        except Exception as e:  # noqa: BLE001
-            print(f"  {label:<30} FEL: {e}")
-    print("\n[probe_etf_filter] Klistra in HELA utskriften – leta efter EN variant som gav en "
-          "riktig nyttolast (fondnamn/tickers/kategorier), inte bara ett tomt/felaktigt svar.")
+    payload = {
+        "filter": {"assetCategories": [], "subCategories": [], "exposures": [],
+                   "riskScores": [], "directions": [], "issuers": [], "currencyCodes": []},
+        "limit": 20, "offset": 0,
+        "sortBy": {"field": "numberOfOwners", "order": "desc"},
+    }
+    print("[probe_etf_filter] === POST /_api/market-etf-filter/ (VERIFIERAD body-form) ===")
+    try:
+        data = _post("/_api/market-etf-filter/", payload)
+        if isinstance(data, dict):
+            print(f"  toppnivå-nycklar: {list(data.keys())}")
+            print(json.dumps(data, ensure_ascii=False, indent=2)[:6000])
+        elif isinstance(data, list):
+            print(f"  lista, {len(data)} poster")
+            print(json.dumps(data[:3], ensure_ascii=False, indent=2)[:6000])
+    except requests.exceptions.HTTPError as e:
+        body = (e.response.text or "")[:1000] if e.response is not None else ""
+        print(f"  FEL {e.response.status_code if e.response is not None else '?'}: {body or '(tomt svar)'}")
+    except Exception as e:  # noqa: BLE001
+        print(f"  FEL: {e}")
+    print("\n[probe_etf_filter] Klistra in HELA utskriften – leta efter fondposternas fält "
+          "(ticker/orderBookId/namn/kategori-taggar) och ev. en facets/counts-sektion som "
+          "listar giltiga filtervärden per kategori.")
 
 
 # SPÅR ÅTERUPPTAGET (2026-07-17): de 8 gissade kandidaterna nedan gav
