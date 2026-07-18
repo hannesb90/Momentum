@@ -60,9 +60,10 @@ def log_value(total) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     rows = {}
     if p.exists():
-        for r in csv.DictReader(open(p, encoding="utf-8")):
-            if r.get("date"):
-                rows[r["date"]] = r.get("value_sek", "")
+        with open(p, encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                if r.get("date"):
+                    rows[r["date"]] = r.get("value_sek", "")
     rows[date.today().isoformat()] = str(round(float(total)))   # dagens = senaste spar
     with open(p, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -76,11 +77,12 @@ def load_value_log() -> list:
     if not p.exists():
         return []
     out = []
-    for r in csv.DictReader(open(p, encoding="utf-8")):
-        try:
-            out.append({"date": r["date"], "value": float(r["value_sek"])})
-        except (ValueError, KeyError):
-            continue
+    with open(p, encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            try:
+                out.append({"date": r["date"], "value": float(r["value_sek"])})
+            except (ValueError, KeyError):
+                continue
     return out
 
 
