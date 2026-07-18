@@ -109,7 +109,12 @@ function MacroPanel({ m }) {
         <Stat label="Koppar–guld 13v" value={pct(m.copper_gold_13w)}
           tone={m.copper_gold_13w >= 0 ? 'good' : 'warn'} />
       )}
+      {m.gold_silver_13w != null && (
+        <Stat label="Guld–silver 13v" value={pct(m.gold_silver_13w)}
+          tone={m.gold_silver_13w >= 0 ? 'warn' : 'good'} />
+      )}
       {m.gold_13w != null && <Stat label="Guld 13v" value={pct(m.gold_13w)} />}
+      {m.silver_13w != null && <Stat label="Silver 13v" value={pct(m.silver_13w)} />}
       {m.oil_13w != null && <Stat label="Olja 13v" value={pct(m.oil_13w)} />}
     </div>
   )
