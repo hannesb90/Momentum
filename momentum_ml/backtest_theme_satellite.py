@@ -87,20 +87,40 @@ def main():
           f" · Månadsinsättning: {config.NEXT_BUY_DEFAULT_AMOUNT:,.0f} · "
           f"kostnad/köp: {config.ETF_ROT_COST_ONEWAY:.2%}\n".replace(",", " "))
 
-    r_theme = simulate_rotating_accumulation(
-        have_theme, rel, panel, risk_on=regime, fallback_ticker=CORE_TICKER,
-    )
-    if r_theme is None:
+    core_prices = {CORE_TICKER: panel[[CORE_TICKER]].rename(columns={CORE_TICKER: "Close"})}
+
+    # Två separata körningar, var och en på sitt EGET maximala fönster - de
+    # kan starta olika (temauniversumet innehåller ETF:er äldre än ACWI
+    # självt, t.ex. INRG.L sedan 2009 mot ACWI:s 2011). `start=` klipper bara
+    # FRAMÅT, den kan aldrig trolla fram data en ticker inte har - att skicka
+    # in den ENA sidans startdatum till den ANDRA (förra körningen) är därför
+    # ett no-op om den andra redan börjar SENARE, vilket gav en tyst orättvis
+    # jämförelse (temat fick extra år kärnan aldrig testades mot). Rätt fix:
+    # räkna ut det SENASTE av de två egna starterna och klipp BÅDA dit.
+    r_theme_own = simulate_rotating_accumulation(have_theme, rel, panel, risk_on=regime, fallback_ticker=CORE_TICKER)
+    if r_theme_own is None:
         print("[backtest_theme_satellite] < 3 år gemensam historik för tema-universumet - kan inte testa.")
         return
-
-    r_core = simulate_accumulation({CORE_TICKER: 1.0}, {CORE_TICKER: panel[[CORE_TICKER]].rename(
-        columns={CORE_TICKER: "Close"})}, start=r_theme["start"])
-    if r_core is None:
-        print("[backtest_theme_satellite] kärnan saknar data i tema-fönstret - kan inte jämföra.")
+    r_core_own = simulate_accumulation({CORE_TICKER: 1.0}, core_prices)
+    if r_core_own is None:
+        print("[backtest_theme_satellite] kärnan saknar tillräcklig egen historik - kan inte jämföra.")
         return
 
-    print(f"  MATCHAT FÖNSTER: {r_theme['start']} → {r_theme['end']} ({r_theme['years']} år)\n")
+    print("  EGET FÖNSTER (respektive strategis maximala tillgängliga historik):\n")
+    _print_result(f"Endast {CORE_NAME} (100% kärna hela tiden)", r_core_own)
+    _print_result("Tema-satellit (100% i rotationens #1-tema varje månad, aldrig sälj)", r_theme_own)
+
+    matched_start = max(r_theme_own["start"], r_core_own["start"])
+    r_theme = simulate_rotating_accumulation(have_theme, rel, panel, risk_on=regime,
+                                              fallback_ticker=CORE_TICKER, start=matched_start)
+    r_core = simulate_accumulation({CORE_TICKER: 1.0}, core_prices, start=matched_start)
+    if r_theme is None or r_core is None:
+        print(f"\n[backtest_theme_satellite] för kort efter klippning till {matched_start} - "
+              "ingen matchad jämförelse möjlig.")
+        return
+
+    print(f"\n  MATCHAT FÖNSTER (klippt till senaste av de två egna starterna): "
+          f"{r_theme['start']} → {r_theme['end']} ({r_theme['years']} år)\n")
     _print_result(f"Endast {CORE_NAME} (100% kärna hela tiden)", r_core)
     _print_result("Tema-satellit (100% i rotationens #1-tema varje månad, aldrig sälj)", r_theme)
 
