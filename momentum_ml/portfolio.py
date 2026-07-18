@@ -643,6 +643,45 @@ def _sector_of(ticker) -> str:
     return _SECTOR_MAP.get((ticker or "").upper(), "")
 
 
+_THEME_MAP = None
+
+
+def _theme_of(ticker) -> str:
+    """Avanzas FINA undertema (cache/avanza_sectors.csv, se
+    backtest/theme_momentum.py) – t.ex. "Medicinsk utrustning" istället för
+    breda GICS-"Health Care". Faller tillbaka på _sector_of() (GICS) om
+    Avanza-taggning saknas för tickern (t.ex. utländska ETF:er, ej ännu
+    körd 'sectors'-extraktion). Aldrig en krasch – tom sträng om inget alls
+    hittas, samma disciplin som _sector_of()."""
+    global _THEME_MAP
+    if _THEME_MAP is None:
+        _THEME_MAP = {}
+        p = Path(config.anchor("cache")) / "avanza_sectors.csv"
+        if p.exists():
+            try:
+                for r in csv.DictReader(open(p, encoding="utf-8")):
+                    tk = (r.get("ticker") or "").upper()
+                    if tk and r.get("sector_fine"):
+                        _THEME_MAP[tk] = r["sector_fine"]
+            except Exception:  # noqa: BLE001
+                pass
+    tk = (ticker or "").upper()
+    return _THEME_MAP.get(tk) or _sector_of(tk)
+
+
+def _theme_of_labeled(ticker) -> tuple:
+    """Som _theme_of() men säger VILKEN nivå värdet faktiskt är:
+    ("tema", "Medicinsk utrustning") för en riktig Avanza-fintagg, annars
+    ("sektor", "Health Care") vid GICS-fallback. ("", "") om inget alls."""
+    _theme_of(ticker)   # bygger _THEME_MAP om den inte redan finns
+    tk = (ticker or "").upper()
+    fine = _THEME_MAP.get(tk)
+    if fine:
+        return "tema", fine
+    broad = _sector_of(tk)
+    return ("sektor", broad) if broad else ("", "")
+
+
 def _kinds():
     out = {}
     uf = Path(getattr(config, "ETF_ROT_UNIVERSE_FILE", ""))

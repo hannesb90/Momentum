@@ -59,9 +59,12 @@ punktlistor). Den ska vara KONKRET:
     "Swedbank flaggas för hög skuldsättning", "Smart Eye rapporterar om N
     dagar"). Inga vaga formuleringar ("några innehav har gått bra") när
     underlaget har namngivna siffror att peka på.
-  - Kommentera MINST 1-2 SEKTORER med konkret momentum-siffra OCH en
-    research-baserad förklaring till rörelsen (se ovan) – inte bara
-    "sektorn har gått bra/dåligt".
+  - Kommentera MINST 1-2 SEKTORER/UNDERTEMAN med konkret momentum-siffra
+    OCH en research-baserad förklaring till rörelsen (se ovan) – inte bara
+    "sektorn har gått bra/dåligt". Använd UNDERLAGETS mest specifika nivå
+    du har siffror för (PER FINT UNDERTEMA om det finns för innehavet,
+    annars PER SEKTOR/GICS) – "Medicinsk utrustning" är mer läsvärt och
+    precist än "Health Care" när båda finns.
   - Kommentera SEKTOREXPONERING om ett innehav sticker ut (koncentration,
     en sektor som bär större delen av vinsten/förlusten).
   - Nämn kommande RAPPORTER inom de närmaste veckorna om någon finns i
@@ -131,6 +134,31 @@ def _sector_context(tickers):
     return out
 
 
+def _theme_context(tickers):
+    """Momentum/rankning/rotation för Avanzas FINA underteman portföljen är
+    exponerad mot (results/theme_momentum.csv, se backtest/theme_momentum.py
+    – t.ex. "Medicinsk utrustning" skilt från "Bioteknik", där GICS-sektorn
+    ovan bara ser en gemensam "Health Care"). Tom lista om filen saknas
+    (theme_momentum-extraktionen inte körd än) – inte en crash."""
+    held_themes = {pf._safe(lambda tk=tk: pf._theme_of(tk), "", "tema")
+                   for tk in tickers if tk}
+    held_themes.discard("")
+    if not held_themes:
+        return []
+    p = pf._results_dir() / "theme_momentum.csv"
+    if not p.exists():
+        return []
+    out = []
+    try:
+        for r in csv.DictReader(open(p, encoding="utf-8")):
+            if r.get("theme") not in held_themes:
+                continue
+            out.append(r)
+    except Exception:  # noqa: BLE001
+        return []
+    return out
+
+
 def _underlag():
     rows = pf.load_holdings()
     d = pf.compute(rows)
@@ -174,9 +202,9 @@ def _underlag():
         fund = h.get("fundamentals")
         if fund and not fund.get("ok"):
             parts.append("fundamenta-flagg: " + ", ".join(fund.get("issues") or []))
-        sec = pf._safe(lambda: pf._sector_of(tk), "", "sektor") if tk else ""
+        sec_label, sec = pf._safe(lambda: pf._theme_of_labeled(tk), ("", ""), "tema/sektor") if tk else ("", "")
         if sec:
-            parts.append(f"sektor {sec}")
+            parts.append(f"{sec_label} {sec}")
         ex = exit_by_ticker.get(tk)
         if ex and ex.get("tier") not in (None, "ok"):
             parts.append(f"exit-alarm {ex['tier']}: {ex.get('tech_note')}")
@@ -201,6 +229,21 @@ def _underlag():
                 f"  - {s.get('sector')}: rank {s.get('rank')} ({s.get('n_stocks')} bolag i sektorn), "
                 f"momentum 4v {f('momentum_4w'):+.1%} · 13v {f('momentum_13w'):+.1%} "
                 f"· 26v {f('momentum_26w'):+.1%}, rotation: {s.get('flow') or 'okänd'}")
+
+    themes = _theme_context({(h.get("ticker") or "").upper() for h in holdings})
+    if themes:
+        lines.append("\nPER FINT UNDERTEMA (Avanzas egen klassificering, mer detaljerad än GICS-"
+                      "sektorn ovan – t.ex. \"Medicinsk utrustning\" skilt från \"Bioteknik\"):")
+        for th in sorted(themes, key=lambda x: int(float(x.get("rank") or 999))):
+            def f(k):
+                try:
+                    return float(th.get(k) or 0)
+                except ValueError:
+                    return 0.0
+            lines.append(
+                f"  - {th.get('theme')}: rank {th.get('rank')} ({th.get('n_stocks')} bolag), "
+                f"momentum 4v {f('momentum_4w'):+.1%} · 13v {f('momentum_13w'):+.1%} "
+                f"· 26v {f('momentum_26w'):+.1%}, rotation: {th.get('flow') or 'okänd'}")
 
     if nb.get("rows"):
         lines.append("\nNästa köp-planen (" + str(nb.get("amount")) + " kr): " + "; ".join(
