@@ -46,8 +46,18 @@ import claude_headless as ch  # noqa: E402
 
 # De Avanza-subCategories som empiriskt blandar flera olika nischteman
 # (VERIFIERAT via fund_categories()-körning 2026-07-18 – breda hinkar där
-# en enda kategorinamn inte räcker som temanamn).
-MIXED_CATEGORIES = ("teknologi", "sjukvård", "energi", "industri", "strategi", "multi-asset")
+# en enda kategorinamn inte räcker som temanamn). "infrastruktur"/
+# "kraftförsörjning" flyttades hit 2026-07-18 EFTER granskning av en skarp
+# körnings primärval (en datacenter-fond som "Infrastruktur", en
+# vattenfond som "Kraftförsörjning" - orimligt): en rå namnlista visade att
+# "infrastruktur" blandar elnät/elektrifiering + datacenter + bred/smart-
+# cities-infrastruktur (minst 3 teman), och "kraftförsörjning" blandar
+# elbolag/utilities + vattenrening (2 klart olika teman). PURE_CATEGORIES
+# nedan var därför en FELAKTIG gissning för just dessa två - ingen ny
+# kategori läggs dit igen utan samma verifiering (dumpa namnlistan och
+# läs den) som avslöjade felet här.
+MIXED_CATEGORIES = ("teknologi", "sjukvård", "energi", "industri", "strategi", "multi-asset",
+                    "infrastruktur", "kraftförsörjning")
 
 # RENA kategorier som redan ÄR ett tema – tas med rakt av (pass-through,
 # ingen LLM-kostnad, kategorinamnet blir temanamnet). Utan detta TAPPADES
@@ -57,13 +67,12 @@ MIXED_CATEGORIES = ("teknologi", "sjukvård", "energi", "industri", "strategi", 
 # klassificeras aldrig eftersom den inte är en blandkategori). "nuclear"
 # utelämnas MEDVETET: överlappar "Uran & Kärnkraft" som energi-
 # klassificeringen redan producerar – två named teman för samma sak vore
-# dubbelräkning i rankningen.
+# dubbelräkning i rankningen. HÅLL DENNA LISTA KORT OCH VERIFIERAD - se
+# kommentaren ovan för vad som händer när ett antagande inte kollas.
 PURE_CATEGORIES = {
     "försvarsindustri": "Försvar",
     "ädelmetaller": "Ädelmetaller",
     "industrimetaller": "Industrimetaller",
-    "infrastruktur": "Infrastruktur",
-    "kraftförsörjning": "Kraftförsörjning",
 }
 
 BATCH_SIZE = 10   # sänkt från 15 (verklig körning: 2/7 batchar fick timeout på 15)
@@ -82,10 +91,11 @@ CANONICAL_THEMES = (
     "Halvledare", "AI & Robotik", "AI-infrastruktur", "Molntjänster",
     "Cybersäkerhet", "Kvantdatorer", "Rymdteknik", "Dronteknologi",
     "Bioteknik", "Medicinsk utrustning", "Läkemedel",
-    "Förnybar energi", "Solenergi", "Väte", "Olja & Gas", "Uran & Kärnkraft",
+    "Förnybar energi", "Solenergi", "Vindenergi", "Väte", "Olja & Gas",
+    "Uran & Kärnkraft", "Elnät & Elektrifiering", "Datacenter", "Vatten",
     "Batterier & Elbilar", "Blockchain", "Kryptovalutor", "Fintech",
     "Internet", "E-handel", "Spel & Esports", "Internet of Things",
-    "Smart Cities", "Vatten & Infrastruktur", "Gruvdrift & Metaller",
+    "Smart Cities", "Gruvdrift & Metaller",
     "Jordbruk & Livsmedelsteknik",
 )
 
