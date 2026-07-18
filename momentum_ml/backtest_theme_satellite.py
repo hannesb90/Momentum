@@ -119,8 +119,11 @@ def main():
 
     # Tre säljvarianter på SAMMA fönster: ingen säljregel alls (gamla beteendet),
     # appens EGEN konfigurerade säljvakts-tröskel (config.TAKEPROFIT_GAIN, 50%),
-    # och en snävare 90%-tröskel. "Ta hem vinsten" rullas alltid in i kärnan
-    # (se simulate_rotating_accumulation()s docstring) - aldrig en ny satellitsats.
+    # och en snävare 90%-tröskel. Sålt kapital slussas in i SAMMA "var ska
+    # nästa krona in"-beslut som nästa månads vanliga insättning - kan alltså
+    # gå tillbaka till ett tema om rotationen fortfarande gynnar ett, ingen
+    # särbehandlad genväg rakt till kärnan (se simulate_rotating_accumulation()s
+    # docstring för hela mekaniken).
     app_tp = float(getattr(config, "TAKEPROFIT_GAIN", 0.50))
     variants = [("Ingen säljregel (rent köp-och-behåll)", None),
                 (f"Säljvakt vid +{app_tp:.0%} (appens EGEN config.TAKEPROFIT_GAIN)", app_tp),
