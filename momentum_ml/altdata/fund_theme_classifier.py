@@ -30,8 +30,14 @@ KANONISK vokabulär (CANONICAL_THEMES) för stabilitet mellan körningar.
 Förutsätter cache/avanza_fund_categories.csv (kör avanza.fund_categories()
 först).
 
-    python altdata/fund_theme_classifier.py classify                    # alla bland- + rena kategorier
+CACHAT: redan klassificerade fonder (giltigt tema i cache/fund_niche_
+themes.csv sedan tidigare) kostar INGET nytt LLM-anrop – bara nytillkomna
+eller tidigare misslyckade ("Kunde inte klassificera") fonder skickas till
+Haiku. "force" tvingar om ALLA fonder i den valda kategorin.
+
+    python altdata/fund_theme_classifier.py classify                    # alla bland- + rena kategorier, bara nya/omprövade
     python altdata/fund_theme_classifier.py classify teknologi          # bara en blandkategori
+    python altdata/fund_theme_classifier.py classify teknologi force    # tvinga om HELA teknologi-kategorin
     python altdata/fund_theme_classifier.py classify försvarsindustri   # bara en ren kategori (pass-through)
 """
 import csv
@@ -166,7 +172,13 @@ def _owners(r):
         return 0
 
 
-def classify(category_filter: Optional[str] = None) -> None:
+def classify(category_filter: Optional[str] = None, force: bool = False) -> None:
+    """force=True klassificerar om ÄVEN fonder som redan har en giltig
+    (icke-"Kunde inte klassificera") temaetikett i cache/fund_niche_themes.csv
+    – default (False) hoppar över dem helt, noll LLM-kostnad för redan
+    klassificerade fonder. Verkligt fall som visade behovet: 'classify' utan
+    argument klassificerade om ALLA 230 fonder varje gång, trots att bara
+    30 (infrastruktur/kraftförsörjning) faktiskt behövde omprövas."""
     rows = _load_categories()
     if not rows:
         return
@@ -186,13 +198,36 @@ def classify(category_filter: Optional[str] = None) -> None:
             by_id.setdefault(r["orderbookId"], r)
     funds = list(by_id.values())
 
-    themes: Dict[str, str] = {}
-    if funds:
-        print(f"[fund_theme] klassificerar {len(funds)} fonder ur {mixed} (Haiku, {BATCH_SIZE}/anrop)...")
-        for i in range(0, len(funds), BATCH_SIZE):
-            batch = funds[i:i + BATCH_SIZE]
-            print(f"  batch {i // BATCH_SIZE + 1}/{-(-len(funds) // BATCH_SIZE)}...")
+    out = Path(config.anchor("cache")) / "fund_niche_themes.csv"
+    existing: Dict[str, dict] = {}
+    if out.exists():
+        try:
+            for r in csv.DictReader(open(out, encoding="utf-8")):
+                if r.get("orderbookId"):
+                    existing[r["orderbookId"]] = r
+        except Exception:  # noqa: BLE001
+            existing = {}
+
+    cached_themes: Dict[str, str] = {}
+    if not force:
+        for oid in by_id:
+            prev = existing.get(oid)
+            if prev and prev.get("theme") and prev["theme"] != "Kunde inte klassificera":
+                cached_themes[oid] = prev["theme"]
+
+    to_classify = [f for f in funds if f["orderbookId"] not in cached_themes]
+    themes: Dict[str, str] = dict(cached_themes)
+    if to_classify:
+        skip_note = f" ({len(cached_themes)} redan cachade, hoppas över)" if cached_themes else ""
+        print(f"[fund_theme] klassificerar {len(to_classify)} fonder ur {mixed}{skip_note} "
+              f"(Haiku, {BATCH_SIZE}/anrop)...")
+        for i in range(0, len(to_classify), BATCH_SIZE):
+            batch = to_classify[i:i + BATCH_SIZE]
+            print(f"  batch {i // BATCH_SIZE + 1}/{-(-len(to_classify) // BATCH_SIZE)}...")
             themes.update(_classify_with_retry(batch))
+    elif funds:
+        print(f"[fund_theme] alla {len(funds)} fonder ur {mixed} redan klassificerade "
+              f"– ingen LLM-kostnad (kör med force=True för att tvinga om)")
 
     # Denna körnings rader: LLM-klassificerade först, pass-through-rena sedan
     # (LLM-resultatet vinner om en fond råkar ligga i båda sorterna).
@@ -220,16 +255,9 @@ def classify(category_filter: Optional[str] = None) -> None:
     # ur filen – då tappar global_theme_momentum.py teman utan varning.
     # Ny körning vinner per orderbookId; primärvalen räknas därefter om över
     # HELA den mergade mängden (gamla is_primary_pick-flaggor är inte
-    # giltiga längre när medlemslistorna per tema kan ha ändrats).
-    out = Path(config.anchor("cache")) / "fund_niche_themes.csv"
-    merged: Dict[str, dict] = {}
-    if out.exists():
-        try:
-            for r in csv.DictReader(open(out, encoding="utf-8")):
-                if r.get("orderbookId"):
-                    merged[r["orderbookId"]] = r
-        except Exception:  # noqa: BLE001
-            merged = {}
+    # giltiga längre när medlemslistorna per tema kan ha ändrats). `existing`
+    # redan inläst ovan (cache-koll) – ingen anledning att läsa filen igen.
+    merged: Dict[str, dict] = dict(existing)
     merged.update(run_rows)
     all_rows = list(merged.values())
 
@@ -273,6 +301,8 @@ def classify(category_filter: Optional[str] = None) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "classify":
-        classify(sys.argv[2] if len(sys.argv) > 2 else None)
+        cat_arg = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] != "force" else None
+        force_arg = "force" in sys.argv[2:]
+        classify(cat_arg, force=force_arg)
     else:
         print(__doc__)
