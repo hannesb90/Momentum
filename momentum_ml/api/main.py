@@ -359,8 +359,10 @@ def get_portfolio_target():
 async def set_portfolio_target(request: Request):
     """Sparar användarens målfördelning. Body: {broad, sweden, theme} (normaliseras)."""
     import portfolio as pf
+    from starlette.concurrency import run_in_threadpool
     body = await request.json()
-    return _clean({"target": pf.save_target(body)})
+    saved_target = await run_in_threadpool(pf.save_target, body)
+    return _clean({"target": saved_target})
 
 
 @app.get("/api/portfolio-model")
