@@ -143,8 +143,10 @@ _PROMPT_HEAD = """Du är en NEUTRAL, sansad investerarassistent. För VARJE bola
    Använd WebSearch bara som KOMPLEMENT: bredare kontext, reaktion/tolkning
    av det som redan står där, eller om raden ovan saknas/är tunn helt.
    Prioritera svenska finansmedier i sökningen – sök gärna explicit t.ex.
-   "site:efn.se <bolag>", "site:omni.se/ekonomi <bolag>" – innan en bredare
-   sökning. Ta med en allmän känsla av analytiker-/marknadston om den
+   "site:efn.se <bolag>", "site:omni.se/ekonomi <bolag>",
+   "site:swedbank-aktiellt.se <bolag>" (Swedbanks fritt tillgängliga dagliga
+   analyser/veckobrev) – innan en bredare sökning. Ta med en allmän känsla
+   av analytiker-/marknadston om den
    framgår (gissa aldrig fram en "social ton" du inte faktiskt sett).
 3. Skriv 2-4 meningar på SVENSKA: vad har hänt, är det materiellt för caset,
    vad säger nyheterna/tonen, hur ser det ut mot modellens siffror.

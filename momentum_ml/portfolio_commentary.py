@@ -45,8 +45,9 @@ Använd WebSearch för att TA REDA PÅ VARFÖR en sektor eller ett innehav med
 en tydlig rörelse (stor uppgång/nedgång senaste veckorna, eller lågt
 rankad/het sektor) faktiskt rört sig. Prioritera svenska finansmedier – sök
 gärna explicit t.ex. "site:efn.se <sektor/bolag>", "site:omni.se/ekonomi
-<sektor/bolag>" – innan en bredare sökning som "<sektor> aktier <senaste
-händelse>" eller "<bolag> nyheter". Skriv sedan analytiker-stil, konkret
+<sektor/bolag>", "site:swedbank-aktiellt.se <sektor/bolag>" (Swedbanks
+fritt tillgängliga dagliga analyser/veckobrev) – innan en bredare sökning
+som "<sektor> aktier <senaste händelse>" eller "<bolag> nyheter". Skriv sedan analytiker-stil, konkret
 orsak + bedömning, i stil med: "Halvledarsektorn har fallit tungt senaste
 veckorna till följd av X, men bedöms fortsatt ha goda tillväxtutsikter och
 är därför inte ett skäl att korrigera positionen." Gissa ALDRIG en orsak
