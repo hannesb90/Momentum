@@ -17,12 +17,30 @@ sys.path.insert(0, str(Path(__file__).parent))
 import config  # noqa: E402
 
 
-def extract_json(text: str) -> dict:
+def extract_json(text: str, text_fallback_key: str = None) -> dict:
     """Plockar ut FÖRSTA {...}-blocket ur ett LLM-svar. {"error": ...} om
-    inget hittas eller om det inte går att parsa."""
+    inget hittas eller om det inte går att parsa.
+
+    text_fallback_key: BUGG (fixad, verkligt fall: /api/commentary/ask
+    fick "Kunde inte svara: inget JSON-svar från claude: <ett fullt
+    korrekt, sammanhängande svar i klartext>" - modellen ignorerade
+    JSON-instruktionen och svarade i ren prosa efter en WebSearch, ett
+    känt LLM-beteende i verktygstunga anrop, INTE ett trasigt svar). Ett
+    korrekt svar utan JSON-omslag är fortfarande ett korrekt svar - att
+    kasta bort det för ett formateringsmiss är sämre än att använda det.
+    Sätt till t.ex. "answer"/"commentary" för anropare med ETT text-fält
+    (ask()/build() i portfolio_commentary.py) så en JSON-lös men i övrigt
+    vettig textrespons används som svaret i stället för att slängas.
+    Gäller BARA "ingen JSON alls hittad" (ren prosa) - INTE "JSON hittad
+    men trasig" (då kan textfältet ligga mitt i ett halvskrivet objekt,
+    farligare att gissa på). Anropare som behöver FLERA fält (trade-ticket,
+    kvalitetsbetyg m.fl.) ska INTE sätta detta - där är ett strukturerat
+    svar meningslöst utan alla fält, bättre att fela synligt."""
     text = (text or "").strip()
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
+        if text_fallback_key and text:
+            return {text_fallback_key: text}
         return {"error": f"inget JSON-svar från claude: {text[:200]}"}
     try:
         return json.loads(m.group(0))
@@ -30,7 +48,8 @@ def extract_json(text: str) -> dict:
         return {"error": f"trasigt JSON-svar från claude: {text[:200]}"}
 
 
-def run(prompt: str, allowed_tools: str, timeout: int = 120, model: str = None) -> dict:
+def run(prompt: str, allowed_tools: str, timeout: int = 120, model: str = None,
+        text_fallback_key: str = None) -> dict:
     """Kör `claude -p`, låst till allowed_tools (kommaseparerad
     --allowedTools-lista, t.ex. "WebSearch" eller "mcp__montrose__..."),
     permission-mode dontAsk (nekar allt utanför listan). model: None ->
@@ -38,7 +57,11 @@ def run(prompt: str, allowed_tools: str, timeout: int = 120, model: str = None) 
     ("haiku") explicit för högvolyms enkel klassificering (se
     quality_screener.py), aldrig för trade-ticket-/watchlist-anrop där
     verktygsprecision spelar roll. Returnerar det tolkade JSON-svaret,
-    eller {"error": ...} vid problem (process, timeout, trasigt svar)."""
+    eller {"error": ...} vid problem (process, timeout, trasigt svar).
+
+    text_fallback_key: se extract_json() - bara för anropare med ETT
+    text-fält som svar (t.ex. "answer"/"commentary"), aldrig för
+    strukturerade flerfälts-svar."""
     claude_bin = getattr(config, "CLAUDE_BIN", "claude")
     model = model or getattr(config, "CLAUDE_MODEL_DEFAULT", "sonnet")
     env = {**os.environ, "MCP_TIMEOUT": str(getattr(config, "MONTROSE_MCP_TIMEOUT_MS", 60000))}
@@ -92,4 +115,4 @@ def run(prompt: str, allowed_tools: str, timeout: int = 120, model: str = None) 
                 f"registreringen saknas troligen (bara kontobunden claude.ai-connector "
                 f"funkar inte headless). Kör: claude mcp add --transport http {server} "
                 f"<url> && claude mcp login {server}"}
-    return extract_json(result_text)
+    return extract_json(result_text, text_fallback_key=text_fallback_key)
