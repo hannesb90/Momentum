@@ -20,7 +20,7 @@ sys.path.insert(0, '.')
 import pandas as pd
 import config
 from data.data_loader import (
-    fetch_weekly_data, filter_liquid_universe, load_sweden_universe,
+    fetch_weekly_data, filter_liquid_universe, filter_active_universe, load_sweden_universe,
 )
 from features.feature_engineering import build_all_features
 from backtest.backtester import MomentumBacktester
@@ -61,6 +61,7 @@ def main():
     tickers, sector_map, _, _ = load_sweden_universe(min_market_cap=["Large Cap", "Mid Cap"])
     config.SECTOR_MAP.update(sector_map)
     data = fetch_weekly_data(tickers, start="2010-01-01", end=None, use_cache=True)
+    data = filter_active_universe(data)
     data = filter_liquid_universe(data, min_avg_turnover=config.UNIVERSE_MIN_AVG_TURNOVER)
     feats = build_all_features(data)
 
