@@ -271,19 +271,33 @@ def _underlag():
 
     global_themes = _global_theme_context()
     if global_themes:
-        held_tickers = {(h.get("ticker") or "").upper() for h in holdings}
+        # Namnmatchning, INTE ticker – global_theme_momentum.py:s rader kan nu
+        # komma från fund_niche_themes.csv (orderbookId-baserad "id:12345",
+        # matchar aldrig våra egna .DE/.L-tickers) i stället för den gamla
+        # handplockade listans riktiga tickers. Ömsesidig substräng-jämförelse
+        # (fondnamn kan skilja lite i formulering mellan Montrose/Avanza) –
+        # bara en läsvärd etikett, inget som beräkningar hänger på.
+        held_names = [(h.get("name") or "").lower() for h in holdings if h.get("name")]
+
+        def _is_held(etf_name: str) -> bool:
+            n = (etf_name or "").lower()
+            return bool(n) and any(n in hn or hn in n for hn in held_names)
+
         lines.append("\nGLOBALA TEMAN (tematiska ETF:er, rankade mot VARANDRA – omfattar teman "
                       "utan svensk motsvarighet, t.ex. rymd/drönare vs humanoida robotar; "
-                      "'(INNEHAV)' markerar de du redan äger, resten är bara bevakning):")
+                      "'(INNEHAV)' markerar de du redan äger, resten är bara bevakning. "
+                      "Avgift = årlig totalkostnad, redan viktad in i primärvalet per tema):")
         for gt in sorted(global_themes, key=lambda x: int(float(x.get("rank") or 999))):
             def f(k):
                 try:
                     return float(gt.get(k) or 0)
                 except ValueError:
                     return 0.0
-            held_flag = " (INNEHAV)" if (gt.get("ticker") or "").upper() in held_tickers else ""
+            held_flag = " (INNEHAV)" if _is_held(gt.get("etf_name")) else ""
+            fee = gt.get("fee")
+            fee_note = f", avgift {float(fee):.2%}" if fee not in (None, "", "None") else ""
             lines.append(
-                f"  - {gt.get('theme')}{held_flag}: rank {gt.get('rank')}, "
+                f"  - {gt.get('theme')}{held_flag}: rank {gt.get('rank')} ({gt.get('etf_name')}{fee_note}), "
                 f"momentum 4v {f('momentum_4w'):+.1%} · 13v {f('momentum_13w'):+.1%} "
                 f"· 26v {f('momentum_26w'):+.1%}, rotation: {gt.get('flow') or 'okänd'}")
 
