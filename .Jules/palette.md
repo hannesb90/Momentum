@@ -1,0 +1,3 @@
+## 2024-05-19 - Added ARIA roles to StatusBlock components
+**Learning:** Adding `role="status"` and `aria-live="polite"` to loading indicators is crucial for screen reader users to understand when async operations are occurring without disrupting their current flow. Adding `role="alert"` to error blocks ensures critical failure messages are immediately announced. The existing `StatusBlock.jsx` lacked these, making it difficult for visually impaired users to know if the app was still fetching data or had failed.
+**Action:** Always include appropriate ARIA live regions for async state changes (loading/error) in React applications, especially since standard visual cues (spinners, red text) are completely invisible to screen readers.
