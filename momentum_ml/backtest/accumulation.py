@@ -189,6 +189,7 @@ def simulate_rotating_accumulation(
     risk_on: Optional["pd.Series"] = None,
     fallback_ticker: Optional[str] = None,
     start: Optional[str] = None,
+    end: Optional[str] = None,
     take_profit_gain: Optional[float] = None,
 ) -> Optional[Dict]:
     """
@@ -236,6 +237,10 @@ def simulate_rotating_accumulation(
     ingen säljregel för den breda kärnan någonstans, bara för satelliter.
     None = ingen säljregel alls (gamla beteendet, ren köp-och-behåll).
 
+    start/end: valfritt - klipper fönstret (start inklusive, end inklusive).
+    Används för in-sample/OOS-svep (se backtest_theme_satellite.py:s
+    sweep-läge) - samma disciplin som etf_rotation.py:s egen sweep().
+
     Returnerar samma struktur som simulate_accumulation(), plus `picks`
     ({ticker: antal månader den vann insättningen}, visar KONCENTRATIONEN)
     och `take_profits` ({ticker: antal gånger den träffade tröskeln}) om
@@ -253,6 +258,8 @@ def simulate_rotating_accumulation(
     idx = idx.sort_values()
     if start is not None:
         idx = idx[idx >= pd.Timestamp(start)]
+    if end is not None:
+        idx = idx[idx <= pd.Timestamp(end)]
     if len(idx) < MIN_WEEKS:
         return None
 
