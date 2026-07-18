@@ -109,7 +109,12 @@ function MacroPanel({ m }) {
         <Stat label="Koppar–guld 13v" value={pct(m.copper_gold_13w)}
           tone={m.copper_gold_13w >= 0 ? 'good' : 'warn'} />
       )}
+      {m.gold_silver_13w != null && (
+        <Stat label="Guld–silver 13v" value={pct(m.gold_silver_13w)}
+          tone={m.gold_silver_13w >= 0 ? 'warn' : 'good'} />
+      )}
       {m.gold_13w != null && <Stat label="Guld 13v" value={pct(m.gold_13w)} />}
+      {m.silver_13w != null && <Stat label="Silver 13v" value={pct(m.silver_13w)} />}
       {m.oil_13w != null && <Stat label="Olja 13v" value={pct(m.oil_13w)} />}
     </div>
   )
@@ -149,6 +154,7 @@ export function RotationPage() {
               Roterar mellan globala sektor-/tema-ETF:er på deras egen momentum (relativ),
               men bara när de har egen positiv trend (absolut) – annars defensivt. Ett
               bull/björn-filter går risk-off när breda marknaden bryter sin långa trend.
+              Snabbare momentum-fönster (13/26/52v), rank- och absolut-hysteres (köp vid {'>'}5%, sälj vid {'<'}0%) samt ett korrelationstak på 0.8 för att undvika kluster av samma bet.
             </p>
             <p>
               <b>Nästa-trend-idéerna</b> kommer från ett kausalt "världsträd" (AI → kraft →

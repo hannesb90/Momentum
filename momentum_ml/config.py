@@ -595,7 +595,7 @@ ETF_ROT_UNIVERSE_FILE = "data/rotation_universe.csv"
 ETF_ROT_REGION      = "EU"         # (används bara om UNIVERSE_FILE saknas)
 ETF_ROT_TOP_K       = 3            # antal heta teman/sektorer att hålla samtidigt
 # ETF:er är trögare än aktier → LÅNGSAM momentum (6–12 mån), inte 13v-whipsaw.
-ETF_ROT_MOM_WINDOWS = [26, 52]     # veckor – sammanvägd RELATIV momentum-rank
+ETF_ROT_MOM_WINDOWS = [13, 26, 52] # veckor – sammanvägd RELATIV momentum-rank
 # Bull/björn-regim: gå risk-off (defensivt) när breda marknaden bryter sin långa
 # trend. Fångar björnmarknader/kriser mekaniskt utan att läsa nyheter.
 ETF_ROT_REGIME_ENABLED = True
@@ -723,15 +723,15 @@ ETF_ROT_VOL_ADJ     = _os.environ.get("MOMENTUM_ETF_VOL_ADJ", "0") not in ("0", 
 # HYSTERES i absolut-filtret: NYA innehav kräver 52v-avk > ABS_ENTER; BEFINTLIGA
 # säljs först under ABS_EXIT. Utan gapet flippar en ETF nära 0% in/ut varje
 # ombalansering (churn utan information). None = av (enter=exit=ABS_MIN).
-ETF_ROT_ABS_ENTER   = float(_os.environ.get("MOMENTUM_ETF_ABS_ENTER", "nan"))
-ETF_ROT_ABS_EXIT    = float(_os.environ.get("MOMENTUM_ETF_ABS_EXIT", "nan"))
+ETF_ROT_ABS_ENTER   = float(_os.environ.get("MOMENTUM_ETF_ABS_ENTER", 0.05))
+ETF_ROT_ABS_EXIT    = float(_os.environ.get("MOMENTUM_ETF_ABS_EXIT", 0.0))
 # KEEP-BAND (rank-hysteres): behåll ett innehav tills det faller ur topp
 # K×KEEP_MULT (samma idé som aktiemodellens KEEP_BAND_MULT). 1.0 = av (strikt topp-K).
-ETF_ROT_KEEP_MULT   = float(_os.environ.get("MOMENTUM_ETF_KEEP_MULT", 1.0))
+ETF_ROT_KEEP_MULT   = float(_os.environ.get("MOMENTUM_ETF_KEEP_MULT", 2.0))
 # KORRELATIONSSPÄRR: hoppa över en kandidat vars 52v-korrelation mot ett redan
 # valt innehav överstiger taket (topp-3 = tre olika bet, inte samma bet ×3).
 # 1.0 = av.
-ETF_ROT_CORR_MAX    = float(_os.environ.get("MOMENTUM_ETF_CORR_MAX", 1.0))
+ETF_ROT_CORR_MAX    = float(_os.environ.get("MOMENTUM_ETF_CORR_MAX", 0.8))
 # Rätt neutral måttstock för ett globalt universum = hela världen (MSCI ACWI).
 # US-referenser visas också. OMX var fel (svenskt index mot global rotation).
 ETF_ROT_BENCHMARK   = "IUSQ.DE"           # iShares MSCI ACWI (global)
@@ -766,6 +766,7 @@ MACRO_SERIES = {
     "GOLD":   "GC=F",
     "OIL":    "CL=F",
     "COPPER": "HG=F",
+    "SILVER": "SI=F",
 }
 
 # ── Nasdaq Nordic (gratis, auktoritativt börsvärde – kompletterar Yahoo) ──────
