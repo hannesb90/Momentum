@@ -23,7 +23,6 @@ Kör på Pi:n från /opt/momentum/src/momentum_ml (kräver Yahoo-cache/nät):
     /opt/momentum/venv/bin/python tune_etf_rotation.py
 """
 import sys
-import math
 from pathlib import Path
 
 import numpy as np
