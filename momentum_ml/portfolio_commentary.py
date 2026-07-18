@@ -71,6 +71,11 @@ punktlistor). Den ska vara KONKRET:
     underlaget ("förväntningar").
   - Väv in exit-alarm/säljvakt/fundamenta-flaggor på innehavsnivå, inte
     bara som en generisk varningsrad.
+  - Om GLOBALA TEMAN finns i underlaget: nämn kort vilket tema som leder/
+    släpar just nu (t.ex. "humanoida robotar" vs "rymd/drönare"), särskilt
+    om det påverkar bedömningen av ett INNEHAVT temaB-ETF. De teman som
+    INTE är markerade "(INNEHAV)" är bara bevakning – nämn dem gärna som
+    kontext, men se nästa stycke.
   - Avsluta med vad MODELLEN skulle ändra (Nästa köp-planen, i klartext).
 
 VIKTIGT: sammanfatta och förklara siffrorna i underlaget korrekt – gissa
@@ -78,7 +83,9 @@ aldrig på SIFFROR (bara på ORSAKER får du använda sökning). Skriv ALDRIG en
 ny köp/sälj-rekommendation utöver vad som redan står i underlaget (Nästa
 köp-planen/säljvakten) – du får bedöma om en rörelse ser tillfällig eller
 strukturell ut, men det är fortfarande läsvärd bakgrund, inte nytt
-investeringsråd.
+investeringsråd. Detta gäller ÄVEN de globala teman som INTE är innehav –
+ett hett tema i tabellen är INTE en köpsignal, skriv aldrig "överväg att
+köpa X" bara för att temat leder rankningen.
 
 Svara ENDAST med kompakt JSON, ingen markdown: {{"commentary": "..."}}
 
@@ -157,6 +164,23 @@ def _theme_context(tickers):
     except Exception:  # noqa: BLE001
         return []
     return out
+
+
+def _global_theme_context():
+    """Momentum/rankning/rotation för de GLOBALA temana (rymd/drönare,
+    humanoider, halvledare, robotik, cybersäkerhet, kvant, ... – se
+    global_theme_momentum.py) UTAN filter mot innehav: hela poängen är att
+    se vilket tema som är hetast JUST NU, inte bara de du redan äger (till
+    skillnad från _sector_context()/_theme_context() som filtrerar mot
+    portföljens faktiska exponering). Tom lista om filen saknas (kör inte
+    ännu / global_theme_momentum.py inte kört) – ingen crash."""
+    p = pf._results_dir() / "global_theme_momentum.csv"
+    if not p.exists():
+        return []
+    try:
+        return list(csv.DictReader(open(p, encoding="utf-8")))
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def _underlag():
@@ -244,6 +268,24 @@ def _underlag():
                 f"  - {th.get('theme')}: rank {th.get('rank')} ({th.get('n_stocks')} bolag), "
                 f"momentum 4v {f('momentum_4w'):+.1%} · 13v {f('momentum_13w'):+.1%} "
                 f"· 26v {f('momentum_26w'):+.1%}, rotation: {th.get('flow') or 'okänd'}")
+
+    global_themes = _global_theme_context()
+    if global_themes:
+        held_tickers = {(h.get("ticker") or "").upper() for h in holdings}
+        lines.append("\nGLOBALA TEMAN (tematiska ETF:er, rankade mot VARANDRA – omfattar teman "
+                      "utan svensk motsvarighet, t.ex. rymd/drönare vs humanoida robotar; "
+                      "'(INNEHAV)' markerar de du redan äger, resten är bara bevakning):")
+        for gt in sorted(global_themes, key=lambda x: int(float(x.get("rank") or 999))):
+            def f(k):
+                try:
+                    return float(gt.get(k) or 0)
+                except ValueError:
+                    return 0.0
+            held_flag = " (INNEHAV)" if (gt.get("ticker") or "").upper() in held_tickers else ""
+            lines.append(
+                f"  - {gt.get('theme')}{held_flag}: rank {gt.get('rank')}, "
+                f"momentum 4v {f('momentum_4w'):+.1%} · 13v {f('momentum_13w'):+.1%} "
+                f"· 26v {f('momentum_26w'):+.1%}, rotation: {gt.get('flow') or 'okänd'}")
 
     if nb.get("rows"):
         lines.append("\nNästa köp-planen (" + str(nb.get("amount")) + " kr): " + "; ".join(
