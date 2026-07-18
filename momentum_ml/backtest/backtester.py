@@ -504,12 +504,18 @@ class MomentumBacktester:
 
           schablonintäkt-andel = max(SLR(30 nov FÖREGÅENDE år) + 1 %-enhet, golv 1.25%)
           kapitalunderlag       = medelvärde av årets registrerade kvartalsmätpunkter
-          skatt                 = kapitalunderlag × schablonintäkt-andel × ISK_TAX_RATE (30%)
+          skattepliktig bas     = max(0, kapitalunderlag − fribelopp(år))
+          skatt                 = skattepliktig bas × schablonintäkt-andel × ISK_TAX_RATE (30%)
 
         Källa/formel verifierad mot Skatteverket/Riksgälden (WebSearch,
         2026-07-18) - config.ISK_SLR_BY_YEAR har KÄNDA värden för 2014-2025.
         Saknas ett år varnas det EXPLICIT (en gång) och det lagstadgade golvet
         (1.25%) används som konservativ fallback - gissar ALDRIG en SLR-siffra.
+
+        Fribeloppet (ISK_FRIBELOPP_BY_YEAR) är en HELT NY regel som inte
+        fanns innan inkomstår 2025 - år utan en post i tabellen (allt före
+        2025) får korrekt 0 kr fribelopp, det är INTE en lucka som golvet
+        ovan utan den kända, riktiga regeln för de åren.
 
         Räcker inte kontanterna säljs proportionellt över alla innehav (samma
         mekanik som _derisk_to_cap) för att täcka mellanskillnaden - en
@@ -536,8 +542,11 @@ class MomentumBacktester:
         else:
             schablon = max(slr / 100.0 + 0.01, floor)
 
+        fribelopp = float(getattr(config, "ISK_FRIBELOPP_BY_YEAR", {}).get(year, 0.0))
+        taxable_base = max(0.0, kapitalunderlag - fribelopp)
+
         tax_rate = float(getattr(config, "ISK_TAX_RATE", 0.30))
-        tax_owed = kapitalunderlag * schablon * tax_rate
+        tax_owed = taxable_base * schablon * tax_rate
         if tax_owed <= 0:
             return cash
 

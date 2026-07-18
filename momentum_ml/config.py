@@ -345,6 +345,20 @@ ISK_SLR_BY_YEAR = {
 ISK_SCHABLON_FLOOR = 0.0125    # lagstadgat golv, 1.25% (gäller ISK sedan inkomstår 2018)
 ISK_TAX_RATE        = 0.30     # kapitalinkomstskatt på schablonintäkten
 
+# Fribelopp (skattefritt kapitalunderlag): en HELT NY regel, fanns INTE innan
+# inkomstår 2025 (då var HELA kapitalunderlaget skattepliktigt, precis vad
+# koden gjorde innan denna rad fanns). 150 000 kr för 2025, höjt till
+# 300 000 kr fr.o.m. 2026 (gäller per person, alla ISK+KF sammanräknat -
+# den här backtesten modellerar EN portfölj så hela fribeloppet tillämpas
+# rakt av). WebSearch-verifierat 2026-07-18 (Avanza/Handelsbanken/SEB).
+# Saknat år (före 2025, eller framtida år lagstiftaren ännu inte satt) →
+# 0 kr fribelopp - det är den KÄNDA, korrekta defaulten för de åren, inte
+# en gissning (till skillnad från ISK_SLR_BY_YEAR:s luckor ovan).
+ISK_FRIBELOPP_BY_YEAR = {
+    2025: 150_000,
+    2026: 300_000,
+}
+
 # ── Risk management ───────────────────────────────────────────────────────────
 DRAWDOWN_GUARD_THRESHOLD   = 0.15   # vid -15% drawdown, börja de-leverage
 DRAWDOWN_GUARD_FLOOR       = 0.30   # min kvarvarande exponering vid 2x tröskeln (-30% DD)
