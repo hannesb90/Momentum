@@ -722,11 +722,31 @@ PORTFOLIO_TARGET = {"broad": 0.65, "sweden": 0.15, "theme": 0.20, "leverage": 0.
 # åsidosätter default ovan. GITIGNORERAD (personlig, som innehaven). Saknas den
 # används PORTFOLIO_TARGET. leverage hålls alltid 0 (evidens: hävstång = ruinrisk).
 PORTFOLIO_TARGET_FILE = "cache/portfolio_target.json"
-# "Nästa köp"-Coret (hemvyns huvudkort): EN global kärn-ETF som förstahandsval –
-# bredast+billigast vann varje netto-jämförelse vi kört (ACWI slog rotationens
-# alla varianter OOS och aktiemodellens holdout). Beloppet är bara default för
-# vyn; frontend kan skicka valfritt belopp.
+# "Nästa köp"-Coret (hemvyns huvudkort): fallback/enkel-ticker-kärnan om
+# PORTFOLIO_CORE_SPLIT nedan är tom. Bredast+billigast vann varje netto-
+# jämförelse vi kört mot AKTIVA varianter (ACWI slog rotationens alla
+# varianter OOS och aktiemodellens holdout) - den jämförelsen står fast.
+# Används också som den EXAKTA, odelade kärnan av backtest_bear_hedge.py/
+# backtest_bull_hedge.py (regim-hedge-frågan gäller EN kärninstrument, inte
+# uppdelningen nedan - en annan fråga). Beloppet är bara default för vyn;
+# frontend kan skicka valfritt belopp.
 PORTFOLIO_CORE_ETF = ("IUSQ.DE", "iShares MSCI ACWI (hela världen)")
+# Kärnans FAKTISKA uppdelning i next_buy() (Nästa köp-kortet), om satt.
+# World+EM (~88/12, samma kapvikt-exponering som ACWI fast i två fonder)
+# slog EN enda ACWI-fond på VARJE mått i ett matchat fönster (samma start-
+# datum för båda, se backtest_core_allocation.py): NAV-CAGR 11,8% vs 11,6%,
+# Sharpe 0,82 vs 0,81, slutvärde +120,6% vs +119,0% (2011-10-17→idag,
+# köp-och-behåll-ackumulering, ingen försäljning - se
+# backtest/accumulation.py:simulate_accumulation). Andra granulära splittar
+# (EM+Europa 50/50, World+USA+EM+Europa 25/25/25/25, World+EM+Kina+Indien)
+# förlorade klart mot ACWI i samma test - BARA World+EM-kapvikten hade
+# evidens, inte "fler innehav" i allmänhet. Tom lista/None → faller tillbaka
+# på PORTFOLIO_CORE_ETF (en enda ticker). Ben under NEXT_BUY_MIN_TRADE_SEK
+# viks in i det största benet i stället för att handlas för en struntsumma.
+PORTFOLIO_CORE_SPLIT = [
+    ("EUNL.DE", "iShares Core MSCI World", 0.88),
+    ("IS3N.DE", "iShares Core MSCI EM IMI", 0.12),
+]
 NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
 
 # ── Montrose trade-ticket-knapp (headless Claude Code, se montrose_ticket.py) ──
