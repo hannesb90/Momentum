@@ -223,12 +223,18 @@ def simulate_rotating_accumulation(
     en viktad SNITTKOSTNAD per ticker (flera köp av samma tema över åren,
     olika pris varje gång, ger en genomsnittlig anskaffningskostnad - inte
     bara senaste priset). Passerar en hållen tema-position tröskeln säljs
-    HELA positionen (kostnad_oneway på säljbenet också) och hela behållningen
-    rullas direkt in i `fallback_ticker` (kärnan) - "ta hem vinsten" i den
-    här appens mening är alltid hem till kärnan, aldrig en ny satellitsats.
-    Kärnan själv omfattas ALDRIG av detta - appen har ingen säljregel för
-    den breda kärnan någonstans, bara för satelliter. None = ingen säljregel
-    alls (gamla beteendet, ren köp-och-behåll).
+    HELA positionen (kostnad_oneway på säljbenet också) och behållningen
+    läggs i en väntande kontantpott - INTE direkt till `fallback_ticker`.
+    Ett sålt innehav är bara friställt kapital: det slussas in i SAMMA "var
+    ska nästa krona in"-beslut som nästa månads vanliga insättning (kan gå
+    tillbaka till ett tema om rotationen fortfarande gynnar ett, inte en
+    särbehandlad genväg rakt till kärnan). Väntande kontanter räknas in i
+    portföljvärdet (och drar därmed ner NAV-avkastningen medan de väntar,
+    precis som verklig oinvesterad kassa gör) men räknas ALDRIG in i
+    `total_contributed` igen - det är återinvesterat kapital, inte ny
+    insättning. Kärnan själv omfattas ALDRIG av säljregeln - appen har
+    ingen säljregel för den breda kärnan någonstans, bara för satelliter.
+    None = ingen säljregel alls (gamla beteendet, ren köp-och-behåll).
 
     Returnerar samma struktur som simulate_accumulation(), plus `picks`
     ({ticker: antal månader den vann insättningen}, visar KONCENTRATIONEN)
@@ -255,6 +261,7 @@ def simulate_rotating_accumulation(
 
     units: Dict[str, float] = {}
     cost_basis: Dict[str, float] = {}   # viktad snittkostnad/andel, BARA för icke-fallback-tickers
+    pending_cash = 0.0   # sålt kapital som väntar på NÄSTA kontributionsbeslut (se take-profit nedan)
     nav = 1.0
     prev_value: Optional[float] = None
     nav_series, value_series, dates = [], [], []
@@ -281,25 +288,31 @@ def simulate_rotating_accumulation(
     for i, date in enumerate(idx):
         # TAKE-PROFIT: kollas VARJE vecka, innan resten av veckans logik - en
         # position kan passera tröskeln vilken vecka som helst, inte bara
-        # kontributionsmånader.
-        if take_profit_gain is not None and fallback_ticker:
+        # kontributionsmånader. Behållningen läggs i `pending_cash` - INTE
+        # direkt till kärnan. Ett sålt innehav är bara friställt kapital;
+        # det slussas in i SAMMA "var ska nästa krona in"-beslut som den
+        # vanliga insättningen nästa kontributionsvecka (kan alltså gå
+        # tillbaka till ett tema om rotationen fortfarande gynnar ett, inte
+        # en särbehandlad genväg rakt till kärnan).
+        if take_profit_gain is not None:
             for t in [t for t, u in units.items() if t != fallback_ticker and u > 0]:
                 p, cb = _px(date, t), cost_basis.get(t)
                 if p is None or not cb or cb <= 0:
                     continue
                 if p / cb - 1.0 >= take_profit_gain:
-                    proceeds = units[t] * p * (1.0 - cost_oneway)
+                    pending_cash += units[t] * p * (1.0 - cost_oneway)
                     units[t] = 0.0
                     cost_basis.pop(t, None)
-                    _buy(fallback_ticker, proceeds, date)
                     take_profits[t] = take_profits.get(t, 0) + 1
 
-        value_before = sum(u * (_px(date, t) or 0.0) for t, u in units.items())
+        value_before = sum(u * (_px(date, t) or 0.0) for t, u in units.items()) + pending_cash
 
         if prev_value is not None and prev_value > 0:
             nav *= (1.0 + (value_before / prev_value - 1.0))
 
         if is_contrib_week[i]:
+            invest_amount = monthly_contribution + pending_cash
+            pending_cash = 0.0
             target = None
             if risk_on is None or bool(risk_on.loc[date]):
                 cand = rel.loc[date, [t for t in universe if t in rel.columns]].dropna()
@@ -310,10 +323,12 @@ def simulate_rotating_accumulation(
             if target is None:
                 target = fallback_ticker
             if target and _px(date, target) is not None:
-                _buy(target, monthly_contribution, date)
+                _buy(target, invest_amount, date)
                 picks[target] = picks.get(target, 0) + 1
-            total_contributed += monthly_contribution
-            value_after = sum(u * (_px(date, t) or 0.0) for t, u in units.items())
+            else:
+                pending_cash += invest_amount   # ingen giltig target denna vecka - vänta till nästa
+            total_contributed += monthly_contribution   # BARA ny insättning, inte återinvesterat sålt kapital
+            value_after = sum(u * (_px(date, t) or 0.0) for t, u in units.items()) + pending_cash
         else:
             value_after = value_before
 
