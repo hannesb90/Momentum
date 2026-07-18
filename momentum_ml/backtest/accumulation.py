@@ -34,13 +34,25 @@ MIN_WEEKS = 156   # ~3 år gemensam historik - kortare är för brusigt för att
 def _weekly_closes(weights: Dict[str, float], prices: Dict[str, "pd.DataFrame"]) -> pd.DataFrame:
     """Close-panel för EXAKT tickers i weights, avgränsat till datum där ALLA
     har pris (kortaste seriens inception styr fönstret - transparent i
-    resultatet, aldrig dolt/extrapolerat bakåt)."""
+    resultatet, aldrig dolt/extrapolerat bakåt).
+
+    BUGG (fixad, verkligt fall: EM+Europa/4-vägssplitten gav "<3 år gemensam
+    historik" trots att EXSA.DE (2008-2026) och IS3N.DE (2014-2026) VAR för
+    sig hade 0 interna luckor). yfinance:s per-ticker veckostaplar kan vara
+    ankrade på olika veckodagar (skiljer sig per instrument/handelskalender
+    även inom SAMMA batch-nedladdning) - en strikt datum-för-datum-join
+    (gamla koden) matchade då nästan ingenting, trots att båda serierna var
+    kompletta var för sig. Fixen: normalisera varje serie till en gemensam
+    veckokalender (måndagsankrad) FÖRE join, med ffill för veckor där
+    resamplingen inte träffar en exakt kursdag - absorberar veckodags-
+    skillnaden i stället för att låta den tysta bort nästan hela överlappet."""
     cols = {}
     for t in weights:
         df = prices.get(t)
-        if df is None or "Close" not in df or df["Close"].dropna().empty:
+        s = None if df is None or "Close" not in df else df["Close"].dropna()
+        if s is None or s.empty:
             return pd.DataFrame()
-        cols[t] = df["Close"]
+        cols[t] = s.sort_index().resample("W-MON").last().ffill()
     panel = pd.DataFrame(cols).sort_index()
     return panel.dropna(how="any")
 
