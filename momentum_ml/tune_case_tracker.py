@@ -26,7 +26,6 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-import numpy as np
 import pandas as pd
 import config
 from data.data_loader import (
