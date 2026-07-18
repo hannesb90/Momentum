@@ -360,3 +360,133 @@ def simulate_rotating_accumulation(
         "picks": dict(sorted(picks.items(), key=lambda kv: -kv[1])),
         "take_profits": dict(sorted(take_profits.items(), key=lambda kv: -kv[1])),
     }
+
+
+def simulate_regime_hedge_accumulation(
+    core_ticker: str,
+    prices: "pd.DataFrame",
+    regime: "pd.Series",
+    hedge_ticker: Optional[str] = None,
+    monthly_contribution: float = None,
+    cost_oneway: float = None,
+    start: Optional[str] = None,
+) -> Optional[Dict]:
+    """
+    Testar: i BEAR-regim (backtest.regime.classify_regimes - SAMMA klassificerare
+    backtestern redan använder för _market_exposure_factor), ska nytt kapital
+    parkeras i KONTANTER (dagens beteende, hedge_ticker=None) eller aktivt i en
+    invers Bear-ETF (hedge_ticker="XACT-BEAR.ST" e.dyl.)? SÄLJER HELA
+    hedge-positionen ("sell out") samma VECKA regimen lämnar bear - proceeds
+    rullar direkt in i `core_ticker`, aldrig en kvardröjande satsning.
+
+    hedge_ticker=None: bear-veckors insättning läggs i en väntande kontantpott
+    (0% avkastning, exakt vad next_buy()/MARKET_FILTER_EXPOSURE faktiskt gör
+    idag) - släpps in i kärnan samma vecka regimen lämnar bear. Detta är
+    JÄMFÖRELSE-BASLINJEN, inte en gissning på vad "dagens beteende" gör.
+
+    VARNING (se data/data_loader.py:load_sweden_universe-docstring och
+    etf_rotation.py:leverage()): dagligt ombalanserade Bear/Bull-produkter har
+    volatilitetsdecay i skakiga perioder - drabbar en -1x Bear-position också,
+    inte bara hävstångsprodukter. Den här funktionen mäter NETTOEFFEKTEN
+    (regimens faktiska varaktighet minus decay) på riktig data, gissar inte.
+
+    regime: kausal serie (pd.Series av 'bull'/'bear'/'sideways', SAMMA index
+    som prices) från backtest.regime.classify_regimes().
+    """
+    monthly_contribution = float(monthly_contribution or getattr(config, "NEXT_BUY_DEFAULT_AMOUNT", 10000))
+    cost_oneway = float(cost_oneway if cost_oneway is not None else getattr(config, "ETF_ROT_COST_ONEWAY", 0.0015))
+
+    idx = prices.index.intersection(regime.index)
+    idx = idx.sort_values()
+    if start is not None:
+        idx = idx[idx >= pd.Timestamp(start)]
+    if len(idx) < MIN_WEEKS:
+        return None
+
+    months = idx.to_period("M")
+    is_contrib_week = ~months.duplicated()
+
+    units: Dict[str, float] = {}
+    pending_cash = 0.0   # bara använd när hedge_ticker=None (kontant-baslinjen)
+    nav = 1.0
+    prev_value: Optional[float] = None
+    nav_series, value_series, dates = [], [], []
+    total_contributed = 0.0
+    bear_contrib_months = 0
+    sellouts = 0
+
+    def _px(date, t):
+        v = prices.at[date, t] if t in prices.columns else None
+        return float(v) if v is not None and pd.notna(v) and v > 0 else None
+
+    def _buy_core(date, kr):
+        p = _px(date, core_ticker)
+        if p is not None and kr > 0:
+            units[core_ticker] = units.get(core_ticker, 0.0) + (kr * (1.0 - cost_oneway)) / p
+
+    prev_regime = None
+    for i, date in enumerate(idx):
+        cur_regime = regime.loc[date] if date in regime.index else prev_regime
+
+        # SELL OUT: regimen lämnade just bear -> lös upp hedge-positionen ELLER
+        # den väntande kontantpotten samma vecka, in i kärnan. Väntar INTE till
+        # nästa kontributionsvecka - "sell out i marknadsförändring" ska hända
+        # direkt när regimen faktiskt vänder.
+        if prev_regime == "bear" and cur_regime != "bear":
+            if hedge_ticker and units.get(hedge_ticker, 0.0) > 0:
+                p = _px(date, hedge_ticker)
+                if p is not None:
+                    proceeds = units[hedge_ticker] * p * (1.0 - cost_oneway)
+                    units[hedge_ticker] = 0.0
+                    _buy_core(date, proceeds)
+                    sellouts += 1
+            elif pending_cash > 0:
+                _buy_core(date, pending_cash)
+                pending_cash = 0.0
+                sellouts += 1
+
+        value_before = sum(u * (_px(date, t) or 0.0) for t, u in units.items()) + pending_cash
+        if prev_value is not None and prev_value > 0:
+            nav *= (1.0 + (value_before / prev_value - 1.0))
+
+        if is_contrib_week[i]:
+            if cur_regime == "bear":
+                bear_contrib_months += 1
+                if hedge_ticker:
+                    p = _px(date, hedge_ticker)
+                    if p is not None:
+                        units[hedge_ticker] = units.get(hedge_ticker, 0.0) + \
+                            (monthly_contribution * (1.0 - cost_oneway)) / p
+                    else:
+                        pending_cash += monthly_contribution   # hedge saknar pris denna vecka -> kontanter
+                else:
+                    pending_cash += monthly_contribution
+            else:
+                _buy_core(date, monthly_contribution)
+            total_contributed += monthly_contribution
+            value_after = sum(u * (_px(date, t) or 0.0) for t, u in units.items()) + pending_cash
+        else:
+            value_after = value_before
+
+        prev_value = value_after
+        prev_regime = cur_regime
+        nav_series.append(nav)
+        value_series.append(value_after)
+        dates.append(date)
+
+    nav_s = pd.Series(nav_series, index=pd.DatetimeIndex(dates))
+    nav_stats = MomentumBacktester._compute_stats(nav_s, 1.0)
+    end_value = value_series[-1]
+
+    return {
+        "nav_stats": nav_stats,
+        "end_value": round(end_value, 0),
+        "total_contributed": round(total_contributed, 0),
+        "gain_over_contributed": round(end_value / total_contributed - 1.0, 4) if total_contributed > 0 else None,
+        "start": dates[0].strftime("%Y-%m-%d"),
+        "end": dates[-1].strftime("%Y-%m-%d"),
+        "weeks": len(dates),
+        "years": round(len(dates) / 52, 1),
+        "bear_contrib_months": bear_contrib_months,
+        "sellouts": sellouts,
+    }
