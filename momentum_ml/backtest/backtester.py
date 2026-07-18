@@ -54,6 +54,11 @@ class MomentumBacktester:
         self._regimes = None     # lazy: klassificeras vid första run() om filter på
         self._close_panel = None # lazy: ffill:ad prispanel byggs i run()
         self._below_sma = None   # lazy: trend-brott-panel (asymmetrisk exit)
+        self._atr_panel = None   # lazy: ATR-panel (ATR-baserad trailing stop)
+        self._peak_price: Dict[str, float] = {}   # {ticker: högsta close SEDAN KÖP}
+        self._stress_series = None   # lazy: VIX/kreditspread-stress-flagga (dynamisk spread)
+        self._isk_quarters: Dict[tuple, float] = {}   # {(år, kvartal): kapitalunderlags-mätpunkt}
+        self._isk_warned_years: set = set()   # undvik att spamma samma "SLR saknas"-varning
 
     # ── Kör backtest ──────────────────────────────────────────────────────────
 
@@ -67,6 +72,8 @@ class MomentumBacktester:
 
         # Förbygg ffill:ad prispanel en gång (snabb O(1)-prisuppslagning).
         self._build_close_panel(dates)
+        self._build_atr_panel(dates)   # no-op om ATR_STOP_ENABLED är av
+        self._build_stress_series(dates)   # no-op om SLIPPAGE_VIX_ENABLED är av
 
         # Marknadsfilter: klassificera regimer en gång (causalt – SMA ser bara
         # bakåt). Används för att skala bruttoexponering mot kontanter i björn.
@@ -94,6 +101,7 @@ class MomentumBacktester:
             portfolio_value = cash + self._portfolio_value(date)
             peak = max(peak, portfolio_value)
             drawdown = portfolio_value / peak - 1
+            self._isk_record_quarter(date, portfolio_value)   # no-op om ISK_TAX_ENABLED är av
 
             market_exp = self._market_exposure_factor(date)
             guard = self._drawdown_guard_factor(drawdown)
@@ -147,6 +155,22 @@ class MomentumBacktester:
                 # Asymmetrisk exit: sälj enskilda innehav vars trend brutits (utan
                 # att köpa nytt – kapitalet roteras in vid nästa schemalagda rebalans).
                 cash = self._trend_exit(date, cash)
+                # ATR-trailing-stop: samma "sälj utan att köpa nytt"-princip, men
+                # per position mot en volatilitetsnormaliserad peak-to-now-nedgång
+                # i stället för ett SMA-brott (se config.ATR_STOP_ENABLED).
+                cash = self._atr_stop_exit(date, cash)
+
+            # Peak-pris SEDAN KÖP, per innehavd position - uppdateras EFTER
+            # dagens köp/sälj-beslut ovan, så en NY position startar sin peak
+            # exakt på köpdagens pris (inget separat init-steg behövs).
+            self._update_peak_prices(date)
+
+            # ISK-schablonskatt: dras EN gång per kalenderår, vid årsskiftet
+            # (sista veckan vi ser för det året - nästa datums år skiljer sig,
+            # eller detta är den allra sista veckan i hela körningen).
+            is_year_end = (i == len(dates) - 1) or (dates[i + 1].year != date.year)
+            if is_year_end:
+                cash = self._isk_pay_tax(date, cash)
 
             portfolio_values.append({
                 "Date":            date,
@@ -350,9 +374,18 @@ class MomentumBacktester:
         skalar med sqrt(trade/ADV), inte linjärt – större ordrar kostar
         proportionellt mer per krona, men konkavt eftersom orderboken fylls på
         över tid).
+
+        VIX-driven widening (SLIPPAGE_VIX_ENABLED): slippage+halv-spread
+        multipliceras med _stress_mult(date) under makro-stress - fångar att
+        den IMPLICITA spreaden vidgas historiskt när marknaden panikar,
+        oavsett ett enskilt bolags egen likviditet (som redan är fångad
+        tvärsnitts-mässigt i _half_spread via ADV). Courtaget (fast
+        broker-avgift) och impact-termen påverkas INTE - bara den del av
+        kostnaden som verkligen är en marknads-spread/slippage-effekt.
         """
         adv = self._avg_dollar_volume(ticker, date)
-        base = self.commission + self.slippage + self._half_spread(adv)
+        stress_mult = self._stress_mult(date)
+        base = self.commission + (self.slippage + self._half_spread(adv)) * stress_mult
         if adv is None or adv <= 0:
             return base
         impact = config.MARKET_IMPACT_COEF * math.sqrt(abs(trade_value) / adv)
@@ -383,6 +416,7 @@ class MomentumBacktester:
             cost_rate = self._execution_cost_rate(ticker, date, trade_value)
             proceeds = trade_value * (1 - cost_rate)
             cash += proceeds
+            self._peak_price.pop(ticker, None)
 
         # Köp / justera
         for ticker, weight in target_weights.items():
@@ -418,6 +452,7 @@ class MomentumBacktester:
                 cash += proceeds
                 if self._portfolio[ticker] <= 0:
                     del self._portfolio[ticker]
+                    self._peak_price.pop(ticker, None)
 
         return cash
 
@@ -448,6 +483,72 @@ class MomentumBacktester:
                 target[ticker] = (shares * price / portfolio_value) * scale
         return self._rebalance(date, target, portfolio_value, cash)
 
+    def _isk_record_quarter(self, date: pd.Timestamp, portfolio_value: float) -> None:
+        """
+        Registrerar en kapitalunderlags-mätpunkt vid närmast varje kvartals-
+        start (1/1, 1/4, 1/7, 1/10) - bara om ISK_TAX_ENABLED. Skriver över
+        ev. tidigare mätpunkt för samma (år, kvartal), så flera veckobarer
+        inom samma vecka-1-i-kvartalet är ofarligt idempotenta.
+        """
+        if not getattr(config, "ISK_TAX_ENABLED", False):
+            return
+        if date.month not in (1, 4, 7, 10) or date.day > 7:
+            return
+        q = (date.month - 1) // 3 + 1
+        self._isk_quarters[(date.year, q)] = portfolio_value
+
+    def _isk_pay_tax(self, date: pd.Timestamp, cash: float) -> float:
+        """
+        ISK-schablonskatt, dras EN gång per kalenderår (se anropsplatsen i
+        run(), vid årsskiftet):
+
+          schablonintäkt-andel = max(SLR(30 nov FÖREGÅENDE år) + 1 %-enhet, golv 1.25%)
+          kapitalunderlag       = medelvärde av årets registrerade kvartalsmätpunkter
+          skatt                 = kapitalunderlag × schablonintäkt-andel × ISK_TAX_RATE (30%)
+
+        Källa/formel verifierad mot Skatteverket/Riksgälden (WebSearch,
+        2026-07-18) - config.ISK_SLR_BY_YEAR har KÄNDA värden för 2014-2025.
+        Saknas ett år varnas det EXPLICIT (en gång) och det lagstadgade golvet
+        (1.25%) används som konservativ fallback - gissar ALDRIG en SLR-siffra.
+
+        Räcker inte kontanterna säljs proportionellt över alla innehav (samma
+        mekanik som _derisk_to_cap) för att täcka mellanskillnaden - en
+        skatteskuld går inte att "strunta i" som en frivillig rebalansering.
+        """
+        if not getattr(config, "ISK_TAX_ENABLED", False):
+            return cash
+        year = date.year
+        marks = [v for (y, q), v in self._isk_quarters.items() if y == year]
+        if not marks:
+            return cash
+        kapitalunderlag = sum(marks) / len(marks)
+
+        slr_table = getattr(config, "ISK_SLR_BY_YEAR", {})
+        floor = float(getattr(config, "ISK_SCHABLON_FLOOR", 0.0125))
+        slr = slr_table.get(year - 1)
+        if slr is None:
+            if year not in self._isk_warned_years:
+                print(f"[ISK-skatt] statslåneräntan för {year - 1} saknas i "
+                      f"config.ISK_SLR_BY_YEAR - använder lagstadgat golv {floor:.2%} "
+                      f"som konservativ fallback (INTE en uppmätt siffra).")
+                self._isk_warned_years.add(year)
+            schablon = floor
+        else:
+            schablon = max(slr / 100.0 + 0.01, floor)
+
+        tax_rate = float(getattr(config, "ISK_TAX_RATE", 0.30))
+        tax_owed = kapitalunderlag * schablon * tax_rate
+        if tax_owed <= 0:
+            return cash
+
+        invested = self._portfolio_value(date)
+        total = cash + invested
+        if cash < tax_owed and total > 0 and invested > 0:
+            shortfall = tax_owed - cash
+            cap = max(0.0, (invested - shortfall) / total)
+            cash = self._derisk_to_cap(date, cap, total, cash)
+        return cash - min(tax_owed, max(cash, 0.0))
+
     def _is_broken(self, ticker: str, date: pd.Timestamp) -> bool:
         """True om innehavets trend brutits (kurs < EXIT_SMA_WEEKS-glidande medel)."""
         if self._below_sma is None or ticker not in self._below_sma.columns:
@@ -475,6 +576,57 @@ class MomentumBacktester:
             trade_value = shares * price
             cost_rate = self._execution_cost_rate(ticker, date, trade_value)
             cash += trade_value * (1 - cost_rate)
+            self._peak_price.pop(ticker, None)
+        return cash
+
+    def _atr_value(self, ticker: str, date: pd.Timestamp) -> Optional[float]:
+        panel = getattr(self, "_atr_panel", None)
+        if panel is None or ticker not in panel.columns:
+            return None
+        try:
+            v = panel.at[date, ticker]
+            return float(v) if pd.notna(v) else None
+        except Exception:
+            return None
+
+    def _update_peak_prices(self, date: pd.Timestamp) -> None:
+        """Peak-pris SEDAN KÖP per hållen position. Kallas EFTER dagens köp/
+        sälj (se run()) - en ny position saknar ännu en post i _peak_price,
+        så .get(ticker, price) initierar den till just köpdagens pris utan
+        något separat init-steg. Bara nödvändigt när ATR-stopet är på."""
+        if not getattr(config, "ATR_STOP_ENABLED", False) or not self._portfolio:
+            return
+        for ticker in self._portfolio:
+            price = self._get_price(ticker, date)
+            if price is None:
+                continue
+            self._peak_price[ticker] = max(self._peak_price.get(ticker, price), price)
+
+    def _atr_stop_exit(self, date: pd.Timestamp, cash: float) -> float:
+        """
+        Volatilitetsnormaliserad trailing stop PER POSITION (ATR_STOP_ENABLED):
+        sälj ett innehav om priset fallit ATR_STOP_MULT × ATR från sin högsta
+        notering SEDAN KÖP. Skiljer sig från _trend_exit (SMA-brott, kräver att
+        BREDARE trend redan vänt) genom att reagera på en enskild positions
+        EGEN rörelse - kapar en snabb rekyl i en enda "raket" oavsett om SMA:n
+        hunnit vika än. Köper inget nytt, kapitalet roteras in vid nästa
+        schemalagda rebalans (samma princip som _trend_exit).
+        """
+        if not getattr(config, "ATR_STOP_ENABLED", False) or not self._portfolio:
+            return cash
+        mult = float(getattr(config, "ATR_STOP_MULT", 2.5))
+        for ticker in list(self._portfolio.keys()):
+            price = self._get_price(ticker, date)
+            atr = self._atr_value(ticker, date)
+            peak = self._peak_price.get(ticker)
+            if price is None or atr is None or atr <= 0 or peak is None:
+                continue
+            if price <= peak - mult * atr:
+                shares = self._portfolio.pop(ticker)
+                trade_value = shares * price
+                cost_rate = self._execution_cost_rate(ticker, date, trade_value)
+                cash += trade_value * (1 - cost_rate)
+                self._peak_price.pop(ticker, None)
         return cash
 
     def _event_rebalance(self, date, portfolio_value, cash, market_exp, guard) -> float:
@@ -548,6 +700,67 @@ class MomentumBacktester:
             self._below_sma = (panel < sma)
         else:
             self._below_sma = None
+
+    def _build_atr_panel(self, dates) -> None:
+        """
+        Förbygg en ffill:ad ATR-panel (Average True Range, datum × ticker) EN
+        gång - samma O(1)-uppslagnings-princip som _build_close_panel. Bara
+        arbete om ATR_STOP_ENABLED (annars en no-op, ingen kostnad för
+        körningar som inte använder stopet).
+
+        TR_t = max(High_t - Low_t, |High_t - Close_{t-1}|, |Low_t - Close_{t-1}|)
+        ATR  = rullande medel av TR över ATR_WINDOW_WEEKS. Kräver High/Low/Close
+        (finns i OHLCV-datan fetch_weekly_data redan levererar).
+        """
+        if not getattr(config, "ATR_STOP_ENABLED", False):
+            self._atr_panel = None
+            return
+        w = int(getattr(config, "ATR_WINDOW_WEEKS", 10))
+        cols = {}
+        for t, df in self.prices.items():
+            if not {"High", "Low", "Close"}.issubset(df.columns):
+                continue
+            high, low, close = df["High"], df["Low"], df["Close"]
+            prev_close = close.shift(1)
+            tr = pd.concat([
+                high - low,
+                (high - prev_close).abs(),
+                (low - prev_close).abs(),
+            ], axis=1).max(axis=1)
+            cols[t] = tr.rolling(w, min_periods=max(w // 2, 3)).mean()
+        if not cols:
+            self._atr_panel = None
+            return
+        panel = pd.DataFrame(cols)
+        full_idx = panel.index.union(pd.DatetimeIndex(dates))
+        self._atr_panel = panel.reindex(full_idx).sort_index().ffill()
+
+    def _build_stress_series(self, dates) -> None:
+        """
+        Förbygger en kausal makro-stress-flagga (VIX + kreditspread, SAMMA
+        macro_data.stress_series() som etf_rotation.py:s regim-gate redan
+        använder - ingen ny datakälla) alignad till backtestens datum. Bara
+        arbete om SLIPPAGE_VIX_ENABLED (annars no-op).
+        """
+        if not getattr(config, "SLIPPAGE_VIX_ENABLED", False):
+            self._stress_series = None
+            return
+        try:
+            from macro_data import stress_series
+            self._stress_series = stress_series(pd.DatetimeIndex(dates))
+        except Exception:
+            self._stress_series = None   # makro-cache saknas → ingen widening, inte en krasch
+
+    def _stress_mult(self, date: pd.Timestamp) -> float:
+        """1.0 normalt, SLIPPAGE_VIX_STRESS_MULT under makro-stress (om aktiverat)."""
+        s = getattr(self, "_stress_series", None)
+        if s is None:
+            return 1.0
+        try:
+            in_stress = bool(s.at[date])
+        except Exception:
+            return 1.0
+        return float(getattr(config, "SLIPPAGE_VIX_STRESS_MULT", 2.0)) if in_stress else 1.0
 
     def _get_price(self, ticker: str, date: pd.Timestamp) -> Optional[float]:
         panel = getattr(self, "_close_panel", None)
