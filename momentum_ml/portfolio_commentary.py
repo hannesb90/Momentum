@@ -371,7 +371,7 @@ def build():
     # --allowedTools + --permission-mode dontAsk i claude_headless.run.
     # Flera sökningar (en per sektor/innehav med tydlig rörelse) -> längre
     # timeout än insight_report.py:s per-batch-anrop.
-    result = ch.run(prompt, _TOOLS, timeout=240)
+    result = ch.run(prompt, _TOOLS, timeout=240, text_fallback_key="commentary")
     if "error" in result or not result.get("commentary"):
         print(f"[commentary] misslyckades: {result.get('error', 'tomt svar')}")
         return
@@ -426,7 +426,7 @@ def ask(question: str) -> dict:
     prior = json.loads(p.read_text(encoding="utf-8")).get("commentary") if p.exists() else None
     prompt = _ASK_PROMPT.format(commentary=prior or "(ingen genererad än)",
                                  underlag=_underlag(), question=question)
-    result = ch.run(prompt, _TOOLS, timeout=120)
+    result = ch.run(prompt, _TOOLS, timeout=120, text_fallback_key="answer")
     if "error" in result or not result.get("answer"):
         return {"answer": None, "error": result.get("error", "tomt svar")}
     return {"answer": result["answer"]}
