@@ -16,7 +16,6 @@ Pi:n; molnet når inte MFN). is_report/extract_report_dates arbetar på MFN-post
 compute_pead_panel på en veckopris-panel + datum-map – båda enhetstestbara utan
 nätverk.
 """
-from __future__ import annotations
 import re
 from typing import Dict, List, Iterable, Optional
 import numpy as np
