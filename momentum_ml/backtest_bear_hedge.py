@@ -73,8 +73,18 @@ def main():
         print("[backtest_bear_hedge] kärna eller hedge saknas efter normalisering - kan inte köra.")
         return
 
-    regime = classify_regimes({MARKET_PROXY_TICKER: prices[MARKET_PROXY_TICKER]})
+    # Bygg regimklassificeringen på den REDAN NORMALISERADE panelen - inte rå
+    # prices[...] direkt. classify_regimes() bygger sin marknadsproxy på det
+    # index den får in; matchar det inte panel:s måndagsankrade veckogrid
+    # (samma veckodags-anknytningsbugg som normalize_weekly_panel() finns till
+    # för att fixa, se backtest/accumulation.py) blir en exakt-datum-reindex
+    # mot panel.index tom - precis det som kraschade förra körningen.
+    proxy_df = {MARKET_PROXY_TICKER: panel[[MARKET_PROXY_TICKER]].rename(columns={MARKET_PROXY_TICKER: "Close"})}
+    regime = classify_regimes(proxy_df)
     regime = regime.reindex(panel.index).ffill().dropna()
+    if len(regime) == 0:
+        print("[backtest_bear_hedge] regimserien blev tom efter normalisering - kan inte köra.")
+        return
     n_bear = int((regime == "bear").sum())
     print(f"[backtest_bear_hedge] regimklassificering ({MARKET_PROXY_TICKER}, {config.REGIME_SMA_WEEKS}v SMA): "
           f"{n_bear} veckor klassade som bear av {len(regime)} totalt "
