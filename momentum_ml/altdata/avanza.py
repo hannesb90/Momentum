@@ -1113,15 +1113,31 @@ def sectors_extract(segment: Optional[str] = None) -> None:
 
     out = Path(config.anchor("cache")) / "avanza_sectors.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
+    # MERGE, inte överskrivning: filen är universum-gemensam men körningarna
+    # är per segment ('sectors' = large, 'sectors quality' = Small/Micro/Nano)
+    # - utan merge skulle andra körningen klippa bort första körningens rader.
+    # Ny hämtning vinner per ticker (färskast klassificering).
+    merged = {}
+    if out.exists():
+        try:
+            for r in _csv.DictReader(open(out, encoding="utf-8")):
+                if r.get("ticker"):
+                    merged[r["ticker"]] = r
+        except Exception:  # noqa: BLE001
+            merged = {}
+    for r in rows:
+        merged[r["ticker"]] = r
+    all_rows = sorted(merged.values(), key=lambda r: r["ticker"])
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = _csv.DictWriter(f, fieldnames=["ticker", "name", "sector_fine",
                                            "sector_mid", "sector_broad", "sector_path"])
         w.writeheader()
-        w.writerows(rows)
-    print(f"\n[sectors] {len(rows)} bolag taggade ({fail} fel, {empty} utan sectors-fält) -> {out}")
+        w.writerows(all_rows)
+    print(f"\n[sectors] {len(rows)} bolag taggade i denna körning ({fail} fel, {empty} utan "
+          f"sectors-fält), {len(all_rows)} totalt i filen -> {out}")
 
-    fine = Counter(r["sector_fine"] for r in rows)
-    broad = Counter(r["sector_broad"] for r in rows)
+    fine = Counter(r["sector_fine"] for r in all_rows)
+    broad = Counter(r["sector_broad"] for r in all_rows)
     print(f"\n  {len(fine)} unika FINA underteman (topp 30, antal bolag):")
     for name, n in fine.most_common(30):
         print(f"   {n:>4}  {name}")
