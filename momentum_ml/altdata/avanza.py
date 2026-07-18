@@ -1571,20 +1571,28 @@ def probe_etf_filter() -> None:
     print("[probe_etf_filter] === POST /_api/market-etf-filter/ (VERIFIERAD body-form) ===")
     try:
         data = _post("/_api/market-etf-filter/", payload)
-        if isinstance(data, dict):
-            print(f"  toppnivå-nycklar: {list(data.keys())}")
-            print(json.dumps(data, ensure_ascii=False, indent=2)[:6000])
-        elif isinstance(data, list):
-            print(f"  lista, {len(data)} poster")
-            print(json.dumps(data[:3], ensure_ascii=False, indent=2)[:6000])
+        if not isinstance(data, dict):
+            print(f"  OVÄNTAT: svaret var {type(data)}, inte en dict – {str(data)[:1000]}")
+            return
+        print(f"  toppnivå-nycklar: {list(data.keys())}")
+        print(f"  totalNumberOfOrderbooks: {data.get('totalNumberOfOrderbooks')}")
+        print(f"  pagination: {json.dumps(data.get('pagination'), ensure_ascii=False)}")
+        print(f"\n  --- filterOptions (VÄRDENA vi behöver för att filtrera per kategori) ---")
+        print(json.dumps(data.get("filterOptions"), ensure_ascii=False, indent=2)[:8000])
+        etfs = data.get("etfs") or []
+        print(f"\n  --- etfs: {len(etfs)} poster i DENNA sida, exempel (1 st) ---")
+        if etfs:
+            print(f"  fältnamn per fond: {list(etfs[0].keys())}")
+            print(json.dumps(etfs[0], ensure_ascii=False, indent=2))
     except requests.exceptions.HTTPError as e:
         body = (e.response.text or "")[:1000] if e.response is not None else ""
         print(f"  FEL {e.response.status_code if e.response is not None else '?'}: {body or '(tomt svar)'}")
     except Exception as e:  # noqa: BLE001
         print(f"  FEL: {e}")
-    print("\n[probe_etf_filter] Klistra in HELA utskriften – leta efter fondposternas fält "
-          "(ticker/orderBookId/namn/kategori-taggar) och ev. en facets/counts-sektion som "
-          "listar giltiga filtervärden per kategori.")
+    print("\n[probe_etf_filter] Klistra in HELA utskriften – filterOptions bör lista de giltiga "
+          "värdena för assetCategories/subCategories/exposures/riskScores/directions/issuers/"
+          "currencyCodes (klartextnamn eller id?), och totalNumberOfOrderbooks visar hur många "
+          "fonder som finns totalt (för paginering via offset).")
 
 
 # SPÅR ÅTERUPPTAGET (2026-07-17): de 8 gissade kandidaterna nedan gav
