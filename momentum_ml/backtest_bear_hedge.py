@@ -49,6 +49,20 @@ def _fmt_pct(x):
     return f"{x:+.1%}" if x is not None else "  n/a"
 
 
+def _diagnose_tickers(panel):
+    """Per-ticker giltigt datumintervall - visar VARFÖR simuleringens fönster
+    startar där det gör (se accumulation.py:simulate_regime_hedge_accumulation,
+    som klipper bort allt före core_ticker's egen första giltiga notering;
+    tidigare kraschade/gav -100% resultat tyst i stället)."""
+    print("\n[diagnos] per-ticker giltigt intervall:")
+    for t in panel.columns:
+        c = panel[t].dropna()
+        if c.empty:
+            print(f"    {t:<16} INGEN giltig prisdata")
+            continue
+        print(f"    {t:<16} {c.index.min().date()} → {c.index.max().date()} ({len(c)} veckor)")
+
+
 def _print_result(label, r):
     s = r["nav_stats"]
     print(f"  {label}")
@@ -72,6 +86,7 @@ def main():
     if CORE_TICKER not in panel.columns or HEDGE_TICKER not in panel.columns:
         print("[backtest_bear_hedge] kärna eller hedge saknas efter normalisering - kan inte köra.")
         return
+    _diagnose_tickers(panel)
 
     # Bygg regimklassificeringen på den REDAN NORMALISERADE panelen - inte rå
     # prices[...] direkt. classify_regimes() bygger sin marknadsproxy på det
