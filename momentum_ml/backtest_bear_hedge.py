@@ -71,14 +71,15 @@ def _diagnose_tickers(panel):
         print(f"    {t:<16} {c.index.min().date()} → {c.index.max().date()} ({len(c)} veckor)")
 
 
-def _print_result(label, r):
+def _print_result(label, r, regime_word="bear"):
     s = r["nav_stats"]
     print(f"  {label}")
     print(f"    fönster {r['start']} → {r['end']} ({r['years']} år) · "
           f"NAV-CAGR {s['CAGR']} · Sharpe {s['Sharpe']} · MaxDD {s['Max Drawdown']} · "
           f"slutvärde {r['end_value']:,.0f} av {r['total_contributed']:,.0f} insatt "
           f"({_fmt_pct(r['gain_over_contributed'])})".replace(",", " "))
-    print(f"    bear-månader (nytt kapital dit): {r['bear_contrib_months']} · sell-out-händelser: {r['sellouts']}")
+    print(f"    {regime_word}-månader (nytt kapital dit): {r['target_contrib_months']} · "
+          f"sell-out-händelser: {r['sellouts']}")
 
 
 def main():
