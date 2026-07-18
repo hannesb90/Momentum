@@ -1543,42 +1543,44 @@ def probe_etf_filter() -> None:
     dropdownen: "Nuclear" 1, "Försvarsindustri" 19, "Ädelmetaller" 10,
     "Teknologi" 95, "Hållbarhet" 209, ...) i stället för vår nuvarande
     handplockade lista (~38 ETF:er totalt över sector_etfs.csv/_CURATED/
-    global_theme_momentum.py)? INGET AV DETTA ÄR VERIFIERAT ÄN – dumpar
-    rått GET-svar, sedan ett par gissade query-param-varianter (kategori-
-    filtrering är ofta en facet-sökning, exakt parameternamn okänt).
-    Kolla Content-Type/nyckelnamnen i utskriften, inte bara statuskoden
-    (samma lärdom som list_probe()s falska 200:or mot SPA-appskalet).
+    global_theme_momentum.py)?
+
+    STEG 1 VERIFIERAT (2026-07-18): GET gav 405 Method Not Allowed (INTE
+    404) – endpointen FINNS, kräver bara en annan HTTP-metod. POST är
+    troligast (samma mönster som search()s POST /_api/search/filtered-
+    search, se _post()). Body-formen är OVERIFIERAD – provar ett par
+    rimliga varianter (tom body, sök-liknande body à la search(), en
+    kategori-filtrerande body). Kolla Content-Type/nyckelnamnen i
+    utskriften, inte bara statuskoden (samma lärdom som list_probe()s
+    falska 200:or mot SPA-appskalet).
 
         python -m altdata.avanza probe_etf_filter
     """
-    print("[probe_etf_filter] === 1. Rått GET /_api/market-etf-filter/ ===")
-    try:
-        data = _get("/_api/market-etf-filter/")
-        if isinstance(data, dict):
-            print(f"  toppnivå-nycklar: {list(data.keys())}")
-        elif isinstance(data, list):
-            print(f"  lista, {len(data)} poster, första: "
-                  f"{json.dumps(data[0], ensure_ascii=False)[:400] if data else '(tom)'}")
-        print(json.dumps(data, ensure_ascii=False, indent=2)[:3000])
-    except Exception as e:  # noqa: BLE001
-        print(f"  FEL: {e}")
-
-    print("\n[probe_etf_filter] === 2. Gissade kategori-filtrerande varianter (OVERIFIERADE) ===")
-    for label, path, params in (
-        ("query-param 'category'", "/_api/market-etf-filter/", {"category": "Nuclear"}),
-        ("query-param 'categoryName'", "/_api/market-etf-filter/", {"categoryName": "Nuclear"}),
-        ("sub-path /Nuclear", "/_api/market-etf-filter/Nuclear", None),
+    print("[probe_etf_filter] === POST /_api/market-etf-filter/ med olika body-gissningar (OVERIFIERADE) ===")
+    for label, payload in (
+        ("tom body {}", {}),
+        ("query+limit (à la search())", {"query": "", "limit": 20}),
+        ("category-lista", {"categories": ["Nuclear"]}),
+        ("category-sträng", {"category": "Nuclear"}),
+        ("filters-wrapper", {"filters": {"category": ["Nuclear"]}}),
+        ("from/size (Elasticsearch-stil)", {"from": 0, "size": 20}),
     ):
         time.sleep(_PAUSE_S)
         try:
-            r = _get(path, params)
-            keys = list(r.keys()) if isinstance(r, dict) else f"lista, {len(r)} poster"
-            print(f"  {label:<30} 200  {keys}")
+            data = _post("/_api/market-etf-filter/", payload)
+            if isinstance(data, dict):
+                info = f"dict, nycklar: {list(data.keys())}"
+            elif isinstance(data, list):
+                info = f"lista, {len(data)} poster"
+            else:
+                info = str(type(data))
+            print(f"  {label:<30} 200  {info}")
+            if isinstance(data, dict) and data.keys():
+                print(f"    {json.dumps(data, ensure_ascii=False, indent=2)[:2000]}")
         except Exception as e:  # noqa: BLE001
             print(f"  {label:<30} FEL: {e}")
-    print("\n[probe_etf_filter] Klistra in HELA utskriften – avgör tillsammans om det här ger "
-          "hela fonduniversumet taggat per kategori, eller bara filterdefinitionerna (namn+antal) "
-          "utan en väg till de faktiska fonderna bakom varje kategori.")
+    print("\n[probe_etf_filter] Klistra in HELA utskriften – leta efter EN variant som gav en "
+          "riktig nyttolast (fondnamn/tickers/kategorier), inte bara ett tomt/felaktigt svar.")
 
 
 # SPÅR ÅTERUPPTAGET (2026-07-17): de 8 gissade kandidaterna nedan gav
