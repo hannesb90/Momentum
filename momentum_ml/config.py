@@ -928,6 +928,7 @@ MACRO_SERIES = {
     "GOLD":   "GC=F",
     "OIL":    "CL=F",
     "COPPER": "HG=F",
+    "SILVER": "SI=F",
 }
 
 # ── Nasdaq Nordic (gratis, auktoritativt börsvärde – kompletterar Yahoo) ──────

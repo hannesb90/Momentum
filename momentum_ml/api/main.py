@@ -410,8 +410,10 @@ def get_portfolio_target():
 async def set_portfolio_target(request: Request):
     """Sparar användarens målfördelning. Body: {broad, sweden, theme} (normaliseras)."""
     import portfolio as pf
+    from starlette.concurrency import run_in_threadpool
     body = await request.json()
-    return _clean({"target": pf.save_target(body)})
+    saved_target = await run_in_threadpool(pf.save_target, body)
+    return _clean({"target": saved_target})
 
 
 @app.get("/api/portfolio-model")
@@ -424,11 +426,10 @@ def get_portfolio_model():
 
 
 @app.post("/api/portfolio-model")
-async def set_portfolio_model(request: Request):
+def set_portfolio_model(body: dict):
     """Sätter vald rank-modell. Body: {model: 'balanced'|'buffett'|'momentum'}.
     Okänt namn ignoreras (behåller nuvarande)."""
     import portfolio as pf
-    body = await request.json()
     return _clean({"model": pf.set_active_model(str(body.get("model", "")))})
 
 
@@ -453,6 +454,7 @@ async def post_scanner_scan(request: Request):
     altdata/manual_scan.py:s docstring). Ogiltig indata (t.ex. tom ticker) ger
     400, inte en opak 500."""
     from altdata import manual_scan as ms
+    from fastapi.concurrency import run_in_threadpool
     body = await request.json()
     ticker = str(body.get("ticker") or "").strip()
     if not ticker:
@@ -460,7 +462,7 @@ async def post_scanner_scan(request: Request):
     overrides = body.get("overrides") or {}
     segment = body.get("segment")
     try:
-        result = ms.scan(ticker, overrides, segment=segment)
+        result = await run_in_threadpool(ms.scan, ticker, overrides, segment=segment)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return _clean(result)

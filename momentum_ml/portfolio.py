@@ -158,9 +158,10 @@ def log_value(total) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     rows = {}
     if p.exists():
-        for r in csv.DictReader(open(p, encoding="utf-8")):
-            if r.get("date"):
-                rows[r["date"]] = r.get("value_sek", "")
+        with open(p, encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                if r.get("date"):
+                    rows[r["date"]] = r.get("value_sek", "")
     rows[date.today().isoformat()] = str(round(float(total)))   # dagens = senaste spar
     with open(p, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -174,11 +175,12 @@ def load_value_log() -> list:
     if not p.exists():
         return []
     out = []
-    for r in csv.DictReader(open(p, encoding="utf-8")):
-        try:
-            out.append({"date": r["date"], "value": float(r["value_sek"])})
-        except (ValueError, KeyError):
-            continue
+    with open(p, encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            try:
+                out.append({"date": r["date"], "value": float(r["value_sek"])})
+            except (ValueError, KeyError):
+                continue
     return out
 
 
@@ -290,18 +292,34 @@ def _latest_closes(include_quotes: bool = True) -> dict:
 
 
 def _read_holding_quotes() -> dict:
-    """{ticker: close_sek} ur holdings_quotes.csv (tom om filen saknas)."""
+    """{ticker: close_sek} ur holdings_quotes.csv (tom om filen saknas).
+    Memoiserad per (fil, mtime) i _CLOSES_CACHE - samma mönster som
+    _latest_close_map(), annan nyckel-namespace (path-nyckeln är redan
+    unik per fil så ingen kollisionsrisk). Anropas flera gånger per
+    körning (_latest_closes, save_holding_quotes, universumkoll) - filen
+    är typiskt liten men onödigt att läsa om den flera gånger per request."""
     qp = _results_dir() / "holdings_quotes.csv"
+    if not qp.exists():
+        return {}
+    try:
+        mt = qp.stat().st_mtime
+    except OSError:
+        return {}
+    key = f"{qp}::close_sek"
+    hit = _CLOSES_CACHE.get(key)
+    if hit is not None and hit[0] == mt:
+        return hit[1]
     out = {}
-    if qp.exists():
-        try:
-            for r in csv.DictReader(open(qp, encoding="utf-8")):
+    try:
+        with open(qp, encoding="utf-8") as f:
+            for r in csv.DictReader(f):
                 tk = (r.get("ticker") or "").upper()
                 v = _num(r.get("close_sek"))
                 if tk and v:
                     out[tk] = v
-        except Exception:  # noqa: BLE001
-            pass
+    except Exception:  # noqa: BLE001
+        out = {}
+    _CLOSES_CACHE[key] = (mt, out)
     return out
 
 
@@ -2600,7 +2618,7 @@ def _dca_backtest(px, targets, start_book, monthly):
 _BACKTEST_CACHE: dict = {}
 
 
-def backtest_result(monthly=5000, months=None):
+def backtest_result(monthly=10000, months=None):
     """Ren beräkning (ingen print/IO förutom prispanelens egen cache) – används
     av både CLI:t (backtest()) och API:t. None om prisdata saknas (kräver nät,
     körs på Pi:n). Cachas per (belopp, fönster, data_mtime) – API:t ska ALDRIG
@@ -2645,7 +2663,7 @@ def backtest_result(monthly=5000, months=None):
     return out
 
 
-def backtest(monthly=5000, months=None):
+def backtest(monthly=10000, months=None):
     out = backtest_result(monthly, months)
     if out is None:
         print("[backtest] för lite prisdata för proxyserierna – cachea ETF:erna först (kör på Pi:n).")
@@ -3095,7 +3113,7 @@ def main():
     elif cmd == "newcapital":
         newcapital(float(sys.argv[2]) if len(sys.argv) > 2 else 10000)
     elif cmd == "backtest":
-        monthly = float(sys.argv[2]) if len(sys.argv) > 2 else 5000
+        monthly = float(sys.argv[2]) if len(sys.argv) > 2 else 10000
         months = int(sys.argv[3]) if len(sys.argv) > 3 else None
         backtest(monthly, months)
     elif cmd == "exitscan":

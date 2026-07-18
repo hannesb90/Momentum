@@ -120,11 +120,16 @@ def indicators(df: pd.DataFrame = None) -> dict:
             out["usd_above_40w"] = bool(d.iloc[-1] > d.tail(40).mean())
             out["usd_13w"] = _chg(d, 13)
     out["gold_13w"] = _chg(df.get("GOLD", pd.Series(dtype=float)), 13)
+    out["silver_13w"] = _chg(df.get("SILVER", pd.Series(dtype=float)), 13)
     out["oil_13w"] = _chg(df.get("OIL", pd.Series(dtype=float)), 13)
     out["copper_gold_13w"] = None
+    out["gold_silver_13w"] = None
     cg, gg = _chg(df.get("COPPER", pd.Series(dtype=float)), 13), out["gold_13w"]
     if cg is not None and gg is not None:
         out["copper_gold_13w"] = round(cg - gg, 3)   # koppar/guld = cyklisk aptit vs rädsla
+    sg = out["silver_13w"]
+    if gg is not None and sg is not None:
+        out["gold_silver_13w"] = round(gg - sg, 3)
     return out
 
 
@@ -147,8 +152,10 @@ def show():
     if ind.get("usd_above_40w") is not None:
         print(f"  USD (DXY) över 40v-snitt: {'JA – flight to dollar' if ind['usd_above_40w'] else 'nej'}"
               + (f"   (13v {ind['usd_13w']:+.1%})" if ind.get('usd_13w') is not None else ""))
-    for k, lbl in (("gold_13w", "Guld 13v"), ("oil_13w", "Olja 13v"),
-                   ("copper_gold_13w", "Koppar–guld 13v (cyklisk aptit)")):
+    for k, lbl in (("gold_13w", "Guld 13v"), ("silver_13w", "Silver 13v"),
+                   ("oil_13w", "Olja 13v"),
+                   ("copper_gold_13w", "Koppar–guld 13v (cyklisk aptit)"),
+                   ("gold_silver_13w", "Guld–silver 13v")):
         if ind.get(k) is not None:
             print(f"  {lbl:<32} {ind[k]:+.1%}")
     out = Path(config.RESULTS_DIR) / "macro_snapshot.json"
