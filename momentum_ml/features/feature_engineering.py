@@ -246,7 +246,7 @@ def add_cross_sectional(all_features: Dict[str, pd.DataFrame]) -> Dict[str, pd.D
         beta = r.rolling(52).cov(mkt) / (mkt_var + 1e-9)
         resid = r - beta * mkt                                # marknads-neutraliserad avkastning
         # 48v residual-momentum (hoppar senaste 4v), skalat på residualens vol
-        num = resid.shift(4).rolling(48).sum()
+        num = (1 + resid).shift(4).rolling(48).apply(np.prod, raw=True) - 1
         den = resid.rolling(52).std() * np.sqrt(52) + 1e-9
         resid_mom[ticker] = num / den
 
