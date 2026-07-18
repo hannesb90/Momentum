@@ -58,7 +58,8 @@ Körs på Pi:n (nät):
     python -m altdata.avanza list_probe2 VOLV-B.ST   # ...annat chart-testbolag (default AAK.ST)
     python -m altdata.avanza universe_remove T1,T2   # dry-run: ta bort tickers ur sweden_universe.csv (lägg till 'write' för att faktiskt skriva)
     python -m altdata.avanza probe_etf "VanEck Semiconductor"  # utländsk UCITS-ETF: söktyp + funkar prisdiagrammet?
-    python -m altdata.avanza probe_etf_filter          # /_api/market-etf-filter/ - hela Avanzas fonduniversum taggat per kategori? (overifierat, probe först)
+    python -m altdata.avanza probe_etf_filter          # dumpa /_api/market-etf-filter/ rått (fund_categories() nedan är den VERIFIERADE, produktionsklara varianten)
+    python -m altdata.avanza fund_categories           # Avanzas HELA fonduniversum (1493 fonder) per bransch-kategori -> cache/avanza_fund_categories.csv
     python -m altdata.avanza probe_news "Avanza"          # dumpa Avanzas /_api/market-guide/news/{id} rått (get_news()/news_for_ticker() i koden är VERIFIERADE och används i insight_report.py/portfolio_commentary.py)
 
 Namnbytes-overrides (bolag ingen strängregel kan hitta, t.ex. Cellink -> BICO
@@ -1535,6 +1536,78 @@ def probe_etf(name_or_ticker: str) -> None:
         print(f"  FEL (kan vara väntat om {iid} inte är en 'stock'-typ id): {e}")
 
 
+def _etf_filter_page(sub_category: Optional[str], offset: int, limit: int) -> dict:
+    """EN sida ur /_api/market-etf-filter/ (VERIFIERAD body-form, se
+    probe_etf_filter()). sub_category=None -> ingen filtrering (alla
+    1493 fonder). sub_category tar filterOptions.subCategories[i]["value"]
+    (gemener, t.ex. "nuclear"/"försvarsindustri"/"teknologi") - INTE
+    displayName."""
+    payload = {
+        "filter": {
+            "assetCategories": [], "subCategories": [sub_category] if sub_category else [],
+            "exposures": [], "riskScores": [], "directions": [], "issuers": [], "currencyCodes": [],
+        },
+        "limit": limit, "offset": offset,
+        "sortBy": {"field": "numberOfOwners", "order": "desc"},
+    }
+    return _post("/_api/market-etf-filter/", payload)
+
+
+def fund_categories() -> None:
+    """Bygger cache/avanza_fund_categories.csv – Avanzas HELA fonduniversum
+    (1493 fonder VERIFIERAT 2026-07-18, se probe_etf_filter()) itererat per
+    subCategory-filter (~40 VERIFIERADE kategorivärden ur filterOptions:
+    teknologi/sjukvård/energi/nuclear/försvarsindustri/hållbarhet/
+    industrimetaller/ädelmetaller/... – inga gissade namn). En fond kan
+    tillhöra FLERA kategorier – varje rad är (fond, kategori), samma
+    orderbookId kan alltså synas på flera rader.
+
+    Detta är den branschlika fondkartan som saknats: ersätter/utökar den
+    handplockade sector_etfs.csv (bara 22 rader, en enda europeisk
+    iShares-serie) med Avanzas FULLSTÄNDIGA utbud per bransch. Täcker DOCK
+    INTE de hyperspecifika globala teman (humanoider/rymd/kvantdatorer) som
+    global_theme_momentum.py:s 10 handplockade nischfonder redan gör –
+    Avanzas egna kategorier är bredare (t.ex. "teknologi" 95 fonder,
+    blandar halvledare/AI/robotik/moln i en enda hink).
+
+        python -m altdata.avanza fund_categories
+    """
+    print("[fund_categories] hämtar kategori-facit...")
+    first = _etf_filter_page(None, 0, 1)
+    cats = [(c["value"], c["displayName"], c["numberOfOrderbooks"])
+            for c in (first.get("filterOptions") or {}).get("subCategories") or []]
+    print(f"[fund_categories] {len(cats)} kategorier, "
+          f"{first.get('totalNumberOfOrderbooks')} fonder totalt i Avanzas ETF-torg")
+
+    rows = []
+    for value, display, n in cats:
+        offset, got = 0, 0
+        while True:
+            time.sleep(_PAUSE_S)
+            data = _etf_filter_page(value, offset, 50)
+            etfs = data.get("etfs") or []
+            for e in etfs:
+                rows.append({"orderbookId": e.get("orderbookId"), "name": e.get("name"),
+                             "countryCode": e.get("countryCode"), "riskScore": e.get("riskScore"),
+                             "numberOfOwners": e.get("numberOfOwners"),
+                             "category_value": value, "category_display": display})
+            got += len(etfs)
+            offset += 50
+            if not etfs or got >= n:
+                break
+        print(f"  {display:<30} {got}/{n} fonder")
+
+    out = Path(config.anchor("cache")) / "avanza_fund_categories.csv"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    import csv as _csv
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = _csv.DictWriter(f, fieldnames=["orderbookId", "name", "countryCode", "riskScore",
+                                           "numberOfOwners", "category_value", "category_display"])
+        w.writeheader()
+        w.writerows(rows)
+    print(f"\n[fund_categories] {len(rows)} (fond, kategori)-rader -> {out}")
+
+
 def probe_etf_filter() -> None:
     """SCHEMA-UPPTÄCKANDE (samma disciplin som probe_news()/probe_etf()):
     ledtråd från Avanzas EGET fondfilter i sök-UI:t pekade på
@@ -1813,6 +1886,8 @@ def main():
         probe_etf(sys.argv[2])
     elif cmd == "probe_etf_filter":
         probe_etf_filter()
+    elif cmd == "fund_categories":
+        fund_categories()
     elif cmd == "probe_news":
         if len(sys.argv) < 3:
             print("Ange bolagsnamn: python -m altdata.avanza probe_news \"Avanza\"")
