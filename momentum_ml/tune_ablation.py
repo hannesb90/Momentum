@@ -32,7 +32,6 @@ innan den adopteras.
 import sys
 import json
 import subprocess
-from pathlib import Path
 
 sys.path.insert(0, '.')
 import pandas as pd
