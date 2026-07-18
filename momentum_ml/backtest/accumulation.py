@@ -50,6 +50,7 @@ def simulate_accumulation(
     prices: Dict[str, "pd.DataFrame"],
     monthly_contribution: float = None,
     cost_oneway: float = None,
+    start: Optional[str] = None,
 ) -> Optional[Dict]:
     """
     Simulerar ENDAST köp, aldrig sälj – en fast `monthly_contribution` per
@@ -77,6 +78,11 @@ def simulate_accumulation(
                   den praktiska "hur mycket pengar hade jag haft"-siffran.
       total_contributed, gain_over_contributed: slutvärde/insatt - 1.
       start, end, years, weeks: det GEMENSAMMA fönster som faktiskt testades.
+
+    start: valfritt - klipp bort allt FÖRE detta datum (t.ex. för att jämföra
+    ett scenario mot ett ANNAT scenarios kortare fönster rakt av, i stället
+    för respektive scenarios egna maximala historik - se
+    backtest_core_allocation.py:s "MATCHAT FÖNSTER"-sektion).
     """
     monthly_contribution = float(monthly_contribution or getattr(config, "NEXT_BUY_DEFAULT_AMOUNT", 10000))
     cost_oneway = float(cost_oneway if cost_oneway is not None else getattr(config, "ETF_ROT_COST_ONEWAY", 0.0015))
@@ -84,6 +90,8 @@ def simulate_accumulation(
     weights = {t: w / wsum for t, w in weights.items()}   # normalisera, ifall vikterna inte redan summerar till 1
 
     closes = _weekly_closes(weights, prices)
+    if start is not None:
+        closes = closes[closes.index >= pd.Timestamp(start)]
     if len(closes) < MIN_WEEKS:
         return None
 

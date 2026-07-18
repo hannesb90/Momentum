@@ -64,6 +64,24 @@ def _fmt_pct(x):
     return f"{x:+.1%}" if x is not None else "  n/a"
 
 
+def _diagnose_tickers(prices):
+    """Per-ticker giltigt datumintervall + antal NaN-luckor DÄRINOM - separat
+    från _weekly_closes()s STRIKTA gemensamma-fönster-krav (kräver att ALLA
+    tickers i ett scenario har pris SAMMA vecka). En kort/gles enskild ticker
+    (t.ex. tunt handlad på Yahoo) syns härifrån direkt, i stället för att bara
+    tysta HOPPAS scenariot som använder den."""
+    print("\n[diagnos] per-ticker giltigt intervall (förklarar ev. HOPPADE scenarier nedan):")
+    for t in sorted(prices):
+        c = prices[t]["Close"].dropna()
+        if c.empty:
+            print(f"    {t:<10} INGEN giltig prisdata")
+            continue
+        span_weeks = int((c.index.max() - c.index.min()).days / 7) + 1
+        gaps = span_weeks - len(c)
+        print(f"    {t:<10} {c.index.min().date()} → {c.index.max().date()} "
+              f"({len(c)} veckor, {gaps} luckor inom intervallet)")
+
+
 def main():
     tickers = sorted({t for w in SCENARIOS.values() for t in w})
     print(f"[backtest_core_allocation] hämtar veckodata för {len(tickers)} ETF:er: {', '.join(tickers)}")
@@ -71,6 +89,8 @@ def main():
     missing = [t for t in tickers if t not in prices]
     if missing:
         print(f"[VARNING] ingen prisdata för: {', '.join(missing)} - scenarier som kräver dem hoppas över.")
+
+    _diagnose_tickers(prices)
 
     print("\n===== KÄRN-ALLOKERING: bara påfyllnad, aldrig sälj (samma disciplin som next_buy()) =====")
     print(f"Månadsinsättning: {config.NEXT_BUY_DEFAULT_AMOUNT:,.0f} (instrumentens egen valuta, EUR) "
@@ -83,7 +103,7 @@ def main():
             continue
         r = simulate_accumulation(weights, prices)
         if r is None:
-            print(f"  {label:<70} HOPPAD (< {156 // 52} år gemensam historik)")
+            print(f"  {label:<70} HOPPAD (< {156 // 52} år gemensam historik - se diagnosen ovan)")
             continue
         rows.append((label, r))
         s = r["nav_stats"]
@@ -101,6 +121,29 @@ def main():
           "Slutvärde/insatt är den praktiska \"hur mycket pengar hade jag haft\"-siffran för EXAKT "
           "samma månadsinsättning i just den korgen. OBS olika scenarier kan ha olika fönster - "
           "kortast gemensam historik i korgen styr, se datumen ovan.)")
+
+    # ── MATCHAT FÖNSTER: den enda RIKTIGT rättvisa jämförelsen ────────────────
+    # Ovanstående kör varje scenario på sin EGNA maximala historik - Endast-ACWI
+    # får då ~2.6 extra år (2011-2014) World+EM aldrig testas mot, vilket gör
+    # "vem vann på slutvärde" missvisande (mer tid att räntan-på-räntan, inte
+    # nödvändigtvis bättre allokering). Klipper här ALLA körbara scenarier till
+    # det KORTASTE gemensamma fönstret bland dem, så CAGR/Sharpe/MaxDD OCH
+    # slutvärde jämförs på EXAKT samma datum, samma marknadsregimer.
+    common_start = max(r["start"] for _, r in rows)
+    print(f"\n===== MATCHAT FÖNSTER (alla scenarier klippta till samma startdatum: {common_start}) =====")
+    for label, weights in SCENARIOS.items():
+        if any(t not in prices for t in weights):
+            continue
+        r = simulate_accumulation(weights, prices, start=common_start)
+        if r is None:
+            print(f"  {label:<70} HOPPAD (för kort efter klippning)")
+            continue
+        s = r["nav_stats"]
+        print(f"  {label}")
+        print(f"    fönster {r['start']} → {r['end']} ({r['years']} år) · "
+              f"NAV-CAGR {s['CAGR']} · Sharpe {s['Sharpe']} · MaxDD {s['Max Drawdown']} · "
+              f"slutvärde {r['end_value']:,.0f} av {r['total_contributed']:,.0f} insatt "
+              f"({_fmt_pct(r['gain_over_contributed'])})".replace(",", " "))
 
 
 if __name__ == "__main__":
