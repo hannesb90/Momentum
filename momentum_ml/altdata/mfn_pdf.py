@@ -294,7 +294,7 @@ def fetch_extract_isolated(url: str):
     OOM-kill hinner inte ens lägga ett felmeddelande)."""
     import multiprocessing as mp
     import queue as _queue
-    ctx = mp.get_context("fork")
+    ctx = mp.get_context("spawn")
     q = ctx.Queue()
     p = ctx.Process(target=_fetch_extract_worker, args=(url, q))
     p.start()
