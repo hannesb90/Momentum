@@ -591,9 +591,15 @@ def score(segment: Optional[str] = None) -> None:
         return
 
     market_cap, results_dir = _seg_market_cap_and_dir(seg_name)
-    _, sector_map, _, name_map = load_sweden_universe(min_market_cap=market_cap)
+    universe_tickers, sector_map, _, name_map = load_sweden_universe(min_market_cap=market_cap)
 
-    tickers = list(fund.keys())
+    # fund.keys() är fundamentals-CACHEN (results/fundamentals_from_*.csv), som
+    # INTE rensas när en ticker tas bort ur sweden_universe.csv (t.ex. norska/
+    # NOK-dubbelnoteringar som OETO.ST/SUBCO.ST, se avanza_marketplace_check.csv).
+    # Utan detta filter dyker borttagna bolag upp i "bästa köp" på nytt varje
+    # natt trots att de saknas i det aktuella universumet.
+    universe_set = set(universe_tickers)
+    tickers = [t for t in fund.keys() if t in universe_set]
     prices = fetch_weekly_data(tickers, use_cache=True)
 
     # Valuta per ticker (se modulkommentaren ovan _ticker_currency) – cachad
