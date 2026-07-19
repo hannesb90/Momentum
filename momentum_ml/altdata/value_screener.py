@@ -593,7 +593,18 @@ def score(segment: Optional[str] = None) -> None:
     market_cap, results_dir = _seg_market_cap_and_dir(seg_name)
     _, sector_map, _, name_map = load_sweden_universe(min_market_cap=market_cap)
 
-    tickers = list(fund.keys())
+    # BUGG (fixad, verkligt fall OETO.ST/SUBCO.ST): tickers kom tidigare
+    # OFILTRERAT ur fund.keys() (MFN-fundamenta-cachen, byggs upp över tid
+    # och rensas ALDRIG) - load_sweden_universe() lästes bara för sector_map/
+    # name_map, aldrig för att styra VILKA bolag som faktiskt poängsätts. En
+    # ticker borttagen ur sweden_universe.csv (t.ex. de 152 norska ASA-bolag
+    # som b4b33ca rensade, felaktigt Sverige-klassade) fortsatte därför dyka
+    # upp i value_shortlist.csv – och därmed i "Nästa köp" - varje natt,
+    # oavsett hur många gånger screenern kördes om, eftersom deras gamla
+    # fundamenta-cache aldrig försvinner. sector_map:s nycklar ÄR den
+    # aktuella universum-listan (samma källa alla andra konsumenter av
+    # load_sweden_universe litar på) - skär mot den här också.
+    tickers = [t for t in fund.keys() if t in sector_map]
     prices = fetch_weekly_data(tickers, use_cache=True)
 
     # Valuta per ticker (se modulkommentaren ovan _ticker_currency) – cachad
