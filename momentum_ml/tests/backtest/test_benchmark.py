@@ -1,6 +1,6 @@
 import pytest
 import math
-from momentum_ml.backtest.benchmark import pct_to_float
+from backtest.benchmark import pct_to_float
 
 def test_pct_to_float_happy_path():
     assert math.isclose(pct_to_float("10.5%"), 0.105)
