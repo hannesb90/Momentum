@@ -1,0 +1,104 @@
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index 185f64c..b592c88 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -13,6 +13,7 @@ import { HoldingsPage } from './pages/Holdings'
+ import { StockDetailPage } from './pages/StockDetail'
+ import { ScannerPage } from './pages/Scanner'
+ import { setApiSegment } from './api'
++import { InfoButton } from './components/InfoButton'
+
+ const SEGMENTS = [
+   { id: 'large', label: 'Storbolag' },
+@@ -54,6 +55,7 @@ export default function App() {
+               {s.label}
+             </button>
+           ))}
++          <InfoButton title="Välkommen">Detta är Momentum ML-dashboard. Välj mellan Storbolag och Småbolag för att filtrera marknaden.</InfoButton>
+         </div>
+       )}
+       {/* key={segment} -> alla sidor monteras om och hämtar för rätt segment */}
+diff --git a/frontend/src/index.css b/frontend/src/index.css
+index c112802..f767699 100644
+--- a/frontend/src/index.css
++++ b/frontend/src/index.css
+@@ -3,15 +3,15 @@
+    accent = varumärkesgrön (interaktion/primär), good/bad = marknadsfärger,
+    soft-varianter = tonplattor för chips/aktiva ytor på ljus botten. */
+ :root {
+-  --bg: #f4f7f5;             /* sida: ljusgrå med grön ton */
++  --bg: #f0f9f4;             /* sida: ljusgrå med grön ton */
+   --bg-elevated: #ecf1ee;    /* nedsänkta fält (input, code) */
+   --bg-card: #ffffff;        /* kort/ytor */
+   --surface: #ffffff;
+   --border: #e1e8e3;
+   --text: #182420;           /* grönsvart, AAA mot vitt */
+   --text-muted: #64766d;
+-  --accent: #0e9f6e;         /* primärgrön (emerald) */
+-  --accent-2: #047857;       /* djupgrön – hover/gradienter */
++  --accent: #10b981;         /* primärgrön (emerald) */
++  --accent-2: #059669;       /* djupgrön – hover/gradienter */
+   --accent-soft: #e5f5ee;    /* grön tonplatta */
+   --good: #15803d;           /* marknads-plus (mörkare grön för läsbarhet) */
+   --good-soft: #dcf3e4;
+@@ -40,6 +40,8 @@
+ body {
+   margin: 0;
+   background: var(--bg);
++  font-size: 16px;
++  line-height: 1.6;
+ }
+
+ h1 {
+@@ -246,14 +248,15 @@ code {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+-  width: 15px;
+-  height: 15px;
++  width: 24px;
++  height: 24px;
+   margin-left: 5px;
+   border-radius: 50%;
+-  border: 1px solid var(--text-muted);
+-  background: transparent;
+-  color: var(--text-muted);
+-  font-size: 0.62rem;
++  border: 1px solid var(--accent);
++  background: var(--accent-soft);
++  color: var(--accent);
++  font-size: 16px;
++  font-weight: bold;
+   line-height: 1;
+   padding: 0;
+   cursor: pointer;
+@@ -2041,6 +2044,13 @@ input:focus, select:focus { border-color: var(--accent); outline: none; }
+ @media (max-width: 720px) {
+   .navbar { box-shadow: 0 -2px 12px rgba(24, 36, 32, 0.06); }
+   .navbar__link--active { color: var(--accent-2); background: var(--accent-soft); }
++  .navbar__link, .btn, .segment-toggle__btn {
++    min-height: 44px;
++    min-width: 44px;
++    display: flex;
++    align-items: center;
++    justify-content: center;
++  }
+ }
+ .navbar__link:hover { color: var(--text); background: rgba(24, 36, 32, 0.04); }
+
+diff --git a/frontend/src/pages/Holdings.jsx b/frontend/src/pages/Holdings.jsx
+index fc1e1c8..f049c24 100644
+--- a/frontend/src/pages/Holdings.jsx
++++ b/frontend/src/pages/Holdings.jsx
+@@ -258,10 +258,7 @@ export function HoldingsPage() {
+           <h3 className="section-title" style={{ marginBottom: 8 }}>
+             Exit-alarm
+             <InfoButton title="När något bör bort">
+-              <b>Rött (end this now)</b> = sektorn är svag <b>och</b> kursen är tekniskt brutet
+-              (under 40-veckors glidande medel med fallande momentum). <b>Gult</b> = en av de två.
+-              Ett larm, inte en order – bekräfta själv. Kräver att skanningen körts
+-              (<code>portfolio.py exitscan</code> på Pi:n).
++              Detta är ett hjälpverktyg som varnar dig när ett bolag börjar gå dåligt. <b>Rött (end this now)</b> = sektorn är svag <b>och</b> kursen är tekniskt brutet. <b>Gult</b> = en av de två.
+             </InfoButton>
+           </h3>
+           {alarms.map((e) => (

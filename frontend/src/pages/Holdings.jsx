@@ -258,10 +258,7 @@ export function HoldingsPage() {
           <h3 className="section-title" style={{ marginBottom: 8 }}>
             Exit-alarm
             <InfoButton title="När något bör bort">
-              <b>Rött (end this now)</b> = sektorn är svag <b>och</b> kursen är tekniskt brutet
-              (under 40-veckors glidande medel med fallande momentum). <b>Gult</b> = en av de två.
-              Ett larm, inte en order – bekräfta själv. Kräver att skanningen körts
-              (<code>portfolio.py exitscan</code> på Pi:n).
+              Detta är ett hjälpverktyg som varnar dig när ett bolag börjar gå dåligt. <b>Rött (end this now)</b> = sektorn är svag <b>och</b> kursen är tekniskt brutet. <b>Gult</b> = en av de två.
             </InfoButton>
           </h3>
           {alarms.map((e) => (

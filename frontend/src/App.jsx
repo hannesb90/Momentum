@@ -13,6 +13,7 @@ import { HoldingsPage } from './pages/Holdings'
 import { StockDetailPage } from './pages/StockDetail'
 import { ScannerPage } from './pages/Scanner'
 import { setApiSegment } from './api'
+import { InfoButton } from './components/InfoButton'
 
 const SEGMENTS = [
   { id: 'large', label: 'Storbolag' },
@@ -54,6 +55,7 @@ export default function App() {
               {s.label}
             </button>
           ))}
+          <InfoButton title="Välkommen">Detta är Momentum ML-dashboard. Välj mellan Storbolag och Småbolag för att filtrera marknaden.</InfoButton>
         </div>
       )}
       {/* key={segment} -> alla sidor monteras om och hämtar för rätt segment */}
