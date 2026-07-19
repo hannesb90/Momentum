@@ -15,8 +15,7 @@ Kör sen (från /opt/momentum/src/momentum_ml):
 
     /opt/momentum/venv/bin/python tune_pead.py
 """
-import sys, json
-from pathlib import Path
+import sys
 sys.path.insert(0, '.')
 import numpy as np
 import pandas as pd
@@ -25,27 +24,9 @@ import config
 from data.data_loader import (
     fetch_weekly_data, filter_liquid_universe, filter_active_universe, load_sweden_universe,
 )
-from altdata.pead import extract_report_dates, compute_pead_panel
+from altdata.pead import load_report_dates, compute_pead_panel
 
 DRIFT_WEEKS = 8
-
-
-def _load_mfn_items():
-    """Läs alla cache/mfn/<ticker>.json → {ticker: [items]}."""
-    cache_dir = Path(config.MFN_CACHE_DIR)
-    if not cache_dir.exists():
-        return {}
-    items = {}
-    for f in cache_dir.glob("*.json"):
-        if f.name.startswith("_"):
-            continue
-        try:
-            data = json.loads(f.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        if isinstance(data, list) and data:
-            items[f.stem] = data
-    return items
 
 
 def main():
@@ -59,20 +40,12 @@ def main():
     fw = config.FORWARD_WEEKS
     fwd_ret = px.shift(-fw) / px - 1
 
-    # ── Rapportdatum från MFN-cachen ─────────────────────────────────────────
-    mfn = _load_mfn_items()
-    if not mfn:
+    # ── Rapportdatum från MFN-cachen (strömmande, en fil i taget) ────────────
+    report_dates = load_report_dates(config.MFN_CACHE_DIR)
+    if not report_dates:
         print(f"Ingen MFN-cache i {config.MFN_CACHE_DIR}. Kör fetch_universe först "
               "(se docstring överst).")
         return
-    all_items = [it for items in mfn.values() for it in items]
-    report_dates = extract_report_dates(all_items)
-    # Faller author.tickers inte tillbaka på filnamnet? Komplettera med filnyckeln.
-    for t, items in mfn.items():
-        rd = extract_report_dates(items)
-        for _, dates in rd.items():
-            report_dates.setdefault(t, [])
-            report_dates[t] = sorted(set(report_dates[t]) | set(dates))
     covered = [t for t in px.columns if report_dates.get(t)]
     n_reports = sum(len(report_dates[t]) for t in covered)
     print(f"\nMFN: {len(covered)}/{len(px.columns)} bolag med rapportdatum, "
