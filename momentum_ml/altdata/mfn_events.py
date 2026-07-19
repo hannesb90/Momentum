@@ -79,6 +79,41 @@ def classify_insider(item: dict) -> Optional[str]:
     return None
 
 
+def load_insider_events(cache_dir) -> "list[dict]":
+    """cache/mfn/<ticker>.json → [{ticker, published, side}] för ALLA PDMR-
+    transaktioner i hela cachen (inte bara scan()s rullande 90-dagarsfönster
+    från idag - det här ger fulla historiken, en rad per köp/sälj-PM, som
+    behövs för att backtesta signalen över tid).
+
+    Strömmande (en fil i taget, kastar den råa MFN-posten direkt efter
+    klassificering) av samma skäl som altdata/pead.load_report_dates: att
+    hålla alla ~1 GB rå JSON i minnet samtidigt är vad som fällde
+    momentum-Pi:n 2026-07-19."""
+    cache_dir = Path(cache_dir)
+    rows = []
+    if not cache_dir.exists():
+        return rows
+    for f in cache_dir.glob("*.json"):
+        if f.name.startswith("_"):
+            continue
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        items = data.get("items") if isinstance(data, dict) else data
+        if not isinstance(items, list):
+            continue
+        for it in items:
+            side = classify_insider(it)
+            if side is None:
+                continue
+            d = _parse_date(it.get("published"))
+            if d is None:
+                continue
+            rows.append({"ticker": f.stem, "published": d, "side": side})
+    return rows
+
+
 def scan(segment: Optional[str] = None, window_days: int = 90) -> None:
     from data.data_loader import load_sweden_universe
 
