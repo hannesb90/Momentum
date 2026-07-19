@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ResponsiveContainer, AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts'
+import {
+  ResponsiveContainer, AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ReferenceLine, ReferenceArea, ScatterChart, Scatter, ZAxis,
+} from 'recharts'
 import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { usePortfolio } from '../usePortfolio'
@@ -38,6 +41,39 @@ function percentileRank(rows, ticker, field, higherIsBetter) {
   if (vals.length < 5) return null
   const better = higherIsBetter ? vals.filter((v) => v < ownV).length : vals.filter((v) => v > ownV).length
   return { pct: better / vals.length, value: ownV }
+}
+
+// Bygger OT Analytics-stilens bubbeldiagram (börsvärde vs EBITDA, storlek =
+// omsättning) genom att joina quality_shortlist (revenue_msek/ebitda_msek,
+// LLM-screenern) med quant_shortlist (mcap_msek, TradingView) per ticker.
+// Samma svenska microcap-universum i båda listorna – ingen ny backend, bara
+// en client-side join av två redan hämtade endpoints.
+function bubbleUniverse(qualityRows, quantRows) {
+  const quantByTicker = new Map((quantRows ?? []).map((r) => [String(r.ticker || '').toUpperCase(), r]))
+  const out = []
+  for (const q of qualityRows ?? []) {
+    const tk = String(q.ticker || '').toUpperCase()
+    const quantRow = quantByTicker.get(tk)
+    const ebit = Number(q.ebitda_msek)
+    const revenue = Number(q.revenue_msek)
+    const mcap = Number(quantRow?.mcap_msek)
+    if (!Number.isFinite(ebit) || !Number.isFinite(revenue) || !Number.isFinite(mcap) || revenue <= 0) continue
+    out.push({ ticker: q.ticker, name: q.name, ebit, revenue, mcap })
+  }
+  return out
+}
+
+function BubbleTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0].payload
+  return (
+    <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', fontSize: 12 }}>
+      <div style={{ fontWeight: 600 }}>{cleanName(d.name, d.ticker)}</div>
+      <div>Börsvärde: {fmtNum(d.mcap, 0)} Mkr</div>
+      <div>EBITDA: {fmtNum(d.ebit, 0)} Mkr</div>
+      <div>Omsättning: {fmtNum(d.revenue, 0)} Mkr</div>
+    </div>
+  )
 }
 
 // "Djupanalys": på-begäran bull/bear + konkurrentkontext för ETT befintligt
@@ -192,6 +228,7 @@ export function StockDetailPage() {
   const insight = useApiData(() => api.insight(), [])
   const caseChanges = useApiData(() => api.caseChanges(), [])
   const quant = useApiData(() => api.quant(), [])
+  const quality = useApiData(() => api.quality(), [])
   const { addHolding } = usePortfolio()
   const { addToWatchlist } = useWatchlist()
 
@@ -209,6 +246,46 @@ export function StockDetailPage() {
       .map((m) => ({ ...m, rank: percentileRank(rows, ticker, m.key, m.higherIsBetter) }))
       .filter((m) => m.rank != null)
   }, [quant.data, ticker])
+
+  // OT Analytics-stilens bubbeldiagram: börsvärde vs EBITDA, bubblans
+  // storlek = omsättning. Universum = svenska microcap-bolag med data i
+  // BÅDA kortlistorna (quality_shortlist ∩ quant_shortlist).
+  const bubbleAll = useMemo(() => bubbleUniverse(quality.data, quant.data), [quality.data, quant.data])
+  const bubbleMine = useMemo(
+    () => bubbleAll.filter((b) => b.ticker.toUpperCase() === ticker.toUpperCase()),
+    [bubbleAll, ticker],
+  )
+  const bubbleOthers = useMemo(
+    () => bubbleAll.filter((b) => b.ticker.toUpperCase() !== ticker.toUpperCase()),
+    [bubbleAll, ticker],
+  )
+  // Rundade till heltal – dels för prydliga axeletiketter, dels för att
+  // ReferenceLine (ifOverflow="discard" som default) annars kan tappa en
+  // hel linje om flyttalsbrus knuffar en klippt slutpunkt EN nanometer
+  // utanför domänen (verkligt fall: 25x-linjen försvann helt spårlöst
+  // p.g.a. 1782.0000000000002 vs 1782.0000000000005).
+  const bubbleXMax = useMemo(
+    () => Math.round(Math.max(10, ...bubbleAll.map((b) => b.ebit)) * 1.1),
+    [bubbleAll],
+  )
+  const bubbleXMin = useMemo(
+    () => Math.round(Math.min(0, ...bubbleAll.map((b) => b.ebit)) * 1.1),
+    [bubbleAll],
+  )
+  const bubbleYMax = useMemo(
+    () => Math.round(Math.max(100, ...bubbleAll.map((b) => b.mcap)) * 1.1),
+    [bubbleAll],
+  )
+  // Klipper varje multipel-linje mot BÅDA axlarna (min av var den lämnar
+  // plotten på x- resp. y-led) så linjen + dess "Nx"-etikett alltid hamnar
+  // innanför synligt fält, oavsett hur brant multipeln är.
+  const bubbleMultiples = useMemo(
+    () => [10, 25].map((mult) => {
+      const x = Math.min(bubbleXMax, bubbleYMax / mult)
+      return { mult, x, y: mult * x }
+    }),
+    [bubbleXMax, bubbleYMax],
+  )
 
   const horizon = stats.data?.horizon_weeks ?? 4
 
@@ -414,6 +491,62 @@ export function StockDetailPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* OT Analytics-stilens bubbeldiagram: börsvärde vs EBITDA, bubbelstorlek
+          = omsättning, mot resten av samma svenska microcap-universum.
+          Ögonblicksbild (inte en tidsserie som originalet – EBITDA/omsättning
+          loggas inte historiskt ännu). Bara synligt om bolaget finns i BÅDA
+          kortlistorna (quality ∩ quant). */}
+      {bubbleMine.length > 0 && (
+        <div className="chart-card">
+          <h3>
+            Värdering i sammanhang (bubbeldiagram)
+            <InfoButton title="Börsvärde vs EBITDA, bubbelstorlek = omsättning">
+              <p>
+                Samma typ av diagram som OT Analytics (otanalytics.se) är kända för: börsvärde mot
+                EBITDA, där bubblans storlek visar omsättningen. Ljusgrå bubblor är andra svenska
+                microcap-bolag i samma kortlistor, {displayName} är markerad i grönt.
+              </p>
+              <p>
+                De streckade linjerna är referens-multiplar (börsvärde/EBITDA) – ingen
+                värderingsdom, bara ett mått på var bolaget ligger i förhållande till andra.
+              </p>
+              <p>
+                Ögonblicksbild, inte en tidsserie över år som i originalet – EBITDA/omsättning
+                loggas inte historiskt ännu.
+              </p>
+            </InfoButton>
+          </h3>
+          <ResponsiveContainer width="100%" height={340}>
+            <ScatterChart margin={{ top: 8, right: 24, left: 0, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
+              {bubbleXMin < 0 && (
+                <ReferenceArea
+                  x1={bubbleXMin} x2={0} fill="var(--bad)" fillOpacity={0.06}
+                  label={{ value: 'Förlust', position: 'insideTopLeft', fill: 'var(--bad)', fontSize: 11 }}
+                />
+              )}
+              {bubbleMultiples.map(({ mult, x, y }) => (
+                <ReferenceLine
+                  key={mult}
+                  segment={[{ x: 0, y: 0 }, { x, y }]}
+                  ifOverflow="visible"
+                  stroke="#c9d4cd" strokeDasharray="4 4"
+                  label={{ value: `${mult}x`, position: 'insideTopRight', fill: '#8aa094', fontSize: 11 }}
+                />
+              ))}
+              <XAxis type="number" dataKey="ebit" name="EBITDA" unit=" Mkr"
+                domain={[bubbleXMin, bubbleXMax]} stroke="#8aa094" tick={{ fontSize: 12 }} />
+              <YAxis type="number" dataKey="mcap" name="Börsvärde" unit=" Mkr"
+                domain={[0, bubbleYMax]} stroke="#8aa094" tick={{ fontSize: 12 }} />
+              <ZAxis type="number" dataKey="revenue" range={[30, 900]} name="Omsättning" unit=" Mkr" />
+              <Tooltip content={<BubbleTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+              <Scatter name="Övriga bolag" data={bubbleOthers} fill="var(--text-muted)" fillOpacity={0.35} />
+              <Scatter name={displayName} data={bubbleMine} fill="var(--accent)" stroke="var(--accent-2)" strokeWidth={2} />
+            </ScatterChart>
+          </ResponsiveContainer>
         </div>
       )}
 
