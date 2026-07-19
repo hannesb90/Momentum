@@ -120,4 +120,10 @@ export const api = {
   // skanning ska kosta ett LLM-anrop, bara när du uttryckligen vill ha det).
   scannerAnalyze: (ticker, overrides, segment, amount) =>
     postJson('/scanner/analyze', { ticker, overrides, segment: segment ?? currentSegment, amount }),
+  // Aktiedetaljsidans Djupanalys: på-begäran bull/bear + konkurrentkontext
+  // för ETT befintligt innehav (headless Claude, WebSearch, ~2 min).
+  stockAnalyze: (ticker) => postJson('/stock/analyze', { ticker }),
+  // "Fråga om bolaget"-boxen: fri följdfråga scopad till ett bolag, samma
+  // mönster som commentaryAsk men per ticker.
+  stockAsk: (ticker, question) => postJson('/stock/ask', { ticker, question }),
 }

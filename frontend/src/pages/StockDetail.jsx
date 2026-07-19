@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ResponsiveContainer, AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts'
 import { api } from '../api'
@@ -13,13 +13,202 @@ import { EmptyState } from '../components/EmptyState'
 import { TvLink } from '../components/TvLink'
 import { fmtPct, fmtNum, fmtDate, fmtSek, cleanName } from '../format'
 
+// Kvant-nyckeltal från /api/quant som visas som tvärsnittspercentil ("hur
+// står bolaget mot HELA universumet just nu"). Fälten kommer redan i
+// procentform från TradingView-scannern (15.2 = 15.2%), ingen ytterligare
+// skalning. higherIsBetter styr om ett HÖGT eller LÅGT värde räknas som
+// starkt (P/S och EV/EBITDA: lägre = billigare = starkare).
+const QUANT_METRICS = [
+  { key: 'quant_score', label: 'Kvantbetyg totalt', higherIsBetter: true, fmt: (v) => `${fmtNum(v, 0)}%` },
+  { key: 'roe', label: 'ROE', higherIsBetter: true, fmt: (v) => `${fmtNum(v, 1)}%` },
+  { key: 'rev_growth', label: 'Omsättningstillväxt', higherIsBetter: true, fmt: (v) => `${fmtNum(v, 1)}%` },
+  { key: 'ebitda_margin', label: 'EBITDA-marginal', higherIsBetter: true, fmt: (v) => `${fmtNum(v, 1)}%` },
+  { key: 'ps', label: 'P/S (lägre = billigare)', higherIsBetter: false, fmt: (v) => fmtNum(v, 1) },
+  { key: 'ev_ebitda', label: 'EV/EBITDA (lägre = billigare)', higherIsBetter: false, fmt: (v) => fmtNum(v, 1) },
+]
+
+// Percentilrank av EN tickers värde mot ALLA rader i samma kortlista (0-1).
+// null om fältet saknas för bolaget eller för lite data i universumet.
+function percentileRank(rows, ticker, field, higherIsBetter) {
+  if (!rows || rows.length < 5) return null
+  const own = rows.find((r) => String(r.ticker || '').toUpperCase() === ticker.toUpperCase())
+  const ownV = Number(own?.[field])
+  if (!Number.isFinite(ownV)) return null
+  const vals = rows.map((r) => Number(r[field])).filter((v) => Number.isFinite(v))
+  if (vals.length < 5) return null
+  const better = higherIsBetter ? vals.filter((v) => v < ownV).length : vals.filter((v) => v > ownV).length
+  return { pct: better / vals.length, value: ownV }
+}
+
+// "Djupanalys": på-begäran bull/bear + konkurrentkontext för ETT befintligt
+// innehav (headless Claude, WebSearch) – samma på-begäran-mönster som
+// Skannerns AI-analysruta och Förvaltarbrevets följdfrågebox. Aldrig
+// automatisk (kostar ett LLM-anrop, ~2 min), bara vid klick.
+function DeepDiveBox({ ticker }) {
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function run() {
+    setLoading(true)
+    setError(null)
+    try {
+      const r = await api.stockAnalyze(ticker)
+      setResult(r)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="list-card" style={{ padding: 12 }}>
+      <h3 className="section-title" style={{ marginTop: 0 }}>
+        Djupanalys
+        <InfoButton title="Bull/bear i klartext">
+          <p>
+            Ärligt motställda argument för och emot att fortsätta äga bolaget just nu, plus kort
+            konkurrentkontext – grundat i modellens redan beräknade betyg, caseförändring och
+            färska nyheter (WebSearch fyller på med bredare kontext).
+          </p>
+          <p>
+            <b>Ren narrativ, aldrig ett råd.</b> Ingen ny köp/sälj-signal – bara två sidor av
+            samma mynt i klartext. Kan ta upp till ~2 minuter.
+          </p>
+        </InfoButton>
+      </h3>
+
+      {!result && !loading && (
+        <button className="btn" onClick={run}>Analysera bolaget</button>
+      )}
+      {loading && <div className="list-card__empty">Analyserar… (kan ta upp till ~2 min)</div>}
+      {error && (
+        <div className="status-block status-block--error" style={{ marginTop: 8 }}>
+          Kunde inte analysera: {error}
+        </div>
+      )}
+      {result?.error && (
+        <div className="status-block status-block--error" style={{ marginTop: 8 }}>
+          Kunde inte analysera: {result.error}
+        </div>
+      )}
+      {result?.bull_case && (
+        <div style={{ display: 'grid', gap: 12, marginTop: loading ? 0 : 4 }}>
+          <div>
+            <p style={{ margin: '0 0 4px', fontWeight: 600, color: 'var(--good)' }}>Talar för</p>
+            <p style={{ margin: 0, lineHeight: 1.6 }}>{result.bull_case}</p>
+          </div>
+          <div>
+            <p style={{ margin: '0 0 4px', fontWeight: 600, color: 'var(--bad)' }}>Talar emot</p>
+            <p style={{ margin: 0, lineHeight: 1.6 }}>{result.bear_case}</p>
+          </div>
+          {result.competitors && (
+            <div>
+              <p style={{ margin: '0 0 4px', fontWeight: 600 }}>Konkurrentkontext</p>
+              <p style={{ margin: 0, lineHeight: 1.6 }}>{result.competitors}</p>
+            </div>
+          )}
+          <button className="btn" style={{ justifySelf: 'start' }} onClick={run} disabled={loading}>
+            Analysera igen
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// "Fråga om bolaget": fri följdfråga scopad till ETT bolag – samma mönster
+// som Bedömning-flikens CommentaryAskBox, bara med bolagets eget underlag
+// (modellbetyg, caseförändring, nyheter) i stället för hela portföljen.
+function AskAboutStockBox({ ticker }) {
+  const [question, setQuestion] = useState('')
+  const [thread, setThread] = useState([])
+  const [asking, setAsking] = useState(false)
+
+  async function submit(e) {
+    e.preventDefault()
+    const q = question.trim()
+    if (!q || asking) return
+    setAsking(true)
+    setQuestion('')
+    try {
+      const r = await api.stockAsk(ticker, q)
+      if (r.error && !r.answer) {
+        setThread((t) => [...t, { question: q, error: r.error }])
+      } else {
+        setThread((t) => [...t, { question: q, answer: r.answer }])
+      }
+    } catch (err) {
+      setThread((t) => [...t, { question: q, error: err.message }])
+    } finally {
+      setAsking(false)
+    }
+  }
+
+  return (
+    <div className="list-card" style={{ marginTop: 12, padding: 12 }}>
+      <h3 className="section-title" style={{ marginTop: 0 }}>Fråga om bolaget</h3>
+      {thread.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          {thread.map((t, i) => (
+            <div key={i} style={{ marginBottom: 12 }}>
+              <p style={{ margin: 0, fontWeight: 600 }}>{t.question}</p>
+              {t.answer && <p style={{ margin: '4px 0 0' }}>{t.answer}</p>}
+              {t.error && (
+                <div className="status-block status-block--error" style={{ marginTop: 6 }}>
+                  Kunde inte svara: {t.error}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <form onSubmit={submit} style={{ display: 'flex', gap: 8 }}>
+        <input
+          className="pf-in"
+          style={{ flex: 1 }}
+          type="text"
+          placeholder="T.ex. vad var bakgrunden till senaste kvartalet?"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          disabled={asking}
+        />
+        <button type="submit" className="btn" disabled={asking || !question.trim()}>
+          {asking ? 'Svarar…' : 'Fråga'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
 export function StockDetailPage() {
   const { ticker } = useParams()
   const history = useApiData(() => api.signalHistory(ticker), [ticker])
   const prices = useApiData(() => api.prices(ticker), [ticker])
   const stats = useApiData(() => api.stats(), [])
+  // Redan hämtad data (nattliga jobb) – filtreras client-side för just denna
+  // ticker, ingen ny backend krävs för dessa tre sektioner.
+  const insight = useApiData(() => api.insight(), [])
+  const caseChanges = useApiData(() => api.caseChanges(), [])
+  const quant = useApiData(() => api.quant(), [])
   const { addHolding } = usePortfolio()
   const { addToWatchlist } = useWatchlist()
+
+  const insightRow = useMemo(
+    () => (insight.data?.companies ?? []).find((c) => c.ticker?.toUpperCase() === ticker.toUpperCase()),
+    [insight.data, ticker],
+  )
+  const caseRow = useMemo(
+    () => (caseChanges.data ?? []).find((c) => c.ticker?.toUpperCase() === ticker.toUpperCase()),
+    [caseChanges.data, ticker],
+  )
+  const quantMetrics = useMemo(() => {
+    const rows = quant.data ?? []
+    return QUANT_METRICS
+      .map((m) => ({ ...m, rank: percentileRank(rows, ticker, m.key, m.higherIsBetter) }))
+      .filter((m) => m.rank != null)
+  }, [quant.data, ticker])
 
   const horizon = stats.data?.horizon_weeks ?? 4
 
@@ -94,6 +283,21 @@ export function StockDetailPage() {
           + Bevaka
         </button>
       </div>
+
+      {/* Narrativ sammanfattning (nattlig insight_report.py) + caseförändring
+          – redan hämtad data, samma "ren narrativ" text som Bedömning-fliken
+          men filtrerad till just detta bolag. */}
+      {(insightRow || caseRow) && (
+        <div className="list-card" style={{ padding: '14px 16px' }}>
+          {insightRow && <p style={{ margin: 0, lineHeight: 1.6 }}>{insightRow.summary}</p>}
+          {caseRow && (
+            <p className={`footnote ${caseRow.status === 'förbättrat' ? 'pos' : caseRow.status === 'försämrat' ? 'neg' : ''}`}
+               style={{ marginTop: insightRow ? 8 : 0 }}>
+              Caset senaste 90 dagarna: <b>{caseRow.status}</b> – {caseRow.reasons}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Nyckeltal från senaste signalen */}
       <div className="stat-grid">
@@ -178,6 +382,41 @@ export function StockDetailPage() {
         )}
       </div>
 
+      {/* Fundamenta i kontext: tvärsnittspercentil mot HELA quant-universumet
+          just nu (inte bolagets egen historik – den loggas inte historiskt
+          ännu). Bara synligt om bolaget finns i quant_shortlist.csv
+          (microcap-screenern, inte ETF:er/globala index). */}
+      {quantMetrics.length > 0 && (
+        <div className="list-card">
+          <div style={{ padding: '14px 16px 0' }}>
+            <h3 className="section-title" style={{ marginTop: 0 }}>
+              Fundamenta i kontext
+              <InfoButton title="Percentil mot universumet">
+                <p>
+                  Hur bolagets nyckeltal (hård data, token-fri kvantscreener) rankar mot ALLA
+                  bolag i samma kortlista just nu. 90% = starkare/billigare än 90% av bolagen.
+                </p>
+                <p>
+                  Tvärsnitt idag, inte bolagets egen 5-årshistorik (den loggas inte ännu) – ett
+                  jämförelsemått, inte en trend.
+                </p>
+              </InfoButton>
+            </h3>
+          </div>
+          {quantMetrics.map((m) => (
+            <div key={m.key} className="pctl-row">
+              <div className="pctl-row__head">
+                <span className="pctl-row__label">{m.label}</span>
+                <span className="pctl-row__value">{m.fmt(m.rank.value)} · {Math.round(m.rank.pct * 100)}:e percentilen</span>
+              </div>
+              <div className="pctl-row__track">
+                <div className="pctl-row__fill" style={{ width: `${Math.round(m.rank.pct * 100)}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Signalhistorik – relativ styrka (percentil) när tillgänglig, annars P(upp) */}
       <div className="chart-card">
         <h3>
@@ -235,6 +474,10 @@ export function StockDetailPage() {
           </ResponsiveContainer>
         )}
       </div>
+
+      <div className="section-head"><h2>Lär känna bolaget</h2></div>
+      <DeepDiveBox ticker={ticker} />
+      <AskAboutStockBox ticker={ticker} />
     </section>
   )
 }

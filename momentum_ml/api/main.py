@@ -558,6 +558,43 @@ async def post_commentary_ask(request: Request):
     return _clean(result)
 
 
+@app.post("/api/stock/analyze")
+async def post_stock_analyze(request: Request):
+    """Djupanalys-sektionen på aktiedetaljsidan (/aktie/:ticker): på-begäran
+    headless Claude (WebSearch, REN NARRATIV samma disciplin som resten) –
+    ärligt motställda bull/bear-argument för att fortsätta äga ett BEFINTLIGT
+    innehav, plus kort konkurrentkontext. Body: {ticker}. Kör synkront (samma
+    mönster som /api/scanner/analyze), kan ta upp till ~2 min pga WebSearch."""
+    import stock_deep_dive as sdd
+    body = await request.json()
+    ticker = str(body.get("ticker") or "").strip()
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker saknas.")
+    result = sdd.analyze(ticker)
+    if result.get("error") and not (result.get("bull_case") or result.get("bear_case")):
+        raise HTTPException(status_code=502, detail=result["error"])
+    return _clean(result)
+
+
+@app.post("/api/stock/ask")
+async def post_stock_ask(request: Request):
+    """"Fråga om bolaget"-boxen på aktiedetaljsidan: fri följdfråga scopad till
+    ETT bolag, på-begäran headless Claude (WebSearch). Body: {ticker, question}.
+    Kör synkront (samma mönster som /api/commentary/ask), kan ta upp till ~2 min."""
+    import stock_deep_dive as sdd
+    body = await request.json()
+    ticker = str(body.get("ticker") or "").strip()
+    question = str(body.get("question") or "").strip()
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker saknas.")
+    if not question:
+        raise HTTPException(status_code=400, detail="Fråga saknas.")
+    result = sdd.ask(ticker, question)
+    if result.get("error") and not result.get("answer"):
+        raise HTTPException(status_code=502, detail=result["error"])
+    return _clean(result)
+
+
 @app.get("/api/case-changes")
 def get_case_changes():
     """Har investeringscaset förändrats? (altdata/case_tracker.py). Jämför
