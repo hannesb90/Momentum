@@ -3,15 +3,15 @@
    accent = varumärkesgrön (interaktion/primär), good/bad = marknadsfärger,
    soft-varianter = tonplattor för chips/aktiva ytor på ljus botten. */
 :root {
-  --bg: #f4f7f5;             /* sida: ljusgrå med grön ton */
+  --bg: #f0f9f4;             /* sida: ljusgrå med grön ton */
   --bg-elevated: #ecf1ee;    /* nedsänkta fält (input, code) */
   --bg-card: #ffffff;        /* kort/ytor */
   --surface: #ffffff;
   --border: #e1e8e3;
   --text: #182420;           /* grönsvart, AAA mot vitt */
   --text-muted: #64766d;
-  --accent: #0e9f6e;         /* primärgrön (emerald) */
-  --accent-2: #047857;       /* djupgrön – hover/gradienter */
+  --accent: #10b981;         /* primärgrön (emerald) */
+  --accent-2: #059669;       /* djupgrön – hover/gradienter */
   --accent-soft: #e5f5ee;    /* grön tonplatta */
   --good: #15803d;           /* marknads-plus (mörkare grön för läsbarhet) */
   --good-soft: #dcf3e4;
@@ -40,6 +40,8 @@
 body {
   margin: 0;
   background: var(--bg);
+  font-size: 16px;
+  line-height: 1.6;
 }
 
 h1 {
@@ -246,14 +248,15 @@ code {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 15px;
-  height: 15px;
+  width: 24px;
+  height: 24px;
   margin-left: 5px;
   border-radius: 50%;
-  border: 1px solid var(--text-muted);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 0.62rem;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: bold;
   line-height: 1;
   padding: 0;
   cursor: pointer;
@@ -2041,6 +2044,13 @@ input:focus, select:focus { border-color: var(--accent); outline: none; }
 @media (max-width: 720px) {
   .navbar { box-shadow: 0 -2px 12px rgba(24, 36, 32, 0.06); }
   .navbar__link--active { color: var(--accent-2); background: var(--accent-soft); }
+  .navbar__link, .btn, .segment-toggle__btn {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 .navbar__link:hover { color: var(--text); background: rgba(24, 36, 32, 0.04); }
 
