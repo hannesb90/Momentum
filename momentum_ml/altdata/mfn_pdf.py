@@ -291,10 +291,23 @@ def fetch_extract_isolated(url: str):
     frigörs automatiskt – utan explicit close()/join_thread() läckte de per
     iteration. Vi läser dessutom kön via en poll-loop (dränerar matartråden så
     en stor payload inte deadlockar) OCH upptäcker tidig processdöd (en hård
-    OOM-kill hinner inte ens lägga ett felmeddelande)."""
+    OOM-kill hinner inte ens lägga ett felmeddelande).
+
+    BUGG (fixad, verkligt fall: get_pdf_text()/denna funktion anropas från
+    en ThreadPoolExecutor - se ropa_i_batch/get_pdf_text_batch nedan, samma
+    trådpool-parallellisering som lades till för att korta backfill-tiden).
+    "fork" kopierar HELA förälderns minne inklusive lås andra trådar råkar
+    hålla just då (t.ex. interna lås i urllib3/requests eller logging) - håller
+    en bakgrundstråd ett sånt lås i exakt forkningsögonblicket ärver barnet
+    det LÅST, men tråden som skulle låsa upp det finns aldrig i barnet →
+    permanent deadlock. "spawn" startar en helt fräsch Python-process i
+    stället, ärver inga lås alls - långsammare per anrop (ominport) men
+    aldrig detta klass av dödläge. Se _fetch_extract_worker: den är redan en
+    vanlig modul-nivå-funktion (krävs för att spawn ska kunna pickla/
+    återimportera den i barnet - en lokal closure hade inte fungerat)."""
     import multiprocessing as mp
     import queue as _queue
-    ctx = mp.get_context("fork")
+    ctx = mp.get_context("spawn")
     q = ctx.Queue()
     p = ctx.Process(target=_fetch_extract_worker, args=(url, q))
     p.start()
