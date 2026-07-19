@@ -314,7 +314,14 @@ VOL_TARGET_EWMA           = _os.environ.get("MOMENTUM_VOL_TARGET_EWMA", "0") not
 VOL_TARGET_EWMA_LAMBDA    = 0.94
 
 # ── Backtest-kostnader ────────────────────────────────────────────────────────
-COMMISSION         = 0.001     # 0.1% per trade
+# COMMISSION/FX_FEE = Montrose faktiska avgifter (courtage 0,15%, valutaväxling
+# 0,12% - verifierat mot mäklarens prislista 2026-07-19, tidigare 0,1%-gissning
+# var för lågt räknat). FX_FEE gäller BARA icke-SEK-instrument (kärnallokeringens
+# globala UCITS-ETF:er på Xetra, EUNL.DE/IUSQ.DE/SXR8.DE/IS3N.DE/EXSA.DE m.fl. -
+# se ETF_ROT_COST_ONEWAY). Huvudmodellens svenska aktieuniversum (.ST/.NGM)
+# handlas i SEK och betalar bara COMMISSION, ingen FX.
+COMMISSION         = 0.0015    # 0.15% courtage per trade
+FX_FEE             = 0.0012    # 0.12% valutaväxling (bara icke-SEK-instrument)
 SLIPPAGE           = 0.001     # 0.1% slippage
 INITIAL_CAPITAL    = 1_000_000 # 1 MSEK startkapital
 
@@ -417,7 +424,7 @@ LIQUIDITY_MAX_ADV_FRACTION = 0.10   # max andel av ADV som handlas per vecka
 MARKET_IMPACT_COEF         = 0.10   # skala på sqrt(trade_value/ADV)-termen
 MARKET_IMPACT_MAX          = 0.05   # tak för impact-kostnad per trade (5%)
 
-# Likviditetsberoende halv-spread (bid/ask). Fast courtage+slippage (0.1%+0.1%)
+# Likviditetsberoende halv-spread (bid/ask). Fast courtage+slippage (0.15%+0.1%)
 # är rimligt för Large Cap men optimistiskt för tunt handlade små-/microbolag
 # där spreaden lätt är 1-3%. Vi lägger på en halv-spread som växer när en
 # akties omsättning (ADV) ligger under en referensnivå, klippt till ett tak.
@@ -876,8 +883,11 @@ ETF_ROT_FLOW_LOOKBACK = 4          # veckor för rank-change (flödesproxy)
 # KOSTNAD: backtesten var tidigare kostnadsfri – varje innehavsbyte är gratis och
 # hög omsättning ser bättre ut än den är (samma fälla som fällde aktiemodellens
 # horisont-ensemble: brutto-vinst, netto-förlust). Enkelriktad kostnad per handlad
-# krona: halva spreaden + courtage. EU-sektor/tema-UCITS: ~10–25 bp spread.
-ETF_ROT_COST_ONEWAY = float(_os.environ.get("MOMENTUM_ETF_COST_ONEWAY", 0.0015))
+# krona: courtage + valutaväxling (alla ETF:erna här är EUR-denominerade Xetra-
+# UCITS, se PORTFOLIO_BROAD_ETFS/SECTOR_ETF_MAP - FX_FEE är INTE valfri här,
+# till skillnad från huvudmodellens SEK-universum). Tidigare 0,0015 saknade
+# FX-komponenten helt (0% modellerad valutakostnad på en 100% icke-SEK-korg).
+ETF_ROT_COST_ONEWAY = float(_os.environ.get("MOMENTUM_ETF_COST_ONEWAY", COMMISSION + FX_FEE))
 # VOL-JUSTERAD RANK: ranka på momentum/vol i stället för rå avkastning. I ett
 # blandat universum (lågvol World vs högvol uran/semis) väljer rå rank systematiskt
 # de stökigaste temana nära deras toppar; per-enhet-risk jämför rättvist.
