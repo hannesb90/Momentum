@@ -220,7 +220,7 @@ def main():
     # fundamentals_from_mfn.csv/fundamentals_from_pdf.csv redan genererats
     # (altdata/mfn_fundamentals.py extract / altdata/mfn_pdf.py backfill) –
     # saknas de blir kolumnerna bara NaN, ingen krasch.
-    all_features = attach_fundamentals_features(all_features, segment=args.segment)
+    all_features = attach_fundamentals_features(all_features, segment=args.segment, prices=data)
     model_df     = to_model_df(all_features)
     print(f"  Dataset: {len(model_df):,} samples × {model_df[FEATURE_COLS].shape[1]} features")
     gc.collect()
