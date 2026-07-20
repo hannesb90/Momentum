@@ -115,7 +115,10 @@ def backfill():
         "balance": "/v1/company/financials/balance-sheet/standardized",
         "cashflow": "/v1/company/financials/cash-flow-statement/standardized",
         "ratios": "/v1/company/ratios",
-        "prices": "/v3/company/stock-prices"
+        "prices": "/v3/company/stock-prices",
+        "kpis": "/v2/company/segments-and-kpis",
+        "insider": "/v1/company/ownership/insider/transactions",
+        "letters": "/v1/company/fund-letters"
     }
 
     for tk, f_id in matched:
