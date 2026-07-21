@@ -234,17 +234,37 @@ def get_prices(ticker: str, limit: int = 260, segment: Optional[str] = None):
     för VARJE aktievy-öppning (~3s på Pi:n) – nu cachas den parsade filen på
     mtime (liten: bara date/ticker/close) och filtreringen är vektoriserad."""
     path = _seg_dir(segment) / "prices.csv"
-    if not path.exists():
+    df = pd.DataFrame()
+    if path.exists():
+        mt = path.stat().st_mtime
+        hit = _PRICES_CACHE.get(str(path))
+        if hit is not None and hit[0] == mt:
+            df = hit[1]
+        else:
+            df = _read_csv(path)
+            _PRICES_CACHE[str(path)] = (mt, df)
+        df = df[df["ticker"] == ticker].sort_values("date").tail(limit)
+    if not df.empty:
+        return _records(df[["date", "close"]])
+    # BUGG (fixad, verkligt fall: innehavda tema-/bredmarknads-ETF:er som
+    # IUSQ.DE/VVSM.DE/JEDI.L/V9N.DE gav tom graf) – prices.csv innehåller
+    # BARA main.py:s svenska aktieuniversum, aldrig ETF:er man äger via
+    # Montrose utanför det universumet. Föll tidigare bara tillbaka på [],
+    # trots att fetch_weekly_data() (samma hämtning portfolio.py redan
+    # använder för dessa exakta ETF:er i backtest-panelen) har datan.
+    # use_cache=True → på-disk-cachad per dag, inga upprepade Yahoo-anrop
+    # för varje sidvisning.
+    from data.data_loader import fetch_weekly_data
+    try:
+        hist = fetch_weekly_data([ticker], use_cache=True).get(ticker)
+    except Exception:  # noqa: BLE001 – nätverksfel/okänd ticker, samma som "ingen data"
+        hist = None
+    if hist is None or hist.empty:
         return []
-    mt = path.stat().st_mtime
-    hit = _PRICES_CACHE.get(str(path))
-    if hit is not None and hit[0] == mt:
-        df = hit[1]
-    else:
-        df = _read_csv(path)
-        _PRICES_CACHE[str(path)] = (mt, df)
-    df = df[df["ticker"] == ticker].sort_values("date").tail(limit)
-    return _records(df[["date", "close"]])
+    out = hist[["Close"]].rename(columns={"Close": "close"}).reset_index()
+    out.columns = ["date", "close"]
+    out["date"] = out["date"].astype(str).str.slice(0, 10)
+    return _records(out.tail(limit))
 
 
 @app.get("/api/quality")
