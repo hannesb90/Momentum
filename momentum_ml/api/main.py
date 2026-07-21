@@ -357,8 +357,13 @@ async def post_scanner_analyze(request: Request):
     overrides = body.get("overrides") or {}
     segment = body.get("segment")
     amount = body.get("amount")
+    # run_in_threadpool: headless-anropet blockerar i upp till ~2 min – direkt
+    # i en async def fryser det HELA event-loopen (varje annan request hänger
+    # tills analysen är klar). Samma mönster som post_scanner_scan redan har.
+    from fastapi.concurrency import run_in_threadpool
     try:
-        result = sa.analyze(ticker, overrides, segment=segment, amount=amount)
+        result = await run_in_threadpool(sa.analyze, ticker, overrides,
+                                          segment=segment, amount=amount)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return _clean(result)
@@ -376,7 +381,9 @@ async def create_trade_ticket_endpoint(request: Request):
     kr = body.get("kr")
     if not ticker or not kr:
         raise HTTPException(400, "ticker och kr krävs")
-    result = mt.create_ticket(ticker, float(kr))
+    # run_in_threadpool: se post_scanner_analyze – blockera inte event-loopen.
+    from fastapi.concurrency import run_in_threadpool
+    result = await run_in_threadpool(mt.create_ticket, ticker, float(kr))
     if "error" in result:
         raise HTTPException(502, result["error"])
     import portfolio as pf
@@ -552,7 +559,9 @@ async def post_commentary_ask(request: Request):
     question = str(body.get("question") or "").strip()
     if not question:
         raise HTTPException(status_code=400, detail="Fråga saknas.")
-    result = pc.ask(question)
+    # run_in_threadpool: se post_scanner_analyze – blockera inte event-loopen.
+    from fastapi.concurrency import run_in_threadpool
+    result = await run_in_threadpool(pc.ask, question)
     if result.get("error") and not result.get("answer"):
         raise HTTPException(status_code=502, detail=result["error"])
     return _clean(result)
@@ -570,7 +579,9 @@ async def post_stock_analyze(request: Request):
     ticker = str(body.get("ticker") or "").strip()
     if not ticker:
         raise HTTPException(status_code=400, detail="Ticker saknas.")
-    result = sdd.analyze(ticker)
+    # run_in_threadpool: se post_scanner_analyze – blockera inte event-loopen.
+    from fastapi.concurrency import run_in_threadpool
+    result = await run_in_threadpool(sdd.analyze, ticker)
     if result.get("error") and not (result.get("bull_case") or result.get("bear_case")):
         raise HTTPException(status_code=502, detail=result["error"])
     return _clean(result)
@@ -589,7 +600,9 @@ async def post_stock_ask(request: Request):
         raise HTTPException(status_code=400, detail="Ticker saknas.")
     if not question:
         raise HTTPException(status_code=400, detail="Fråga saknas.")
-    result = sdd.ask(ticker, question)
+    # run_in_threadpool: se post_scanner_analyze – blockera inte event-loopen.
+    from fastapi.concurrency import run_in_threadpool
+    result = await run_in_threadpool(sdd.ask, ticker, question)
     if result.get("error") and not result.get("answer"):
         raise HTTPException(status_code=502, detail=result["error"])
     return _clean(result)

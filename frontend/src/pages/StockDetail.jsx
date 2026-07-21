@@ -88,6 +88,9 @@ function DeepDiveBox({ ticker }) {
   async function run() {
     setLoading(true)
     setError(null)
+    // Ett gammalt fel-resultat ska inte stå kvar bredvid "Analyserar…" –
+    // men ett lyckat behålls synligt under omkörningen (stale-while-revalidate).
+    setResult((r) => (r?.error ? null : r))
     try {
       const r = await api.stockAnalyze(ticker)
       setResult(r)
@@ -115,7 +118,9 @@ function DeepDiveBox({ ticker }) {
         </InfoButton>
       </h3>
 
-      {!result && !loading && (
+      {/* Visas även efter ett fel-svar (result satt men utan bull_case) –
+          annars finns ingen väg att försöka igen utan att ladda om sidan. */}
+      {!result?.bull_case && !loading && (
         <button className="btn" onClick={run}>Analysera bolaget</button>
       )}
       {loading && <div className="list-card__empty">Analyserar… (kan ta upp till ~2 min)</div>}
@@ -232,10 +237,14 @@ export function StockDetailPage() {
   const { addHolding } = usePortfolio()
   const { addToWatchlist } = useWatchlist()
 
-  const insightRow = useMemo(
-    () => (insight.data?.companies ?? []).find((c) => c.ticker?.toUpperCase() === ticker.toUpperCase()),
-    [insight.data, ticker],
-  )
+  const insightRow = useMemo(() => {
+    const row = (insight.data?.companies ?? []).find((c) => c.ticker?.toUpperCase() === ticker.toUpperCase())
+    // insight_report.py skriver denna placeholder när nattjobbets generering
+    // misslyckades – ett felmeddelande, inte en narrativ. Visa inget i stället.
+    const summary = (row?.summary ?? '').trim()
+    if (!summary || summary === 'Kunde inte generera sammanfattning.') return null
+    return row
+  }, [insight.data, ticker])
   const caseRow = useMemo(
     () => (caseChanges.data ?? []).find((c) => c.ticker?.toUpperCase() === ticker.toUpperCase()),
     [caseChanges.data, ticker],
