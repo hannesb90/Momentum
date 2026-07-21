@@ -465,6 +465,46 @@ def _title_ticker_matches(title: str, variant: str) -> bool:
     return False
 
 
+def resolve_order_book_id(ticker: str) -> Optional[dict]:
+    """Slår upp EN sökträff för VÅR ticker (t.ex. AZA.ST eller IUSQ.DE) -
+    delad av news_for_ticker()/price_history() (tidigare duplicerad, bara
+    tickerSymbol-matchning i var sin kopia).
+
+    Matchar EXAKT tickerSymbol i första hand (aktier/STOCK-träffar har det
+    fältet), annars titelns parentetiska ticker via _title_ticker_matches
+    (VERIFIERAT 2026-07-21: fonder/ETF:er - type=EXCHANGE_TRADED_FUND - HAR
+    INGET tickerSymbol-fält alls i sökträffen, bara "<namn> (TICKER)" i
+    titeln. Det här var den faktiska orsaken till att portfolio.py:s
+    fetch_holding_quotes()/news_for_ticker() tidigare "inte matchade" alla
+    åtta testade UCITS-ETF:er - inte att Avanza saknade dem, bara att bara
+    tickerSymbol-fältet kollades). Gissar aldrig första träffen. None vid
+    ingen träff/nätverksfel."""
+    base = ticker.split(".")[0].replace("-", " ")
+    try:
+        hits = search(base).get("hits") or []
+    except Exception:  # noqa: BLE001
+        return None
+    hit = next((h for h in hits if str(h.get("tickerSymbol") or "").upper() == base.upper()), None)
+    if hit is None:
+        hit = next((h for h in hits if _title_ticker_matches(h.get("title"), base)), None)
+    return hit
+
+
+def price_history(ticker: str, period: str = "one_year"):
+    """Bekvämlighets-wrapper: löser orderBookId (resolve_order_book_id) och
+    hämtar fetch_chart_ohlcv() - dags- (one_year) eller veckouppslöst
+    (three_years/five_years) prishistorik för VÅR ticker, se _CHART_PERIODS-
+    kommentaren ovan. None vid ingen träff/nätverksfel/tom serie - aldrig en
+    krasch, bara "ingen data" för anroparen."""
+    hit = resolve_order_book_id(ticker)
+    if not hit or not hit.get("orderBookId"):
+        return None
+    try:
+        return fetch_chart_ohlcv(str(hit["orderBookId"]), period=period)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _search_variant(variant: str) -> tuple:
     """Ett sökförsök -> (bekräftad_träff_eller_None, bästa_ej_bekräftade_eller_None).
     Bekräftelse: variantens ticker matchar EXAKT ticker-delen i träffens
@@ -1723,17 +1763,11 @@ def get_news(order_book_id: str, limit: int = 8) -> list:
 
 def news_for_ticker(ticker: str, limit: int = 8) -> list:
     """Bekvämlighets-wrapper för anropare som bara har VÅR ticker (t.ex.
-    AZA.ST) – slår upp orderBookId med EXAKT SAMMA sök+matchningsmönster
-    som portfolio.py:s fetch_holding_quotes() (exakt tickerSymbol-match,
-    gissar aldrig första sökträffen) och hämtar get_news(). Tom lista vid
-    sök-/nätverksfel eller ingen exakt träff – aldrig en krasch, bara mindre
-    underlag (samma disciplin som _mfn_latest() i insight_report.py)."""
-    base = ticker.split(".")[0].replace("-", " ")
-    try:
-        hits = search(base).get("hits") or []
-    except Exception:  # noqa: BLE001
-        return []
-    hit = next((h for h in hits if str(h.get("tickerSymbol") or "").upper() == base.upper()), None)
+    AZA.ST ELLER en ETF som IUSQ.DE - se resolve_order_book_id()) och
+    hämtar get_news(). Tom lista vid sök-/nätverksfel eller ingen exakt
+    träff – aldrig en krasch, bara mindre underlag (samma disciplin som
+    _mfn_latest() i insight_report.py)."""
+    hit = resolve_order_book_id(ticker)
     if not hit or not hit.get("orderBookId"):
         return []
     time.sleep(_PAUSE_S)   # artig paus mellan sök- och nyhets-anropet

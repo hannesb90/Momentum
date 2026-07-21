@@ -225,6 +225,16 @@ def get_sector_momentum(segment: Optional[str] = None):
 
 
 _PRICES_CACHE: dict = {}
+_ETF_PRICE_CACHE: dict = {}
+_ETF_PRICE_TTL_S = 3600  # 1h - kursgraf behöver inte vara sekundfärsk, men
+                         # ska inte heller hamra Avanza/Yahoo vid varje sidvisning.
+
+
+def _ohlcv_to_records(hist: "pd.DataFrame", limit: int) -> list:
+    out = hist[["Close"]].reset_index()
+    out.columns = ["date", "close"]
+    out["date"] = out["date"].astype(str).str.slice(0, 10)
+    return _records(out.tail(limit))
 
 
 @app.get("/api/prices")
@@ -249,22 +259,35 @@ def get_prices(ticker: str, limit: int = 260, segment: Optional[str] = None):
     # BUGG (fixad, verkligt fall: innehavda tema-/bredmarknads-ETF:er som
     # IUSQ.DE/VVSM.DE/JEDI.L/V9N.DE gav tom graf) – prices.csv innehåller
     # BARA main.py:s svenska aktieuniversum, aldrig ETF:er man äger via
-    # Montrose utanför det universumet. Föll tidigare bara tillbaka på [],
-    # trots att fetch_weekly_data() (samma hämtning portfolio.py redan
-    # använder för dessa exakta ETF:er i backtest-panelen) har datan.
-    # use_cache=True → på-disk-cachad per dag, inga upprepade Yahoo-anrop
-    # för varje sidvisning.
-    from data.data_loader import fetch_weekly_data
+    # Montrose utanför det universumet. Föll tidigare bara tillbaka på [].
+    cache_key = (ticker, limit)
+    cached = _ETF_PRICE_CACHE.get(cache_key)
+    if cached is not None and time.time() - cached[0] < _ETF_PRICE_TTL_S:
+        return cached[1]
+    # Avanza FÖRST, dagsupplöst (period="one_year", se avanza.py:s
+    # _CHART_PERIODS-kommentar) – handlar hela svenska marknaden OCH,
+    # VERIFIERAT 2026-07-21, samtliga åtta testade nischade UCITS-ETF:er
+    # (Xetra .DE OCH London .L, WisdomTree/Global X/HANetf/VanEck/iShares),
+    # inklusive fyra (WNUC.L/PAIW.L/BLCH.L/ASWC.L) Yahoo INTE känner till
+    # alls ("Quote not found") – se avanza.resolve_order_book_id()s docstring
+    # för varför tidigare kod (tickerSymbol-bara-matchning) missade dem.
+    from altdata import avanza
     try:
-        hist = fetch_weekly_data([ticker], use_cache=True).get(ticker)
-    except Exception:  # noqa: BLE001 – nätverksfel/okänd ticker, samma som "ingen data"
+        hist = avanza.price_history(ticker, period="one_year")
+    except Exception:  # noqa: BLE001
         hist = None
-    if hist is None or hist.empty:
-        return []
-    out = hist[["Close"]].rename(columns={"Close": "close"}).reset_index()
-    out.columns = ["date", "close"]
-    out["date"] = out["date"].astype(str).str.slice(0, 10)
-    return _records(out.tail(limit))
+    records = _ohlcv_to_records(hist, limit) if hist is not None and not hist.empty else None
+    if records is None:
+        # Yahoo som SISTA utväg, veckouppslöst – bara om Avanza-sökningen
+        # inte gav någon träff alls (t.ex. en helt ny/onoterad ticker).
+        from data.data_loader import fetch_weekly_data
+        try:
+            yh = fetch_weekly_data([ticker], use_cache=True).get(ticker)
+        except Exception:  # noqa: BLE001 – nätverksfel/okänd ticker, samma som "ingen data"
+            yh = None
+        records = _ohlcv_to_records(yh, limit) if yh is not None and not yh.empty else []
+    _ETF_PRICE_CACHE[cache_key] = (time.time(), records)
+    return records
 
 
 @app.get("/api/quality")
