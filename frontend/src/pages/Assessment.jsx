@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
@@ -191,7 +192,9 @@ export function AssessmentPage() {
             {exits.map((e) => (
               <div key={`exit-${e.ticker}`} className="list-row">
                 <div className="list-row__main">
-                  <span className="list-row__ticker">{TIER_ICON[e.tier] ?? '⚪'} {e.name}</span>
+                  <Link to={`/aktie/${encodeURIComponent(e.ticker)}`} className="list-row__ticker ticker-link">
+                    {TIER_ICON[e.tier] ?? '⚪'} {e.name}
+                  </Link>
                   <span className="list-row__sub">{e.tech_note} · {e.sector_note}</span>
                 </div>
               </div>
@@ -199,9 +202,9 @@ export function AssessmentPage() {
             {sellWatch.map((s) => (
               <div key={`sw-${s.ticker}`} className="list-row">
                 <div className="list-row__main">
-                  <span className="list-row__ticker">
+                  <Link to={`/aktie/${encodeURIComponent(s.ticker)}`} className="list-row__ticker ticker-link">
                     {{ 1: '⚠', 2: '⚠⚠', 3: '⛔' }[s.level] ?? '⚠'} {s.name}
-                  </span>
+                  </Link>
                   <span className="list-row__sub">{s.action} · {(s.reasons ?? []).join(' · ')}</span>
                 </div>
               </div>
@@ -231,7 +234,9 @@ export function AssessmentPage() {
               return (
                 <div key={i} className="list-row">
                   <div className="list-row__main">
-                    <span className="list-row__ticker">{st.icon} {t.ticker}</span>
+                    <Link to={`/aktie/${encodeURIComponent(t.ticker)}`} className="list-row__ticker ticker-link">
+                      {st.icon} {t.ticker}
+                    </Link>
                     <span className="list-row__sub">{fmtWhen(t.created_at)} · {st.label}</span>
                   </div>
                   <div className="list-row__side">
@@ -265,7 +270,9 @@ export function AssessmentPage() {
         {heldCompanies.map((c) => (
           <div key={c.ticker} className="list-row" style={{ alignItems: 'flex-start' }}>
             <div className="list-row__main">
-              <span className="list-row__ticker">{c.name}</span>
+              <Link to={`/aktie/${encodeURIComponent(c.ticker)}`} className="list-row__ticker ticker-link">
+                {c.name}
+              </Link>
               <span className="list-row__sub">{c.summary}</span>
             </div>
           </div>
@@ -280,7 +287,9 @@ export function AssessmentPage() {
             {candidateCompanies.map((c) => (
               <div key={c.ticker} className="list-row" style={{ alignItems: 'flex-start' }}>
                 <div className="list-row__main">
-                  <span className="list-row__ticker">{c.name}</span>
+                  <Link to={`/aktie/${encodeURIComponent(c.ticker)}`} className="list-row__ticker ticker-link">
+                    {c.name}
+                  </Link>
                   <span className="list-row__sub">{c.summary}</span>
                 </div>
               </div>

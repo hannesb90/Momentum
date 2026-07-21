@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { InfoButton } from '../components/InfoButton'
@@ -418,7 +419,11 @@ export function HoldingsPage() {
             <div key={i} className={`h-card${t ? ` exit-row-${t.tier}` : ''}`}>
               <div className="h-card__top">
                 <span className="h-card__name">
-                  {h.name} {h.ticker && <span className="mono h-card__tk">{h.ticker}</span>}
+                  {h.name} {h.ticker && (
+                    <Link to={`/aktie/${encodeURIComponent(h.ticker)}`} className="mono h-card__tk ticker-link">
+                      {h.ticker}
+                    </Link>
+                  )}
                   {h.auto && <span className="h-card__auto" title="Värderas om varje natt">auto</span>}
                   {c && c.status !== 'oförändrat' && (
                     <span className="h-card__auto" style={{

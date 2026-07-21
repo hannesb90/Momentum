@@ -210,12 +210,12 @@ export function OverviewPage() {
         {(nextBuy.data?.rows ?? []).map((r) => (
           <div key={`${r.order}-${r.ticker}`} className="list-row">
             <div className="list-row__main">
-              <span className="list-row__ticker">
+              <Link to={`/aktie/${encodeURIComponent(r.ticker)}`} className="list-row__ticker ticker-link">
                 {r.order === 1 ? '★ ' : `${r.order}. `}{r.name}{' '}
                 <span className={r.evidence === 'kärna' ? 'pos' : ''} style={{ fontSize: '0.78em' }}>
                   {r.evidence === 'kärna' ? '● kärna' : '○ satellit'}
                 </span>
-              </span>
+              </Link>
               <span className="list-row__sub">{r.ticker} · {r.why}</span>
             </div>
             <div className="list-row__side">
@@ -289,7 +289,10 @@ export function OverviewPage() {
               <>
                 <div className="list-row" style={{ padding: '4px 0' }}>
                   <div className="list-row__main">
-                    <span className="list-row__ticker">★ {nextBuy.data.opportunity.name}</span>
+                    <Link to={`/aktie/${encodeURIComponent(nextBuy.data.opportunity.ticker)}`}
+                      className="list-row__ticker ticker-link">
+                      ★ {nextBuy.data.opportunity.name}
+                    </Link>
                     <span className="list-row__sub">
                       {nextBuy.data.opportunity.ticker} · {nextBuy.data.opportunity.note}
                       {(nextBuy.data.opportunity.confirmations ?? []).length
@@ -340,13 +343,13 @@ export function OverviewPage() {
             {(nextBuy.data?.sell_watch ?? []).map((s) => (
               <div key={s.ticker} className="list-row">
                 <div className="list-row__main">
-                  <span className="list-row__ticker">
+                  <Link to={`/aktie/${encodeURIComponent(s.ticker)}`} className="list-row__ticker ticker-link">
                     {{ 0: '📝', 1: '⚠', 2: '⚠⚠', 3: '⛔' }[s.level] ?? '⚠'} {s.name}{' '}
                     <span className={s.level >= 2 ? 'neg' : ''} style={{ fontSize: '0.78em' }}>
                       {s.action?.toUpperCase()}
                       {s.level === 2 && s.house_money_kr ? ` ~${fmtSek(s.house_money_kr)}` : ''}
                     </span>
-                  </span>
+                  </Link>
                   <span className="list-row__sub">
                     {s.gain != null
                       ? `Din vinst ${fmtPct(s.gain)} (marknad ${fmtPct(s.ret)} vs index ${fmtPct(s.index_ret)})`
@@ -392,7 +395,9 @@ export function OverviewPage() {
             {(nextBuy.data?.refill ?? []).map((s) => (
               <div key={s.ticker} className="list-row">
                 <div className="list-row__main">
-                  <span className="list-row__ticker">🔄 {s.name}</span>
+                  <Link to={`/aktie/${encodeURIComponent(s.ticker)}`} className="list-row__ticker ticker-link">
+                    🔄 {s.name}
+                  </Link>
                   <span className="list-row__sub">{s.why}</span>
                 </div>
                 <div className="list-row__side">
