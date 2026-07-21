@@ -413,6 +413,18 @@ def fetch_universe(target: str) -> None:
     print(f"[fetch] klart – {total} PM cachade i {cache_dir}/")
 
 
+def _is_stale(items: List[dict], days: Optional[int] = None) -> bool:
+    """True om senaste PM:ets publiceringsdatum är äldre än MFN_STALE_DAYS
+    (eller om det inte finns några poster alls) – se config.MFN_STALE_DAYS."""
+    days = config.MFN_STALE_DAYS if days is None else days
+    latest = max((it.get("published") or "" for it in items), default="")
+    if not latest:
+        return True
+    import datetime as _dt
+    cutoff = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=days)).isoformat()
+    return latest < cutoff
+
+
 def refresh_universe(target: str) -> None:
     """PRENUMERATIONEN: inkrementell uppdatering av redan cachade bolag.
 
@@ -424,11 +436,20 @@ def refresh_universe(target: str) -> None:
     author-matchar som vanligt och lägger till PM vars id inte redan finns.
     Bolag som saknar cachefil helt (nynoteringar) full-hämtas i stället.
 
+    Om cachen ÄNDÅ är gammal (MFN har inget nytt, se _is_stale/
+    MFN_STALE_DAYS) provas Avanzas nyhetsflöde som komplement – för bolag
+    som bytt distributör men fortfarande handlas (VERIFIERAT 2026-07-21:
+    Lundin Gold/Lundin Mining/Lucara Diamond, MFN-frusna sedan 2018 men
+    fortsatt aktiva Cision-rapportörer, se avanza.avanza_news_as_mfn_items()
+    – som också hoppar över faktiskt avnoterade/döda bolag via Avanzas
+    egen "tradeable"-flagga, så vi inte slösar anrop på dem varje natt).
+
     Körs regelbundet på Pi:n (nattligt/veckovis, före mfn_events/extract):
         python -m altdata.mfn_fetch refresh large
         python -m altdata.mfn_fetch refresh small
     """
     from data.data_loader import load_sweden_universe
+    from altdata import avanza
     if target == "quality":
         market_cap, label = config.QUALITY_MARKET_CAP, "quality (Small/Micro/Nano)"
     else:
@@ -440,12 +461,13 @@ def refresh_universe(target: str) -> None:
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[refresh] {target} ({label}) – {len(tickers)} bolag (inkrementellt)")
-    new_total = full_fetched = 0
+    new_total = full_fetched = avanza_total = 0
     for i, t in enumerate(tickers, 1):
         if cap_tier_map.get(t) == "Fond" or sector_map.get(t) == "Fond":
             continue
         out = cache_dir / f"{t}.json"
         query = qmap.get(t) or _clean_name(name_map.get(t, t))
+        changed = False
         if _needs_refetch(out):
             # Ny/trasig/gammalt schema → full förstagångs-hämtning i stället.
             try:
@@ -453,35 +475,55 @@ def refresh_universe(target: str) -> None:
             except Exception as e:  # noqa: BLE001
                 print(f"  [{i:>4}/{len(tickers)}] {t:<12} FEL (full): {e}")
                 continue
-            out.write_text(json.dumps({"ticker": t, "query": query, "schema": _SCHEMA_VERSION,
-                                       "items": items}, ensure_ascii=False), encoding="utf-8")
+            cached = {"ticker": t, "query": query, "schema": _SCHEMA_VERSION, "items": items}
             full_fetched += 1
+            changed = True
             print(f"  [{i:>4}/{len(tickers)}] {t:<12} NY → full hämtning, {len(items)} PM")
             time.sleep(config.MFN_REQUEST_PAUSE_S)
-            continue
-        try:
-            cached = json.loads(out.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001 – trasig fil fångas av _needs_refetch, men hängslen
-            continue
-        old_items = cached.get("items") or []
-        known = {it.get("id") for it in old_items}
-        try:
-            fresh = fetch_company(query, ticker=t, max_pages=1)
-        except Exception as e:  # noqa: BLE001
-            print(f"  [{i:>4}/{len(tickers)}] {t:<12} FEL (delta): {e}")
-            continue
-        new_items = [it for it in fresh if it.get("id") not in known]
-        if new_items:
-            # Nyaste först (feed-ordning) + befintlig historik. Konsumenterna
-            # (mfn_events/_research_note/fundamentals) sorterar själva på
-            # published, så ordningen är bekvämlighet, inte ett kontrakt.
-            cached["items"] = new_items + old_items
+        else:
+            try:
+                cached = json.loads(out.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001 – trasig fil fångas av _needs_refetch, men hängslen
+                continue
+            old_items = cached.get("items") or []
+            known = {it.get("id") for it in old_items}
+            try:
+                fresh = fetch_company(query, ticker=t, max_pages=1)
+            except Exception as e:  # noqa: BLE001
+                print(f"  [{i:>4}/{len(tickers)}] {t:<12} FEL (delta): {e}")
+                continue
+            new_items = [it for it in fresh if it.get("id") not in known]
+            if new_items:
+                # Nyaste först (feed-ordning) + befintlig historik. Konsumenterna
+                # (mfn_events/_research_note/fundamentals) sorterar själva på
+                # published, så ordningen är bekvämlighet, inte ett kontrakt.
+                cached["items"] = new_items + old_items
+                new_total += len(new_items)
+                changed = True
+                print(f"  [{i:>4}/{len(tickers)}] {t:<12} +{len(new_items)} nya PM")
+            time.sleep(config.MFN_REQUEST_PAUSE_S)
+
+        if _is_stale(cached.get("items") or []):
+            try:
+                av_items = avanza.avanza_news_as_mfn_items(t)
+            except Exception as e:  # noqa: BLE001
+                print(f"  [{i:>4}/{len(tickers)}] {t:<12} FEL (Avanza-fallback): {e}")
+                av_items = None
+            if av_items:
+                known_now = {it.get("id") for it in (cached.get("items") or [])}
+                fresh_av = [it for it in av_items if it.get("id") not in known_now]
+                if fresh_av:
+                    cached["items"] = fresh_av + (cached.get("items") or [])
+                    avanza_total += len(fresh_av)
+                    changed = True
+                    print(f"  [{i:>4}/{len(tickers)}] {t:<12} +{len(fresh_av)} nya PM "
+                          f"(Avanza-fallback, MFN fryst)")
+
+        if changed:
             out.write_text(json.dumps(cached, ensure_ascii=False), encoding="utf-8")
-            new_total += len(new_items)
-            print(f"  [{i:>4}/{len(tickers)}] {t:<12} +{len(new_items)} nya PM")
-        time.sleep(config.MFN_REQUEST_PAUSE_S)
-    print(f"[refresh] klart – {new_total} nya PM inlagda, {full_fetched} nynoteringar full-hämtade.")
-    if new_total or full_fetched:
+    print(f"[refresh] klart – {new_total} nya PM inlagda, {full_fetched} nynoteringar full-hämtade, "
+          f"{avanza_total} PM via Avanza-fallback (frusna bolag).")
+    if new_total or full_fetched or avanza_total:
         print("  Kör nu efterbearbetningen så det nya syns i modellerna:")
         print(f"    python -m altdata.mfn_events scan {target}")
         print(f"    python -m altdata.mfn_fundamentals extract {target}")
