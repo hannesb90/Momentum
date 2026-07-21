@@ -1840,6 +1840,77 @@ def news_for_ticker(ticker: str, limit: int = 8) -> list:
         return []
 
 
+def avanza_news_as_mfn_items(ticker: str, limit: int = 8) -> Optional[list]:
+    """MFN-schemakompatibla poster (samma fält som mfn_fetch._coerce() ger,
+    plus en extra "source":"avanza"-markör) byggda av Avanzas EGET
+    nyhetsflöde (get_news, redan otvetydigt bolags-scopat på orderBookId –
+    ingen författar-matchningsrisk som MFN:s sökbaserade fetch_company()
+    har, se resolve_order_book_id()).
+
+    ANVÄNDNING: komplement i mfn_fetch.refresh_universe() när MFN:s eget
+    flöde är fruset för ett bolag som bytt distributör men fortfarande
+    handlas (VERIFIERAT 2026-07-21: Lundin Gold/Lundin Mining/Lucara Diamond
+    – tre Lundin-familjebolag med utländsk primärnotering (Toronto), MFN-
+    cache fryst sedan 2018, men Avanzas flöde har Cision-distribuerade
+    pressmeddelanden ända in i nutid, t.ex. Lundin Golds Q2 2026-
+    produktionsrapport 2026-07-09). Returnerar None om bolaget inte längre
+    är "tradeable" enligt Avanzas sökträff (döda/avnoterade bolag ska INTE
+    toppas upp med gammalt brus) eller om ingen nyhet hittas.
+
+    BEGRÄNSNING: "text" här är bara nyhetens "intro"-utdrag – Avanzas API
+    ger ingen fullständig artikeltext, så det här är ETT GRUNDARE underlag
+    än en riktig MFN-PM (särskilt siffror i resultat-/balansräkningen som
+    typiskt ligger längre ner i en riktig rapport). quality_screener.py/
+    soft_signals.py:s "hitta inte på, sätt null"-disciplin gäller ändå:
+    hellre ett tunt underlag än inget alls. Rubrikerna är ofta ENGELSKA
+    (utländska bolag) – is_report_pm()s svenska nyckelordsregex missar dem
+    därför ofta, så dessa poster prioriteras inte som "senaste rapporten"
+    i _company_context(), men läses ändå in bland de senaste posterna.
+
+    Filtrerar till category=="Pressmeddelande" (bolagets EGNA, källmärkta
+    PM, t.ex. newsSource=Cision) – get_news() blandar annars in generiska
+    "Telegram"-marknadstelegram som råkar ligga i samma nyhetsflöde men
+    INTE handlar om bolaget (VERIFIERAT: Lundin Golds flöde innehöll ett
+    OMXS30-marknadstelegram om AstraZeneca). Hämtar fler råposter än
+    `limit` eftersom de flesta ändå filtreras bort."""
+    hit = resolve_order_book_id(ticker)
+    if not hit or not hit.get("tradeable"):
+        return None
+    iid = str(hit.get("orderBookId") or "")
+    if not iid:
+        return None
+    time.sleep(_PAUSE_S)
+    try:
+        news = get_news(iid, limit=max(limit * 4, 20))
+    except Exception:  # noqa: BLE001
+        return None
+    news = [n for n in news if n.get("category") == "Pressmeddelande"][:limit]
+    out = []
+    for n in news:
+        date = n.get("date") or ""
+        headline = n.get("headline") or ""
+        if not date or not headline:
+            continue
+        item_id = f"avanza-{iid}-{date}-{abs(hash(headline)) % 10**8}"
+        out.append({
+            "id": item_id,
+            "published": date,
+            "title": headline,
+            "text": n.get("intro") or "",
+            "type": n.get("category") or "",
+            "tags": [],
+            "lang": "sv",
+            "url": n.get("link") or "",
+            "author_slug": _norm_ticker(ticker),
+            "author_name": hit.get("title") or ticker,
+            "tickers": [ticker],
+            "isins": [],
+            "attachments": [],
+            "source": "avanza",
+        })
+    return out or None
+
+
 def probe_news(ticker_or_name: str) -> None:
     """SCHEMA-UPPTÄCKANDE (samma disciplin som probe_etf()/list_probe()):
     har Avanza en egen nyhets-/pressmeddelande-endpoint vi kan använda i

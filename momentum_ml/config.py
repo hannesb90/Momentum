@@ -553,6 +553,16 @@ MFN_CACHE_MAX_BODY_CHARS = 40000
 # ladda ner decennier av PDF:er per bolag.
 MFN_PDF_BACKFILL_PER_TICKER = 6
 MFN_CACHE_DIR       = "cache/mfn"   # rå-PM cachas här (JSON per ticker)
+# Tröskel för "fryst" MFN-cache (mfn_fetch.refresh_universe() Avanza-
+# fallback) – 18 månader. VERIFIERAT 2026-07-21: en full-universum-audit
+# (696 bolag) visade 57 med senaste PM äldre än detta + 13 helt utan cache
+# (~10%), bl.a. Lundin Gold/-Mining/Lucara (Lundin-familjebolag, utländsk
+# primärnotering) som bytt till Cision men fortfarande handlas/rapporterar
+# aktivt – se altdata/avanza.py:s avanza_news_as_mfn_items(). 18 mån ger
+# marginal mot bolag som bara haft en lugn period (kvartalsvis rapportering
+# ≈90 dagars intervall; 548 dagar ≈ 6 uteblivna kvartal innan vi ens
+# försöker Avanza-fallbacken).
+MFN_STALE_DAYS      = 548
 BORSAPI_CACHE_DIR   = "cache/borsapi"  # BörsAPI-svar cachas för alltid (kvot = engångspott)
 BORSAPI_DAILY_BUDGET = 90              # krediter/dygn för backfill (gratis engångspott: kör "backfill 70"; Hobby: 90; Pro: 480)
 BORSAPI_BACKFILL_YEARS = 4             # hämta bara senaste N årens rapporter (F-score 2, fund-momentum 3, +1 buffert)
