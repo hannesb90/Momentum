@@ -66,7 +66,13 @@ def _insight_summary(ticker: str) -> Optional[str]:
         return None
     for c in data.get("companies", []):
         if str(c.get("ticker") or "").upper() == ticker.upper():
-            return c.get("summary")
+            summary = (c.get("summary") or "").strip()
+            # insight_report.py skriver denna placeholder när nattjobbets
+            # generering misslyckades - det är ett felmeddelande, inte en
+            # narrativ, och ska inte in i LLM-underlaget som om det vore en.
+            if not summary or summary == "Kunde inte generera sammanfattning.":
+                return None
+            return summary
     return None
 
 
@@ -78,7 +84,10 @@ def _case_change(ticker: str) -> Optional[dict]:
 def _underlag(ticker: str) -> tuple[str, str]:
     """Bygger textunderlaget + bolagsnamnet. Delas mellan analyze() och ask()
     så en följdfråga svarar mot samma grund som den ursprungliga analysen."""
-    quality = _csv_row(Path(config.RESULTS_DIR) / "quality_shortlist.csv", ticker)
+    # anchor() på BÅDA (var tidigare bara på quant): utan den är sökvägen
+    # CWD-relativ, och på Pi:n (MOMENTUM_HOME satt, tjänsten kan köra med
+    # annan arbetskatalog) hittades quality-betyget då tyst aldrig.
+    quality = _csv_row(Path(config.anchor(config.RESULTS_DIR)) / "quality_shortlist.csv", ticker)
     quant = _csv_row(Path(config.anchor(config.RESULTS_DIR)) / "quant_shortlist.csv", ticker)
     holding = _holding(ticker)
     name = (holding or {}).get("name") or (quality or {}).get("name") or (quant or {}).get("name") or ticker
