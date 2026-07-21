@@ -361,12 +361,42 @@ def _underlag():
     return "\n".join(lines)
 
 
+def _gap_note() -> str:
+    """Om förra körningen (momentum-commentary.timer, nattlig) missades helt
+    – t.ex. prenumerationens användningsgräns (verkligt fall 2026-07-20,
+    se claude_headless.py) – skriver build() ingenting, och gårdagens fil
+    ligger kvar orörd. Utan den här kollen täcker nästa lyckade kommentar
+    bara "senaste tiden" generiskt, och den förlorade dagens rörelser
+    riskerar att aldrig nämnas. >36h sedan förra generated_at (normal
+    körning ~24h) räknas som minst en missad natt – lägg då till en rad
+    överst i underlaget som ber modellen uttryckligen täcka HELA perioden
+    sedan förra kommentaren, inte bara sedan igår."""
+    p = pf._results_dir() / "portfolio_commentary.json"
+    if not p.exists():
+        return ""
+    try:
+        prev = json.loads(p.read_text(encoding="utf-8"))
+        prev_dt = datetime.fromisoformat(prev["generated_at"])
+    except Exception:  # noqa: BLE001
+        return ""
+    if prev_dt.tzinfo is None:
+        prev_dt = prev_dt.replace(tzinfo=timezone.utc)
+    gap_hours = (datetime.now(timezone.utc) - prev_dt).total_seconds() / 3600
+    if gap_hours < 36:
+        return ""
+    prev_date = prev_dt.date().isoformat()
+    return (f"OBS: föregående förvaltarkommentar skrevs {prev_date} – minst en natts "
+            f"körning har missats däremellan (teknisk kvotbegränsning e.dyl.), så täck "
+            f"utvecklingen för HELA perioden sedan {prev_date}, inte bara det senaste "
+            f"dygnet.\n\n")
+
+
 def build():
     rows = pf.load_holdings()
     if not rows:
         print("[commentary] inga innehav – hoppar.")
         return
-    prompt = _PROMPT.format(underlag=_underlag())
+    prompt = _PROMPT.format(underlag=_gap_note() + _underlag())
     # WebSearch, INGET annat (ingen Montrose, ingen filåtkomst) - låst via
     # --allowedTools + --permission-mode dontAsk i claude_headless.run.
     # Flera sökningar (en per sektor/innehav med tydlig rörelse) -> längre
