@@ -67,7 +67,15 @@ journalctl -t momentum-api-watchdog -f
 `momentum-train.service` körs som `Type=oneshot` med:
 - `Nice=15` + `IOSchedulingClass=idle` – stjäl inte CPU/disk från API:t.
 - `CPUWeight=20` – cgroup-baserad mjuk prioritering (systemd ≥ 240).
-- `MemoryMax=2G` – säkerhetsnät mot OOM på en Pi med begränsat RAM.
+- `MemoryMax=1400M`/`MemorySwapMax=512M` – **INAKTIVA på den här Pi:n**
+  (`cgroup_disable=memory` i `/proc/cmdline`, ingen minneskontroller finns).
+  Lämnade kvar ofarligt ifall det ändras, men förlita dig inte på dem.
+- **`run_watched.sh`** – det FAKTISKA OOM-skyddet: en bash-wrapper som pollar
+  `/proc/meminfo` MemAvailable var 5:e sekund och avbryter (SIGTERM→SIGKILL,
+  hela processgruppen) om det går under 250MB, innan Pi:n kraschar hårt (se
+  skriptets docstring för verkligt fall 2026-07-20). `-` framför ExecStart
+  gör att ett OOM-avbrott i `large`-segmentet inte hindrar `small` från att
+  ändå försöka.
 - `MOMENTUM_TRAINING_THREADS=3` – lämnar en kärna åt API/OS på en 4-kärnig Pi.
   Justera till antal kärnor − 1 för din modell (Pi 5 har också 4 kärnor).
 
