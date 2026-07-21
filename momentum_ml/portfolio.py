@@ -399,12 +399,21 @@ def fetch_holding_quotes(tickers: Optional[list] = None) -> dict:
     def fx(cur):
         cur = (cur or "SEK").upper()
         if cur not in fx_cache:
+            rate = None
             try:
-                import yfinance as yf
-                h = yf.Ticker(f"{cur}SEK=X").history(period="5d")["Close"].dropna()
-                fx_cache[cur] = float(h.iloc[-1]) if len(h) else None
+                rate = av.fx_rate(cur, "SEK")
             except Exception:  # noqa: BLE001
-                fx_cache[cur] = None
+                rate = None
+            if rate is None:
+                # Yahoo som sista utväg - Avanza saknar valutakryss för vissa
+                # (ovanliga) valutor, eller ett tillfälligt sök-/nätverksfel.
+                try:
+                    import yfinance as yf
+                    h = yf.Ticker(f"{cur}SEK=X").history(period="5d")["Close"].dropna()
+                    rate = float(h.iloc[-1]) if len(h) else None
+                except Exception:  # noqa: BLE001
+                    rate = None
+            fx_cache[cur] = rate
         return fx_cache[cur]
 
     out = {}
