@@ -403,7 +403,9 @@ def build():
     # timeout än insight_report.py:s per-batch-anrop.
     result = ch.run(prompt, _TOOLS, timeout=240, text_fallback_key="commentary")
     if "error" in result or not result.get("commentary"):
-        print(f"[commentary] misslyckades: {result.get('error', 'tomt svar')}")
+        err = result.get("error", "tomt svar")
+        print(f"[commentary] misslyckades: {err}")
+        ch.queue_retry(__file__, [], err)
         return
     out = {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "commentary": result["commentary"]}

@@ -172,8 +172,8 @@ def _run_batch(entries):
     result = ch.run(prompt, "WebSearch", timeout=180)
     if "error" in result:
         print(f"[insight] batch ({', '.join(e['ticker'] for e in entries)}) misslyckades: {result['error']}")
-        return {}
-    return {k: v for k, v in result.items() if isinstance(v, str)}
+        return {}, result["error"]
+    return {k: v for k, v in result.items() if isinstance(v, str)}, None
 
 
 def build(limit=None):
@@ -188,7 +188,14 @@ def build(limit=None):
     for i in range(0, len(universe), BATCH_SIZE):
         batch = universe[i:i + BATCH_SIZE]
         print(f"[insight] batch {i // BATCH_SIZE + 1}: {', '.join(e['ticker'] for e in batch)}")
-        summaries.update(_run_batch(batch))
+        result, err = _run_batch(batch)
+        summaries.update(result)
+        if err:
+            argv = ["--limit", str(limit)] if limit else []
+            if ch.queue_retry(__file__, argv, err):
+                # Kvoten är slut för hela körningen - fler batchar skulle
+                # bara upprepa samma fel, hela skriptet är redan ombokat.
+                break
 
     out = {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "companies": [{"ticker": tk, "name": e["name"], "held": e.get("held", False),

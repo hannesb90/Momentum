@@ -116,6 +116,8 @@ def sync(path=None):
         if "error" in data:
             print(f"[sync_montrose] hämtning misslyckades: {data['error']} – "
                   f"rör inte befintlig fil.")
+            import claude_headless as ch
+            ch.queue_retry(__file__, ["--from-montrose"], data["error"])
             raise SystemExit(1)
     else:
         raw = Path(path).read_text(encoding="utf-8") if path else sys.stdin.read()

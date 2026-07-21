@@ -1,0 +1,21 @@
+[Unit]
+Description=Momentum – kör om schemalagda jobb vars Claude-kvot tog slut
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+# Läser cache/claude_retry_queue.json (skriven av claude_headless.queue_retry()
+# när ett schemalagt jobb misslyckas pga prenumerationens kvot-/tidsgräns) och
+# kör om exakt de skript vars retry_at passerat. Se retry_dispatcher.py.
+Environment=PATH=/opt/momentum/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/momentum/venv/bin/python retry_dispatcher.py
+
+Nice=15
+IOSchedulingClass=idle
+# Om ett ombokat jobb faktiskt kör (t.ex. insight_report.py, flera WebSearch-
+# batchar) - ge det gott om tid, samma ordning som originaltjänstens egen gräns.
+TimeoutStartSec=30m
