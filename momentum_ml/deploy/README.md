@@ -243,6 +243,26 @@ sudo systemctl enable --now momentum-commentary.timer
 cd /opt/momentum/momentum_ml && python portfolio_commentary.py
 ```
 
+## 7d. Ombokning vid Claude-kvotstopp (var 2:a minut)
+
+Om ett schemalagt jobb ovan (7/7a2/7b/7c) misslyckas pga prenumerationens
+kvot-/tidsgräns skriver `claude_headless.queue_retry()` en post i
+`cache/claude_retry_queue.json` med den "resets HH:MM"-tid claude-cli själv
+angav. `momentum-retry.timer` kör `retry_dispatcher.py` var 2:a minut och
+kör om exakt det skriptet (med samma argument) så snart den tiden passerat
+– i stället för att jobbet bara tappas till nästa ordinarie natt-timer
+(kan vara >20h bort om felet inträffar tidigt på natten).
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-retry.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-retry.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-retry.timer
+
+# Se ombokade/omkörda jobb:
+journalctl -u momentum-retry.service -f
+```
+
 ## 8. Hälsokontroll på Pi:n
 
 ```bash

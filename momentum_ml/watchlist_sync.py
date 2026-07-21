@@ -73,6 +73,7 @@ def build():
     result = ch.run(prompt, _TOOLS, timeout=180)
     if "error" in result:
         print(f"[watchlist] misslyckades: {result['error']}")
+        ch.queue_retry(__file__, [], result["error"])
         return
     for key, label in (("top", WATCHLIST_TOP), ("sell", WATCHLIST_SELL)):
         r = result.get(key) or {}

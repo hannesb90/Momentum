@@ -11,6 +11,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -116,3 +117,79 @@ def run(prompt: str, allowed_tools: str, timeout: int = 120, model: str = None,
                 f"funkar inte headless). Kör: claude mcp add --transport http {server} "
                 f"<url> && claude mcp login {server}"}
     return extract_json(result_text, text_fallback_key=text_fallback_key)
+
+
+def _parse_quota_reset(detail: str):
+    """Tolkar en "resets HH(:MM)?(am|pm)? (Zone/City)"-tid ur claude-cli:s
+    kvot-/rate-limit-felmeddelande (verkligt format 2026-07-20: "You've hit
+    your weekly limit · resets 4pm (Europe/Stockholm)"). Returnerar NÄSTA
+    förekomst av den klocktiden (tz-medveten datetime – idag om den inte
+    redan passerat, annars imorgon) plus en 10-minuters buffert (kvoten
+    fylls inte garanterat exakt på sekunden claude-cli angav), eller None
+    om inget sådant mönster hittas i texten – ingen ombokning då, bara
+    nuvarande "logga och ge upp"-beteende."""
+    m = re.search(r"resets\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?(?:\s*\(([\w/]+)\))?",
+                  detail or "", re.I)
+    if not m:
+        return None
+    hour, minute = int(m.group(1)), int(m.group(2) or 0)
+    ampm, tzname = (m.group(3) or "").lower(), m.group(4)
+    if ampm == "pm" and hour != 12:
+        hour += 12
+    elif ampm == "am" and hour == 12:
+        hour = 0
+    tz = timezone.utc
+    if tzname:
+        try:
+            from zoneinfo import ZoneInfo
+            tz = ZoneInfo(tzname)
+        except Exception:  # noqa: BLE001
+            pass
+    now = datetime.now(tz)
+    try:
+        candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    except ValueError:
+        return None
+    if candidate <= now:
+        candidate += timedelta(days=1)
+    return candidate + timedelta(minutes=10)
+
+
+_RETRY_QUEUE_FILE = "cache/claude_retry_queue.json"
+
+
+def queue_retry(script_path, argv, error_detail: str) -> bool:
+    """Kallas av ett SCHEMALAGT jobbs entry point (portfolio_commentary.py,
+    watchlist_sync.py, insight_report.py, sync_montrose_holdings.py – ALDRIG
+    interaktiva/på-begäran-anrop som montrose_ticket.create_ticket eller
+    portfolio_commentary.ask(), en misslyckad knapptryckning ska felas
+    synligt direkt i appen, inte tystas ner i en bakgrundskö) när run() gav
+    ett kvot-/tidsgränsfel. Om felmeddelandet innehåller en tolkningsbar
+    "resets HH:MM"-tid (se _parse_quota_reset) skrivs en post i
+    cache/claude_retry_queue.json med den tidpunkten; retry_dispatcher.py
+    (momentum-retry.timer, var 2:e minut) kör då om EXAKT samma skript+
+    argument när kvoten borde vara påfylld, i stället för att jobbet bara
+    tappas till nästa ordinarie natt-timer (kan vara >20h bort om felet
+    inträffar tidigt på natten). En ny köad post för samma skript ersätter
+    en äldre (t.ex. om nästa körning misslyckas igen med en senare
+    reset-tid). Returnerar True om en ombokning köades, False om felet inte
+    gick att tolka som en tidsbestämd kvotgräns (vanligt nätverksfel etc –
+    då är nuvarande "logga och ge upp" fortfarande rätt)."""
+    retry_at = _parse_quota_reset(error_detail)
+    if retry_at is None:
+        return False
+    qpath = Path(config.anchor(_RETRY_QUEUE_FILE))
+    qpath.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        queue = json.loads(qpath.read_text(encoding="utf-8")) if qpath.exists() else []
+    except Exception:  # noqa: BLE001
+        queue = []
+    script_path = str(Path(script_path).resolve())
+    queue = [e for e in queue if e.get("script") != script_path]
+    queue.append({"script": script_path, "args": list(argv or []),
+                  "retry_at": retry_at.isoformat(),
+                  "queued_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                  "reason": (error_detail or "")[:200]})
+    qpath.write_text(json.dumps(queue, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"[claude_headless] kvot-/tidsgräns – {Path(script_path).name} ombokad till {retry_at.isoformat()}")
+    return True

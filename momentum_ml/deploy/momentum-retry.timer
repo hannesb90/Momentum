@@ -1,0 +1,10 @@
+[Unit]
+Description=Kör momentum-retry.service var 2:a minut
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=2min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
