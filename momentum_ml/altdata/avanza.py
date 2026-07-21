@@ -505,6 +505,69 @@ def price_history(ticker: str, period: str = "one_year"):
         return None
 
 
+def stock_info(ticker: str) -> Optional[dict]:
+    """Löser orderBookId (resolve_order_book_id) och hämtar RÅ market-guide/
+    stock/{id}-info (keyIndicators/listing/quote/...) – delad byggsten för
+    market_cap_msek()/currency_of() m.fl., i stället för att var och en gör
+    samma sök+info-anrop separat. None vid ingen träff/nätverksfel."""
+    hit = resolve_order_book_id(ticker)
+    if not hit or not hit.get("orderBookId"):
+        return None
+    time.sleep(_PAUSE_S)   # artig paus mellan sök- och info-anropet
+    try:
+        return _get(f"/_api/market-guide/stock/{hit['orderBookId']}")
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def market_cap_msek(ticker: str) -> Optional[float]:
+    """Börsvärde i MSEK (keyIndicators.marketCapital.value – VERIFIERAT
+    2026-07-21 mot AZA.ST: {'value': 61379733490.0, 'currency': 'SEK'}, i
+    bolagets EGEN handelsvaluta, ingen FX-omräkning här – samma antagande
+    som quality_screener.py:s tidigare Yahoo-väg redan gjorde). None vid
+    ingen träff/saknat fält."""
+    info = stock_info(ticker)
+    if not info:
+        return None
+    val = ((info.get("keyIndicators") or {}).get("marketCapital") or {}).get("value")
+    return round(float(val) / 1e6, 1) if val is not None else None
+
+
+def currency_of(ticker: str) -> Optional[str]:
+    """Handelsvaluta (listing.currency – samma fält fetch_holding_quotes()
+    i portfolio.py redan använder). None vid ingen träff/saknat fält."""
+    info = stock_info(ticker)
+    return (info or {}).get("listing", {}).get("currency") if info else None
+
+
+def fx_rate(base_currency: str, quote_currency: str = "SEK") -> Optional[float]:
+    """Senaste valutakurs bas->quote (t.ex. fx_rate('USD') -> USD/SEK) via
+    Avanzas INDEX-sökträffar – Avanza handlar valutakryss som prissatta
+    "index" (VERIFIERAT 2026-07-21: sök på 'USDSEK' gav en INDEX-träff
+    'USD/SEK (XXR-USDSEK-SPOT)' MED priset redan i sökträffen, ingen extra
+    fråga behövs, plus två hävstångscertifikat som INTE är spotkursen –
+    matchar därför type=='INDEX' specifikt, gissar aldrig första träffen).
+    Svensk decimalkomma i price.last ("9,692") konverteras. None vid ingen
+    träff/nätverksfel/oparsbart pris."""
+    base_currency, quote_currency = base_currency.upper(), quote_currency.upper()
+    if base_currency == quote_currency:
+        return 1.0
+    try:
+        hits = search(f"{base_currency}{quote_currency}").get("hits") or []
+    except Exception:  # noqa: BLE001
+        return None
+    hit = next((h for h in hits if h.get("type") == "INDEX"), None)
+    if not hit:
+        return None
+    raw = (hit.get("price") or {}).get("last")
+    if raw is None:
+        return None
+    try:
+        return float(str(raw).replace(",", "."))
+    except ValueError:
+        return None
+
+
 def _search_variant(variant: str) -> tuple:
     """Ett sökförsök -> (bekräftad_träff_eller_None, bästa_ej_bekräftade_eller_None).
     Bekräftelse: variantens ticker matchar EXAKT ticker-delen i träffens

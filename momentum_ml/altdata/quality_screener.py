@@ -244,26 +244,37 @@ def screen() -> None:
 
 
 def _market_caps(tickers) -> dict:
-    """Auktoritativt börsvärde (MSEK) per ticker från Yahoo, cachat på disk.
-    Slår 'kurs × Claude-extraherat aktieantal' som ofta saknas → många 'okänd'.
-    Cachar bara träffar, så en ny körning kan fylla luckor (t.ex. efter rate-limit)."""
-    import yfinance as yf
+    """Auktoritativt börsvärde (MSEK) per ticker - Avanza först
+    (avanza.market_cap_msek, keyIndicators.marketCapital), Yahoo som
+    fallback om Avanza-sökningen inte matchar tickern. Slår 'kurs ×
+    Claude-extraherat aktieantal' som ofta saknas → många 'okänd'. Cachat
+    på disk för alltid - en engångskostnad, inte en nattlig batch. Cachar
+    bara träffar, så en ny körning kan fylla luckor (t.ex. efter ett
+    nätverksfel)."""
+    from altdata import avanza
     cache = Path(config.QUALITY_CACHE_DIR) / "_marketcaps.json"
     caps = json.loads(cache.read_text()) if cache.exists() else {}
     todo = [t for t in tickers if t not in caps]
     if todo:
-        print(f"[report] hämtar börsvärde från Yahoo för {len(todo)} bolag (cachas)...")
+        print(f"[report] hämtar börsvärde för {len(todo)} bolag (Avanza→Yahoo, cachas)...")
         for i, t in enumerate(todo, 1):
             mc = None
             try:
-                fi = yf.Ticker(t).fast_info
-                mc = fi.get("market_cap") if hasattr(fi, "get") else getattr(fi, "market_cap", None)
-                if not mc:
-                    mc = yf.Ticker(t).info.get("marketCap")
-            except Exception:
+                mc = avanza.market_cap_msek(t)
+            except Exception:  # noqa: BLE001
                 mc = None
+            if mc is None:
+                try:
+                    import yfinance as yf
+                    fi = yf.Ticker(t).fast_info
+                    raw = fi.get("market_cap") if hasattr(fi, "get") else getattr(fi, "market_cap", None)
+                    if not raw:
+                        raw = yf.Ticker(t).info.get("marketCap")
+                    mc = round(float(raw) / 1e6, 1) if raw else None   # SEK → MSEK
+                except Exception:
+                    mc = None
             if mc:
-                caps[t] = round(float(mc) / 1e6, 1)   # SEK → MSEK
+                caps[t] = mc
             if i % 25 == 0:
                 cache.write_text(json.dumps(caps))     # delcheckpoint mot avbrott
         cache.write_text(json.dumps(caps))

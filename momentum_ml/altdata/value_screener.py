@@ -558,26 +558,32 @@ def _currency_cache_path() -> Path:
 
 def _ticker_currency(ticker: str, cache: dict) -> str:
     """Cachad (för alltid - en notering byter aldrig handelsvaluta) valuta
-    per ticker. `cache` muteras in-place av anroparen, som även ansvarar för
-    att skriva den till disk (samma delcheckpoint-mönster som
-    quality_screener._market_caps()). Default 'SEK' om Yahoo-uppslaget
-    misslyckas - matchar det gamla, implicita antagandet för de facto
-    SEK-rapporterande bolag (>90% av universumet), ingen ny risk för dem."""
+    per ticker - Avanza först (avanza.currency_of, listing.currency), Yahoo
+    som fallback om Avanza-sökningen inte matchar tickern. `cache` muteras
+    in-place av anroparen, som även ansvarar för att skriva den till disk
+    (samma delcheckpoint-mönster som quality_screener._market_caps()).
+    Default 'SEK' om båda uppslagen misslyckas - matchar det gamla,
+    implicita antagandet för de facto SEK-rapporterande bolag (>90% av
+    universumet), ingen ny risk för dem."""
     if ticker in cache:
         return cache[ticker]
-    cur = "SEK"
+    cur = None
     try:
-        import yfinance as yf
-        fi = yf.Ticker(ticker).fast_info
-        c = fi.get("currency") if hasattr(fi, "get") else getattr(fi, "currency", None)
-        if not c:
-            c = yf.Ticker(ticker).info.get("currency")
-        if c:
-            cur = c
+        from altdata import avanza
+        cur = avanza.currency_of(ticker)
     except Exception:  # noqa: BLE001
-        pass
-    cache[ticker] = cur
-    return cur
+        cur = None
+    if not cur:
+        try:
+            import yfinance as yf
+            fi = yf.Ticker(ticker).fast_info
+            cur = fi.get("currency") if hasattr(fi, "get") else getattr(fi, "currency", None)
+            if not cur:
+                cur = yf.Ticker(ticker).info.get("currency")
+        except Exception:  # noqa: BLE001
+            cur = None
+    cache[ticker] = cur or "SEK"
+    return cache[ticker]
 
 
 def score(segment: Optional[str] = None) -> None:
