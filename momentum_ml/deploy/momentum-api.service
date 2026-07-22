@@ -17,5 +17,10 @@ RestartSec=5
 # Alltid på, men låg footprint – ingen särskild nice/io-prioritet behövs
 # eftersom API:t bara läser redan genererade CSV/JSON-filer.
 
+# Skydda mot earlyoom/kernel-OOM: --avoid/--prefer i earlyoom matchar bara
+# comm-namnet ("python3"), vilket inte skiljer uvicorn från t.ex. ett manuellt
+# tune_*.py-jobb. OOMScoreAdjust är per-process och träffsäker oavsett namn.
+OOMScoreAdjust=-500
+
 [Install]
 WantedBy=multi-user.target
