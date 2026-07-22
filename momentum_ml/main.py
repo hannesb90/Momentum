@@ -139,11 +139,22 @@ def _feature_cache_key(args) -> str:
     """Hash av ALLA argument som påverkar VILKA features som byggs (inte de
     som bara påverkar STEG 3+ nedströms, t.ex. --buy-threshold/--ta-filter/
     --n-trials) - de senare får INTE vara med, annars missar cachenträff
-    mellan train- och predict-subprocesserna trots identisk feature-data."""
+    mellan train- och predict-subprocesserna trots identisk feature-data.
+
+    BUGG (fixad, verkligt fall 2026-07-22): --min-turnover är argparse
+    type=float, men config.UNIVERSE_MIN_AVG_TURNOVER (defaultvärdet, det
+    parent-processen använder om flaggan inte anges explicit) är ett RENT
+    HELTAL i config.py. json.dumps(100000) != json.dumps(100000.0) - parent
+    (int, ovillkorligt värde) och barn (float, ANGES explicit i base_cmd som
+    en sträng, parsas tillbaka via type=float) fick alltså OLIKA hash trots
+    identiskt värde, så parent->första-barnet missade cachen varje gång
+    (bekräftat: results/small/ fick två olika _features_cache_*.pkl-filer
+    samma minut). float() här normaliserar bort typskillnaden - gör samma
+    sak för alla NUMERISKA fält om fler läggs till framöver."""
     payload = {
         "segment": args.segment, "tickers": args.tickers, "universe": args.universe,
         "market_cap": args.market_cap, "include_ngm": args.include_ngm,
-        "start": args.start, "end": args.end, "min_turnover": args.min_turnover,
+        "start": args.start, "end": args.end, "min_turnover": float(args.min_turnover),
         "stale_weeks": args.stale_weeks, "min_history": args.min_history,
         "no_liquidity_filter": args.no_liquidity_filter,
     }
@@ -168,7 +179,8 @@ def _load_feature_cache(args):
         return None
     try:
         return pd.read_pickle(p)
-    except Exception:  # noqa: BLE001 - korrupt/ofullständig cache, bygg om
+    except Exception as e:  # noqa: BLE001 - korrupt/ofullständig cache, bygg om
+        print(f"  [WARN] Kunde inte läsa feature-cachen {p.name} ({e}) - bygger om.")
         return None
 
 
