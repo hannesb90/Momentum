@@ -126,4 +126,8 @@ export const api = {
   // "Fråga om bolaget"-boxen: fri följdfråga scopad till ett bolag, samma
   // mönster som commentaryAsk men per ticker.
   stockAsk: (ticker, question) => postJson('/stock/ask', { ticker, question }),
+  // ETF-sammansättning (reducerad vy, tickers utanför modellens universum):
+  // ~10 största innehav + sektor-/geografisk fördelning, WebSearch, cachas
+  // 7 dagar server-side. name skickas med för en bättre sökträff.
+  etfComposition: (ticker, name) => postJson('/stock/etf-composition', { ticker, name }),
 }

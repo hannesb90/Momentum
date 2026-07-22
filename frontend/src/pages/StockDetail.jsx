@@ -223,6 +223,110 @@ function AskAboutStockBox({ ticker }) {
   )
 }
 
+// ETF-sammansättning (reducerad vy): ~10 största innehav + sektor-/
+// geografisk fördelning, på-begäran (WebSearch, cachas 7 dagar server-
+// sidan - se stock_deep_dive.etf_composition). Samma på-begäran-mönster
+// som DeepDiveBox ovan, bara för ETF:er i stället för enskilda bolag.
+function EtfCompositionBox({ ticker, name }) {
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function run() {
+    setLoading(true)
+    setError(null)
+    setResult((r) => (r?.error ? null : r))
+    try {
+      const r = await api.etfComposition(ticker, name)
+      setResult(r)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const rows = (kind) => (result?.[kind] ?? [])
+  const hasData = (result?.top_holdings?.length ?? 0) > 0
+
+  return (
+    <div className="list-card" style={{ padding: 12 }}>
+      <h3 className="section-title" style={{ marginTop: 0 }}>
+        ETF-sammansättning
+        <InfoButton title="Innehav, sektorer, regioner">
+          <p>
+            De ungefär 10 största innehaven i fonden, plus sektor- och geografisk fördelning –
+            uppslaget via sökning (fondbolagets egen sida, justETF, Morningstar m.fl.), inte en
+            direkt datakälla, så siffrorna kan vara någon vecka gamla. Cachas 7 dagar.
+          </p>
+        </InfoButton>
+      </h3>
+      {!hasData && !loading && (
+        <button className="btn" onClick={run}>Visa sammansättning</button>
+      )}
+      {loading && <div className="list-card__empty">Söker… (kan ta upp till ~3 min)</div>}
+      {error && (
+        <div className="status-block status-block--error" style={{ marginTop: 8 }}>
+          Kunde inte hämta: {error}
+        </div>
+      )}
+      {result?.error && (
+        <div className="status-block status-block--error" style={{ marginTop: 8 }}>
+          Kunde inte hämta: {result.error}
+        </div>
+      )}
+      {hasData && (
+        <div style={{ display: 'grid', gap: 16, marginTop: loading ? 0 : 4 }}>
+          <div>
+            <p style={{ margin: '0 0 4px', fontWeight: 600 }}>Största innehav</p>
+            {rows('top_holdings').map((h, i) => (
+              <div key={i} className="list-row" style={{ padding: '4px 0' }}>
+                <div className="list-row__main"><span className="list-row__ticker">{h.name}</span></div>
+                <div className="list-row__side">
+                  <span className="list-row__num">{h.weight_pct != null ? `${h.weight_pct}%` : '–'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {rows('sectors').length > 0 && (
+            <div>
+              <p style={{ margin: '0 0 4px', fontWeight: 600 }}>Sektorer</p>
+              {rows('sectors').map((s, i) => (
+                <div key={i} className="list-row" style={{ padding: '4px 0' }}>
+                  <div className="list-row__main"><span className="list-row__ticker">{s.name}</span></div>
+                  <div className="list-row__side">
+                    <span className="list-row__num">{s.weight_pct != null ? `${s.weight_pct}%` : '–'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {rows('regions').length > 0 && (
+            <div>
+              <p style={{ margin: '0 0 4px', fontWeight: 600 }}>Regioner</p>
+              {rows('regions').map((r, i) => (
+                <div key={i} className="list-row" style={{ padding: '4px 0' }}>
+                  <div className="list-row__main"><span className="list-row__ticker">{r.name}</span></div>
+                  <div className="list-row__side">
+                    <span className="list-row__num">{r.weight_pct != null ? `${r.weight_pct}%` : '–'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="footnote">
+            {result.source ? `Källa: ${result.source}` : ''}
+            {result.as_of ? ` · per ${result.as_of}` : ''}
+          </p>
+          <button className="btn" style={{ justifySelf: 'start' }} onClick={run} disabled={loading}>
+            Hämta om
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Kursgraf, fristående från modellens signalhistorik (bygger bara på
 // prices/dev) - delas mellan den fulla vyn OCH reducerad-vyn nedan
 // (tickers utanför modellens universum, t.ex. innehavda ETF:er, som ändå
@@ -401,9 +505,10 @@ export function StockDetailPage() {
         </div>
         <EmptyState
           title="Ingen modelldata för denna ticker"
-          hint="Aktien ingår inte i modellens universum (t.ex. en ETF eller ett utländskt bolag) – bara kursgrafen nedan är tillgänglig, inga signaler/betyg."
+          hint="Aktien ingår inte i modellens universum (t.ex. en ETF eller ett utländskt bolag) – bara kursgrafen och ETF-sammansättningen nedan är tillgängliga, inga signaler/betyg."
         />
         <PriceChartCard priceSeries={priceSeries} dev={dev} />
+        <EtfCompositionBox ticker={ticker} />
       </section>
     )
   }
