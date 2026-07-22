@@ -223,6 +223,54 @@ function AskAboutStockBox({ ticker }) {
   )
 }
 
+// Kursgraf, fristående från modellens signalhistorik (bygger bara på
+// prices/dev) - delas mellan den fulla vyn OCH reducerad-vyn nedan
+// (tickers utanför modellens universum, t.ex. innehavda ETF:er, som ändå
+// har prisdata via /api/prices Avanza/Yahoo-fallback).
+function PriceChartCard({ priceSeries, dev }) {
+  return (
+    <div className="chart-card">
+      <h3>
+        Kursutveckling
+        {dev != null && (
+          <span className={`chart-legend ${dev >= 0 ? 'pos' : 'neg'}`}>
+            {' '}— {dev >= 0 ? '+' : ''}{fmtPct(dev)} på perioden
+          </span>
+        )}
+        <InfoButton title="Kursutveckling">
+          Aktiens stängningskurs över tid (senaste ~5 åren). Detta är den faktiska priskurvan,
+          inte modellens prognos.
+        </InfoButton>
+      </h3>
+      {priceSeries.length < 2 ? (
+        <div className="list-card__empty">
+          Kursdata genereras vid nästa modellkörning – kom tillbaka efter en uppdatering.
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={240}>
+          <AreaChart data={priceSeries} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.4} />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
+            <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#8aa094" minTickGap={40} />
+            <YAxis stroke="#8aa094" domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
+            <Tooltip
+              contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3', borderRadius: 8 }}
+              labelFormatter={fmtDate}
+              formatter={(v) => [fmtNum(v, 2), 'Kurs']}
+            />
+            <Area type="monotone" dataKey="close" stroke="var(--accent)" strokeWidth={1.5} fill="url(#priceFill)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  )
+}
+
 export function StockDetailPage() {
   const { ticker } = useParams()
   const history = useApiData(() => api.signalHistory(ticker), [ticker])
@@ -328,16 +376,34 @@ export function StockDetailPage() {
 
   if (history.loading) return <Loading />
   if (history.error) {
+    // Utanför modellens universum (t.ex. en innehavd ETF - VVSM.DE/IUSQ.DE
+    // m.fl. handlas aldrig av modellen) - INGEN anledning att blockera HELA
+    // sidan för det. Kursgrafen (Avanza/Yahoo-fallback i /api/prices, oberoende
+    // av modellens signals.csv) och lägg-till-knapparna funkar ändå, bara
+    // de modell-specifika sektionerna (P(upp), kvant-/kvalitetspercentil,
+    // signalhistorik-graf) nedanför saknar underlag att visa.
     return (
       <section className="page">
         <div className="page-head">
           <Link to="/signaler" className="section-head__link">← Tillbaka</Link>
           <h1>{ticker}</h1>
+          <p className="page-subtitle">
+            <TvLink ticker={ticker} />
+          </p>
+        </div>
+        <div className="add-form">
+          <button className="btn btn--primary" onClick={() => addHolding({ ticker, shares: null })}>
+            + Lägg till i portfölj
+          </button>
+          <button className="btn" onClick={() => addToWatchlist(ticker)}>
+            + Bevaka
+          </button>
         </div>
         <EmptyState
           title="Ingen modelldata för denna ticker"
-          hint="Aktien ingår inte i modellens universum, eller har ingen genererad signal än."
+          hint="Aktien ingår inte i modellens universum (t.ex. en ETF eller ett utländskt bolag) – bara kursgrafen nedan är tillgänglig, inga signaler/betyg."
         />
+        <PriceChartCard priceSeries={priceSeries} dev={dev} />
       </section>
     )
   }
@@ -428,45 +494,7 @@ export function StockDetailPage() {
       </div>
 
       {/* Kursutveckling */}
-      <div className="chart-card">
-        <h3>
-          Kursutveckling
-          {dev != null && (
-            <span className={`chart-legend ${dev >= 0 ? 'pos' : 'neg'}`}>
-              {' '}— {dev >= 0 ? '+' : ''}{fmtPct(dev)} på perioden
-            </span>
-          )}
-          <InfoButton title="Kursutveckling">
-            Aktiens stängningskurs över tid (senaste ~5 åren). Detta är den faktiska priskurvan,
-            inte modellens prognos.
-          </InfoButton>
-        </h3>
-        {priceSeries.length < 2 ? (
-          <div className="list-card__empty">
-            Kursdata genereras vid nästa modellkörning – kom tillbaka efter en uppdatering.
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={priceSeries} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.4} />
-                  <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
-              <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#8aa094" minTickGap={40} />
-              <YAxis stroke="#8aa094" domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3', borderRadius: 8 }}
-                labelFormatter={fmtDate}
-                formatter={(v) => [fmtNum(v, 2), 'Kurs']}
-              />
-              <Area type="monotone" dataKey="close" stroke="var(--accent)" strokeWidth={1.5} fill="url(#priceFill)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-      </div>
+      <PriceChartCard priceSeries={priceSeries} dev={dev} />
 
       {/* Fundamenta i kontext: tvärsnittspercentil mot HELA quant-universumet
           just nu (inte bolagets egen historik – den loggas inte historiskt
