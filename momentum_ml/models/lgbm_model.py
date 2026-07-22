@@ -7,6 +7,7 @@ Output per sample:
   - pred_return  : förväntad avkastning (regression)
 """
 
+import hashlib
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
@@ -102,22 +103,103 @@ class MomentumLGBM:
 
     # ── Träning ──────────────────────────────────────────────────────────────
 
+    def _checkpoint_path(self) -> Path:
+        # config.RESULTS_DIR är redan anchor():ad (segment-uppdelad, se
+        # config.SEGMENTS) - samma direkta användning som main.py:s
+        # _feature_cache_path, ingen extra anchor()-inpackning här.
+        return Path(config.RESULTS_DIR) / "_lgbm_walkforward_checkpoint.joblib"
+
+    def _checkpoint_key(self, df: pd.DataFrame) -> str:
+        """Samma paranoida invalideringsprincip som features-cachen
+        (feature_engineering.py, se dess kommentar): hashar HELA denna fil +
+        config.py:s källkod, inte en manuellt underhållen versionssträng -
+        varje kodändring (nya hyperparametrar, ändrad splitlogik) river
+        automatiskt en gammal checkpoint i stället för att riskera att tyst
+        återuppta träning med gammal logik. Datahash (hash_pandas_object)
+        fångar om df (features/labels) ändrats sedan checkpointen skrevs."""
+        code = Path(__file__).read_text() + Path(config.__file__).read_text()
+        code_hash = hashlib.sha1(code.encode()).hexdigest()[:16]
+        data_hash = hashlib.sha1(
+            pd.util.hash_pandas_object(df, index=True).values.tobytes()
+        ).hexdigest()[:16]
+        return f"{code_hash}_{data_hash}"
+
+    def _save_checkpoint(self, key: str, next_i: int, cls_imp: list, reg_imp: list) -> None:
+        """Atomär skrivning (temp-fil + os.replace) - run_watched.sh kan
+        SIGKILLa processen när som helst, en halvskriven checkpoint-fil får
+        aldrig kunna läsas som giltig av nästa försök."""
+        path = self._checkpoint_path()
+        tmp = path.with_suffix(".tmp")
+        try:
+            joblib.dump({
+                "key": key, "next_split": next_i,
+                "cls_models": self.cls_models, "reg_models": self.reg_models,
+                "calibrators": self.calibrators, "split_starts": self.split_starts,
+                "cls_importances": cls_imp, "reg_importances": reg_imp,
+            }, tmp)
+            os.replace(tmp, path)
+        except Exception as e:  # noqa: BLE001 - checkpointen är en optimering, aldrig kritisk
+            print(f"  [WARN] Kunde inte skriva walk-forward-checkpoint (icke-kritiskt): {e}")
+
+    def _load_checkpoint(self, key: str):
+        path = self._checkpoint_path()
+        if not path.exists():
+            return None
+        try:
+            saved = joblib.load(path)
+            if saved.get("key") != key:
+                return None
+            return saved
+        except Exception:  # noqa: BLE001 - korrupt/ofullständig checkpoint, börja om
+            return None
+
     def fit_walk_forward(self, df: pd.DataFrame) -> "MomentumLGBM":
         """
         Tränar walk-forward. df måste ha DatetimeIndex och kolumner i FEATURE_COLS
         samt 'target_signal' och 'target_return'.
+
+        CHECKPOINT/RESUME (2026-07-22, verkligt fall: minnesvakten avbröt
+        walk-forward-träningen mitt i split 1/31 flera kvällar i rad - hela
+        körningen fick börja om från noll varje gång). Sparar tillståndet
+        till disk efter VARJE split (modeller + kalibratorer + importances),
+        så ett avbrott bara kostar den senaste, ännu ej klara splitten - inte
+        alla föregående. Checkpointen är knuten till en hash av data+kod (se
+        _checkpoint_key) och ren läge-återupptagning av OBEROENDE splits
+        (varje split tränar sin egen modell, ingen delad tillstånd mellan
+        dem) - inte en partiell/inkrementell omträning av en enda modell,
+        så en återupptagen körning ger giltigt tränade modeller för varje
+        split, på samma sätt som en ostörd körning skulle gjort (LightGBM är
+        redan osådd/icke-deterministisk mellan körningar, se
+        UTVECKLINGSLOGG - återupptagning inför alltså ingen NY brist på
+        reproducerbarhet utöver den som redan finns).
         """
         splits = walk_forward_splits(df.index)
         print(f"[LGBM] Walk-forward: {len(splits)} splits")
 
+        key = self._checkpoint_key(df)
+        start_i = 0
         cls_importances, reg_importances = [], []
+        checkpoint = self._load_checkpoint(key)
+        if checkpoint is not None:
+            self.cls_models = checkpoint["cls_models"]
+            self.reg_models = checkpoint["reg_models"]
+            self.calibrators = checkpoint["calibrators"]
+            self.split_starts = checkpoint["split_starts"]
+            cls_importances = checkpoint["cls_importances"]
+            reg_importances = checkpoint["reg_importances"]
+            start_i = checkpoint["next_split"]
+            print(f"  [checkpoint] Återupptar från split {start_i + 1}/{len(splits)} "
+                  f"({len(self.cls_models)} redan tränade modeller från tidigare försök).")
 
         for i, (train_d, val_d, test_d) in enumerate(splits):
+            if i < start_i:
+                continue
             X_tr, y_cls_tr, y_reg_tr = self._slice(df, train_d)
             X_va, y_cls_va, y_reg_va = self._slice(df, val_d)
 
             if len(X_tr) < 100:
                 print(f"  Split {i}: för lite data ({len(X_tr)} rader), hoppar.")
+                self._save_checkpoint(key, i + 1, cls_importances, reg_importances)
                 continue
 
             # Klassifikation
@@ -132,6 +214,7 @@ class MomentumLGBM:
             reg_importances.append(reg_model.feature_importance(importance_type="gain"))
 
             self.split_starts.append(test_d[0])
+            self._save_checkpoint(key, i + 1, cls_importances, reg_importances)
 
             print(f"  Split {i+1}/{len(splits)}: "
                   f"träning t.o.m {train_d[-1].date()}, "
@@ -143,6 +226,10 @@ class MomentumLGBM:
             "cls_importance": np.mean(cls_importances, axis=0),
             "reg_importance": np.mean(reg_importances, axis=0),
         }).sort_values("cls_importance", ascending=False)
+
+        # Klart - checkpointen behövs inte längre. Nästa körning (annan dag,
+        # annan data) ska inte kunna råka läsa en gammal, avslutad checkpoint.
+        self._checkpoint_path().unlink(missing_ok=True)
 
         return self
 
