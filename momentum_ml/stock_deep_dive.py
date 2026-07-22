@@ -208,6 +208,97 @@ def ask(ticker: str, question: str) -> dict:
     return {"ticker": ticker, "answer": result["answer"]}
 
 
+def _latest_report(ticker: str) -> Optional[dict]:
+    """Senaste FAKTISKA rapport-PM (is_report_pm – skiljer en riktig rapport
+    från t.ex. en inbjudan till rapportpresentationen, samma lärdom
+    quality_screener._company_context() redan betalat för) ur MFN-cachen
+    (kan vara topplad av avanza.avanza_news_as_mfn_items() om MFN självt är
+    fruset, se mfn_fetch.refresh_universe). None om ingen hittas."""
+    p = Path(config.MFN_CACHE_DIR) / f"{ticker}.json"
+    if not p.exists():
+        return None
+    try:
+        items = json.loads(p.read_text(encoding="utf-8")).get("items", [])
+    except (json.JSONDecodeError, OSError):
+        return None
+    from altdata.mfn_fundamentals import is_report_pm
+    reports = sorted([it for it in items if is_report_pm(it)],
+                     key=lambda it: it.get("published", ""), reverse=True)
+    return reports[0] if reports else None
+
+
+_REPORT_ANALYSIS_PROMPT = """Du är en NEUTRAL, sansad investerarassistent.
+Nedan är den SENASTE rapporten (pressmeddelande) för ETT bolag användaren
+äger/följer.
+
+BOLAG: {name} ({ticker})
+SENASTE RAPPORT ({report_date} – {report_title}):
+{report_text}
+
+Gör FYRA saker:
+1. "key_figures_summary": 2-4 meningar, sammanfatta de VIKTIGASTE
+   nyckeltalen (omsättning, tillväxt, resultat/marginal, kassaflöde om
+   angivet) OCH annan viktig information (större händelser, förvärv,
+   kontrakt, guidance-ändringar) - EXAKT vad som står i rapporten ovan,
+   gissa aldrig en siffra som inte anges där.
+2. "ceo_commentary_assessment": 2-3 meningar - läs VD-ordet/kommentaren i
+   rapporten. Är tonen substantiell och konkret, eller vag/floskelaktig?
+   Backar VD:ns påståenden upp av siffrorna i SAMMA rapport, eller finns
+   en diskrepans (t.ex. optimistisk ton trots svaga siffror, eller tvärtom)?
+3. Använd WebSearch för att hitta PUBLICERADE ANALYTIKERESTIMAT (konsensus
+   för omsättning/resultat) för SAMMA period som rapporten avser.
+   "vs_estimates": om du hittar estimat, jämför utfallet mot dem (slog/
+   missade/i linje, med siffror om möjligt). Hittar du INGA publicerade
+   estimat (vanligt för mindre bolag) - skriv det ärligt ("inga
+   publicerade estimat hittades för perioden") i stället för att gissa.
+4. "verdict": "bull", "bear" eller "neutral" (om genuint blandat) - är
+   rapporten SAMMANTAGET positiv eller negativ för caset? "verdict_reasoning":
+   1-2 meningar som motiverar.
+
+VIKTIGT: Skriv ALDRIG en köp/sälj-rekommendation. Allt i key_figures_summary/
+ceo_commentary_assessment måste stå i rapporttexten ovan - allt i
+vs_estimates måste komma från en faktisk sökträff, gissa aldrig siffror.
+
+Svara ENDAST med kompakt JSON, ingen markdown:
+{{"key_figures_summary": "...", "ceo_commentary_assessment": "...",
+  "vs_estimates": "...", "verdict": "bull|bear|neutral", "verdict_reasoning": "..."}}
+"""
+
+
+def report_analysis(ticker: str, name: str = None) -> dict:
+    """"Rapportanalys": sammanfattning av nyckeltal + VD-ord-bedömning ur
+    SENASTE rapporten, plus jämförelse mot analytikerestimat (WebSearch -
+    ÄRLIGT "inga estimat hittades" om inget publicerat finns, vanligt för
+    mindre bolag, se _REPORT_ANALYSIS_PROMPT) och en bull/bear-slutsats för
+    rapporten specifikt (skiljer sig från analyze()/DeepDiveBox, som
+    bedömer HELA caset - det här är bara "var DEN HÄR rapporten bra eller
+    dålig"). INGEN egen cache - alltid färskt vid klick, samma mönster som
+    analyze()."""
+    rep = _latest_report(ticker)
+    if not rep:
+        return {"ticker": ticker, "error": "ingen rapport hittad i MFN-cachen för den här tickern"}
+    text = (rep.get("text") or "")[:config.QUALITY_MAX_CHARS]
+    if not text:
+        return {"ticker": ticker, "error": "rapporten saknar text i cachen"}
+    if not name:
+        holding = _holding(ticker)
+        quality = _csv_row(Path(config.anchor(config.RESULTS_DIR)) / "quality_shortlist.csv", ticker)
+        name = (holding or {}).get("name") or (quality or {}).get("name") or ticker
+    prompt = _REPORT_ANALYSIS_PROMPT.format(
+        name=name, ticker=ticker,
+        report_date=(rep.get("published") or "")[:10],
+        report_title=rep.get("title") or "", report_text=text)
+    result = ch.run(prompt, "WebSearch", timeout=150)
+    if "error" in result or not result.get("key_figures_summary"):
+        return {"ticker": ticker, "name": name, "error": result.get("error", "tomt svar")}
+    return {"ticker": ticker, "name": name,
+            "report_date": (rep.get("published") or "")[:10], "report_title": rep.get("title"),
+            "key_figures_summary": result.get("key_figures_summary"),
+            "ceo_commentary_assessment": result.get("ceo_commentary_assessment"),
+            "vs_estimates": result.get("vs_estimates"),
+            "verdict": result.get("verdict"), "verdict_reasoning": result.get("verdict_reasoning")}
+
+
 _ETF_COMPOSITION_TTL_DAYS = 7
 
 _ETF_COMPOSITION_PROMPT = """Du är en NEUTRAL research-assistent. Sök upp de
@@ -364,6 +455,8 @@ if __name__ == "__main__":
         out = etf_composition(tk)
     elif "--etf-analyze" in sys.argv:
         out = etf_analyze(tk)
+    elif "--report" in sys.argv:
+        out = report_analysis(tk)
     else:
         out = analyze(tk)
     print(json.dumps(out, ensure_ascii=False, indent=2))

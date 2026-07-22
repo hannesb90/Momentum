@@ -159,6 +159,96 @@ function DeepDiveBox({ ticker }) {
   )
 }
 
+const VERDICT_LABEL = { bull: 'Bull', bear: 'Bear', neutral: 'Neutral' }
+const VERDICT_TONE = { bull: 'good', bear: 'bad', neutral: 'neutral' }
+
+// "Rapportanalys": nyckeltal + VD-ords-bedömning ur SENASTE rapporten,
+// jämförelse mot analytikerestimat (WebSearch), bull/bear för RAPPORTEN
+// specifikt (skiljer sig från DeepDiveBox ovan som bedömer hela caset).
+// Samma på-begäran-mönster, se stock_deep_dive.report_analysis.
+function ReportAnalysisBox({ ticker }) {
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function run() {
+    setLoading(true)
+    setError(null)
+    setResult((r) => (r?.error ? null : r))
+    try {
+      const r = await api.reportAnalysis(ticker)
+      setResult(r)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="list-card" style={{ padding: 12 }}>
+      <h3 className="section-title" style={{ marginTop: 0 }}>
+        Rapportanalys
+        <InfoButton title="Senaste rapporten i klartext">
+          <p>
+            Sammanfattning av nyckeltal + VD-ordet ur den SENASTE rapporten, jämfört mot
+            publicerade analytikerestimat om sådana finns (många mindre bolag saknar bevakning
+            helt – då sägs det ärligt i stället för att gissas fram), och en bull/bear-slutsats
+            för just DEN HÄR rapporten. Kan ta upp till ~3 min.
+          </p>
+        </InfoButton>
+      </h3>
+      {!result?.key_figures_summary && !loading && (
+        <button className="btn" onClick={run}>Analysera senaste rapporten</button>
+      )}
+      {loading && <div className="list-card__empty">Analyserar… (kan ta upp till ~3 min)</div>}
+      {error && (
+        <div className="status-block status-block--error" style={{ marginTop: 8 }}>
+          Kunde inte analysera: {error}
+        </div>
+      )}
+      {result?.error && (
+        <div className="status-block status-block--error" style={{ marginTop: 8 }}>
+          Kunde inte analysera: {result.error}
+        </div>
+      )}
+      {result?.key_figures_summary && (
+        <div style={{ display: 'grid', gap: 12, marginTop: loading ? 0 : 4 }}>
+          <p className="footnote" style={{ margin: 0 }}>
+            {result.report_title} {result.report_date ? `· ${result.report_date}` : ''}
+          </p>
+          {result.verdict && (
+            <div>
+              <span className={VERDICT_TONE[result.verdict] === 'good' ? 'pos' : VERDICT_TONE[result.verdict] === 'bad' ? 'neg' : ''}
+                style={{ fontWeight: 600 }}>
+                Rapporten: {VERDICT_LABEL[result.verdict] ?? result.verdict}
+              </span>
+              {result.verdict_reasoning && (
+                <span> – {result.verdict_reasoning}</span>
+              )}
+            </div>
+          )}
+          <div>
+            <p style={{ margin: '0 0 4px', fontWeight: 600 }}>Nyckeltal & viktig information</p>
+            <p style={{ margin: 0, lineHeight: 1.6 }}>{result.key_figures_summary}</p>
+          </div>
+          <div>
+            <p style={{ margin: '0 0 4px', fontWeight: 600 }}>VD-ordet</p>
+            <p style={{ margin: 0, lineHeight: 1.6 }}>{result.ceo_commentary_assessment}</p>
+          </div>
+          <div>
+            <p style={{ margin: '0 0 4px', fontWeight: 600 }}>Mot analytikerestimat</p>
+            <p style={{ margin: 0, lineHeight: 1.6 }}>{result.vs_estimates}</p>
+          </div>
+          <button className="btn" style={{ justifySelf: 'start' }} onClick={run} disabled={loading}>
+            Analysera igen
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // "Fråga om bolaget": fri följdfråga scopad till ETT bolag – samma mönster
 // som Bedömning-flikens CommentaryAskBox, bara med bolagets eget underlag
 // (modellbetyg, caseförändring, nyheter) i stället för hela portföljen.
@@ -411,6 +501,80 @@ function EtfDeepDiveBox({ ticker, name }) {
             Analysera igen
           </button>
         </div>
+      )}
+    </div>
+  )
+}
+
+// Fundamenta-grid + flerårsgraf (Fiscal.ai-inspirerad layout, se
+// api/main.py::get_fundamentals) - marknadsvärde/omsättning/marginal/ROE/
+// skuldsättning som en ren tabell, plus omsättning+resultat över tid.
+// All data redan insamlad (fundamentals_from_avanza.csv), bara aldrig
+// visad som EN samlad bolagsöversikt tidigare - till skillnad från
+// "Fundamenta i kontext" ovan (tvärsnittspercentil JUST NU) är det här
+// bolagets EGEN historik över flera år/kvartal.
+function FundamentalsCard({ ticker }) {
+  const fund = useApiData(() => api.fundamentals(ticker), [ticker])
+  const latest = fund.data?.latest
+  const periods = fund.data?.periods ?? []
+  const chartData = useMemo(
+    () => periods.map((p) => ({
+      date: (p.published || '').slice(0, 10),
+      period: p.period,
+      revenue: p.revenue,
+      net_profit: p.net_profit,
+    })),
+    [periods],
+  )
+
+  if (fund.loading || !latest) return null
+
+  return (
+    <div className="chart-card">
+      <h3>
+        Fundamenta (Avanza)
+        <InfoButton title="Bolagets egen historik">
+          <p>
+            Marknadsvärde, omsättning, marginal, ROE och skuldsättning ur Avanzas rapportdata –
+            bolagets EGEN historik över tid, till skillnad från percentilerna ovan (som jämför
+            mot HELA universumet just nu). Omsättning/resultat är redan i Mkr.
+          </p>
+        </InfoButton>
+      </h3>
+      <div className="stat-grid" style={{ marginBottom: 16 }}>
+        <StatCard label="Marknadsvärde" value={latest.mcap_msek != null ? fmtSek(latest.mcap_msek * 1e6) : '–'} />
+        <StatCard label={`Omsättning (${latest.period ?? 'senaste'})`}
+          value={latest.revenue_msek != null ? `${fmtNum(latest.revenue_msek, 1)} Mkr` : '–'} />
+        <StatCard label="Omsättningstillväxt"
+          value={latest.revenue_growth_pct != null ? fmtPct(latest.revenue_growth_pct / 100) : '–'}
+          tone={latest.revenue_growth_pct > 0 ? 'good' : latest.revenue_growth_pct < 0 ? 'bad' : 'neutral'} />
+        <StatCard label="Nettoresultat"
+          value={latest.net_profit_msek != null ? `${fmtNum(latest.net_profit_msek, 1)} Mkr` : '–'}
+          tone={latest.net_profit_msek > 0 ? 'good' : latest.net_profit_msek < 0 ? 'bad' : 'neutral'} />
+        <StatCard label="Nettomarginal"
+          value={latest.net_margin_pct != null ? fmtPct(latest.net_margin_pct / 100) : '–'}
+          tone={latest.net_margin_pct > 0 ? 'good' : latest.net_margin_pct < 0 ? 'bad' : 'neutral'} />
+        <StatCard label="ROE"
+          value={latest.roe_pct != null ? fmtPct(latest.roe_pct / 100) : '–'}
+          tone={latest.roe_pct > 0 ? 'good' : latest.roe_pct < 0 ? 'bad' : 'neutral'} />
+        <StatCard label="Skuld/eget kapital" value={latest.debt_equity != null ? fmtNum(latest.debt_equity, 2) : '–'} />
+        <StatCard label="Eget kapital" value={latest.equity_msek != null ? `${fmtNum(latest.equity_msek, 1)} Mkr` : '–'} />
+      </div>
+      {chartData.length >= 2 && (
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e1e8e3" />
+            <XAxis dataKey="date" tickFormatter={fmtDate} stroke="#8aa094" minTickGap={40} />
+            <YAxis stroke="#8aa094" tick={{ fontSize: 12 }} tickFormatter={(v) => fmtNum(v, 0)} />
+            <Tooltip
+              contentStyle={{ background: '#16241d', border: '1px solid #e1e8e3', borderRadius: 8 }}
+              labelFormatter={fmtDate}
+              formatter={(v, n) => [`${fmtNum(v, 1)} Mkr`, n === 'revenue' ? 'Omsättning' : 'Nettoresultat']}
+            />
+            <Line type="monotone" dataKey="revenue" stroke="var(--accent)" strokeWidth={1.5} dot={false} />
+            <Line type="monotone" dataKey="net_profit" stroke="var(--bad, #c0392b)" strokeWidth={1.5} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
       )}
     </div>
   )
@@ -730,6 +894,8 @@ export function StockDetailPage() {
         </div>
       )}
 
+      <FundamentalsCard ticker={ticker} />
+
       {/* OT Analytics-stilens bubbeldiagram: börsvärde vs EBITDA, bubbelstorlek
           = omsättning, mot resten av samma svenska microcap-universum.
           Ögonblicksbild (inte en tidsserie som originalet – EBITDA/omsättning
@@ -846,6 +1012,7 @@ export function StockDetailPage() {
 
       <div className="section-head"><h2>Lär känna bolaget</h2></div>
       <DeepDiveBox ticker={ticker} />
+      <ReportAnalysisBox ticker={ticker} />
       <AskAboutStockBox ticker={ticker} />
     </section>
   )

@@ -328,6 +328,17 @@ def get_quality():
         rows = _records(_read_csv(path))
         for r in rows:
             r["quality_source"] = "llm"
+            # moat_types skrivs som en JSON-sträng i CSV:n (quality_screener.
+            # screen(), se kommentaren där) - avkoda tillbaka till en riktig
+            # lista här, inte en sträng, för frontend.
+            mt = r.get("moat_types")
+            if isinstance(mt, str) and mt.strip():
+                try:
+                    r["moat_types"] = json.loads(mt)
+                except json.JSONDecodeError:
+                    r["moat_types"] = []
+            else:
+                r["moat_types"] = []
         llm_tickers = {str(r.get("ticker") or "").upper() for r in rows}
 
     for seg in config.SEGMENTS.values():
@@ -370,6 +381,84 @@ def get_quant(segment: Optional[str] = None):
     if not path.exists():
         return []
     return _records(_read_csv(path))
+
+
+@app.get("/api/fundamentals")
+def get_fundamentals(ticker: str, segment: Optional[str] = None):
+    """Fundamenta-grid + flerårig omsättnings-/resultatgraf för EN ticker,
+    källa fundamentals_from_avanza.csv (samma Avanza-extraktion som
+    quant_screener.score_avanza läser, se den för fältens ursprung/enheter
+    - revenue/net_profit m.fl. är REDAN i Mkr). Inspirerad av hur Fiscal.ai
+    lägger upp en bolagssida (Market Cap/Marginaler/ROE/Skuldsättning som
+    en ren tabell + omsättning/resultat över tid som graf) - all data vi
+    redan samlar in, bara aldrig visad så här.
+
+    Samma segment-fallback som /api/signals/history (108aa4a): en ticker
+    kan tillhöra vilket segment som helst oavsett det GLOBALT valda i
+    UI:t, prova det andra segmentet innan tom respons."""
+    def _load(seg):
+        p = _seg_dir(seg) / "fundamentals_from_avanza.csv"
+        if not p.exists():
+            return None
+        df = _read_csv(p)
+        df = df[df["ticker"] == ticker]
+        return df if not df.empty else None
+
+    resolved_segment = segment
+    df = _load(segment)
+    if df is None:
+        for seg_name in config.SEGMENTS:
+            if seg_name == segment:
+                continue
+            df = _load(seg_name)
+            if df is not None:
+                resolved_segment = seg_name  # prisfilen nedan MÅSTE matcha samma segment
+                break
+    if df is None:
+        return {"ticker": ticker, "periods": [], "latest": None}
+
+    df = df.sort_values("published")
+    periods = _records(df[["published", "period", "revenue", "revenue_prior", "net_profit",
+                           "equity", "liabilities", "eps", "shares_outstanding",
+                           "debt_equity_avanza", "roe_avanza"]])
+
+    last = df.iloc[-1]
+    revenue = last.get("revenue")
+    revenue_prior = last.get("revenue_prior")
+    net_profit = last.get("net_profit")
+    shares = last.get("shares_outstanding")
+
+    # Marknadsvärde: senaste veckostängning (segmentets EGNA prices.csv,
+    # redan nattligt cachad) × aktieantal - ingen live-Avanza-fråga bara
+    # för en sidvisning, samma mönster som quant_screener.score_avanza.
+    mcap_msek = None
+    px_path = _seg_dir(resolved_segment or "large") / "prices.csv"
+    if px_path.exists() and shares is not None and not pd.isna(shares):
+        px_df = _read_csv(px_path)
+        px_df = px_df[px_df["ticker"] == ticker].sort_values("date")
+        if not px_df.empty:
+            mcap_msek = round(float(px_df.iloc[-1]["close"]) * float(shares) / 1e6, 1)
+
+    latest = {
+        "period": last.get("period"),
+        "published": last.get("published"),
+        "mcap_msek": mcap_msek,
+        "revenue_msek": revenue,
+        "revenue_growth_pct": (round((revenue - revenue_prior) / revenue_prior * 100, 1)
+                               if revenue is not None and revenue_prior not in (None, 0)
+                               and not pd.isna(revenue) and not pd.isna(revenue_prior) else None),
+        "net_profit_msek": net_profit,
+        "net_margin_pct": (round(net_profit / revenue * 100, 1)
+                           if net_profit is not None and revenue not in (None, 0)
+                           and not pd.isna(net_profit) and not pd.isna(revenue) else None),
+        "equity_msek": last.get("equity"),
+        "liabilities_msek": last.get("liabilities"),
+        "eps": last.get("eps"),
+        "shares_outstanding": shares,
+        "roe_pct": last.get("roe_avanza"),
+        "debt_equity": last.get("debt_equity_avanza"),
+    }
+    return _clean({"ticker": ticker, "periods": periods, "latest": latest})
 
 
 @app.get("/api/rotation")
@@ -676,6 +765,26 @@ async def post_stock_ask(request: Request):
     from fastapi.concurrency import run_in_threadpool
     result = await run_in_threadpool(sdd.ask, ticker, question)
     if result.get("error") and not result.get("answer"):
+        raise HTTPException(status_code=502, detail=result["error"])
+    return _clean(result)
+
+
+@app.post("/api/stock/report-analysis")
+async def post_stock_report_analysis(request: Request):
+    """"Rapportanalys"-knappen på aktiedetaljsidan: sammanfattning av
+    nyckeltal + VD-ords-bedömning ur SENASTE rapporten, jämförelse mot
+    analytikerestimat (WebSearch), och en bull/bear-slutsats för rapporten
+    specifikt (se stock_deep_dive.report_analysis). Body: {ticker}. Kan ta
+    upp till ~2-3 min."""
+    import stock_deep_dive as sdd
+    body = await request.json()
+    ticker = str(body.get("ticker") or "").strip()
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker saknas.")
+    # run_in_threadpool: se post_scanner_analyze – blockera inte event-loopen.
+    from fastapi.concurrency import run_in_threadpool
+    result = await run_in_threadpool(sdd.report_analysis, ticker)
+    if result.get("error") and not result.get("key_figures_summary"):
         raise HTTPException(status_code=502, detail=result["error"])
     return _clean(result)
 

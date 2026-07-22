@@ -60,6 +60,23 @@ _SYSTEM = (
     '  "sales" (säljkultur/förmåga att ta betalt), "mgmt" (ledning/styrelse + skin in '
     'the game om nämnt), "market" (tydlig & stor adresserbar marknad), '
     '"profit_path" (lönsam eller tydlig väg dit), "under_radar" (fortf. oupptäckt)\n'
+    '  "moat_types": lista av VILKEN/VILKA TYP(ER) av konkurrensfördel ur denna fasta '
+    'lista (Hamilton Helmers "7 Powers") – ANGE ALDRIG en typ du inte konkret kan '
+    'motivera ur texten, tom lista [] om moat är null/obedömbart eller ingen typ passar:\n'
+    '    "scale_economies" (kostnad per enhet sjunker med volym – stordrift ger '
+    'omöjlig-att-matcha prissättning för mindre konkurrenter),\n'
+    '    "network_economies" (produkten blir mer värd ju fler som använder den – '
+    'plattformar/marknadsplatser),\n'
+    '    "counter_positioning" (en affärsmodell etablerade konkurrenter INTE kan '
+    'kopiera utan att skada sin egen befintliga verksamhet/intäktsström),\n'
+    '    "switching_costs" (dyrt/krångligt/riskabelt för en BEFINTLIG kund att byta '
+    'bort – inlåsning, INTE bara att produkten är bra),\n'
+    '    "branding" (varumärket ger en prispremie/lojalitet UTÖVER vad den underliggande '
+    'produkten motiverar),\n'
+    '    "cornered_resource" (unik tillgång till en specifik resurs – patent, licens, '
+    'nyckelperson, exklusivt kontrakt, råvarufyndighet),\n'
+    '    "process_power" (svårkopierad operationell/tillverkningsexpertis byggd upp '
+    'över lång tid, inte bara "vi är bra på vad vi gör")\n'
     '  Nyckeltal UR TEXTEN (MSEK resp. miljoner aktier), null om ej angivet. Leta NOGA '
     'i resultaträkningen/finansiella sammandraget – dessa siffror STÅR nästan alltid där:\n'
     '  "revenue_msek" (omsättning/nettoomsättning senaste 12m/år),\n'
@@ -70,7 +87,8 @@ _SYSTEM = (
     '  "red_flags": lista (t.ex. emissionsberoende, många aktier, förlust utan väg till vinst)\n'
     '  "pitch": caset i EN mening en 10-åring förstår\n'
     '  "memo": 2-3 meningar om varför det kan vara undervärderat och vad som krävs för omvärdering\n'
-    'Exempel: {"understand":4,"global":5,"scalable":4,"moat":3,"sales":null,"mgmt":4,'
+    'Exempel: {"understand":4,"global":5,"scalable":4,"moat":3,"moat_types":["switching_costs"],'
+    '"sales":null,"mgmt":4,'
     '"market":4,"profit_path":2,"under_radar":4,"revenue_msek":120,"ebitda_msek":-15,'
     '"ebit_msek":-19,"net_result_msek":-22,"shares_million":18,'
     '"mentioned_investors":["Carnegie Fonder"],'
@@ -228,13 +246,17 @@ def screen() -> None:
     rows.sort(key=lambda r: (r.get("composite") or 0), reverse=True)
     out = Path(config.QUALITY_CACHE_DIR).parent.parent / "results" / "quality_shortlist.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
-    cols = ["ticker", "name", "composite", *_SCORE_KEYS, "revenue_msek", "ebitda_msek",
+    cols = ["ticker", "name", "composite", *_SCORE_KEYS, "moat_types", "revenue_msek", "ebitda_msek",
             "net_result_msek", "shares_million", "pitch"]
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
         for r in rows:
-            w.writerow(r)
+            # moat_types är en Python-lista – JSON-sträng i CSV:n (läsbar,
+            # entydig att json.loads() tillbaka), inte Python-repr.
+            row = dict(r)
+            row["moat_types"] = json.dumps(row.get("moat_types") or [], ensure_ascii=False)
+            w.writerow(row)
     print(f"\n[screen] kortlista sparad: {out}  ({scored} bolag)")
     print("\n  TOPP 15 (composite):")
     for r in rows[:15]:
