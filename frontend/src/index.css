@@ -823,11 +823,20 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 13px 16px;
+  gap: 10px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--border);
   text-decoration: none;
   color: var(--text);
+}
+
+/* Slankare rader (2026-07-22): knappen (Skapa ticket/Öppna i Montrose) satte
+   annars radhöjden via .btn:s generella padding (10px 18px), tänkt för
+   fristående knappar, inte en tät lista. Skalar bara ner den HÄR, rör inte
+   .btn globalt (används på egna, fristående knappar överallt i appen). */
+.list-row__side .btn {
+  padding: 6px 12px;
+  font-size: 0.82rem;
 }
 
 .list-row:last-child,
@@ -1987,7 +1996,6 @@ h2 {
   list-style: none;
 }
 .alloc-editor summary::-webkit-details-marker { display: none; }
-.alloc-editor 
 .alloc-editor input[type="range"] { accent-color: var(--accent); margin-top: 2px; }
 
 /* Innehav – sök/filtrera i universumet */

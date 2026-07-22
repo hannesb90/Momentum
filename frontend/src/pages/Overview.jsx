@@ -336,6 +336,11 @@ export function OverviewPage() {
                   behåll insatsen (house money). <b>Sälj</b> = armerad + trendbrott (kurs under
                   SMA20) – vinsten avdunstar, hela positionen ifrågasätts.
                 </p>
+                <p>
+                  {nextBuy.data?.isk
+                    ? 'Portföljen antas ligga på ISK (under 300 000 kr) – att ta hem vinsten är skattefritt, bara courtage. House money är därför billigt att följa.'
+                    : 'Portföljen är över ISK-gränsen (300 000 kr) – reavinstskatt tillkommer vid försäljning, så väg vinsten mot skatten innan du säljer.'}
+                </p>
               </InfoButton>
             </h2>
           </div>
@@ -367,11 +372,6 @@ export function OverviewPage() {
               </div>
             ))}
           </div>
-          <p className="footnote">
-            {nextBuy.data?.isk
-              ? 'Portföljen antas ligga på ISK (under 300 000 kr) – att ta hem vinsten är skattefritt, bara courtage. House money är därför billigt att följa.'
-              : 'Portföljen är över ISK-gränsen (300 000 kr) – reavinstskatt tillkommer vid försäljning, så väg vinsten mot skatten innan du säljer.'}
-          </p>
         </>
       )}
 
@@ -537,71 +537,6 @@ export function OverviewPage() {
         </section>
       )}
 
-      {/* Snabbstatistik */}
-      <div className="tile-grid">
-        <div className="tile">
-          <div className="tile__label">
-            CAGR
-            <InfoButton title="CAGR">
-              <p>
-                Compound Annual Growth Rate – den genomsnittliga årliga tillväxttakten för
-                backtestportföljen, omräknad som om värdeökningen hade skett jämnt år för år.
-              </p>
-              <p>Ju högre, desto bättre – men jämför alltid med risken (se Sharpe och Max Drawdown).</p>
-            </InfoButton>
-          </div>
-          <div className="tile__value">{overall.CAGR ?? '–'}</div>
-        </div>
-        <div className="tile">
-          <div className="tile__label">
-            Sharpe
-            <InfoButton title="Sharpe-kvot">
-              <p>
-                Mäter avkastning i förhållande till hur mycket portföljvärdet svänger (risken). Ett
-                högre tal betyder bättre avkastning per enhet risk som tagits.
-              </p>
-              <p>Som riktmärke: under 1 är svagt, 1–2 är bra, över 2 är mycket starkt.</p>
-            </InfoButton>
-          </div>
-          <div className={`tile__value ${Number(overall.Sharpe) >= 1 ? 'tile__value--good' : ''}`}>
-            {fmtNum(overall.Sharpe)}
-          </div>
-        </div>
-        <div className="tile">
-          <div className="tile__label">
-            Max Drawdown
-            <InfoButton title="Max Drawdown">
-              <p>
-                Den största nedgången portföljen haft från en topp till en efterföljande botten,
-                innan den hämtade sig igen. Visar hur illa det kunde gå att hålla strategin under
-                den sämsta perioden i backtesten.
-              </p>
-              <p>Ett stort (negativt) tal betyder att man behöver kunna stå ut med stora nedgångar.</p>
-            </InfoButton>
-          </div>
-          <div className="tile__value tile__value--bad">{overall['Max Drawdown'] ?? '–'}</div>
-        </div>
-        <div className="tile">
-          <div className="tile__label">
-            Win Rate
-            <InfoButton title="Win Rate">
-              <p>
-                Andelen av de veckor då portföljen <strong>faktiskt var investerad</strong> som gav
-                positiv avkastning. Kontantveckor räknas inte (de är varken vinst eller förlust).
-              </p>
-              <p>
-                En hög win rate är inte allt – några stora vinster kan väga upp många små förluster,
-                och vice versa.
-              </p>
-            </InfoButton>
-          </div>
-          <div className="tile__value">{overall['Win Rate'] ?? '–'}</div>
-        </div>
-      </div>
-
-      {/* Live track record (pappershandel) */}
-      <LiveTrackRecord />
-
       {/* Senaste köpsignaler */}
       <div className="section-head">
         <h2>
@@ -632,40 +567,114 @@ export function OverviewPage() {
         ))}
       </div>
 
-      {/* Heta sektorer */}
-      {topSectors.length > 0 && (
-        <>
-          <div className="section-head">
-            <h2>
-              Heta sektorer
-              <InfoButton title="Heta sektorer">
-                <p>
-                  Sektorer som modellen just nu bedömer ha starkast momentum, baserat på en
-                  sammanvägd poäng (composite score) av flera tekniska faktorer för bolagen i
-                  sektorn.
-                </p>
-                <p>Ett högre (mer positivt) värde betyder starkare uppåttrend i sektorn som helhet.</p>
-              </InfoButton>
-            </h2>
-            <Link to="/sektorer" className="section-head__link">Visa alla →</Link>
+      {/* Mer statistik – bakgrundsmått/utforskande vyer, undanstoppade bakom
+          ett klick (samma <details>-mönster som allokeringseditorn ovan) så
+          förstaskärmen håller sig till det handlingsbara: Nästa köp, Säljvakt,
+          Fylla-på, Senaste köpsignaler. Backtest-siffran (hero) ovanför är kvar
+          synlig – den är sidans huvudkontext, inte bakgrundsdetalj. */}
+      <details className="alloc-editor" style={{ marginTop: 10 }}>
+        <summary>Visa mer statistik (nyckeltal, pappershandel, sektorer)</summary>
+        <div style={{ padding: '8px 2px 2px' }}>
+          <div className="tile-grid">
+            <div className="tile">
+              <div className="tile__label">
+                CAGR
+                <InfoButton title="CAGR">
+                  <p>
+                    Compound Annual Growth Rate – den genomsnittliga årliga tillväxttakten för
+                    backtestportföljen, omräknad som om värdeökningen hade skett jämnt år för år.
+                  </p>
+                  <p>Ju högre, desto bättre – men jämför alltid med risken (se Sharpe och Max Drawdown).</p>
+                </InfoButton>
+              </div>
+              <div className="tile__value">{overall.CAGR ?? '–'}</div>
+            </div>
+            <div className="tile">
+              <div className="tile__label">
+                Sharpe
+                <InfoButton title="Sharpe-kvot">
+                  <p>
+                    Mäter avkastning i förhållande till hur mycket portföljvärdet svänger (risken). Ett
+                    högre tal betyder bättre avkastning per enhet risk som tagits.
+                  </p>
+                  <p>Som riktmärke: under 1 är svagt, 1–2 är bra, över 2 är mycket starkt.</p>
+                </InfoButton>
+              </div>
+              <div className={`tile__value ${Number(overall.Sharpe) >= 1 ? 'tile__value--good' : ''}`}>
+                {fmtNum(overall.Sharpe)}
+              </div>
+            </div>
+            <div className="tile">
+              <div className="tile__label">
+                Max Drawdown
+                <InfoButton title="Max Drawdown">
+                  <p>
+                    Den största nedgången portföljen haft från en topp till en efterföljande botten,
+                    innan den hämtade sig igen. Visar hur illa det kunde gå att hålla strategin under
+                    den sämsta perioden i backtesten.
+                  </p>
+                  <p>Ett stort (negativt) tal betyder att man behöver kunna stå ut med stora nedgångar.</p>
+                </InfoButton>
+              </div>
+              <div className="tile__value tile__value--bad">{overall['Max Drawdown'] ?? '–'}</div>
+            </div>
+            <div className="tile">
+              <div className="tile__label">
+                Win Rate
+                <InfoButton title="Win Rate">
+                  <p>
+                    Andelen av de veckor då portföljen <strong>faktiskt var investerad</strong> som gav
+                    positiv avkastning. Kontantveckor räknas inte (de är varken vinst eller förlust).
+                  </p>
+                  <p>
+                    En hög win rate är inte allt – några stora vinster kan väga upp många små förluster,
+                    och vice versa.
+                  </p>
+                </InfoButton>
+              </div>
+              <div className="tile__value">{overall['Win Rate'] ?? '–'}</div>
+            </div>
           </div>
-          <div className="list-card">
-            {topSectors.map((sec) => (
-              <Link to="/sektorer" key={sec.sector} className="list-row">
-                <div className="list-row__main">
-                  <span className="list-row__ticker">{sec.sector}</span>
-                  <span className="list-row__sub">{sec.etf_ticker ?? '–'} · {sec.n_stocks} bolag</span>
-                </div>
-                <div className="list-row__side">
-                  <span className={`list-row__num ${Number(sec.composite_score) >= 0 ? 'pos' : 'neg'}`}>
-                    {fmtNum(sec.composite_score, 3)}
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </>
-      )}
+
+          {/* Live track record (pappershandel) */}
+          <LiveTrackRecord />
+
+          {/* Heta sektorer */}
+          {topSectors.length > 0 && (
+            <>
+              <div className="section-head" style={{ marginTop: 10 }}>
+                <h2>
+                  Heta sektorer
+                  <InfoButton title="Heta sektorer">
+                    <p>
+                      Sektorer som modellen just nu bedömer ha starkast momentum, baserat på en
+                      sammanvägd poäng (composite score) av flera tekniska faktorer för bolagen i
+                      sektorn.
+                    </p>
+                    <p>Ett högre (mer positivt) värde betyder starkare uppåttrend i sektorn som helhet.</p>
+                  </InfoButton>
+                </h2>
+                <Link to="/sektorer" className="section-head__link">Visa alla →</Link>
+              </div>
+              <div className="list-card">
+                {topSectors.map((sec) => (
+                  <Link to="/sektorer" key={sec.sector} className="list-row">
+                    <div className="list-row__main">
+                      <span className="list-row__ticker">{sec.sector}</span>
+                      <span className="list-row__sub">{sec.etf_ticker ?? '–'} · {sec.n_stocks} bolag</span>
+                    </div>
+                    <div className="list-row__side">
+                      <span className={`list-row__num ${Number(sec.composite_score) >= 0 ? 'pos' : 'neg'}`}>
+                        {fmtNum(sec.composite_score, 3)}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </details>
     </section>
   )
 }
