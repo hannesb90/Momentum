@@ -353,10 +353,20 @@ def get_quality():
 
 
 @app.get("/api/quant")
-def get_quant():
+def get_quant(segment: Optional[str] = None):
     """Token-fri kvantitativ kortlista (hård data: kvalitet/tillväxt/trygghet/värde).
-    Tom lista om quant_screener ännu inte körts. Anchor-medveten (MOMENTUM_HOME)."""
-    path = Path(config.anchor(config.RESULTS_DIR)) / "quant_shortlist.csv"
+    Tom lista om quant_screener ännu inte körts.
+
+    BUGG (fixad, verkligt fall 2026-07-22: "Fundamenta i kontext" saknades
+    HELT för alla small-cap-innehav) - läste tidigare ALLTID
+    config.RESULTS_DIR (="results", large-segmentet), oavsett vilket
+    segment frontend hade valt (currentSegment i api.js bifogas ändå på
+    varje anrop - bara denna endpoint ignorerade parametern helt). Nu
+    segment-medveten precis som övriga endpoints (_seg_dir), så small-
+    segmentets EGEN quant_shortlist.csv (se quant_screener.score_avanza,
+    Avanza-baserad eftersom TradingView-scannern bara körts för large)
+    faktiskt läses."""
+    path = _seg_dir(segment) / "quant_shortlist.csv"
     if not path.exists():
         return []
     return _records(_read_csv(path))
