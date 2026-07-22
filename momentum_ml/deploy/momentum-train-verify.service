@@ -1,0 +1,18 @@
+[Unit]
+Description=Momentum – verifiera att nattens träning (02:01) gav färska resultat, kör om vid behov (02:50)
+After=momentum-train.timer
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/momentum/momentum_ml
+# root: verify_train.sh anropar systemctl start momentum-train.service, som
+# behöver privilegier - samma skäl som api_watchdog.sh körs som root.
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/momentum/momentum_ml/verify_train.sh
+
+Nice=15
+IOSchedulingClass=idle
+# Om en omkörning faktiskt krävs (samma längd som momentum-train.service
+# själv kan ta - se dess egen TimeoutStartSec).
+TimeoutStartSec=4h

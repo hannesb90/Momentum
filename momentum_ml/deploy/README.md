@@ -90,6 +90,44 @@ sudo systemctl start momentum-train.service
 journalctl -u momentum-train.service -f
 ```
 
+### 3a. Features-cache mellan nätter (2026-07-22)
+
+`build_all_features()` byggde tidigare om HELA feature-matrisen (2010→idag,
+alla bolag) från grunden **varje natt** – trots att en enskild tickers
+features är en REN funktion av dess prisserie, som sällan ändras (ny bar en
+gång/vecka). `features/feature_engineering.py` cachar nu varje tickers
+resultat i `cache/features_by_ticker/<ticker>.pkl`, nyckel = hash(prisdata) +
+hash(hela feature_engineering.py + config.py). Ändras EN rad prisdata (ny
+vecka, eller en sällsynt Yahoo-revidering) eller EN rad kod/config byggs den
+tickern om från grunden – aldrig en delvis/inkrementell uppdatering, så
+korrekthet kräver bara att `build_features()` verkligen är en ren funktion
+(verifierat med `pd.testing.assert_frame_equal(..., check_exact=True)` –
+bit-för-bit identiskt resultat andra körningen). Ingen manuell installation
+krävs – katalogen skapas automatiskt vid första körningen.
+
+### 3b. Verifiera + kör om vid misslyckad natt (2026-07-22)
+
+`momentum-train.service` kan misslyckas TYST: minnesvakten (`run_watched.sh`)
+avbryter ett segment, och `-` framför `ExecStart` gör att systemd ändå
+rapporterar tjänsten som lyckad ("Deactivated successfully") – se
+`run_watched.sh`:s docstring för de tre kvällarna (2026-07-19/20/22) det
+hänt. `momentum-train-verify.service` kollar varje natt kl 02:50 (49 min
+marginal efter 02:01, se timer-filen) om `results/stats.json` OCH
+`results/small/stats.json` faktiskt fick dagens datum – kör om
+`momentum-train.service` EN gång om inte, och loggar utfallet till journalen
+oavsett.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-train-verify.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-train-verify.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-train-verify.timer
+
+# Testköra direkt:
+sudo systemctl start momentum-train-verify.service
+journalctl -u momentum-train-verify.service -f
+```
+
 ## 4. Frontend + reverse proxy
 
 ```bash

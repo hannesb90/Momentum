@@ -11,6 +11,7 @@ Feature-kategorier:
   7. Targets (framåtblickande, läcker ej in i träning)
 """
 
+import hashlib
 import numpy as np
 import pandas as pd
 from typing import Dict, Optional
@@ -293,15 +294,90 @@ def add_cross_sectional(all_features: Dict[str, pd.DataFrame]) -> Dict[str, pd.D
     return all_features
 
 
+# ── Persistent per-ticker features-cache (2026-07-22) ───────────────────────
+# build_all_features byggde tidigare om HELA feature-matrisen (2010->idag,
+# ~500 bolag) från grunden VARJE NATT, trots att build_features() är en REN
+# funktion av en enda tickers prisserie - historiska rader ändras aldrig
+# (bortsett från sällsynta Yahoo-revideringar, som cachen nedan ändå fångar
+# korrekt via datahashen). Den enda cachen som fanns innan (main.py:s
+# _load_feature_cache) var bara giltig INOM en enda körning och raderades
+# explicit när den var klar - noll nytta natt till natt.
+#
+# MEDVETET REN MEMOISERING, INTE INKREMENTELL UPPDATERING: cachen lagras per
+# ticker, nyckel = hash(prisdata) + hash(feature-kod+config). Ändras EN rad i
+# prisserien (ny vecka, eller en Yahoo-revidering av gammal data) blir hela
+# hashen annorlunda och HELA den tickerns features byggs om från grunden -
+# aldrig en delvis/splitsad uppdatering. Det gör cachen trivial att resonera
+# om korrekthet för (samma indata → samma cachade utdata, garanterat av att
+# build_features är en ren funktion) i utbyte mot att inte vara maximalt
+# snål - ett enskilt ändrat bolag kostar en full ombyggnad av DEN tickern,
+# inte bara den nya veckan. Given att flertalet bolag har OFÖRÄNDRAD
+# veckodata natt till natt (ny bar bara en gång/vecka) täcker det ändå
+# merparten av besparingen.
+#
+# KORREKTHETS-SÄKRING: kod-hashen omfattar HELA feature_engineering.py +
+# HELA config.py:s källkod - INTE bara en manuellt underhållen versions-
+# sträng. Varje ändring i endera filen (nya features, ändrade fönster,
+# bugfixar) ogiltigförklarar AUTOMATISKT alla cachade rader nästa körning,
+# utan att någon behöver komma ihåg att bumpa ett versionsnummer. Medvetet
+# överinvaliderande (en helt orelaterad config-ändring tvingar också en
+# ombyggnad) snarare än att riskera en tyst, felaktig cache-träff i en
+# modell som handlar riktiga pengar.
+_FEATURE_CODE_HASH: Optional[str] = None
+
+
+def _feature_code_hash() -> str:
+    global _FEATURE_CODE_HASH
+    if _FEATURE_CODE_HASH is None:
+        src = Path(__file__).read_text() + Path(config.__file__).read_text()
+        _FEATURE_CODE_HASH = hashlib.sha1(src.encode()).hexdigest()[:16]
+    return _FEATURE_CODE_HASH
+
+
+def _price_data_hash(df: pd.DataFrame) -> str:
+    h = pd.util.hash_pandas_object(df, index=True).values
+    return hashlib.sha1(h.tobytes()).hexdigest()[:16]
+
+
+def _per_ticker_cache_dir() -> Path:
+    p = Path(config.anchor("cache/features_by_ticker"))
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
 def build_all_features(data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
     """
     Kör feature engineering för alla tickers + cross-sectional.
     """
     print("[Features] Bygger features...")
+    code_hash = _feature_code_hash()
+    cache_dir = _per_ticker_cache_dir()
     all_feat = {}
+    n_cached = 0
     for ticker, df in data.items():
         try:
-            all_feat[ticker] = build_features(df)
+            data_hash = _price_data_hash(df)
+            cache_path = cache_dir / f"{ticker}.pkl"
+            feat = None
+            if cache_path.exists():
+                try:
+                    saved = pd.read_pickle(cache_path)
+                    if saved.get("code_hash") == code_hash and saved.get("data_hash") == data_hash:
+                        feat = saved["features"]
+                except Exception:  # noqa: BLE001 - korrupt/ofullständig cache, bygg om
+                    feat = None
+            if feat is not None:
+                n_cached += 1
+            else:
+                feat = build_features(df)
+                try:
+                    pd.to_pickle(
+                        {"code_hash": code_hash, "data_hash": data_hash, "features": feat},
+                        cache_path,
+                    )
+                except Exception as e:  # noqa: BLE001 - cachen är en optimering, aldrig kritisk
+                    print(f"  [WARN] Kunde inte skriva features-cache för {ticker} (icke-kritiskt): {e}")
+            all_feat[ticker] = feat
         except Exception as e:
             print(f"  [WARN] {ticker}: feature error: {e}")
 
@@ -314,7 +390,7 @@ def build_all_features(data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]
         if len(float_cols):
             feat[float_cols] = feat[float_cols].astype("float32")
 
-    print(f"[Features] Klar. {len(all_feat)} tickers, "
+    print(f"[Features] Klar. {len(all_feat)} tickers ({n_cached} från cache), "
           f"{next(iter(all_feat.values())).shape[1]} features.")
     return all_feat
 
