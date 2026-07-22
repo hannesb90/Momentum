@@ -290,9 +290,12 @@ swap-användning, throttling-flaggor).
 
 En Pi 4B kan starta om helt vid sammanhållen hög CPU-belastning om
 strömadaptern/kabeln är undermålig (undervoltage) eller kylningen är
-otillräcklig (thermal throttling/shutdown) – `MemoryMax=2G` i
-`momentum-train.service` skyddar bara den tjänstens cgroup, inte hela
-systemet mot OOM. `momentum-health.timer` loggar temperatur, `vcgencmd
+otillräcklig (thermal throttling/shutdown). **`MemoryMax=2G` i
+`momentum-train.service` gör faktiskt ingenting på den här Pi:n** –
+`cgroup_disable=memory` är satt i `/proc/cmdline` (`cat
+/sys/fs/cgroup/cgroup.controllers` saknar `memory`), så systemd:s
+cgroup-baserade minnesgränser är tysta no-ops här. `momentum-health.timer`
+loggar temperatur, `vcgencmd
 get_throttled`-bitmask, ledigt minne och swap-användning varje minut till
 `results/health.log`, och skriver en `[VARNING]`-rad till journalen vid hög
 temp (≥78°C), aktiv undervoltage/throttling, eller lågt ledigt minne
@@ -309,6 +312,50 @@ journalctl -u momentum-health.service -f -p warning
 
 # Hela historiken:
 tail -f /opt/momentum/momentum_ml/results/health.log
+```
+
+### Kapacitetsvakt (agerar, inte bara loggar) – earlyoom
+
+`momentum-health.timer` ovan är passiv: den bara loggar/varnar en gång i
+minuten. Krasch 2026-07-22 09:01 visade att det inte räcker – ledigt minne
+gick från 706MB till 156MB (swap 695MB→1574MB av 1.8GB zram-cap) på under
+en minut, snabbare än health-timerns 1-minuters upplösning och snabbare än
+att någon hinner reagera manuellt, vilket stallade boxen tillräckligt länge
+för att trigga hårdvaru-watchdogen (`bcm2835-wdt`, 1 min timeout) → hård
+reboot. Eftersom `cgroup_disable=memory` gör `systemd-run -p MemoryMax` och
+`MemoryMax=` i units verkningslösa (se ovan), går det inte att lösa med
+cgroups – lösningen är en riktig OOM-vakt i userspace: `earlyoom` (pollar
+`/proc/meminfo` och SIGTERM/SIGKILL:ar innan minnet helt tar slut, oberoende
+av cgroups).
+
+```bash
+sudo apt-get install -y earlyoom
+```
+
+Konfiguration i `/etc/default/earlyoom` (inte git-styrd – ren
+maskinkonfiguration, ligger utanför `sync.sh`s scope):
+
+```
+EARLYOOM_ARGS="-r 300 -m 20 -s 25 \
+  --avoid '(^|/)(sshd|systemd|dbus-daemon|tailscaled|cloudflared|postgres|Xorg|labwc)$' \
+  --prefer '(^|/)(node|vite|esbuild|pnpm)$'"
+```
+
+`-m 20 -s 25`: agerar när *både* ledigt minne <20% (~360MB) *och* ledig
+swap <25% samtidigt (earlyoom kräver båda) – det ger marginal innan
+kollapspunkten ovan (8.6%/13%). `--prefer` styr mot Node/Vite/esbuild
+(dev-serverprocesserna som delar boxen med momentum, se `ps aux` – de är
+inte produktionskritiska). `--avoid` matchar bara `comm`-namnet (15 tecken,
+ingen cmdline), vilket INTE räcker för att skydda `momentum-api` – dess
+uvicorn-process heter `python3` i `comm`, samma som vilket manuellt
+`tune_*.py`/`backtest_*.py`-jobb som helst. Den skyddas istället
+per-process, träffsäkert, via `OOMScoreAdjust=-500` i
+`momentum-api.service` (se avsnitt 2 ovan).
+
+```bash
+sudo systemctl enable --now earlyoom.service
+systemctl status earlyoom.service          # ska vara active (running)
+journalctl -u earlyoom -f                  # minnesrapport var 5:e minut (-r 300)
 ```
 
 Efter en oväntad omstart, kontrollera **föregående boot** för att avgöra
