@@ -24,6 +24,7 @@ build()/ask()):
 """
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -207,6 +208,71 @@ def ask(ticker: str, question: str) -> dict:
     return {"ticker": ticker, "answer": result["answer"]}
 
 
+_ETF_COMPOSITION_TTL_DAYS = 7
+
+_ETF_COMPOSITION_PROMPT = """Du är en NEUTRAL research-assistent. Sök upp de
+UNGEFÄR 10 STÖRSTA innehaven i ETF:en {name} (ticker {ticker}) samt dess
+sektor- och geografiska fördelning, från en tillförlitlig källa (t.ex.
+fondbolagets egen sida, justetf.com, morningstar.se eller Avanzas egen sida
+för fonden - avanza.se/fonder eller sök "{ticker} avanza innehav"). Ange
+källa och datum om det anges i källan.
+
+Svara ENDAST med kompakt JSON, ingen markdown:
+{{"top_holdings": [{{"name": "...", "weight_pct": ...}}, ...],
+  "sectors": [{{"name": "...", "weight_pct": ...}}, ...],
+  "regions": [{{"name": "...", "weight_pct": ...}}, ...],
+  "as_of": "<datum om angivet i källan, annars null>",
+  "source": "<källans namn, t.ex. 'ishares.com'>"}}
+Hittar du inget för ett fält (t.ex. ingen geografisk fördelning angiven) -
+sätt det fältet till en tom lista. Hitta ALDRIG på siffror eller innehav du
+inte faktiskt hittat i en källa."""
+
+
+def _etf_cache_path(ticker: str) -> Path:
+    d = Path(config.anchor("cache/etf_composition"))
+    d.mkdir(parents=True, exist_ok=True)
+    return d / f"{ticker.upper()}.json"
+
+
+def etf_composition(ticker: str, name: str = None) -> dict:
+    """ETF:ens ~10 största innehav + sektor-/geografisk fördelning, via
+    headless Claude + WebSearch. Ingen Avanza-endpoint hittad för detta
+    (VERIFIERAT 2026-07-22: flera varianter av /_api/market-guide/stock/
+    {{id}}/holdings, /_api/fund-guide/{{id}} m.fl. gav antingen 404 eller ett
+    tomt {{}} - trots att avanza.se:s EGEN webbsida visar innehav/länder/
+    branscher-flikar för samma instrument, så det finns uppenbarligen en
+    endpoint, bara inte en vi hittat via gissning).
+
+    Cachas 7 dagar (cache/etf_composition/<ticker>.json, TTL i
+    _ETF_COMPOSITION_TTL_DAYS) - sammansättningen ändras långsamt, och ett
+    WebSearch-anrop tar ~2-3 min, för långsamt för att göra om vid varje
+    sidvisning. name: valfritt (bättre sökträff om det skickas med, t.ex.
+    "VanEck Semiconductor UCITS ETF" i stället för bara "VVSM.DE")."""
+    cp = _etf_cache_path(ticker)
+    if cp.exists():
+        try:
+            cached = json.loads(cp.read_text(encoding="utf-8"))
+            age_days = (datetime.now(timezone.utc) -
+                        datetime.fromisoformat(cached["cached_at"])).days
+            if age_days < _ETF_COMPOSITION_TTL_DAYS:
+                return cached
+        except Exception:  # noqa: BLE001 – trasig/gammal cache-fil -> hämta om
+            pass
+    prompt = _ETF_COMPOSITION_PROMPT.format(name=name or ticker, ticker=ticker)
+    result = ch.run(prompt, _TOOLS, timeout=170)
+    if "error" in result or not result.get("top_holdings"):
+        return {"ticker": ticker, "error": result.get("error", "tomt svar")}
+    out = {"ticker": ticker,
+           "top_holdings": result.get("top_holdings") or [],
+           "sectors": result.get("sectors") or [],
+           "regions": result.get("regions") or [],
+           "as_of": result.get("as_of"),
+           "source": result.get("source"),
+           "cached_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    cp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+    return out
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__)
@@ -215,6 +281,8 @@ if __name__ == "__main__":
     if "--ask" in sys.argv:
         q = sys.argv[sys.argv.index("--ask") + 1]
         out = ask(tk, q)
+    elif "--etf" in sys.argv:
+        out = etf_composition(tk)
     else:
         out = analyze(tk)
     print(json.dumps(out, ensure_ascii=False, indent=2))

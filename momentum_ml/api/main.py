@@ -670,6 +670,28 @@ async def post_stock_ask(request: Request):
     return _clean(result)
 
 
+@app.post("/api/stock/etf-composition")
+async def post_stock_etf_composition(request: Request):
+    """ETF:ens ~10 största innehav + sektor-/geografisk fördelning, på
+    aktiedetaljsidans reducerade vy (tickers utanför modellens universum,
+    se stock_deep_dive.etf_composition för varför WebSearch och inte en
+    Avanza-endpoint). Body: {ticker, name (valfritt)}. Cachas 7 dagar
+    server-side - kan ta upp till ~3 min vid cache-miss, samma mönster som
+    /api/stock/analyze."""
+    import stock_deep_dive as sdd
+    body = await request.json()
+    ticker = str(body.get("ticker") or "").strip()
+    name = str(body.get("name") or "").strip() or None
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker saknas.")
+    # run_in_threadpool: se post_scanner_analyze – blockera inte event-loopen.
+    from fastapi.concurrency import run_in_threadpool
+    result = await run_in_threadpool(sdd.etf_composition, ticker, name)
+    if result.get("error") and not result.get("top_holdings"):
+        raise HTTPException(status_code=502, detail=result["error"])
+    return _clean(result)
+
+
 @app.get("/api/case-changes")
 def get_case_changes():
     """Har investeringscaset förändrats? (altdata/case_tracker.py). Jämför
