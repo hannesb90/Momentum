@@ -227,7 +227,7 @@ function AskAboutStockBox({ ticker }) {
 // geografisk fördelning, på-begäran (WebSearch, cachas 7 dagar server-
 // sidan - se stock_deep_dive.etf_composition). Samma på-begäran-mönster
 // som DeepDiveBox ovan, bara för ETF:er i stället för enskilda bolag.
-function EtfCompositionBox({ ticker, name }) {
+function EtfCompositionBox({ ticker, name, onResult }) {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -239,6 +239,7 @@ function EtfCompositionBox({ ticker, name }) {
     try {
       const r = await api.etfComposition(ticker, name)
       setResult(r)
+      onResult?.(r)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -327,6 +328,94 @@ function EtfCompositionBox({ ticker, name }) {
   )
 }
 
+// ETF-djupanalys (reducerad vy): LLM-bedömt kvalitetsbetyg för de STÖRSTA
+// INNEHAVEN sammantaget (EN NY bedömning, INTE ett snitt av modellens
+// per-aktie-betyg - de täcker bara svenska bolag, en global ETF:s
+// megabolagsinnehav som Nvidia/Apple har ingen sådan poäng att snitta
+// över) + bull/bear. Visas först EFTER EtfCompositionBox (se hasComposition
+// i StockDetailPage) så etf_analyze() nästan alltid träffar en varm
+// composition-cache i stället för dubbla WebSearch-anrop.
+function EtfDeepDiveBox({ ticker, name }) {
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function run() {
+    setLoading(true)
+    setError(null)
+    setResult((r) => (r?.error ? null : r))
+    try {
+      const r = await api.etfAnalyze(ticker, name)
+      setResult(r)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="list-card" style={{ padding: 12 }}>
+      <h3 className="section-title" style={{ marginTop: 0 }}>
+        Djupanalys
+        <InfoButton title="Kvalitetsbedömning av innehaven + bull/bear">
+          <p>
+            Ett kvalitetsbetyg (1-5) för fondens största innehav SAMMANTAGET, plus ärligt
+            motställda argument för och emot att fortsätta äga fonden just nu – en ny bedömning
+            via sökning, INTE ett snitt av modellens egna aktiebetyg (som bara täcker svenska
+            bolag). Kan ta upp till ~5 min om sammansättningen ovan inte redan hämtats.
+          </p>
+        </InfoButton>
+      </h3>
+      {!result?.bull_case && !loading && (
+        <button className="btn" onClick={run}>Analysera innehaven</button>
+      )}
+      {loading && <div className="list-card__empty">Analyserar… (kan ta upp till ~5 min)</div>}
+      {error && (
+        <div className="status-block status-block--error" style={{ marginTop: 8 }}>
+          Kunde inte analysera: {error}
+        </div>
+      )}
+      {result?.error && (
+        <div className="status-block status-block--error" style={{ marginTop: 8 }}>
+          Kunde inte analysera: {result.error}
+        </div>
+      )}
+      {result?.bull_case && (
+        <div style={{ display: 'grid', gap: 12, marginTop: loading ? 0 : 4 }}>
+          {result.quality != null && (
+            <div>
+              <p style={{ margin: '0 0 4px', fontWeight: 600 }}>
+                Kvalitetsbetyg (innehaven sammantaget): {result.quality}/5
+              </p>
+              {result.quality_reasoning && (
+                <p style={{ margin: 0, lineHeight: 1.6 }}>{result.quality_reasoning}</p>
+              )}
+            </div>
+          )}
+          <div>
+            <p style={{ margin: '0 0 4px', fontWeight: 600, color: 'var(--good)' }}>Talar för</p>
+            <p style={{ margin: 0, lineHeight: 1.6 }}>{result.bull_case}</p>
+          </div>
+          <div>
+            <p style={{ margin: '0 0 4px', fontWeight: 600, color: 'var(--bad)' }}>Talar emot</p>
+            <p style={{ margin: 0, lineHeight: 1.6 }}>{result.bear_case}</p>
+          </div>
+          {result.concentration_note && (
+            <div>
+              <p style={{ margin: '0 0 4px', fontWeight: 600 }}>Koncentrationsrisk</p>
+              <p style={{ margin: 0, lineHeight: 1.6 }}>{result.concentration_note}</p>
+            </div>
+          )}
+          <button className="btn" style={{ justifySelf: 'start' }} onClick={run} disabled={loading}>
+            Analysera igen
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Kursgraf, fristående från modellens signalhistorik (bygger bara på
 // prices/dev) - delas mellan den fulla vyn OCH reducerad-vyn nedan
 // (tickers utanför modellens universum, t.ex. innehavda ETF:er, som ändå
@@ -388,6 +477,10 @@ export function StockDetailPage() {
   const quality = useApiData(() => api.quality(), [])
   const { addHolding } = usePortfolio()
   const { addToWatchlist } = useWatchlist()
+  // Styr när EtfDeepDiveBox (reducerad vy) visas - först EFTER att
+  // sammansättningen hämtats, så etf_analyze() nästan alltid träffar en
+  // varm composition-cache i stället för att göra dubbla WebSearch-anrop.
+  const [hasComposition, setHasComposition] = useState(false)
 
   const insightRow = useMemo(() => {
     const row = (insight.data?.companies ?? []).find((c) => c.ticker?.toUpperCase() === ticker.toUpperCase())
@@ -505,10 +598,11 @@ export function StockDetailPage() {
         </div>
         <EmptyState
           title="Ingen modelldata för denna ticker"
-          hint="Aktien ingår inte i modellens universum (t.ex. en ETF eller ett utländskt bolag) – bara kursgrafen och ETF-sammansättningen nedan är tillgängliga, inga signaler/betyg."
+          hint="Aktien ingår inte i modellens universum (t.ex. en ETF eller ett utländskt bolag) – bara kursgrafen, sammansättningen och djupanalysen nedan är tillgängliga, inga signaler/betyg."
         />
         <PriceChartCard priceSeries={priceSeries} dev={dev} />
-        <EtfCompositionBox ticker={ticker} />
+        <EtfCompositionBox ticker={ticker} onResult={(r) => setHasComposition((r?.top_holdings?.length ?? 0) > 0)} />
+        {hasComposition && <EtfDeepDiveBox ticker={ticker} />}
       </section>
     )
   }

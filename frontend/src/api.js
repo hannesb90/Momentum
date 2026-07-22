@@ -130,4 +130,10 @@ export const api = {
   // ~10 största innehav + sektor-/geografisk fördelning, WebSearch, cachas
   // 7 dagar server-side. name skickas med för en bättre sökträff.
   etfComposition: (ticker, name) => postJson('/stock/etf-composition', { ticker, name }),
+  // ETF-djupanalys: LLM-bedömt kvalitetsbetyg för de största innehaven
+  // SAMMANTAGET (inte ett snitt av modellens per-aktie-betyg, se
+  // stock_deep_dive.etf_analyze) + bull/bear. Bygger internt på
+  // etf-composition - anropa den FÖRST (se EtfCompositionBox) så denna
+  // träffar en varm cache i stället för dubbelt WebSearch-anrop.
+  etfAnalyze: (ticker, name) => postJson('/stock/etf-analyze', { ticker, name }),
 }
