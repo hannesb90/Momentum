@@ -692,6 +692,29 @@ async def post_stock_etf_composition(request: Request):
     return _clean(result)
 
 
+@app.post("/api/stock/etf-analyze")
+async def post_stock_etf_analyze(request: Request):
+    """Djupanalys för en ETF (reducerade vyn): LLM-bedömt kvalitetsbetyg för
+    de STÖRSTA INNEHAVEN sammantaget + bull/bear, se
+    stock_deep_dive.etf_analyze för varför detta INTE är ett snitt av
+    modellens per-aktie-betyg. Body: {ticker, name (valfritt)}. Bygger på
+    etf_composition() internt (cachad 7 dagar) - kan ta upp till ~5 min vid
+    DUBBEL cache-miss, men normalt ~2-3 min om sammansättningen redan
+    hämtats (frontend hämtar den innan denna knapp visas)."""
+    import stock_deep_dive as sdd
+    body = await request.json()
+    ticker = str(body.get("ticker") or "").strip()
+    name = str(body.get("name") or "").strip() or None
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker saknas.")
+    # run_in_threadpool: se post_scanner_analyze – blockera inte event-loopen.
+    from fastapi.concurrency import run_in_threadpool
+    result = await run_in_threadpool(sdd.etf_analyze, ticker, name)
+    if result.get("error") and not (result.get("bull_case") or result.get("bear_case")):
+        raise HTTPException(status_code=502, detail=result["error"])
+    return _clean(result)
+
+
 @app.get("/api/case-changes")
 def get_case_changes():
     """Har investeringscaset förändrats? (altdata/case_tracker.py). Jämför

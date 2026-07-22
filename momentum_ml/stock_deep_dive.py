@@ -273,6 +273,85 @@ def etf_composition(ticker: str, name: str = None) -> dict:
     return out
 
 
+_ETF_ANALYZE_PROMPT = """Du är en NEUTRAL, sansad investerarassistent. Nedan är
+sammansättningen av en ETF som användaren REDAN ÄGER (eller följer).
+
+FOND: {name} ({ticker})
+STÖRSTA INNEHAV:
+{holdings_lines}
+SEKTORFÖRDELNING: {sectors_line}
+GEOGRAFISK FÖRDELNING: {regions_line}
+
+Använd WebSearch vid behov för att bedöma fonden UTIFRÅN INNEHAVEN OVAN:
+
+1. "quality": ett kvalitetsbetyg 1-5 (5=utmärkt) för de STÖRSTA INNEHAVEN
+   SAMMANTAGET (affärskvalitet: lönsamhet, tillväxt, konkurrensläge,
+   värdering i stort) - INTE ett betyg på fonden som produkt (avgift m.m.).
+   Detta är EN NY bedömning, inte ett snitt av några existerande betyg -
+   sök upp faktisk info om du är osäker på ett innehav, gissa aldrig.
+2. "quality_reasoning": 2-3 meningar som motiverar betyget, namnge gärna
+   ett par av de största innehaven som exempel.
+3. "bull_case": 2-4 meningar, de starkaste ärliga argumenten för att
+   fortsätta äga fonden just nu.
+4. "bear_case": 2-4 meningar, de starkaste riskerna/motargumenten - lika
+   ärligt och konkret som bull_case.
+5. "concentration_note": 1-2 meningar om koncentrationsrisk OM relevant
+   (t.ex. om en sektor/region/enskilt innehav dominerar kraftigt jämfört
+   med en bred indexfond), annars null.
+
+VIKTIGT: Skriv ALDRIG en köp/sälj-rekommendation. Gissa aldrig siffror -
+bara resonemang/orsaker får komma från sökning.
+
+Svara ENDAST med kompakt JSON, ingen markdown:
+{{"quality": <1-5 eller null>, "quality_reasoning": "...", "bull_case": "...",
+  "bear_case": "...", "concentration_note": "..." eller null}}
+"""
+
+
+def etf_analyze(ticker: str, name: str = None) -> dict:
+    """Bull/bear + ETT LLM-bedömt kvalitetsbetyg (1-5) för en ETF:s STÖRSTA
+    INNEHAV sammantaget - INTE ett snitt av modellens per-aktie-betyg (de
+    täcker bara svenska börsbolag; en global ETF:s största innehav är
+    typiskt utländska jätteboalg som Nvidia/Apple utan någon sådan poäng
+    att snitta över, se beslut 2026-07-22). Samma kvalitativa disciplin
+    som quality_screener.py, fast riktad mot en fonds innehav i stort i
+    stället för ett enskilt bolags rapport.
+
+    Bygger på etf_composition()s redan kända (cachade 7 dagar) innehavs-
+    lista som kontext - undviker att söka efter "vad äger fonden" två
+    gånger. Görs INGEN egen server-cache här (till skillnad från
+    etf_composition) - samma "alltid färskt vid klick"-mönster som
+    analyze() för enskilda aktier, eftersom bull/bear-bedömningen är mer
+    tidskänslig än den relativt stabila innehavslistan.
+
+    OBS prestandan: om etf_composition() INTE redan är cachad (kall cache)
+    tar detta anropet self ~150s + composition-hämtningens egna ~80-170s -
+    frontend bör därför hämta/visa sammansättningen FÖRST (samma ordning
+    som EtfCompositionBox → EtfDeepDiveBox på aktiedetaljsidan) så den
+    här funktionen nästan alltid träffar en varm cache för composition-
+    delen."""
+    comp = etf_composition(ticker, name)
+    if comp.get("error") or not comp.get("top_holdings"):
+        return {"ticker": ticker, "name": name or ticker,
+                "error": comp.get("error", "ingen sammansättning hittad – hämta sammansättningen först")}
+    holdings_lines = "\n".join(
+        f"  - {h.get('name')}: {h.get('weight_pct')}%" for h in comp["top_holdings"])
+    sectors_line = ", ".join(
+        f"{s.get('name')} {s.get('weight_pct')}%" for s in comp.get("sectors") or []) or "okänd"
+    regions_line = ", ".join(
+        f"{r.get('name')} {r.get('weight_pct')}%" for r in comp.get("regions") or []) or "okänd"
+    prompt = _ETF_ANALYZE_PROMPT.format(name=name or ticker, ticker=ticker,
+                                         holdings_lines=holdings_lines,
+                                         sectors_line=sectors_line, regions_line=regions_line)
+    result = ch.run(prompt, _TOOLS, timeout=150)
+    if "error" in result or not (result.get("bull_case") or result.get("bear_case")):
+        return {"ticker": ticker, "name": name or ticker, "error": result.get("error", "tomt svar")}
+    return {"ticker": ticker, "name": name or ticker,
+            "quality": result.get("quality"), "quality_reasoning": result.get("quality_reasoning"),
+            "bull_case": result.get("bull_case"), "bear_case": result.get("bear_case"),
+            "concentration_note": result.get("concentration_note")}
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__)
@@ -283,6 +362,8 @@ if __name__ == "__main__":
         out = ask(tk, q)
     elif "--etf" in sys.argv:
         out = etf_composition(tk)
+    elif "--etf-analyze" in sys.argv:
+        out = etf_analyze(tk)
     else:
         out = analyze(tk)
     print(json.dumps(out, ensure_ascii=False, indent=2))
