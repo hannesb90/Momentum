@@ -10,6 +10,7 @@ Användning:
 
 import argparse
 import gc
+import hashlib
 import json
 import shutil
 import subprocess
@@ -116,6 +117,68 @@ def parse_args():
     return p.parse_args()
 
 
+# Cachar det FÄRDIGA all_features-resultatet (build_all_features +
+# attach_categorical_features + attach_fundamentals_features) mellan de tre
+# subprocesserna (train-lgbm-only/train-lstm-only/predict-only) som en
+# orkestrerad körning spawnar. Varje subprocess byggde tidigare om detta
+# HELT från grunden (~2-3 min, det mest minnestunga steget i hela
+# pipelinen) - MEDVETET, för att undvika en OpenMP/PyTorch-trådpool-SIGILL
+# vid återanvändning av samma process mellan LGBM/LSTM/predict (se STEG 2-
+# kommentaren vid subprocess.run nedan) - men SJÄLVA FEATURE-DATAN är en
+# ren funktion av (data, sector_map, cap_tier_map, fundamentals-CSV:erna),
+# identisk i alla tre subprocesserna eftersom base_cmd propagerar samma
+# argument. Att ladda den färdiga cachen (I/O, inga trådpooler inblandade)
+# är därför både säkert OCH mycket billigare än att bygga om - upptäckt
+# 2026-07-22 när nattträningen två kvällar i rad avbröts av run_watched.sh
+# under just detta redundanta ombygge i predict-processen (peak-minnet från
+# att bygga features en tredje gång var vad som tippade över 250MB-gränsen).
+_FEATURE_CACHE_MAX_AGE_S = 2 * 3600   # generös marginal (en full körning tar <1h)
+
+
+def _feature_cache_key(args) -> str:
+    """Hash av ALLA argument som påverkar VILKA features som byggs (inte de
+    som bara påverkar STEG 3+ nedströms, t.ex. --buy-threshold/--ta-filter/
+    --n-trials) - de senare får INTE vara med, annars missar cachenträff
+    mellan train- och predict-subprocesserna trots identisk feature-data."""
+    payload = {
+        "segment": args.segment, "tickers": args.tickers, "universe": args.universe,
+        "market_cap": args.market_cap, "include_ngm": args.include_ngm,
+        "start": args.start, "end": args.end, "min_turnover": args.min_turnover,
+        "stale_weeks": args.stale_weeks, "min_history": args.min_history,
+        "no_liquidity_filter": args.no_liquidity_filter,
+    }
+    return hashlib.sha1(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()[:16]
+
+
+def _feature_cache_path(args) -> Path:
+    return Path(config.RESULTS_DIR) / f"_features_cache_{_feature_cache_key(args)}.pkl"
+
+
+def _load_feature_cache(args):
+    """None om ingen giltig cache finns (saknas/för gammal/olik nyckel via
+    filnamnet, som redan bakar in argument-hashen) - anroparen bygger då om
+    som tidigare, exakt samma fallback som innan cachen fanns."""
+    if args.no_cache:
+        return None   # explicit "hämta helt färskt" ska aldrig läsa en cache
+    p = _feature_cache_path(args)
+    if not p.exists():
+        return None
+    import time
+    if time.time() - p.stat().st_mtime > _FEATURE_CACHE_MAX_AGE_S:
+        return None
+    try:
+        return pd.read_pickle(p)
+    except Exception:  # noqa: BLE001 - korrupt/ofullständig cache, bygg om
+        return None
+
+
+def _save_feature_cache(args, all_features) -> None:
+    try:
+        pd.to_pickle(all_features, _feature_cache_path(args))
+    except Exception as e:  # noqa: BLE001 - cachen är en optimering, aldrig kritisk
+        print(f"  [WARN] Kunde inte skriva feature-cache (icke-kritiskt): {e}")
+
+
 def main():
     args = parse_args()
     # Segment: sätt market_cap + results-katalog från config.SEGMENTS. Måste ske
@@ -209,19 +272,25 @@ def main():
 
     # ── 2. Features ───────────────────────────────────────────────────────────
     print("\nSTEG 2: Feature engineering...")
-    all_features = build_all_features(data)
-    all_features = attach_categorical_features(
-        all_features, sector_map=config.SECTOR_MAP, cap_tier_map=cap_tier_map,
-    )
-    # Tillväxt (rev_growth_yoy/eps_growth_yoy) ur MFN-rapporternas hårddata –
-    # första gången altdata/-data faktiskt matas in i den tränade modellen
-    # (inte bara ett separat CSV-/IC-diagnostik-spår). Point-in-time-säkert
-    # (se attach_fundamentals_features()-docstring). Kräver att
-    # fundamentals_from_mfn.csv/fundamentals_from_pdf.csv redan genererats
-    # (altdata/mfn_fundamentals.py extract / altdata/mfn_pdf.py backfill) –
-    # saknas de blir kolumnerna bara NaN, ingen krasch.
-    all_features = attach_fundamentals_features(all_features, segment=args.segment, prices=data)
-    model_df     = to_model_df(all_features)
+    all_features = _load_feature_cache(args)
+    if all_features is not None:
+        print(f"  [cache] Återanvänder features från tidigare subprocess i samma "
+              f"körning ({_feature_cache_path(args).name}) - hoppar över ombygget.")
+    else:
+        all_features = build_all_features(data)
+        all_features = attach_categorical_features(
+            all_features, sector_map=config.SECTOR_MAP, cap_tier_map=cap_tier_map,
+        )
+        # Tillväxt (rev_growth_yoy/eps_growth_yoy) ur MFN-rapporternas hårddata –
+        # första gången altdata/-data faktiskt matas in i den tränade modellen
+        # (inte bara ett separat CSV-/IC-diagnostik-spår). Point-in-time-säkert
+        # (se attach_fundamentals_features()-docstring). Kräver att
+        # fundamentals_from_mfn.csv/fundamentals_from_pdf.csv redan genererats
+        # (altdata/mfn_fundamentals.py extract / altdata/mfn_pdf.py backfill) –
+        # saknas de blir kolumnerna bara NaN, ingen krasch.
+        all_features = attach_fundamentals_features(all_features, segment=args.segment, prices=data)
+        _save_feature_cache(args, all_features)
+    model_df = to_model_df(all_features)
     print(f"  Dataset: {len(model_df):,} samples × {model_df[FEATURE_COLS].shape[1]} features")
     gc.collect()
 
@@ -266,11 +335,15 @@ def main():
         return
 
     if not args.predict_only:
-        # MINNE: i orkestreringsläget bygger varje subprocess (LGBM/LSTM/predict)
-        # om data+features SJÄLV från cachen. Den här parent-processen behöver
-        # alltså INTE hålla kvar sina kopior medan barnen kör – annars ligger två
-        # fulla universum i RAM samtidigt (parent + barn) och tippar över i swap
-        # på en 2GB-Pi (märks tydligt på hela Sverige-universumet, ~483 tickers).
+        # MINNE: den här processen har redan skrivit all_features till disk-
+        # cachen ovan (STEG 2) - barnen (LGBM/LSTM/predict) LÄSER samma cache
+        # i stället för att bygga om den (se _load_feature_cache; fixat
+        # 2026-07-22, tidigare byggde varje subprocess om helt från grunden,
+        # ~2-3 min extra minnestryck per subprocess - det var vad som fällde
+        # två kvällars nattträning i rad, se run_watched.sh:s KRITISKT-larm).
+        # Den här parent-processen behöver alltså INTE hålla kvar sina egna
+        # kopior medan barnen kör – annars ligger två fulla universum i RAM
+        # samtidigt (parent + barn) och tippar över i swap på en 2GB-Pi.
         # Frigör innan vi startar barnen; parent gör bara sys.exit efteråt.
         del data, all_features, model_df, dev_df
         gc.collect()
@@ -340,6 +413,14 @@ def main():
         if args.n_trials != 1:
             cmd += ["--n-trials", str(args.n_trials)]
         result = subprocess.run(cmd)
+        # Städa feature-cachen - orkestreringen är klar, ingen mer subprocess
+        # ska läsa den. Lämnar den INTE kvar (även vid fel/tidigt avbrott
+        # ovan skulle en framtida körning med IDENTISKA argument annars
+        # kunna råka läsa en cache från en krascad körning - hash+ålders-
+        # kollen i _load_feature_cache skyddar redan mot fel data, men
+        # explicit städning är enklare att resonera om än att bara lita på
+        # de skydden).
+        _feature_cache_path(args).unlink(missing_ok=True)
         sys.exit(result.returncode)
 
     # ── Prediktion (laddar sparade modeller) ─────────────────────────────────
