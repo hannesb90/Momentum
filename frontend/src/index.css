@@ -2115,7 +2115,12 @@ h3 { color: var(--text-muted); }
 .hero { background: linear-gradient(150deg, var(--accent-soft), var(--bg-card) 62%); }
 .hero--down { background: linear-gradient(150deg, var(--bad-soft), var(--bg-card) 62%); }
 .tile, .stat-card { border-radius: var(--radius-sm); }
-.list-card, .chart-card, .stats-block, .table-wrap { border-radius: var(--radius); overflow: hidden; }
+.list-card, .chart-card, .stats-block { border-radius: var(--radius); overflow: hidden; }
+/* .table-wrap MEDVETET UTESLUTEN (2026-07-22, verkligt fall Bolag-sidan):
+   denna regel kom EFTER .table-wrap:s egen overflow-x:auto (rad ~467) i
+   kaskaden och vann med samma specificitet - overflow:hidden klippte helt
+   enkelt bort tabellinnehåll till höger i stället för att göra det
+   scrollbart sidled. .table-wrap har redan sin egen border-radius. */
 
 /* Tabeller: luftigare, zebra-fritt, tydlig header */
 table { border-collapse: collapse; width: 100%; }
