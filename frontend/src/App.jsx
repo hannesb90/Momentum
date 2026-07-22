@@ -8,7 +8,7 @@ import { AnalysisPage } from './pages/Analysis'
 import { WatchlistPage } from './pages/Watchlist'
 import { RotationPage } from './pages/Rotation'
 import { MarketPage } from './pages/Market'
-import { HoldingsPage } from './pages/Holdings'
+import { HoldingsHubPage } from './pages/HoldingsHub'
 import { AssessmentPage } from './pages/Assessment'
 import { StockDetailPage } from './pages/StockDetail'
 import { ScannerPage } from './pages/Scanner'
@@ -72,7 +72,10 @@ export default function App() {
           <Route path="/signaler" element={<Navigate to="/bolag" replace />} />
           <Route path="/kvalitet" element={<Navigate to="/bolag" replace />} />
           <Route path="/marknad" element={<MarketPage />} />
-          <Route path="/innehav" element={<HoldingsPage />} />
+          {/* 2026-07-22: Bevakning flyttad hit som sub-flik (HoldingsHubPage,
+              samma mönster som gamla Signaler/Bevakning) - inte längre egen
+              huvudflik. /bevakning-routen nedan är kvar som deep-link. */}
+          <Route path="/innehav" element={<HoldingsHubPage />} />
           <Route path="/bedomning" element={<AssessmentPage />} />
           <Route path="/analys" element={<AnalysisPage />} />
           <Route path="/skanner" element={<ScannerPage />} />

@@ -59,14 +59,15 @@ const ICONS = {
 }
 
 // 2026-07-22: Signaler+Kvalitet slogs ihop till /bolag (en tabell, alla
-// bolagsmått). Bevakning fick sin egen flik i stället för att vara en
-// sub-flik under gamla Signaler (den routen har alltid funnits, se App.jsx).
+// bolagsmått). Bevakning var kort en egen flik, men flyttades tillbaka som
+// sub-flik - nu under Innehav (samma mönster som Signaler/Bevakning hade,
+// se HoldingsHub.jsx) i stället för egen huvudflik. /bevakning-routen finns
+// kvar som deep-link (App.jsx).
 const links = [
   { to: '/', label: 'Hem', icon: 'home' },
   { to: '/bolag', label: 'Bolag', icon: 'signals' },
   { to: '/innehav', label: 'Innehav', icon: 'holdings' },
   { to: '/bedomning', label: 'Bedömning', icon: 'assessment' },
-  { to: '/bevakning', label: 'Bevakning', icon: 'watchlist' },
   { to: '/marknad', label: 'Marknad', icon: 'sectors' },
   { to: '/analys', label: 'Analys', icon: 'analysis' },
   { to: '/skanner', label: 'Skanner', icon: 'scanner' },
