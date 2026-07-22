@@ -746,7 +746,7 @@ export function StockDetailPage() {
     return (
       <section className="page">
         <div className="page-head">
-          <Link to="/signaler" className="section-head__link">← Tillbaka</Link>
+          <Link to="/bolag" className="section-head__link">← Tillbaka</Link>
           <h1>{ticker}</h1>
           <p className="page-subtitle">
             <TvLink ticker={ticker} />
@@ -778,7 +778,7 @@ export function StockDetailPage() {
   return (
     <section className="page">
       <div className="page-head">
-        <Link to="/signaler" className="section-head__link">← Tillbaka</Link>
+        <Link to="/bolag" className="section-head__link">← Tillbaka</Link>
         <h1>
           {displayName} <SignalBadge variant={isBuy ? 'buy' : 'flat'} />
         </h1>

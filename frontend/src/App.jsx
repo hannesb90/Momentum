@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { NavBar } from './components/NavBar'
 import { OverviewPage } from './pages/Overview'
-import { SignalsHubPage } from './pages/SignalsHub'
+import { CompaniesPage } from './pages/Companies'
 import { SectorsPage } from './pages/Sectors'
 import { AnalysisPage } from './pages/Analysis'
 import { WatchlistPage } from './pages/Watchlist'
-import { QualityPage } from './pages/Quality'
 import { RotationPage } from './pages/Rotation'
 import { MarketPage } from './pages/Market'
 import { HoldingsPage } from './pages/Holdings'
@@ -36,12 +35,13 @@ export default function App() {
   // Segmenttoggeln göms där den inte styr något: hemvyn (Core:t är segment-
   // oberoende), Innehav (din portfölj är din portfölj), Marknad/Sektorer/
   // Rotation (ETF-/marknadsvy – sektordatan är pinnad till bredaste segmentet)
-  // och Signaler/Bevakning (2026-07-22: hämtar numera BÅDA segmenten i en
-  // sammanslagen lista med eget filter, se api.latestSignalsAll - den globala
-  // växlaren styr inte längre något där). På kvarvarande forskningsvyer
-  // (Kvalitet/Analys/Skanner) styr den fortfarande visat segment.
+  // och Bolag/Bevakning (2026-07-22: Bolag slog ihop gamla Signaler+Kvalitet
+  // och hämtar numera BÅDA segmenten i en sammanslagen lista med eget filter,
+  // se api.latestSignalsAll/quantAll - den globala växlaren styr inte längre
+  // något där). På kvarvarande forskningsvyer (Analys/Skanner) styr den
+  // fortfarande visat segment.
   const { pathname } = useLocation()
-  const showSegments = !['/', '/innehav', '/bedomning', '/marknad', '/sektorer', '/rotation', '/signaler']
+  const showSegments = !['/', '/innehav', '/bedomning', '/marknad', '/sektorer', '/rotation', '/bolag']
     .some((p) => pathname === p || (p !== '/' && pathname.startsWith(p)))
 
   return (
@@ -66,9 +66,12 @@ export default function App() {
       <main className="app__content" key={segment}>
         <Routes>
           <Route path="/" element={<OverviewPage />} />
-          <Route path="/signaler" element={<SignalsHubPage />} />
+          <Route path="/bolag" element={<CompaniesPage />} />
+          {/* 2026-07-22: Signaler+Kvalitet slogs ihop till /bolag - gamla
+              länkar/bokmärken vidarebefordras i stället för att 404:a. */}
+          <Route path="/signaler" element={<Navigate to="/bolag" replace />} />
+          <Route path="/kvalitet" element={<Navigate to="/bolag" replace />} />
           <Route path="/marknad" element={<MarketPage />} />
-          <Route path="/kvalitet" element={<QualityPage />} />
           <Route path="/innehav" element={<HoldingsPage />} />
           <Route path="/bedomning" element={<AssessmentPage />} />
           <Route path="/analys" element={<AnalysisPage />} />

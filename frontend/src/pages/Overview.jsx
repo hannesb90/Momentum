@@ -549,7 +549,7 @@ export function OverviewPage() {
             <p>Klicka på en rad för att se alla signaler i detalj på fliken Signaler.</p>
           </InfoButton>
         </h2>
-        <Link to="/signaler" className="section-head__link">Visa alla →</Link>
+        <Link to="/bolag" className="section-head__link">Visa alla →</Link>
       </div>
       <div className="list-card">
         {topBuys.length === 0 && <div className="list-card__empty">Inga aktiva köpsignaler just nu.</div>}

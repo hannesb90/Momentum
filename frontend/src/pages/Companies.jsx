@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   ResponsiveContainer, ScatterChart, Scatter, XAxis, YAxis, ZAxis,
   CartesianGrid, Tooltip, ReferenceLine, ReferenceArea, Cell,
@@ -8,12 +8,19 @@ import { api } from '../api'
 import { useApiData } from '../useApiData'
 import { Loading, ErrorBlock } from '../components/StatusBlock'
 import { SegmentedControl } from '../components/SegmentedControl'
+import { SignalBadge } from '../components/SignalBadge'
 import { EmptyState } from '../components/EmptyState'
 import { InfoButton } from '../components/InfoButton'
 import { TvLink } from '../components/TvLink'
-import { fmtNum, cleanName } from '../format'
+import { fmtNum, fmtPct, cleanName } from '../format'
 
-// Zon-klassificeringen (OT-style värdering) → filter + badge-färg.
+// Bolag-sidan (2026-07-22) slår ihop det som tidigare var Signaler + Kvalitet:
+// EN rad per bolag, med momentum-modellens signal (prob_up/pred_return/TA),
+// den token-fria kvant-screenern (hård data, alla bolag) och Claude-kvaliteten
+// (checklista + värderingszon, de bolag screenern hunnit läsa) i samma tabell.
+// Tre separata datakällor slås ihop per ticker (samma mönster som gamla
+// Quality.jsx redan gjorde för quant+quality - utökat med signals här).
+
 const ZONES = [
   { value: 'all', label: 'Alla' },
   { value: 'billig', label: 'Billig' },
@@ -29,22 +36,27 @@ const QUALITY_TIERS = [
   { value: 4.5, label: '≥ 4,5' },
 ]
 
+const SIGNAL_FILTERS = [
+  { value: 'all', label: 'Alla' },
+  { value: 'buy', label: 'Köp' },
+  { value: 'flat', label: 'Neutrala' },
+]
+
+const SEGMENT_FILTERS = [
+  { value: 'all', label: 'Alla bolag' },
+  { value: 'large', label: 'Storbolag' },
+  { value: 'small', label: 'Småbolag' },
+]
+const SEGMENT_LABEL = { large: 'Stor', small: 'Liten' }
+
 const SORTS = [
+  { value: 'prob_up', label: 'P(upp)' },
   { value: 'quant_score', label: 'Kvant' },
   { value: 'composite', label: 'Kvalitet' },
   { value: 'ebitda_multiple', label: 'Billigast' },
-  { value: 'mcap_msek', label: 'Minst börsvärde' },
+  { value: 'mcap_msek', label: 'Bolagsvärde' },
+  { value: 'price_chg_30m', label: 'Kursutveckling' },
 ]
-
-// Värderingszon ur kvant-data (samma trösklar som backend): vinstmultipel om positiv,
-// annars P/S. Fyller zon för ALLA bolag ur TradingView – inte bara de Claude-poängsatta.
-function zoneFromQuant(r) {
-  const ev = Number(r.ev_ebitda)
-  if (Number.isFinite(ev) && ev > 0) return ev <= 12 ? 'billig' : ev <= 18 ? 'rimlig' : 'dyr'
-  const ps = Number(r.ps)
-  if (Number.isFinite(ps) && ps > 0) return ps <= 1.5 ? 'billig' : ps <= 4 ? 'rimlig' : 'dyr'
-  return 'okänd'
-}
 
 const VIEWS = [
   { value: 'table', label: 'Tabell' },
@@ -59,7 +71,6 @@ const ZONE_COLOR = {
   okänd: '#94a3b8',
 }
 
-// Kriterie-nycklar → svenska etiketter för detaljvyn.
 const CRITERIA = [
   ['understand', 'Lätt att förstå'],
   ['global', 'Global ambition'],
@@ -71,6 +82,14 @@ const CRITERIA = [
   ['profit_path', 'Väg till vinst'],
   ['under_radar', 'Under radarn'],
 ]
+
+function zoneFromQuant(r) {
+  const ev = Number(r.ev_ebitda)
+  if (Number.isFinite(ev) && ev > 0) return ev <= 12 ? 'billig' : ev <= 18 ? 'rimlig' : 'dyr'
+  const ps = Number(r.ps)
+  if (Number.isFinite(ps) && ps > 0) return ps <= 1.5 ? 'billig' : ps <= 4 ? 'rimlig' : 'dyr'
+  return 'okänd'
+}
 
 function zoneClass(zone) {
   if (zone === 'billig') return 'billig'
@@ -99,7 +118,6 @@ function fmtMult(v) {
   return v == null || Number.isNaN(Number(v)) ? '–' : `${Number(v).toFixed(1)}×`
 }
 
-// Kompakt axel-etikett: 31470 → "31k", 172 → "172".
 function fmtAxis(v) {
   const n = Number(v)
   if (!Number.isFinite(n)) return ''
@@ -127,7 +145,6 @@ function OtTooltip({ active, payload }) {
   )
 }
 
-// En liten stapel 1–5 för varje kvalitetskriterium.
 function ScoreBar({ value }) {
   const v = Number(value)
   const pct = value == null || Number.isNaN(v) ? 0 : (v / 5) * 100
@@ -141,13 +158,44 @@ function ScoreBar({ value }) {
   )
 }
 
+// Range-filtren (bolagsvärde/antal aktier/kursutveckling) - samma
+// min/max-fältpar-komponent som Signaler-sidan.
+function RangeFilter({ label, unit, min, max, onMin, onMax }) {
+  return (
+    <label className="range-filter">
+      <span className="range-filter__label">{label}{unit ? ` (${unit})` : ''}</span>
+      <span className="range-filter__inputs">
+        <input type="number" inputMode="decimal" placeholder="Min" value={min}
+          onChange={(e) => onMin(e.target.value)} />
+        <span>–</span>
+        <input type="number" inputMode="decimal" placeholder="Max" value={max}
+          onChange={(e) => onMax(e.target.value)} />
+      </span>
+    </label>
+  )
+}
+
+const EMPTY_RANGES = { mcapMin: '', mcapMax: '', sharesMin: '', sharesMax: '', chgMin: '', chgMax: '' }
+
 function DetailPanel({ row }) {
   const flags = String(row.red_flags || '').split(';').map((s) => s.trim()).filter(Boolean)
   const investors = String(row.mentioned_investors || '').split(';').map((s) => s.trim()).filter(Boolean)
+  const hasMomentum = row.prob_up != null
   return (
     <div className="qdetail">
       {row.pitch && <p className="qdetail__pitch">{row.pitch}</p>}
       {row.memo && <p className="qdetail__memo">{row.memo}</p>}
+
+      {hasMomentum && (
+        <div className="qdetail__facts" style={{ marginBottom: 10 }}>
+          <div className="qdetail__fact"><span>P(upp), 4v</span><b>{fmtPct(row.prob_up)}</b></div>
+          <div className="qdetail__fact"><span>Förv. avkastning</span><b>{fmtPct(row.pred_return)}</b></div>
+          {row.ta_score != null && (
+            <div className="qdetail__fact"><span>TA-score</span><b>{fmtPct(row.ta_score, 0)}</b></div>
+          )}
+          <div className="qdetail__fact"><span>Positionsstorlek</span><b>{fmtPct(row.position_size)}</b></div>
+        </div>
+      )}
 
       <div className="qdetail__grid">
         <div className="qdetail__criteria">
@@ -171,6 +219,12 @@ function DetailPanel({ row }) {
             <span>Multipel{row.earnings_basis ? ` (${row.earnings_basis})` : ''}</span>
             <b>{fmtMult(row.ebitda_multiple)}</b>
           </div>
+          {row.price_chg_30m != null && (
+            <div className="qdetail__fact"><span>Kursutveckling (~30 mån)</span><b>{fmtPct(row.price_chg_30m, 0)}</b></div>
+          )}
+          {row.shares_million != null && (
+            <div className="qdetail__fact"><span>Antal aktier</span><b>{fmtNum(row.shares_million, 1)} milj.</b></div>
+          )}
           {investors.length > 0 && (
             <div className="qdetail__fact"><span>Ägare (nämnda)</span><b>{investors.join(', ')}</b></div>
           )}
@@ -216,28 +270,41 @@ function DetailPanel({ row }) {
   )
 }
 
-export function QualityPage() {
+export function CompaniesPage() {
   const qRes = useApiData(() => api.quality(), [])
-  const qnRes = useApiData(() => api.quant(), [])
-  const [query, setQuery] = useState('')
+  const qnRes = useApiData(() => api.quantAll(), [])
+  const sigRes = useApiData(() => api.latestSignalsAll(), [])
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [zone, setZone] = useState('all')
   const [minQuality, setMinQuality] = useState(0)
-  const [sort, setSort] = useState('quant_score')
+  const [signalFilter, setSignalFilter] = useState('all')
+  const [segmentFilter, setSegmentFilter] = useState('all')
+  const [sort, setSort] = useState('prob_up')
   const [view, setView] = useState('table')
   const [expanded, setExpanded] = useState(null)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [ranges, setRanges] = useState(EMPTY_RANGES)
+  const setRange = (k) => (v) => setRanges((r) => ({ ...r, [k]: v }))
 
-  const loading = qRes.loading || qnRes.loading
-  const error = qRes.error && qnRes.error ? (qRes.error || qnRes.error) : null
+  const loading = qRes.loading || qnRes.loading || sigRes.loading
+  const error = qRes.error && qnRes.error && sigRes.error ? (qRes.error || qnRes.error || sigRes.error) : null
 
-  // EN vy: kvant (hård data, ALLA bolag) som bas + Claude-kvalitativ + värdering ovanpå.
+  // Tre källor, EN rad per ticker: kvant (bred bas, hård data, alla bolag i
+  // universumet) < signaler (momentum-modellens P(upp)/TA/segment, bifogar
+  // också mcap/kursutveckling/aktier från värde-/kvalitetsscreenrarna, se
+  // api/main.py::_signal_screener_enrichment) < kvalitet (Claude/soft, rikast
+  // men färre bolag). Senare källor vinner vid krock (samma precedens som
+  // gamla Kvalitet-sidan redan hade för quant→quality).
   const data = useMemo(() => {
-    const llm = Array.isArray(qRes.data) ? qRes.data : []
     const quant = Array.isArray(qnRes.data) ? qnRes.data : []
+    const signals = Array.isArray(sigRes.data) ? sigRes.data : []
+    const llm = Array.isArray(qRes.data) ? qRes.data : []
     const map = {}
     for (const r of quant) {
       if (!r.ticker) continue
       map[r.ticker] = {
-        ticker: r.ticker, name: r.name, quant_score: r.quant_score,
+        ticker: r.ticker, name: r.name, segment: r.segment, quant_score: r.quant_score,
         q_quality: r.quality, q_growth: r.growth, q_safety: r.safety, q_value: r.value,
         ebitda_margin: r.ebitda_margin, rev_growth: r.rev_growth, roe: r.roe,
         ps: r.ps, ev_ebitda: r.ev_ebitda, mcap_msek: r.mcap_msek,
@@ -245,19 +312,32 @@ export function QualityPage() {
         zone: zoneFromQuant(r), composite: null,
       }
     }
-    for (const s of llm) {                            // Claude-analysen är rikare → lägg ovanpå
+    for (const s of signals) {
+      if (!s.ticker) continue
+      const base = map[s.ticker] || {}
+      map[s.ticker] = {
+        ...base,
+        ticker: s.ticker, name: s.name ?? base.name, segment: s.segment ?? base.segment,
+        prob_up: s.prob_up, pred_return: s.pred_return, pred_signal: s.pred_signal,
+        ta_score: s.ta_score, position_size: s.position_size,
+        mcap_msek: s.mcap_msek ?? base.mcap_msek,
+        price_chg_30m: s.price_chg_30m, shares_million: s.shares_million,
+      }
+    }
+    for (const s of llm) {
       if (!s.ticker) continue
       const base = map[s.ticker] || {}
       map[s.ticker] = {
         ...base, ...s,
         quant_score: base.quant_score ?? null,
+        segment: base.segment ?? s.segment,
         zone: s.zone && s.zone !== 'okänd' ? s.zone : (base.zone ?? s.zone ?? 'okänd'),
         mcap_msek: s.mcap_msek ?? base.mcap_msek,
         ebitda_multiple: s.ebitda_multiple ?? base.ebitda_multiple,
       }
     }
     return Object.values(map)
-  }, [qRes.data, qnRes.data])
+  }, [qRes.data, qnRes.data, sigRes.data])
 
   const rows = useMemo(() => {
     if (!data) return []
@@ -272,19 +352,29 @@ export function QualityPage() {
     }
     if (zone !== 'all') r = r.filter((s) => s.zone === zone)
     if (minQuality > 0) r = r.filter((s) => Number(s.composite) >= minQuality)
-    // "Billigast" sorterar stigande (lägst multipel först), övriga fallande.
-    const asc = sort === 'ebitda_multiple' || sort === 'mcap_msek'
+    if (signalFilter === 'buy') r = r.filter((s) => s.pred_signal === 1)
+    if (signalFilter === 'flat') r = r.filter((s) => s.pred_signal != null && s.pred_signal !== 1)
+    if (segmentFilter !== 'all') r = r.filter((s) => s.segment === segmentFilter)
+    if (ranges.mcapMin) r = r.filter((s) => Number(s.mcap_msek) >= Number(ranges.mcapMin))
+    if (ranges.mcapMax) r = r.filter((s) => Number(s.mcap_msek) <= Number(ranges.mcapMax))
+    if (ranges.sharesMin) r = r.filter((s) => Number(s.shares_million) >= Number(ranges.sharesMin))
+    if (ranges.sharesMax) r = r.filter((s) => Number(s.shares_million) <= Number(ranges.sharesMax))
+    if (ranges.chgMin) r = r.filter((s) => Number(s.price_chg_30m) * 100 >= Number(ranges.chgMin))
+    if (ranges.chgMax) r = r.filter((s) => Number(s.price_chg_30m) * 100 <= Number(ranges.chgMax))
+    const asc = sort === 'ebitda_multiple'
     return [...r].sort((a, b) => {
-      const av = a[sort],
-        bv = b[sort]
+      const av = a[sort], bv = b[sort]
       const an = av == null || Number.isNaN(Number(av)) ? (asc ? Infinity : -Infinity) : Number(av)
       const bn = bv == null || Number.isNaN(Number(bv)) ? (asc ? Infinity : -Infinity) : Number(bv)
       return asc ? an - bn : bn - an
     })
-  }, [data, query, zone, minQuality, sort])
+  }, [data, query, zone, minQuality, signalFilter, segmentFilter, ranges, sort])
 
-  // OT-diagrammets punkter: samma (filtrerade) bolag som tabellen, de som har
-  // både börsvärde och en vinstsiffra (annars går de inte att placera).
+  const activeFilterCount =
+    (zone !== 'all' ? 1 : 0) + (minQuality > 0 ? 1 : 0) +
+    (signalFilter !== 'all' ? 1 : 0) + (segmentFilter !== 'all' ? 1 : 0) +
+    Object.values(ranges).filter((v) => v !== '').length
+
   const chartData = useMemo(
     () =>
       rows
@@ -312,45 +402,43 @@ export function QualityPage() {
     return (
       <section className="page">
         <div className="page-head">
-          <h1>Kvalitet</h1>
+          <h1>Bolag</h1>
         </div>
         <EmptyState
-          title="Ingen kortlista ännu"
-          hint="Kör 'python altdata/quality_screener.py score' och sedan 'report' på Pi:n för att generera results/quality_shortlist.csv."
+          title="Ingen data ännu"
+          hint="Kör nattens pipeline på Pi:n (main.py + altdata-screenrarna) för att generera underlaget."
         />
       </section>
     )
   }
 
+  const buyCount = data.filter((s) => s.pred_signal === 1).length
   const cheapCount = data.filter((s) => s.zone === 'billig' || s.zone === 'rimlig').length
 
   return (
     <section className="page">
       <div className="page-head">
         <h1>
-          Kvalitet
-          <InfoButton title="Fundamental microcap-sållning">
+          Bolag
+          <InfoButton title="Bolag – allt på ett ställe">
             <p>
-              En kvalitativ tratt som letar tidiga, oupptäckta småbolag med 10-bagger-potential.
-              Claude läser varje bolags senaste rapport + pressmeddelanden och poängsätter en
-              checklista (10-årstest, moat, ledning, väg till vinst m.m.) samt extraherar nyckeltal
-              för värdering.
+              Momentum-modellens signal (P(upp), uppdateras vecka för vecka), den token-fria
+              kvant-screenern (hård finansdata, alla bolag) och Claude-kvaliteten (checklista +
+              värdering, de bolag screenern hunnit läsa) i EN tabell i stället för separata sidor.
             </p>
             <p>
-              <b>Detta är ett urval, inte ett bevisat edge.</b> Till skillnad från momentum-modellen
-              kan den inte backtestas – använd den som utgångspunkt för din egen djupanalys, aldrig
-              som köpsignal.
+              Stor- och småbolag tränas som två SEPARATA momentum-modeller – P(upp) är därför bara
+              jämförbart inom respektive segment, inte mellan dem.
             </p>
             <p>
-              <b>Kvalitet</b> (composite 1–5) mäter hur bra caset låter. <b>Zon</b> mäter
-              värderingen: lönsamma bolag på vinstmultipel (billig ≤12×, rimlig ≤18×, dyr &gt;18×),
-              förlustbolag på P/S (börsvärde/omsättning) precis som OT gör – så även de får
-              billig/dyr-stämpel, med en <b>förlust</b>-tagg. Din kärnregel: hög kvalitet <b>och</b> billig.
+              <b>Kvalitet/zon är ett urval, inte ett bevisat edge</b> – kan inte backtestas som
+              momentum-modellen. Använd det som utgångspunkt för egen analys, aldrig som köpsignal
+              ensamt.
             </p>
           </InfoButton>
         </h1>
         <p className="page-subtitle">
-          {data.length} bolag · {cheapCount} billiga/rimliga · kvant (hård data) + kvalitativ analys
+          {data.length} bolag · {buyCount} köpsignaler · {cheapCount} billiga/rimliga
         </p>
       </div>
 
@@ -360,23 +448,67 @@ export function QualityPage() {
           type="search"
           placeholder="Sök ticker eller bolagsnamn…"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value
+            setQuery(v)
+            setSearchParams(v ? { q: v } : {}, { replace: true })
+          }}
         />
-      </div>
-      <div className="filter-bar filter-bar--secondary">
-        <span className="filter-bar__label">Värderingszon:</span>
-        <SegmentedControl options={ZONES} value={zone} onChange={setZone} size="sm" />
-      </div>
-      <div className="filter-bar filter-bar--secondary">
-        <span className="filter-bar__label">Kvalitet:</span>
-        <SegmentedControl options={QUALITY_TIERS} value={minQuality} onChange={setMinQuality} size="sm" />
-      </div>
-      <div className="filter-bar filter-bar--secondary">
-        <span className="filter-bar__label">Sortera:</span>
-        <SegmentedControl options={SORTS} value={sort} onChange={setSort} size="sm" />
-        <span className="filter-bar__spacer" />
+        <button
+          type="button"
+          className={`btn filter-toggle${activeFilterCount ? ' filter-toggle--active' : ''}`}
+          onClick={() => setFilterOpen((v) => !v)}
+          aria-expanded={filterOpen}
+        >
+          Filter{activeFilterCount ? ` (${activeFilterCount})` : ''}
+        </button>
         <SegmentedControl options={VIEWS} value={view} onChange={setView} size="sm" />
       </div>
+
+      {filterOpen && (
+        <div className="filter-panel">
+          <div className="filter-panel__row">
+            <span className="filter-bar__label">Signal</span>
+            <SegmentedControl options={SIGNAL_FILTERS} value={signalFilter} onChange={setSignalFilter} size="sm" />
+          </div>
+          <div className="filter-panel__row">
+            <span className="filter-bar__label">Segment</span>
+            <SegmentedControl options={SEGMENT_FILTERS} value={segmentFilter} onChange={setSegmentFilter} size="sm" />
+          </div>
+          <div className="filter-panel__row">
+            <span className="filter-bar__label">Värderingszon</span>
+            <SegmentedControl options={ZONES} value={zone} onChange={setZone} size="sm" />
+          </div>
+          <div className="filter-panel__row">
+            <span className="filter-bar__label">Kvalitet</span>
+            <SegmentedControl options={QUALITY_TIERS} value={minQuality} onChange={setMinQuality} size="sm" />
+          </div>
+          <div className="filter-panel__row">
+            <span className="filter-bar__label">Sortera</span>
+            <SegmentedControl options={SORTS} value={sort} onChange={setSort} size="sm" />
+          </div>
+          <div className="filter-panel__ranges">
+            <RangeFilter label="Bolagsvärde" unit="Mkr"
+              min={ranges.mcapMin} max={ranges.mcapMax}
+              onMin={setRange('mcapMin')} onMax={setRange('mcapMax')} />
+            <RangeFilter label="Kursutveckling" unit="%, ~30 mån"
+              min={ranges.chgMin} max={ranges.chgMax}
+              onMin={setRange('chgMin')} onMax={setRange('chgMax')} />
+            <RangeFilter label="Antal aktier" unit="miljoner"
+              min={ranges.sharesMin} max={ranges.sharesMax}
+              onMin={setRange('sharesMin')} onMax={setRange('sharesMax')} />
+          </div>
+          {activeFilterCount > 0 && (
+            <button type="button" className="btn" style={{ marginTop: 4 }}
+              onClick={() => {
+                setZone('all'); setMinQuality(0); setSignalFilter('all')
+                setSegmentFilter('all'); setRanges(EMPTY_RANGES)
+              }}>
+              Rensa filter
+            </button>
+          )}
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <EmptyState title="Inga bolag matchar" hint="Justera filtren eller sökningen." />
@@ -384,7 +516,7 @@ export function QualityPage() {
         chartData.length === 0 ? (
           <EmptyState
             title="Inget att rita ännu"
-            hint="Bolagen i urvalet saknar börsvärde eller vinstsiffra. Kör 'report' på Pi:n eller vidga filtren."
+            hint="Bolagen i urvalet saknar börsvärde eller vinstsiffra. Kör Claude-screenern på Pi:n eller vidga filtren."
           />
         ) : (
           <div className="qchart">
@@ -463,46 +595,35 @@ export function QualityPage() {
               <tr>
                 <th>Bolag</th>
                 <th>
+                  P(upp)
+                  <InfoButton title="P(upp) – nästa 4 veckor">
+                    Momentum-modellens sannolikhet att aktien stiger de kommande 4 veckorna.
+                    Uppdateras varje vecka. Saknas för bolag utan momentum-täckning.
+                  </InfoButton>
+                </th>
+                <th>
                   Kvant
                   <InfoButton title="Kvant-betyg (hård data, token-fritt)">
-                    0–100 ur hård finansdata (TradingView, gratis): kvalitet (marginaler,
-                    ROE/ROIC), tillväxt, trygghet (skuld/likviditet) och värdering, rankat mot
-                    hela universumet. Finns för <b>alla</b> bolag – ingen Claude-token.
+                    0–100 ur hård finansdata: kvalitet, tillväxt, trygghet och värdering, rankat mot
+                    hela universumet. Finns för alla bolag – ingen Claude-token.
                   </InfoButton>
                 </th>
                 <th>
                   Kvalitet
                   <InfoButton title="Kvalitet (composite 1–5)">
-                    Snittet av 9 kvalitativa kriterier som Claude poängsatt ur bolagets rapport
-                    (förstå, moat, ledning, marknad, väg till vinst m.m.). Mäter hur bra caset
-                    <b> låter</b> – inte värderingen. Klicka en rad för delbetygen.
-                    Betyg märkta <b>mjuk</b> är det tokenfria destillatet (ML/lexikon tränat på
-                    Claude-betygen, samma skala) för bolag Claude inte hunnit läsa än.
+                    Snittet av 9 kvalitativa kriterier som Claude poängsatt ur bolagets rapport.
+                    Klicka en rad för delbetygen. Betyg märkta <b>mjuk</b> är det tokenfria
+                    destillatet för bolag Claude inte hunnit läsa än.
                   </InfoButton>
                 </th>
                 <th>
                   Zon
                   <InfoButton title="Värderingszon">
                     Lönsamma bolag zonas på vinstmultipel: billig ≤12×, rimlig ≤18×, dyr &gt;18×.
-                    Förlustbolag zonas på P/S (börsvärde/omsättning) och får en <b>förlust</b>-tagg.
-                    Din kärnregel: hög kvalitet <b>och</b> billig.
+                    Förlustbolag zonas på P/S och får en <b>förlust</b>-tagg.
                   </InfoButton>
                 </th>
-                <th>
-                  Börsvärde
-                  <InfoButton title="Börsvärde">
-                    Från EODHD/Yahoo (marketCap) i första hand, annars kurs × aktieantal som Claude
-                    extraherat ur rapporten. Kan sakna/vara föråldrat – verifiera topparna.
-                  </InfoButton>
-                </th>
-                <th>
-                  Multipel
-                  <InfoButton title="Multipel">
-                    Börsvärde delat på vinsten (EBITDA → EBIT → årets resultat) för lönsamma bolag,
-                    eller på omsättningen (P/S) för förlustbolag. Vilken bas som använts visas i
-                    detaljvyn (t.ex. "P/S" eller "EBITDA").
-                  </InfoButton>
-                </th>
+                <th>Börsvärde</th>
               </tr>
             </thead>
             <tbody>
@@ -516,7 +637,18 @@ export function QualityPage() {
                     >
                       <td className="ticker-cell">
                         <span className="ticker-link__name">{cleanName(row.name, row.ticker)}</span>
-                        <span className="ticker-link__ticker">{row.ticker} <TvLink ticker={row.ticker} /></span>
+                        <span className="ticker-link__ticker">
+                          {row.ticker} <TvLink ticker={row.ticker} />
+                          {row.segment && (
+                            <span className="badge badge--flat" style={{ marginLeft: 6 }}>
+                              {SEGMENT_LABEL[row.segment] ?? row.segment}
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td>
+                        {row.prob_up != null ? fmtPct(row.prob_up) : '–'}
+                        {row.pred_signal === 1 && <SignalBadge variant="buy" />}
                       </td>
                       <td className="qcomposite">{row.quant_score == null ? '–' : Math.round(row.quant_score)}</td>
                       <td className="qcomposite">
@@ -532,7 +664,6 @@ export function QualityPage() {
                         {row.loss ? <span className="losschip" title="Går med förlust – zonad på P/S">förlust</span> : null}
                       </td>
                       <td>{fmtMcap(row.mcap_msek)}</td>
-                      <td>{fmtMult(row.ebitda_multiple)}</td>
                     </tr>
                     {open && (
                       <tr className="qrow-detail">

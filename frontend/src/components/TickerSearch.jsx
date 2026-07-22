@@ -4,7 +4,10 @@ import { api } from '../api'
 import { useApiData } from '../useApiData'
 
 export function TickerSearch() {
-  const { data } = useApiData(() => api.latestSignals(), [])
+  // latestSignalsAll (inte latestSignals): autoifyllningslistan ska täcka
+  // BÅDA segmenten, inte bara det globalt aktiva (som numera bara Analys/
+  // Skanner ens visar växlaren för) - samma fix som Watchlist/Signaler fick.
+  const { data } = useApiData(() => api.latestSignalsAll(), [])
   const navigate = useNavigate()
   const [value, setValue] = useState('')
 
@@ -13,7 +16,7 @@ export function TickerSearch() {
   function submit(q) {
     const t = q.trim().toUpperCase()
     if (!t) return
-    navigate(`/signaler?q=${encodeURIComponent(t)}`)
+    navigate(`/bolag?q=${encodeURIComponent(t)}`)
     setValue('')
   }
 

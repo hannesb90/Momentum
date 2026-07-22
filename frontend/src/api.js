@@ -89,6 +89,18 @@ export const api = {
     getJson(`/prices?ticker=${encodeURIComponent(ticker)}&limit=${limit}`),
   quality: () => getJson('/quality'),
   quant: () => getJson('/quant'),
+  // Bolag-sidan (2026-07-22, slog ihop Signaler+Kvalitet): quant är segment-
+  // uppdelad (till skillnad från quality, som redan är global) - samma
+  // "hämta båda explicit" som latestSignalsAll, annars visar sidan bara det
+  // globalt aktiva segmentets kvantdata.
+  quantAll: () =>
+    Promise.all([
+      getJson('/quant?segment=large'),
+      getJson('/quant?segment=small'),
+    ]).then(([large, small]) => [
+      ...large.map((r) => ({ ...r, segment: 'large' })),
+      ...small.map((r) => ({ ...r, segment: 'small' })),
+    ]),
   // Fundamenta-grid + flerårsgraf (Fiscal.ai-inspirerad layout, se
   // api/main.py::get_fundamentals) - redan insamlad Avanza-data, bara
   // aldrig visad så här tidigare.
