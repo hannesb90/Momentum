@@ -1179,6 +1179,9 @@ def _load_scores_uncached() -> dict:
                 # det säljvakten bryr sig om, så parsa dem direkt med float().
                 e["roe"] = _signed_num(r.get("roe"))
                 e["rev_growth_yoy"] = _signed_num(r.get("rev_growth_yoy"))
+                # Tredje benet i härdighets-kompositen (_hold_fund_pctl) –
+                # roe/rev_growth_yoy ovan är de andra två.
+                e["debt_equity"] = _signed_num(r.get("debt_equity"))
                 e["has_value_data"] = True
         except Exception:  # noqa: BLE001
             pass
@@ -1544,9 +1547,13 @@ def _pct_rank(sorted_vals, v):
 # momentum + research-bonus. "balanced" är IDENTISK med den mix som gällde
 # innan modellvalet fanns (value=0), så default-beteendet är oförändrat.
 _MODEL_WEIGHTS = {
-    "balanced": {"quality": 0.45, "quant": 0.20, "value": 0.00, "momentum": 0.25, "research": 0.10},
-    "buffett":  {"quality": 0.30, "quant": 0.10, "value": 0.40, "momentum": 0.05, "research": 0.15},
-    "momentum": {"quality": 0.15, "quant": 0.10, "value": 0.00, "momentum": 0.70, "research": 0.05},
+    # "holdfund" = multiplikator på härdighets-justeringen (PORTFOLIO_HOLD_FUND_
+    # BONUS, se config.py + _hold_fund_pctl): PÅ för köp-och-behåll-profilerna,
+    # AV för momentum-profilen – valideringen gällde långa innehav (104/156v),
+    # 13v-edgen finns oavsett fundamenta och ska inte förvanskas där.
+    "balanced": {"quality": 0.45, "quant": 0.20, "value": 0.00, "momentum": 0.25, "research": 0.10, "holdfund": 1.0},
+    "buffett":  {"quality": 0.30, "quant": 0.10, "value": 0.40, "momentum": 0.05, "research": 0.15, "holdfund": 1.0},
+    "momentum": {"quality": 0.15, "quant": 0.10, "value": 0.00, "momentum": 0.70, "research": 0.05, "holdfund": 0.0},
 }
 
 
@@ -1648,6 +1655,30 @@ def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted,
     return score, why, {"quality_pctl": qn, "quant_pctl": kn, "value_pctl": vn}
 
 
+def _hold_fund_pctl(e, roe_sorted, growth_sorted, debt_sorted):
+    """Härdighets-komposit ("3-års-fundamenta"): medel av percentilranker för
+    ROE, omsättningstillväxt och INVERTERAD skuldsättning (lägre = bättre),
+    minst 2 av 3 krävs – exakt samma komposit som validerades mot 2650
+    historiska köpsignalers realiserade långtidsutfall 2026-07-22
+    (tune_hold_forever_fundamentals.py): topp-tercilen var enda gruppen som
+    höll mot index på 104/156v och fångade 156v-dubblare 2,4x oftare än
+    resten. Sorterade listor byggs EN gång per rankningsomgång av anroparen
+    (samma O-resonemang som _pct_rank:s docstring)."""
+    parts = []
+    for sorted_vals, v in ((roe_sorted, e.get("roe")),
+                           (growth_sorted, e.get("rev_growth_yoy"))):
+        p = _pct_rank(sorted_vals, v)
+        if p is not None:
+            parts.append(p)
+    d = e.get("debt_equity")
+    p = _pct_rank(debt_sorted, -d if d is not None else None)
+    if p is not None:
+        parts.append(p)
+    if len(parts) < 2:
+        return None
+    return sum(parts) / len(parts)
+
+
 def _unified_rank(rows, top_n=3, model=None) -> list:
     """
     'Absolut bästa nästa köp' bland svenska aktier: EN rankning som väger ihop
@@ -1694,6 +1725,17 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
     q_sorted = sorted(x for x in q_all if x is not None)
     k_sorted = sorted(x for x in k_all if x is not None)
     v_sorted = sorted(x for x in v_all if x is not None)
+    # Härdighets-kompositens tre listor (se _hold_fund_pctl) – skulden lagras
+    # NEGERAD så _pct_rank:s stigande percentil betyder "lägre skuld = högre rank".
+    hold_bonus = (float(getattr(config, "PORTFOLIO_HOLD_FUND_BONUS", 0.08))
+                  * w.get("holdfund", 0.0))
+    roe_sorted = growth_sorted = debt_sorted = ()
+    if hold_bonus:
+        roe_sorted = sorted(e["roe"] for e in scores.values() if e.get("roe") is not None)
+        growth_sorted = sorted(e["rev_growth_yoy"] for e in scores.values()
+                               if e.get("rev_growth_yoy") is not None)
+        debt_sorted = sorted(-e["debt_equity"] for e in scores.values()
+                             if e.get("debt_equity") is not None)
     # PASS 1 – bas-poäng UTAN uppdragsanalys-bonus (research=False → läser INGEN
     # MFN-fil). Att läsa research eagert för varje bolag i universumet var ~14,5s
     # (profilerat). Bonusen läggs på lat i pass 2 nedan, bara för topp-kandidaterna.
@@ -1732,6 +1774,18 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
         sec = _sector_of(tk)
         if sec in big_sectors:
             score -= 0.15
+        # Härdighets-justering: tercilgränserna (1/3, 2/3) speglar valideringens
+        # tercilindelning rakt av. Mittentercilen och bolag utan tillräcklig
+        # fundamenta (<2 av 3 metriker) justeras inte alls – husets princip:
+        # straffa aldrig för att en datakälla saknas.
+        if hold_bonus:
+            hp = _hold_fund_pctl(e, roe_sorted, growth_sorted, debt_sorted)
+            if hp is not None and hp >= 2 / 3:
+                score += hold_bonus
+                why.append("3-års-fundamenta stark")
+            elif hp is not None and hp < 1 / 3:
+                score -= hold_bonus
+                why.append("3-års-fundamenta svag")
         ranked.append({"ticker": tk, "name": e.get("name") or tk,
                        "score": round(score, 3), "note": " · ".join(why),
                        "source": f"sammanvägd ({model})"})
