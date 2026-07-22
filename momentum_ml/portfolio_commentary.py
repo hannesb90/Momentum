@@ -405,7 +405,11 @@ def build():
     if "error" in result or not result.get("commentary"):
         err = result.get("error", "tomt svar")
         print(f"[commentary] misslyckades: {err}")
-        ch.queue_retry(__file__, [], err)
+        # fallback_delay_min: boka om körningen om ~20 min ÄVEN när felet inte
+        # är en tolkningsbar kvotgräns (t.ex. trasigt JSON-svar, verkligt fall
+        # 2026-07-21 - ingen kvot inblandad alls, bara värt ett nytt försök)
+        # istället för att bara tappa kvällens brev till nästa ordinarie natt.
+        ch.queue_retry(__file__, [], err, fallback_delay_min=20)
         return
     out = {"generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "commentary": result["commentary"]}

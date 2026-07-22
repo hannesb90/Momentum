@@ -18,9 +18,31 @@ sys.path.insert(0, str(Path(__file__).parent))
 import config  # noqa: E402
 
 
+def _salvage_string_field(blob: str, key: str) -> "str | None":
+    """Räddar VÄRDET för ETT namngivet strängfält ur ett {...}-block som
+    inte gick att json.loads():a i sin helhet (bara för text_fallback_key-
+    anropare, se extract_json()). Kräver ett fullständigt, KORREKT
+    AVSLUTAT citattecken för fältet - en trunkerad sträng (svaret klipptes
+    av mitt i, t.ex. tokengräns) har inget sådant citattecken att matcha
+    mot, så regexen missar helt och vi faller tillbaka på det vanliga
+    felet i stället för att gissa på ofullständig text. Det regexen FAKTISKT
+    räddar är fallet där resten av JSON-blocket (efter fältet) är trasigt
+    av någon annan anledning (t.ex. modellen la till text efter den
+    stängande klammern) - då är själva fältvärdet fortfarande komplett och
+    tolkningsbart, bara omslaget runt det som är fel."""
+    m = re.search(rf'"{re.escape(key)}"\s*:\s*"((?:[^"\\]|\\.)*)"', blob, re.S)
+    if not m:
+        return None
+    try:
+        return json.loads(f'"{m.group(1)}"')  # återanvänder JSON:s egen escape-avkodning
+    except json.JSONDecodeError:
+        return None
+
+
 def extract_json(text: str, text_fallback_key: str = None) -> dict:
     """Plockar ut FÖRSTA {...}-blocket ur ett LLM-svar. {"error": ...} om
-    inget hittas eller om det inte går att parsa.
+    inget hittas eller om det inte går att parsa (och inte kan räddas, se
+    text_fallback_key nedan).
 
     text_fallback_key: BUGG (fixad, verkligt fall: /api/commentary/ask
     fick "Kunde inte svara: inget JSON-svar från claude: <ett fullt
@@ -32,11 +54,18 @@ def extract_json(text: str, text_fallback_key: str = None) -> dict:
     Sätt till t.ex. "answer"/"commentary" för anropare med ETT text-fält
     (ask()/build() i portfolio_commentary.py) så en JSON-lös men i övrigt
     vettig textrespons används som svaret i stället för att slängas.
-    Gäller BARA "ingen JSON alls hittad" (ren prosa) - INTE "JSON hittad
-    men trasig" (då kan textfältet ligga mitt i ett halvskrivet objekt,
-    farligare att gissa på). Anropare som behöver FLERA fält (trade-ticket,
-    kvalitetsbetyg m.fl.) ska INTE sätta detta - där är ett strukturerat
-    svar meningslöst utan alla fält, bättre att fela synligt."""
+
+    SAMMA nyckel används ÄVEN om ett {...}-block HITTADES men inte gick
+    att json.loads():a (verkligt fall 2026-07-21: portfolio_commentary.py
+    fick "trasigt JSON-svar" trots att texten SYNLIGT började helt
+    korrekt, {"commentary": "Sedan förra kommentaren..." - troligen ett
+    oescapead citattecken längre in i texten, eller ett tillägg efter
+    stängande klammern). Försöker då rädda BARA det namngivna fältet med
+    en riktad regex (_salvage_string_field) - se den för varför en
+    trunkerad sträng INTE räddas (ingen gissning på ofullständig text).
+    Anropare som behöver FLERA fält (trade-ticket, kvalitetsbetyg m.fl.)
+    ska INTE sätta detta - där är ett strukturerat svar meningslöst utan
+    alla fält, bättre att fela synligt."""
     text = (text or "").strip()
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
@@ -46,6 +75,12 @@ def extract_json(text: str, text_fallback_key: str = None) -> dict:
     try:
         return json.loads(m.group(0))
     except json.JSONDecodeError:
+        if text_fallback_key:
+            salvaged = _salvage_string_field(m.group(0), text_fallback_key)
+            if salvaged:
+                print(f"[claude_headless] trasigt JSON men räddade fältet "
+                      f"'{text_fallback_key}' via regex-fallback")
+                return {text_fallback_key: salvaged}
         return {"error": f"trasigt JSON-svar från claude: {text[:200]}"}
 
 
@@ -158,26 +193,40 @@ def _parse_quota_reset(detail: str):
 _RETRY_QUEUE_FILE = "cache/claude_retry_queue.json"
 
 
-def queue_retry(script_path, argv, error_detail: str) -> bool:
+def queue_retry(script_path, argv, error_detail: str, fallback_delay_min: int = None) -> bool:
     """Kallas av ett SCHEMALAGT jobbs entry point (portfolio_commentary.py,
     watchlist_sync.py, insight_report.py, sync_montrose_holdings.py – ALDRIG
     interaktiva/på-begäran-anrop som montrose_ticket.create_ticket eller
     portfolio_commentary.ask(), en misslyckad knapptryckning ska felas
     synligt direkt i appen, inte tystas ner i en bakgrundskö) när run() gav
-    ett kvot-/tidsgränsfel. Om felmeddelandet innehåller en tolkningsbar
-    "resets HH:MM"-tid (se _parse_quota_reset) skrivs en post i
-    cache/claude_retry_queue.json med den tidpunkten; retry_dispatcher.py
-    (momentum-retry.timer, var 2:e minut) kör då om EXAKT samma skript+
-    argument när kvoten borde vara påfylld, i stället för att jobbet bara
-    tappas till nästa ordinarie natt-timer (kan vara >20h bort om felet
-    inträffar tidigt på natten). En ny köad post för samma skript ersätter
-    en äldre (t.ex. om nästa körning misslyckas igen med en senare
-    reset-tid). Returnerar True om en ombokning köades, False om felet inte
-    gick att tolka som en tidsbestämd kvotgräns (vanligt nätverksfel etc –
-    då är nuvarande "logga och ge upp" fortfarande rätt)."""
+    ett fel. Om felmeddelandet innehåller en tolkningsbar "resets HH:MM"-tid
+    (se _parse_quota_reset) skrivs en post i cache/claude_retry_queue.json
+    med DEN tidpunkten; retry_dispatcher.py (momentum-retry.timer, var 2:e
+    minut) kör då om EXAKT samma skript+argument när kvoten borde vara
+    påfylld, i stället för att jobbet bara tappas till nästa ordinarie
+    natt-timer (kan vara >20h bort om felet inträffar tidigt på natten).
+
+    fallback_delay_min: om felet INTE går att tolka som en tidsbestämd
+    kvotgräns (t.ex. ett trasigt JSON-svar, se claude_headless.extract_json,
+    eller ett övergående nätverksfel) - boka ändå om körningen om detta är
+    satt, "nu + N minuter" i stället för en exakt påfylld-tid (verkligt
+    fall 2026-07-21: portfolio_commentary.py fick ett trasigt JSON-svar en
+    natt, ingen kvotgräns inblandad alls, men ändå värt ett nytt försök).
+    None (default) = bara boka om vid en faktisk tolkningsbar kvotgräns,
+    som tidigare - använd för jobb där ett övergående fel oftast LÖSER sig
+    själv till nästa ordinarie natt-timer och inte är värt en extra
+    ombokning (t.ex. inget uppenbart skäl att anta att en omkörning om
+    20 min skulle lyckas bättre).
+
+    En ny köad post för samma skript ersätter en äldre (t.ex. om nästa
+    körning misslyckas igen med en senare reset-tid). Returnerar True om en
+    ombokning köades, False om felet varken gick att tolka som en
+    tidsbestämd kvotgräns ELLER fallback_delay_min var satt."""
     retry_at = _parse_quota_reset(error_detail)
     if retry_at is None:
-        return False
+        if fallback_delay_min is None:
+            return False
+        retry_at = datetime.now(timezone.utc) + timedelta(minutes=fallback_delay_min)
     qpath = Path(config.anchor(_RETRY_QUEUE_FILE))
     qpath.parent.mkdir(parents=True, exist_ok=True)
     try:
