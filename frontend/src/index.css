@@ -1782,6 +1782,15 @@ h2 {
   background: var(--bg-card);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
+/* Exit-alarm är en <details> (2026-07-22, rullgardin för att spara yta) -
+   samma "klickbar rubrik utan punktmarkör"-mönster som .alloc-editor summary. */
+.exit-panel > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.exit-panel > summary::-webkit-details-marker {
+  display: none;
+}
 .exit-item {
   padding: 8px 10px;
   border-radius: 9px;

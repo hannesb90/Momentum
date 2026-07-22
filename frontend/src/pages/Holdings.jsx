@@ -255,17 +255,21 @@ export function HoldingsPage() {
       </div>
 
       {/* ── Exit-alarm överst: "END THIS NOW" ─────────────────────────────── */}
+      {/* Rullgardin (2026-07-22): tog tidigare upp fast yta överst på sidan
+          oavsett om man just då brydde sig om detaljerna - stängd som
+          default, men <summary> visar antal + värsta nivå så ett rött larm
+          aldrig är osynligt utan att man öppnar. */}
       {alarms.length > 0 && (
-        <div className="exit-panel">
-          <h3 className="section-title" style={{ marginBottom: 8 }}>
-            Exit-alarm
+        <details className="exit-panel">
+          <summary className="section-title" style={{ marginBottom: 8 }}>
+            Exit-alarm ({alarms.length}{alarms.some((e) => e.tier === 'red') ? ', varav röda' : ''})
             <InfoButton title="När något bör bort">
               <b>Rött (end this now)</b> = sektorn är svag <b>och</b> kursen är tekniskt brutet
               (under 40-veckors glidande medel med fallande momentum). <b>Gult</b> = en av de två.
               Ett larm, inte en order – bekräfta själv. Kräver att skanningen körts
               (<code>portfolio.py exitscan</code> på Pi:n).
             </InfoButton>
-          </h3>
+          </summary>
           {alarms.map((e) => (
             <div key={e.ticker || e.name} className={`exit-item ${TIER[e.tier]?.cls}`}>
               <div className="exit-item__head">
@@ -280,7 +284,7 @@ export function HoldingsPage() {
               </div>
             </div>
           ))}
-        </div>
+        </details>
       )}
       {exit?.generated && (
         <p className="footnote" style={{ marginTop: -4 }}>
