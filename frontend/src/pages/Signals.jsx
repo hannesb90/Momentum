@@ -26,7 +26,28 @@ const SORTS = [
   { value: 'prob_up', label: 'P(upp)' },
   { value: 'pred_return', label: 'Förv. avk.' },
   { value: 'position_size', label: 'Storlek' },
+  { value: 'mcap_msek', label: 'Bolagsvärde' },
+  { value: 'price_chg_30m', label: 'Kursutveckling' },
 ]
+
+// Range-filtren (bolagsvärde/antal aktier/kursutveckling) delar samma
+// min/max-fältpar - egen komponent i stället för att upprepa JSX:en tre ggr.
+function RangeFilter({ label, unit, min, max, onMin, onMax }) {
+  return (
+    <label className="range-filter">
+      <span className="range-filter__label">{label}{unit ? ` (${unit})` : ''}</span>
+      <span className="range-filter__inputs">
+        <input type="number" inputMode="decimal" placeholder="Min" value={min}
+          onChange={(e) => onMin(e.target.value)} />
+        <span>–</span>
+        <input type="number" inputMode="decimal" placeholder="Max" value={max}
+          onChange={(e) => onMax(e.target.value)} />
+      </span>
+    </label>
+  )
+}
+
+const EMPTY_RANGES = { mcapMin: '', mcapMax: '', sharesMin: '', sharesMax: '', chgMin: '', chgMax: '' }
 
 export function SignalsPage() {
   // Bägge segmenten i EN lista (se api.latestSignalsAll) - den globala
@@ -38,6 +59,12 @@ export function SignalsPage() {
   const [signalFilter, setSignalFilter] = useState('all')
   const [segmentFilter, setSegmentFilter] = useState('all')
   const [sort, setSort] = useState('prob_up')
+  const [filterOpen, setFilterOpen] = useState(false)
+  // Bolagsvärde (mcap_msek)/antal aktier (shares_million)/kursutveckling
+  // (price_chg_30m, ~30 mån) - kommer från value-/quality-screenrarna, inte
+  // momentum-modellen själv (se api._signal_screener_enrichment i backend).
+  const [ranges, setRanges] = useState(EMPTY_RANGES)
+  const setRange = (k) => (v) => setRanges((r) => ({ ...r, [k]: v }))
 
   const rows = useMemo(() => {
     if (!data) return []
@@ -53,11 +80,25 @@ export function SignalsPage() {
     if (signalFilter === 'buy') r = r.filter((s) => s.pred_signal === 1)
     if (signalFilter === 'flat') r = r.filter((s) => s.pred_signal !== 1)
     if (segmentFilter !== 'all') r = r.filter((s) => s.segment === segmentFilter)
+    // Saknar en rad fältet (screenern har inte körts/täcker inte bolaget)
+    // exkluderas den när filtret är aktivt - kan inte bekräfta att den
+    // uppfyller kravet, samma "hellre omarkerad än fel" som backend.
+    if (ranges.mcapMin) r = r.filter((s) => Number(s.mcap_msek) >= Number(ranges.mcapMin))
+    if (ranges.mcapMax) r = r.filter((s) => Number(s.mcap_msek) <= Number(ranges.mcapMax))
+    if (ranges.sharesMin) r = r.filter((s) => Number(s.shares_million) >= Number(ranges.sharesMin))
+    if (ranges.sharesMax) r = r.filter((s) => Number(s.shares_million) <= Number(ranges.sharesMax))
+    if (ranges.chgMin) r = r.filter((s) => Number(s.price_chg_30m) * 100 >= Number(ranges.chgMin))
+    if (ranges.chgMax) r = r.filter((s) => Number(s.price_chg_30m) * 100 <= Number(ranges.chgMax))
     // P(upp)/förv. avk. kommer från TVÅ SEPARATA modeller (en per segment) -
     // inte direkt jämförbara på absolutnivå, men sorteringen är ändå
     // meningsfull inom vardera segmentet och som grov gemensam rangordning.
     return [...r].sort((a, b) => (Number(b[sort]) || 0) - (Number(a[sort]) || 0))
-  }, [data, query, signalFilter, segmentFilter, sort])
+  }, [data, query, signalFilter, segmentFilter, ranges, sort])
+
+  const activeFilterCount =
+    (signalFilter !== 'all' ? 1 : 0) +
+    (segmentFilter !== 'all' ? 1 : 0) +
+    Object.values(ranges).filter((v) => v !== '').length
 
   if (loading) return <Loading />
   if (error) return <ErrorBlock error={error} />
@@ -104,16 +145,53 @@ export function SignalsPage() {
             setSearchParams(v ? { q: v } : {}, { replace: true })
           }}
         />
-        <SegmentedControl options={SIGNAL_FILTERS} value={signalFilter} onChange={setSignalFilter} size="sm" />
+        <button
+          type="button"
+          className={`btn filter-toggle${activeFilterCount ? ' filter-toggle--active' : ''}`}
+          onClick={() => setFilterOpen((v) => !v)}
+          aria-expanded={filterOpen}
+        >
+          Filter{activeFilterCount ? ` (${activeFilterCount})` : ''}
+        </button>
       </div>
-      <div className="filter-bar filter-bar--secondary">
-        <span className="filter-bar__label">Segment:</span>
-        <SegmentedControl options={SEGMENT_FILTERS} value={segmentFilter} onChange={setSegmentFilter} size="sm" />
-      </div>
-      <div className="filter-bar filter-bar--secondary">
-        <span className="filter-bar__label">Sortera:</span>
-        <SegmentedControl options={SORTS} value={sort} onChange={setSort} size="sm" />
-      </div>
+
+      {filterOpen && (
+        <div className="filter-panel">
+          <div className="filter-panel__row">
+            <span className="filter-bar__label">Signal</span>
+            <SegmentedControl options={SIGNAL_FILTERS} value={signalFilter} onChange={setSignalFilter} size="sm" />
+          </div>
+          <div className="filter-panel__row">
+            <span className="filter-bar__label">Segment</span>
+            <SegmentedControl options={SEGMENT_FILTERS} value={segmentFilter} onChange={setSegmentFilter} size="sm" />
+          </div>
+          <div className="filter-panel__row">
+            <span className="filter-bar__label">Sortera</span>
+            <SegmentedControl options={SORTS} value={sort} onChange={setSort} size="sm" />
+          </div>
+          <div className="filter-panel__ranges">
+            <RangeFilter label="Bolagsvärde" unit="Mkr"
+              min={ranges.mcapMin} max={ranges.mcapMax}
+              onMin={setRange('mcapMin')} onMax={setRange('mcapMax')} />
+            <RangeFilter label="Kursutveckling" unit="%, ~30 mån"
+              min={ranges.chgMin} max={ranges.chgMax}
+              onMin={setRange('chgMin')} onMax={setRange('chgMax')} />
+            <RangeFilter label="Antal aktier" unit="miljoner"
+              min={ranges.sharesMin} max={ranges.sharesMax}
+              onMin={setRange('sharesMin')} onMax={setRange('sharesMax')} />
+          </div>
+          <p className="footnote" style={{ margin: '2px 0 0' }}>
+            Bolagsvärde/kursutveckling/antal aktier kommer från värde-/kvalitetsscreenrarna,
+            inte momentum-modellen – saknar ett bolag data för ett aktivt fält visas det inte.
+          </p>
+          {activeFilterCount > 0 && (
+            <button type="button" className="btn" style={{ marginTop: 8 }}
+              onClick={() => { setSignalFilter('all'); setSegmentFilter('all'); setRanges(EMPTY_RANGES) }}>
+              Rensa filter
+            </button>
+          )}
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <EmptyState title="Inga signaler matchar" hint="Justera filtren eller sökningen." />
@@ -178,6 +256,15 @@ export function SignalsPage() {
                           </span>
                         )}
                       </span>
+                      {(row.mcap_msek != null || row.price_chg_30m != null) && (
+                        <span className="ticker-link__ticker" style={{ opacity: 0.75 }}>
+                          {row.mcap_msek != null
+                            ? `${Number(row.mcap_msek).toLocaleString('sv-SE', { maximumFractionDigits: 0 })} Mkr`
+                            : ''}
+                          {row.mcap_msek != null && row.price_chg_30m != null ? ' · ' : ''}
+                          {row.price_chg_30m != null ? `${fmtPct(row.price_chg_30m, 0)} (~30 mån)` : ''}
+                        </span>
+                      )}
                     </Link>
                   </td>
                   <td>{fmtPct(row.prob_up)}</td>

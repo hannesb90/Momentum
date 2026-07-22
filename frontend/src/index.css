@@ -497,6 +497,11 @@ tr:last-child td {
 
 .ticker-cell {
   font-weight: 600;
+  /* Bolagsnamnet ska brytas till en andra rad i stället för att klippas med
+     "…" (2026-07-22) - th/td:s globala white-space:nowrap gällde även här,
+     så ett långt namn (t.ex. "Telefonaktiebolaget LM Ericsson") föll under
+     mobilens 8.5rem-tak och blev oläsligt avhugget. */
+  white-space: normal;
 }
 
 /* Mobil: krymp tabellen så bolagsdata får plats utan att scrolla i sidled */
@@ -510,12 +515,6 @@ tr:last-child td {
   }
   .col-ta {
     display: none;        /* TA-kolumnen göms på smal skärm – minst kritisk */
-  }
-  .ticker-link__name {
-    max-width: 8.5rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .ticker-link__ticker {
     font-size: 0.68rem;
@@ -973,6 +972,84 @@ h2 {
 .segmented__item--active {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: #fff;
+}
+
+/* Filter-knapp + panel (2026-07-22, Signaler): en knapp med aktiv-räknare
+   i stället för flera synliga filterrader – panelen samlar alla filter/
+   sortering + de nya intervallfälten (bolagsvärde/kursutveckling/aktier). */
+.filter-toggle {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.filter-toggle--active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.filter-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-panel__ranges {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.range-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.range-filter__label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.range-filter__inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.range-filter__inputs input {
+  width: 5.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  outline: none;
+}
+
+.range-filter__inputs input:focus {
+  border-color: var(--accent);
 }
 
 /* ── Inputs / forms ──────────────────────────────────────────────────── */

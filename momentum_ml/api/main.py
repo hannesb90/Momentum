@@ -153,18 +153,50 @@ def _signals_tail_df(path: Path) -> pd.DataFrame:
     return pd.read_csv(io.BytesIO(header + chunk), index_col=0, parse_dates=True)
 
 
+def _signal_screener_enrichment(seg_dir: Path) -> tuple:
+    """Bolagsvärde (mcap_msek), kursutveckling (price_chg_30m) och antal
+    utestående aktier (shares_million) för de nya filtren i Signaler-sidan
+    (2026-07-22) - signals.csv (modellens EGNA kolumner) saknar dessa helt,
+    de kommer från value-/quality-screenrarnas separata resultatfiler.
+    Returnerar (DataFrame indexerad på ticker, källfilernas mtimes för
+    cache-nyckeln nedan) - saknas en källfil blir motsvarande kolumn(er)
+    bara NaN, ingen krasch (samma mönster som attach_fundamentals_features)."""
+    frames = []
+    mtimes = []
+    vp = seg_dir / "value_shortlist.csv"
+    if vp.exists():
+        vdf = _read_csv(vp)
+        cols = [c for c in ("mcap_msek", "price_chg_30m") if c in vdf.columns]
+        if cols:
+            frames.append(vdf[["ticker", *cols]].drop_duplicates("ticker").set_index("ticker"))
+        mtimes.append(vp.stat().st_mtime)
+    qp = seg_dir / "quality_shortlist.csv"
+    if qp.exists():
+        qdf = _read_csv(qp)
+        if "shares_million" in qdf.columns:
+            frames.append(qdf[["ticker", "shares_million"]].drop_duplicates("ticker").set_index("ticker"))
+        mtimes.append(qp.stat().st_mtime)
+    merged = pd.concat(frames, axis=1) if frames else pd.DataFrame()
+    return merged, tuple(mtimes)
+
+
 @app.get("/api/signals/latest")
 def get_latest_signals(segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "signals.csv")
+    seg_dir = _seg_dir(segment)
     mt = path.stat().st_mtime
+    enrich, enrich_mtimes = _signal_screener_enrichment(seg_dir)
+    cache_key = (mt, enrich_mtimes)
     hit = _LATEST_CACHE.get(str(path))
-    if hit is not None and hit[0] == mt:
+    if hit is not None and hit[0] == cache_key:
         return hit[1]
     df = _signals_tail_df(path)
     latest = df.groupby("ticker").last().reset_index()
+    if not enrich.empty:
+        latest = latest.set_index("ticker").join(enrich).reset_index()
     latest = latest.sort_values("prob_up", ascending=False)
     out = _records(latest)
-    _LATEST_CACHE[str(path)] = (mt, out)
+    _LATEST_CACHE[str(path)] = (cache_key, out)
     return out
 
 
