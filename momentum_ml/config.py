@@ -835,6 +835,18 @@ DYNAMIC_ALLOC_MODEL_WEIGHT  = 0.70
 # Kluster av insynsköp (netto ≥ 2 PDMR-köp-PM på 90d) ger en liten additiv
 # rank-bonus (som research-bonusen). 0 stänger av helt.
 PORTFOLIO_INSIDER_BONUS = 0.05
+# Härdighets-justering ("3-års-fundamenta", validerad 2026-07-22, se
+# tune_hold_forever.py + tune_hold_forever_fundamentals.py): momentum-signalens
+# edge klingar av med innehavstiden (median-excess +1.4% @13v → −24% @156v),
+# men köp med TOPP-TERCIL fundamenta-komposit (ROE + omsättningstillväxt +
+# inverterad skuldsättning, ≥2 av 3) vid köptillfället var enda gruppen som
+# höll mot index på 104/156v (win 51%/47% mot 28–35% för resten) och fångade
+# 156v-dubblare 2,4x oftare. Additiv bonus för topp-tercilen / lika stort
+# avdrag för botten-tercilen i köp-vaktens rank (bara köp-och-behåll-
+# profilerna, se _MODEL_WEIGHTS "holdfund" i portfolio.py). 0 stänger av.
+# OBS: skyddar INTE vänstersvansen (topp-tercilen hade lika många halverare) –
+# nedsidan är säljvaktens jobb, inte köpanalysens.
+PORTFOLIO_HOLD_FUND_BONUS = 0.08
 # PEAD-fönster: rapport ≤ FRESH dagar sedan + bekräftade flöden = köp driften.
 # BLACKOUT: ~kvartalsrytm (91d) sedan senaste rapporten → nästa väntas strax →
 # köp-vakten blockar ("köp inte ryktet före en rapport").

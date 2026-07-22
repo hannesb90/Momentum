@@ -16,7 +16,9 @@ Pi:n; molnet når inte MFN). is_report/extract_report_dates arbetar på MFN-post
 compute_pead_panel på en veckopris-panel + datum-map – båda enhetstestbara utan
 nätverk.
 """
+import json
 import re
+from pathlib import Path
 from typing import Dict, List, Iterable, Optional
 import numpy as np
 import pandas as pd
@@ -53,12 +55,58 @@ def extract_report_dates(items: Iterable[dict]) -> Dict[str, List[pd.Timestamp]]
         ts = pd.to_datetime(it.get("published"), errors="coerce")
         if pd.isna(ts):
             continue
+        if ts.tzinfo is not None:
+            # MFN-publiceringstider kommer tz-aware (UTC); prisindexen
+            # (veckobarer från fetch_weekly_data) är tz-naiva - normalisera
+            # bort tz här så jämförelser (searchsorted m.m.) inte kraschar.
+            ts = ts.tz_convert("UTC").tz_localize(None)
         ts = ts.normalize()
         tickers = it.get("tickers") or []
         if isinstance(tickers, str):
             tickers = [tickers]
         for t in tickers:
             out.setdefault(str(t), set()).add(ts)
+    return {t: sorted(dates) for t, dates in out.items()}
+
+
+def load_report_dates(cache_dir) -> Dict[str, List[pd.Timestamp]]:
+    """cache/mfn/<ticker>.json → {ticker: sorterad lista av rapportdatum}.
+
+    Strömmande motsvarighet till "läs alla filer in i minnet, kör sen
+    extract_report_dates en gång på hela högen": varje fil (cache-filerna är
+    {ticker, query, schema, items}-objekt, "items" nästlat) parsas, dess
+    rapportdatum extraheras direkt, och den råa posten släpps innan nästa fil
+    läses. cache/mfn/ är ~1 GB rå JSON på Pi:n - att hålla alla poster i minnet
+    samtidigt (istället för bara de extraherade datumen) är vad som fällde
+    momentum-Pi:n under en testkörning 2026-07-19.
+
+    Samma två-vägs-tilldelning som den ursprungliga icke-strömmande koden:
+    varje post räknas dels mot vad den egna 'tickers'-listan säger, dels (som
+    fallback, eftersom den listan ofta saknas/är ofullständig) mot filens egen
+    ticker (f.stem) - annars tappar man rapporter för bolag vars MFN-poster
+    inte taggat tickers korrekt.
+    """
+    cache_dir = Path(cache_dir)
+    out: Dict[str, set] = {}
+    if not cache_dir.exists():
+        return {}
+    for f in cache_dir.glob("*.json"):
+        if f.name.startswith("_"):
+            continue
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        its = data.get("items") if isinstance(data, dict) else data
+        if not isinstance(its, list) or not its:
+            continue
+        rd = extract_report_dates(its)
+        file_dates: set = set()
+        for tk, dates in rd.items():
+            out.setdefault(tk, set()).update(dates)
+            file_dates.update(dates)
+        if file_dates:
+            out.setdefault(f.stem, set()).update(file_dates)
     return {t: sorted(dates) for t, dates in out.items()}
 
 
