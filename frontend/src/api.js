@@ -76,6 +76,10 @@ export const api = {
     getJson(`/prices?ticker=${encodeURIComponent(ticker)}&limit=${limit}`),
   quality: () => getJson('/quality'),
   quant: () => getJson('/quant'),
+  // Fundamenta-grid + flerårsgraf (Fiscal.ai-inspirerad layout, se
+  // api/main.py::get_fundamentals) - redan insamlad Avanza-data, bara
+  // aldrig visad så här tidigare.
+  fundamentals: (ticker) => getJson(`/fundamentals?ticker=${encodeURIComponent(ticker)}`),
   rotation: () => getJson('/rotation'),
   thesis: () => getJson('/thesis'),
   // Egen väg för manuella innehav – /portfolio är backtest-equity-kurvan.
@@ -126,6 +130,10 @@ export const api = {
   // "Fråga om bolaget"-boxen: fri följdfråga scopad till ett bolag, samma
   // mönster som commentaryAsk men per ticker.
   stockAsk: (ticker, question) => postJson('/stock/ask', { ticker, question }),
+  // "Rapportanalys": nyckeltal+VD-ord ur senaste rapporten + jämförelse
+  // mot analytikerestimat + bull/bear för rapporten, se
+  // stock_deep_dive.report_analysis. ~2-3 min.
+  reportAnalysis: (ticker) => postJson('/stock/report-analysis', { ticker }),
   // ETF-sammansättning (reducerad vy, tickers utanför modellens universum):
   // ~10 största innehav + sektor-/geografisk fördelning, WebSearch, cachas
   // 7 dagar server-side. name skickas med för en bättre sökträff.
