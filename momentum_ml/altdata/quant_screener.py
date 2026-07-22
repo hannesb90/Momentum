@@ -298,6 +298,149 @@ def score(min_rev_msek=100) -> None:
               f"{r['quant_score']:>6}{r['quality']:>5}{r['growth']:>6}{r['value']:>5}")
 
 
+_AVANZA_QUALITY = [("_net_margin", 1), ("roe_avanza", 1)]
+_AVANZA_GROWTH = [("_rev_growth", 1)]
+_AVANZA_SAFETY = [("debt_equity_avanza", -1)]
+_AVANZA_VALUE = [("_ps", -1)]
+_AVANZA_WEIGHTS = {"quality": 0.40, "growth": 0.20, "safety": 0.15, "value": 0.25}
+
+
+def score_avanza(segment: str = "small", min_rev_msek: float = 10) -> None:
+    """Samma tvärsnitts-percentil-metodik som score() (TROTS delad kod:
+    _group_score/_ranks importeras rakt av, ingen omimplementerad matte),
+    men källan är fundamentals_from_avanza.csv i stället för TradingViews
+    scanner – VERKLIGT FALL 2026-07-22: "Fundamenta i kontext" saknades
+    HELT för småbolagsinnehav (SECARE.ST/PLEJD.ST/ACCON.ST m.fl.), och
+    Avanza-önskad-som-primärkälla-policyn gäller.
+
+    TUNNARE än score(): TradingView-scannern ger 5 kvalitetsfaktorer
+    (brutto-/EBITDA-/nettomarginal, ROE, ROIC) + kassalikviditet + EV/EBITDA
+    – fundamentals_from_avanza.csv har BARA revenue/net_profit/equity/
+    liabilities/eps/roe_avanza/debt_equity_avanza (ingen EBITDA, ingen
+    ROIC, ingen kassalikviditet). Kvalitet blir här nettomarginal+ROE
+    (2 faktorer i st.f. 5), Värdering blir bara P/S (ingen EV/EBITDA går
+    att räkna utan EBITDA). Hellre en tunnare men ÄRLIG betygsgrund än
+    att hitta på siffror pipelinen inte har – se docstringen ovan i
+    filen om varför Health Care/pre-revenue exkluderas, samma regel här.
+
+    Marknadsvärde/aktiepris hämtas INTE live från Avanza (skulle vara
+    ~475 anrop á 0.5s paus = flera minuter) – shares_outstanding
+    (redan i fundamentals-filen) × senaste veckostängning i segmentets
+    EGNA prices.csv (redan nattligt cachad av huvudpipelinen) räcker.
+
+    Skriver till segmentets EGEN results_dir (till skillnad från score(),
+    som alltid skriver till config.RESULTS_DIR/"large") – /api/quant
+    måste därför läsas segment-medvetet (se api/main.py)."""
+    import csv
+    import pandas as pd
+    from data.data_loader import load_sweden_universe
+
+    seg_cfg = config.SEGMENTS.get(segment)
+    if seg_cfg is None:
+        print(f"[score_avanza] okänt segment '{segment}'.")
+        return
+    results_dir = Path(config.anchor(seg_cfg["results_dir"]))
+    fund_path = results_dir / "fundamentals_from_avanza.csv"
+    prices_path = results_dir / "prices.csv"
+    if not fund_path.exists():
+        print(f"[score_avanza] {fund_path} saknas – kör 'python -m altdata.avanza extract {segment}' först.")
+        return
+    if not prices_path.exists():
+        print(f"[score_avanza] {prices_path} saknas – kör huvudpipelinen (main.py) först.")
+        return
+
+    _, sector_map, _, name_map = load_sweden_universe(min_market_cap=seg_cfg["market_cap"])
+
+    fund = pd.read_csv(fund_path)
+    fund = fund.sort_values("published")
+    latest = fund.groupby("ticker").tail(1).set_index("ticker")  # senaste raden per bolag
+
+    prices = pd.read_csv(prices_path)
+    latest_px = prices.sort_values("date").groupby("ticker")["close"].last()
+
+    data: dict = {}
+    drop_rev = drop_sec = drop_px = 0
+    for t, rec in latest.iterrows():
+        sector = sector_map.get(t, "")
+        if "health" in str(sector).lower():   # samma exkludering som score()
+            drop_sec += 1
+            continue
+        # revenue/net_profit är REDAN i Mkr (miljoner, se kolumnen
+        # revenue_unit i fundamentals_from_avanza.csv) - INTE rå SEK. Både
+        # min_rev_msek-tröskeln och _ps nedan måste jämföra Mkr mot Mkr,
+        # inte rå SEK mot Mkr (verklig bugg: en första version multiplicerade
+        # tröskeln med 1e6 och tappade 355/430 bolag av misstag).
+        revenue = _num(rec.get("revenue"))
+        if revenue is None or revenue < min_rev_msek:
+            drop_rev += 1
+            continue
+        px = latest_px.get(t)
+        shares = _num(rec.get("shares_outstanding"))
+        if px is None or shares is None:
+            drop_px += 1
+            continue
+        rev_prior = _num(rec.get("revenue_prior"))
+        net_profit = _num(rec.get("net_profit"))
+        mcap = px * shares                    # rå SEK (pris × antal aktier)
+        mcap_msek = mcap / 1e6                 # Mkr, samma enhet som revenue
+        row = {
+            "sector": sector,
+            "_rev_growth": ((revenue - rev_prior) / rev_prior * 100)
+                           if rev_prior not in (None, 0) else None,
+            "_net_margin": (net_profit / revenue * 100) if net_profit is not None else None,
+            "_ps": (mcap_msek / revenue) if revenue else None,
+            "roe_avanza": _num(rec.get("roe_avanza")),
+            "debt_equity_avanza": _num(rec.get("debt_equity_avanza")),
+            "mcap_msek": round(mcap_msek, 1),
+        }
+        # Samma sanering som score(): negativ D/E = negativt eget kapital,
+        # värre än varje positiv skuldsättning, inte "säkrast" via dubbel-negation.
+        de = row["debt_equity_avanza"]
+        if de is not None and de < 0:
+            row["debt_equity_avanza"] = float("inf")
+            row["roe_avanza"] = None
+        data[t] = row
+    if not data:
+        print(f"[score_avanza] inga bolag kvar efter filter (−{drop_rev} omsättning, "
+              f"−{drop_sec} health, −{drop_px} saknar pris/aktieantal).")
+        return
+    print(f"[score_avanza] {segment}: filter −{drop_rev} < {min_rev_msek} MSEK omsättning, "
+          f"−{drop_sec} health, −{drop_px} saknar pris/aktieantal → {len(data)} betygsatta")
+
+    groups = {"quality": _group_score(data, _AVANZA_QUALITY),
+              "growth": _group_score(data, _AVANZA_GROWTH),
+              "safety": _group_score(data, _AVANZA_SAFETY, sector_relative=True),
+              "value": _group_score(data, _AVANZA_VALUE, sector_relative=True)}
+    rows = []
+    for t, rec in data.items():
+        comp = sum(_AVANZA_WEIGHTS[g] * groups[g][t] for g in _AVANZA_WEIGHTS)
+        rows.append({
+            "ticker": t, "name": name_map.get(t, t),
+            "quant_score": round(comp * 100, 1),
+            "quality": round(groups["quality"][t] * 100),
+            "growth": round(groups["growth"][t] * 100),
+            "safety": round(groups["safety"][t] * 100),
+            "value": round(groups["value"][t] * 100),
+            "mcap_msek": rec["mcap_msek"],
+            "ebitda_margin": None,   # ej beräkningsbar från Avanza-fundamenta, se docstring
+            "rev_growth": rec["_rev_growth"],
+            "roe": _finite(rec["roe_avanza"]),
+            "ps": _finite(rec["_ps"]),
+            "ev_ebitda": None,       # ej beräkningsbar från Avanza-fundamenta, se docstring
+            "quant_source": "avanza",
+        })
+    rows.sort(key=lambda r: r["quant_score"], reverse=True)
+    out = results_dir / "quant_shortlist.csv"
+    with open(out, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        w.writerows(rows)
+    print(f"[score_avanza] {len(rows)} bolag rankade → {out}\n")
+    print("  TOPP 15 (kvant-betyg, Avanza-fundamenta):")
+    for i, r in enumerate(rows[:15], 1):
+        print(f"  {i:>3} {r['ticker']:<12}{str(r['name'])[:25]:<26}{r['quant_score']:>6}")
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else "probe"
     if cmd == "probe":
@@ -306,6 +449,9 @@ def main():
         fetch()
     elif cmd == "score":
         score(float(sys.argv[2]) if len(sys.argv) > 2 else 100)
+    elif cmd == "score_avanza":
+        score_avanza(sys.argv[2] if len(sys.argv) > 2 else "small",
+                     float(sys.argv[3]) if len(sys.argv) > 3 else 10)
     else:
         print(__doc__)
 
