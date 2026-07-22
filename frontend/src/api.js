@@ -63,6 +63,19 @@ export const api = {
   health: () => getJson('/health'),
   stats: () => getJson('/stats'),
   latestSignals: () => getJson('/signals/latest'),
+  // Signaler-sidan visar bägge segmenten i EN lista (i stället för att den
+  // globala segment-växlaren byter ut hela listan) - hämtar båda explicit
+  // (segment=... i path:en kringgår currentSegment, se getJson) och taggar
+  // varje rad så vyn kan filtrera/märka ut stor/småbolag utan att röra den
+  // globala segment-inställningen som styr andra sidor (Kvalitet/Analys m.fl.).
+  latestSignalsAll: () =>
+    Promise.all([
+      getJson('/signals/latest?segment=large'),
+      getJson('/signals/latest?segment=small'),
+    ]).then(([large, small]) => [
+      ...large.map((r) => ({ ...r, segment: 'large' })),
+      ...small.map((r) => ({ ...r, segment: 'small' })),
+    ]),
   signalHistory: (ticker, limit = 260) =>
     getJson(`/signals/history?${ticker ? `ticker=${encodeURIComponent(ticker)}&` : ''}limit=${limit}`),
   portfolio: (limit = 1000) => getJson(`/portfolio?limit=${limit}`),

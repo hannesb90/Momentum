@@ -21,7 +21,10 @@ const STATUS_FILTERS = [
 export function WatchlistPage() {
   const { tickers, addToWatchlist, removeFromWatchlist } = useWatchlist()
   const { addHolding } = usePortfolio()
-  const signals = useApiData(() => api.latestSignals(), [])
+  // Bevakade tickers är egenvalda, inte segmentbundna - en bevakad småbolags-
+  // aktie ska hitta sin signal oavsett vilket segment som råkar vara aktivt
+  // (se api.latestSignalsAll, samma fix som Signaler-sidan).
+  const signals = useApiData(() => api.latestSignalsAll(), [])
   const [ticker, setTicker] = useState('')
   const [filter, setFilter] = useState('all')
 

@@ -34,11 +34,14 @@ export default function App() {
   }, [segment])
 
   // Segmenttoggeln göms där den inte styr något: hemvyn (Core:t är segment-
-  // oberoende), Innehav (din portfölj är din portfölj) och Marknad/Sektorer/
-  // Rotation (ETF-/marknadsvy – sektordatan är pinnad till bredaste segmentet).
-  // På forskningsvyerna (Signaler/Kvalitet/Analys) styr den visat segment.
+  // oberoende), Innehav (din portfölj är din portfölj), Marknad/Sektorer/
+  // Rotation (ETF-/marknadsvy – sektordatan är pinnad till bredaste segmentet)
+  // och Signaler/Bevakning (2026-07-22: hämtar numera BÅDA segmenten i en
+  // sammanslagen lista med eget filter, se api.latestSignalsAll - den globala
+  // växlaren styr inte längre något där). På kvarvarande forskningsvyer
+  // (Kvalitet/Analys/Skanner) styr den fortfarande visat segment.
   const { pathname } = useLocation()
-  const showSegments = !['/', '/innehav', '/bedomning', '/marknad', '/sektorer', '/rotation']
+  const showSegments = !['/', '/innehav', '/bedomning', '/marknad', '/sektorer', '/rotation', '/signaler']
     .some((p) => pathname === p || (p !== '/' && pathname.startsWith(p)))
 
   return (

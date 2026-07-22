@@ -15,6 +15,13 @@ const SIGNAL_FILTERS = [
   { value: 'flat', label: 'Neutrala' },
 ]
 
+const SEGMENT_FILTERS = [
+  { value: 'all', label: 'Alla bolag' },
+  { value: 'large', label: 'Storbolag' },
+  { value: 'small', label: 'Småbolag' },
+]
+const SEGMENT_LABEL = { large: 'Stor', small: 'Liten' }
+
 const SORTS = [
   { value: 'prob_up', label: 'P(upp)' },
   { value: 'pred_return', label: 'Förv. avk.' },
@@ -22,10 +29,14 @@ const SORTS = [
 ]
 
 export function SignalsPage() {
-  const { data, error, loading } = useApiData(() => api.latestSignals(), [])
+  // Bägge segmenten i EN lista (se api.latestSignalsAll) - den globala
+  // stor/småbolags-växlaren styr inte den här sidan längre (döljs i App.jsx),
+  // ett eget filter nedan väljer i stället inom den redan hämtade listan.
+  const { data, error, loading } = useApiData(() => api.latestSignalsAll(), [])
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState(searchParams.get('q') ?? '')
   const [signalFilter, setSignalFilter] = useState('all')
+  const [segmentFilter, setSegmentFilter] = useState('all')
   const [sort, setSort] = useState('prob_up')
 
   const rows = useMemo(() => {
@@ -41,8 +52,12 @@ export function SignalsPage() {
     }
     if (signalFilter === 'buy') r = r.filter((s) => s.pred_signal === 1)
     if (signalFilter === 'flat') r = r.filter((s) => s.pred_signal !== 1)
+    if (segmentFilter !== 'all') r = r.filter((s) => s.segment === segmentFilter)
+    // P(upp)/förv. avk. kommer från TVÅ SEPARATA modeller (en per segment) -
+    // inte direkt jämförbara på absolutnivå, men sorteringen är ändå
+    // meningsfull inom vardera segmentet och som grov gemensam rangordning.
     return [...r].sort((a, b) => (Number(b[sort]) || 0) - (Number(a[sort]) || 0))
-  }, [data, query, signalFilter, sort])
+  }, [data, query, signalFilter, segmentFilter, sort])
 
   if (loading) return <Loading />
   if (error) return <ErrorBlock error={error} />
@@ -60,6 +75,11 @@ export function SignalsPage() {
               Modellens senaste bedömning av varje bolag, uppdaterad vecka för vecka. En köpsignal
               betyder att modellen bedömer sannolikheten för uppgång som tillräckligt hög för att
               ta en position.
+            </p>
+            <p>
+              Stor- och småbolag tränas som två SEPARATA modeller – P(upp) och förväntad avkastning
+              är därför inte direkt jämförbara mellan segmenten, bara inom vardera. Filtrera på
+              segment nedan om du vill se dem var för sig.
             </p>
             <p>
               Detta är modellens rekommendationer, inte en garanti – använd informationen som ett
@@ -85,6 +105,10 @@ export function SignalsPage() {
           }}
         />
         <SegmentedControl options={SIGNAL_FILTERS} value={signalFilter} onChange={setSignalFilter} size="sm" />
+      </div>
+      <div className="filter-bar filter-bar--secondary">
+        <span className="filter-bar__label">Segment:</span>
+        <SegmentedControl options={SEGMENT_FILTERS} value={segmentFilter} onChange={setSegmentFilter} size="sm" />
       </div>
       <div className="filter-bar filter-bar--secondary">
         <span className="filter-bar__label">Sortera:</span>
@@ -142,11 +166,18 @@ export function SignalsPage() {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.ticker}>
+                <tr key={`${row.segment}-${row.ticker}`}>
                   <td className="ticker-cell">
                     <Link to={`/aktie/${encodeURIComponent(row.ticker)}`} className="ticker-link">
                       <span className="ticker-link__name">{cleanName(row.name, row.ticker)}</span>
-                      <span className="ticker-link__ticker">{row.ticker}</span>
+                      <span className="ticker-link__ticker">
+                        {row.ticker}
+                        {segmentFilter === 'all' && (
+                          <span className="badge badge--flat" style={{ marginLeft: 6 }}>
+                            {SEGMENT_LABEL[row.segment] ?? row.segment}
+                          </span>
+                        )}
+                      </span>
                     </Link>
                   </td>
                   <td>{fmtPct(row.prob_up)}</td>
