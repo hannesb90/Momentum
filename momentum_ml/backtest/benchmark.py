@@ -63,6 +63,27 @@ def equal_weight_index(
     return initial_capital * (1.0 + mean_ret).cumprod()
 
 
+def winsorize_price_series(s: pd.Series, clip: Optional[float] = None) -> pd.Series:
+    """
+    Rekonstruerar en enskild-ticker prisserie med veckoavkastningen vinsoriserad
+    vid ±clip (default SUSPICIOUS_JUMP_THRESHOLD) – samma skydd som
+    equal_weight_index() redan har mot en ojusterad corporate action/data-glitch,
+    men för en serie med bara EN ticker (t.ex. index-ETF:en i portfolio.csvs
+    omxs30_value-linje) som annars saknar det skyddet helt. NaN-mönstret
+    (perioder innan ETF:en fanns) bevaras oförändrat.
+    """
+    if clip is None:
+        clip = float(getattr(config, "SUSPICIOUS_JUMP_THRESHOLD", 0.60))
+    valid = s.dropna()
+    if len(valid) < 2:
+        return s
+    rets = valid.pct_change(fill_method=None).fillna(0.0).clip(-clip, clip)
+    recon = valid.iloc[0] * (1.0 + rets).cumprod()
+    out = s.copy()
+    out.loc[valid.index] = recon
+    return out
+
+
 def alpha_beta(strategy_value: pd.Series, benchmark_value: pd.Series) -> Dict[str, float]:
     """
     Skattar beta (lutning av strategins veckoavkastning mot benchmarkens) och

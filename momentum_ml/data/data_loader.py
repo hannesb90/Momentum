@@ -20,7 +20,7 @@ import datetime as dt
 import pandas as pd
 import yfinance as yf
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -200,6 +200,21 @@ def fetch_weekly_data(
     return result
 
 
+_SUSPICIOUS_JUMPS: List[Tuple[str, str, float]] = []   # (ticker, date_iso, ret) - se get_suspicious_jumps()
+
+
+def get_suspicious_jumps(clear: bool = True) -> List[Tuple[str, str, float]]:
+    """Hämtar alla misstänkta hopp flaggade av _check_suspicious_jumps sedan
+    senaste rensning. Görs tillgänglig som en lista (inte bara konsol-print)
+    så en anropare (main.py) kan korsreferera mot faktiska köp/sälj-signaler
+    och avgöra vilka varningar som faktiskt påverkat en handel – se
+    results/suspicious_jumps_held.csv."""
+    jumps = list(_SUSPICIOUS_JUMPS)
+    if clear:
+        _SUSPICIOUS_JUMPS.clear()
+    return jumps
+
+
 def _check_suspicious_jumps(df: pd.DataFrame, ticker: str) -> None:
     """
     Flaggar (men korrigerar inte) veckoavkastningar över
@@ -214,6 +229,7 @@ def _check_suspicious_jumps(df: pd.DataFrame, ticker: str) -> None:
     for date, ret in jumps.items():
         print(f"  [WARN] {ticker} {date.date()}: misstänkt hopp {ret:+.1%} "
               f"– kontrollera ev. ojusterad corporate action.")
+        _SUSPICIOUS_JUMPS.append((ticker, date.date().isoformat(), float(ret)))
 
 
 def _clean(df: pd.DataFrame, ticker: str) -> Optional[pd.DataFrame]:

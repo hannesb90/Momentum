@@ -21,6 +21,7 @@ import config
 from data.data_loader import (
     fetch_weekly_data, filter_liquid_universe,
     filter_active_universe, load_sweden_universe, load_ngm_universe,
+    get_suspicious_jumps,
 )
 from features.feature_engineering import (
     build_all_features, to_model_df, attach_categorical_features,
@@ -36,7 +37,7 @@ from backtest.regime import classify_regimes, regime_breakdown, print_regime_bre
 from backtest.sector_momentum import sector_momentum_snapshot, print_sector_momentum
 from backtest.theme_momentum import theme_momentum_snapshot, print_theme_momentum
 from backtest.threshold_opt import optimize_buy_threshold, print_threshold_search
-from backtest.benchmark import benchmark_report
+from backtest.benchmark import benchmark_report, winsorize_price_series
 from backtest.paper_trader import PaperTrader
 
 
@@ -219,7 +220,7 @@ def main():
     # fundamentals_from_mfn.csv/fundamentals_from_pdf.csv redan genererats
     # (altdata/mfn_fundamentals.py extract / altdata/mfn_pdf.py backfill) –
     # saknas de blir kolumnerna bara NaN, ingen krasch.
-    all_features = attach_fundamentals_features(all_features, segment=args.segment)
+    all_features = attach_fundamentals_features(all_features, segment=args.segment, prices=data)
     model_df     = to_model_df(all_features)
     print(f"  Dataset: {len(model_df):,} samples × {model_df[FEATURE_COLS].shape[1]} features")
     gc.collect()
@@ -494,6 +495,35 @@ def main():
     signals_df.to_csv(f"{config.RESULTS_DIR}/signals.csv")
     print(f"  Signals sparade: {config.RESULTS_DIR}/signals.csv")
 
+    # Misstänkta prishopp (ojusterade corporate actions/data-glitchar, se
+    # data_loader._check_suspicious_jumps) som sammanföll med en aktiv köp-
+    # signal - dvs de varningarna som faktiskt kan ha smittat en simulerad
+    # affär, urskiljda ur de hundratals som annars bara loggas och glöms
+    # (ticker strategin aldrig rörde är ofarliga för resultatet).
+    try:
+        jumps = get_suspicious_jumps()
+        out_path = Path(f"{config.RESULTS_DIR}/suspicious_jumps_held.csv")
+        rows = []
+        if jumps:
+            buys = signals_df[signals_df["pred_signal"] == 1]
+            held_dates = {t: list(g.index) for t, g in buys.groupby("ticker")}
+            for ticker, date_iso, ret in jumps:
+                jd = pd.Timestamp(date_iso)
+                near = sorted(d for d in held_dates.get(ticker, []) if abs((d - jd).days) <= 14)
+                if near:
+                    rows.append({
+                        "ticker": ticker, "jump_date": date_iso, "jump_pct": ret,
+                        "signal_dates_nearby": ";".join(d.date().isoformat() for d in near),
+                    })
+        if rows:
+            pd.DataFrame(rows).to_csv(out_path, index=False)
+            print(f"  [VARNING] {len(rows)} misstänkta prishopp sammanföll med en köpsignal "
+                  f"- se {out_path}")
+        else:
+            out_path.unlink(missing_ok=True)
+    except Exception as e:
+        print(f"  [WARN] Kunde inte bygga suspicious_jumps_held.csv (icke-kritiskt): {e}")
+
     # Per-ticker prishistorik (senaste ~260v) för aktiedetaljvyns kursgraf.
     # Long-format date/ticker/close – kompakt men räcker för utvecklingskurva.
     try:
@@ -629,6 +659,12 @@ def main():
         try:
             idx_close = idx_df["Close"].reindex(
                 idx_df.index.union(results.index)).sort_index().ffill().reindex(results.index)
+            # Vinsorisera veckoavkastningen (samma skydd som equal_weight_index()
+            # redan har) – annars slår en enda ojusterad corporate action/data-
+            # glitch i EN enda ETF-ticker rakt igenom index-linjen oskyddat,
+            # och CAGR:en (som bara använder första/sista värdet) är extra
+            # känslig för det.
+            idx_close = winsorize_price_series(idx_close)
             valid = idx_close.dropna()
             if valid.size >= 2:
                 # VIKTIGT (bugfix): index-ETF:ns historik kan börja långt efter back-

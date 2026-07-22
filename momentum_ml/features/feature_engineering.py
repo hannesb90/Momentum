@@ -354,7 +354,10 @@ def attach_categorical_features(
     return all_features
 
 
-def _load_fundamentals_growth(segment: Optional[str] = None) -> pd.DataFrame:
+def _load_fundamentals_growth(
+    segment: Optional[str] = None,
+    prices: Optional[Dict[str, pd.DataFrame]] = None,
+) -> pd.DataFrame:
     """
     Läser results*/fundamentals_from_mfn.csv + fundamentals_from_pdf.csv
     (byggda av altdata/mfn_fundamentals.py resp. altdata/mfn_pdf.py) och
@@ -363,6 +366,18 @@ def _load_fundamentals_growth(segment: Optional[str] = None) -> pd.DataFrame:
     = Q1 2023:s revenue) – tillväxten går alltså att räkna direkt ur en
     enskild rapportrad, ingen historisk hopslagning mot en tidigare rapport
     krävs.
+
+    report_reaction_abn (kräver prices): rapportveckans ABNORMALA avkastning
+    (aktiens avkastning minus en likaviktad marknadsproxy den veckan) – samma
+    token-fria mått som altdata/pead.py använder som surprise-proxy. Ensam
+    (rev_growth_yoy/eps_growth_yoy) berättar bara att förbättringen var
+    verklig; kombinerat med denna kan modellen lära sig SKILJA mellan "redan
+    prisat" (stark reaktion) och "marknaden missade det" (dämpad reaktion
+    trots verklig förbättring) – validerat i tune_earnings_reaction_gap.py:
+    IC 0.093/Q5-Q1 5.2% på 26v-holdouten för just den kombinationen, mot
+    IC≈0 för tillväxten ensam på samma fönster. prices=None (t.ex. äldre
+    anropare som inte skickar in prispanelen) ger NaN, som all annan saknad
+    fundamentaldata.
 
     SAMMA rapport (pm_id) kan finnas i BÅDA CSV:erna med komplementära fält
     sedan PDF-backfillen blev nyckelfälts-medveten (mfn_pdf._KEY_FIELDS) –
@@ -398,7 +413,7 @@ def _load_fundamentals_growth(segment: Optional[str] = None) -> pd.DataFrame:
                 frames.append(pd.read_csv(p))
             except Exception:  # noqa: BLE001
                 pass
-    cols = ["ticker", "published", "rev_growth_yoy", "eps_growth_yoy"]
+    cols = ["ticker", "published", "rev_growth_yoy", "eps_growth_yoy", "report_reaction_abn", "div_growth_yoy"]
 
     if frames:
         text_df = pd.concat(frames, ignore_index=True)
@@ -443,7 +458,42 @@ def _load_fundamentals_growth(segment: Optional[str] = None) -> pd.DataFrame:
         eps_g = eps_g.where(eps_g.notna(), _growth(value_col, prior_col))
     df["eps_growth_yoy"] = eps_g
 
-    out = df[cols].dropna(subset=["rev_growth_yoy", "eps_growth_yoy"], how="all")
+    # Utdelningstillväxt YoY (validerad i tune_dividend_gap.py: holdout 26v
+    # IC=0.059/Q5-Q1=+5.3% kombinerat med report_reaction_abn, konsekvent
+    # med hela-perioden IC=0.191/+11.5% - klart över husets tröskel, till
+    # skillnad från 8v-horisonten som INTE höll på holdout). dividend/
+    # dividend_prior lagras som NEGATIVA tal (kassautflöde, samma konvention
+    # som capex) - tillväxt räknas därför på abs(), INTE med _growth() ovan
+    # (som hade gett fel tecken: en högre utdelning gör värdet MER negativt).
+    if {"dividend", "dividend_prior"}.issubset(df.columns):
+        div, div_prior = df["dividend"], df["dividend_prior"]
+        div_g = (div.abs() - div_prior.abs()) / div_prior.abs()
+        div_g[(div_prior == 0) | div_prior.isna() | div.isna()] = np.nan
+        df["div_growth_yoy"] = div_g
+    else:
+        df["div_growth_yoy"] = np.nan
+
+    # Rapportveckans abnormala avkastning (surprise-proxy, se docstring ovan).
+    # Kräver prisdata – utan den (äldre anropare) blir kolumnen NaN, samma
+    # ärliga "obedömbart"-hantering som resten av modulen.
+    px = pd.DataFrame({t: d["Close"] for t, d in prices.items() if "Close" in d}).sort_index() if prices else pd.DataFrame()
+    if not px.empty:
+        rets = px.pct_change()
+        market = rets.mean(axis=1)          # likaviktad marknadsproxy, samma som pead.py
+        abn = rets.sub(market, axis=0)
+        weeks = px.index
+
+        def _reaction(t, published):
+            if t not in abn.columns:
+                return np.nan
+            pos = weeks.searchsorted(published, side="left")
+            return abn.iat[pos, abn.columns.get_loc(t)] if pos < len(weeks) else np.nan
+
+        df["report_reaction_abn"] = [_reaction(t, p) for t, p in zip(df["ticker"], df["published"])]
+    else:
+        df["report_reaction_abn"] = np.nan
+
+    out = df[cols].dropna(subset=["rev_growth_yoy", "eps_growth_yoy", "div_growth_yoy"], how="all")
     return out.sort_values(["ticker", "published"])
 
 
@@ -456,13 +506,14 @@ _DAYS_SINCE_CAP = 365
 def attach_fundamentals_features(
     all_features: Dict[str, pd.DataFrame],
     segment: Optional[str] = None,
+    prices: Optional[Dict[str, pd.DataFrame]] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
-    Kopplar in tillväxt-features (rev_growth_yoy, eps_growth_yoy) från MFN-
-    rapporternas hårddata, samma mönster som attach_categorical_features()
-    för sector/cap_tier – anropas EFTER build_all_features(), FÖRE
-    to_model_df(), så samma all_features-dict används av både träning och
-    live-prediktion.
+    Kopplar in tillväxt-features (rev_growth_yoy, eps_growth_yoy,
+    report_reaction_abn, div_growth_yoy) från MFN-rapporternas hårddata, samma mönster som
+    attach_categorical_features() för sector/cap_tier – anropas EFTER
+    build_all_features(), FÖRE to_model_df(), så samma all_features-dict
+    används av både träning och live-prediktion.
 
     POINT-IN-TIME-KRITISKT: en given vecka får bara känna till rapporter
     som FAKTISKT var publicerade senast den veckan (backward as-of-join på
@@ -473,12 +524,18 @@ def attach_fundamentals_features(
     results/fundamentals.csv i tune_fundamentals.py, som bara har
     räkenskapsår och därför måste GISSA ett publiceringsdatum).
 
+    prices (samma dict som backtester.py/main.py redan håller i minnet,
+    ticker → OHLCV-DataFrame): krävs för report_reaction_abn (rapportveckans
+    abnormala avkastning, se _load_fundamentals_growth). Utan den blir bara
+    den kolumnen NaN – rev_growth_yoy/eps_growth_yoy/days_since_report
+    påverkas inte.
+
     Saknar en ticker helt rapportdata (inga träffar, eller filerna saknas)
     blir kolumnerna NaN genom hela historiken – konsekvent med hur alla
     andra FEATURE_COLS hanterar saknade värden (fillna(0) sker centralt i
     models/lgbm_model.py/lstm_model.py vid X-uppbyggnad, inte här).
     """
-    fund = _load_fundamentals_growth(segment)
+    fund = _load_fundamentals_growth(segment, prices=prices)
     by_ticker = ({tk: g.drop(columns="ticker") for tk, g in fund.groupby("ticker")}
                  if len(fund) else {})
 
@@ -495,6 +552,8 @@ def attach_fundamentals_features(
         if g is None or g.empty:
             feat["rev_growth_yoy"] = np.nan
             feat["eps_growth_yoy"] = np.nan
+            feat["report_reaction_abn"] = np.nan
+            feat["div_growth_yoy"] = np.nan
             feat["days_since_report"] = float(_DAYS_SINCE_CAP)
             continue
         left = feat.index.to_frame(index=False, name="Date").sort_values("Date")
@@ -514,6 +573,8 @@ def attach_fundamentals_features(
         joined = joined.set_index("Date")
         feat["rev_growth_yoy"] = joined["rev_growth_yoy"].reindex(feat.index)
         feat["eps_growth_yoy"] = joined["eps_growth_yoy"].reindex(feat.index)
+        feat["report_reaction_abn"] = joined["report_reaction_abn"].reindex(feat.index)
+        feat["div_growth_yoy"] = joined["div_growth_yoy"].reindex(feat.index)
         days = (joined.index.to_series() - joined["published"]).dt.days
         feat["days_since_report"] = (days.clip(upper=_DAYS_SINCE_CAP)
                                      .fillna(_DAYS_SINCE_CAP)
@@ -577,6 +638,23 @@ FEATURE_COLS = [
     # as-of-kopplad – se attach_fundamentals_features()). NaN tills bolagets
     # första kända rapport, fillna(0) sker centralt i models/lgbm_model.py.
     "rev_growth_yoy", "eps_growth_yoy",
+    # Rapportveckans abnormala avkastning (surprise-proxy, samma mått som
+    # altdata/pead.py). Kombinerat med tillväxten ovan kan modellen skilja
+    # "redan prisat" (stark reaktion) från "marknaden missade det" (dämpad
+    # reaktion trots verklig förbättring) – validerat i
+    # tune_earnings_reaction_gap.py, IC 0.093/Q5-Q1 +5.2% på 26v-holdouten
+    # för just den kombinationen, mot IC≈0 för tillväxten ensam. fillna(0) =
+    # neutral (ingen abnorm rörelse), en rimlig default till skillnad från
+    # days_since_report nedan.
+    "report_reaction_abn",
+    # Utdelningstillväxt YoY (abs()-baserad, se _load_fundamentals_growth -
+    # dividend/dividend_prior lagras som negativa kassautflödestal). Delar
+    # report_reaction_abn ovan som reaktionsaxel - modellen lär sig samma typ
+    # av gap som för rev/eps-tillväxten. Validerad i tune_dividend_gap.py:
+    # holdout 26v IC=0.059/Q5-Q1=+5.3% (konsekvent med hela-perioden
+    # 0.191/+11.5%), 8v höll INTE på holdout - bara 26v-relationen är
+    # validerad. fillna(0) = neutral (ingen utdelningsförändring).
+    "div_growth_yoy",
     # PEAD-tidsaxeln: dagar sedan senast kända rapport (takad vid 365; saknat
     # = 365, ALDRIG NaN – fillna(0) hade betytt "rapporterade idag").
     "days_since_report",

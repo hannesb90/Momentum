@@ -597,7 +597,7 @@ def score(segment: Optional[str] = None) -> None:
         return
 
     market_cap, results_dir = _seg_market_cap_and_dir(seg_name)
-    _, sector_map, _, name_map = load_sweden_universe(min_market_cap=market_cap)
+    universe_tickers, sector_map, _, name_map = load_sweden_universe(min_market_cap=market_cap)
 
     # BUGG (fixad, verkligt fall OETO.ST/SUBCO.ST): tickers kom tidigare
     # OFILTRERAT ur fund.keys() (MFN-fundamenta-cachen, byggs upp över tid
