@@ -180,7 +180,26 @@ def get_signal_history(ticker: Optional[str] = None, limit: int = 260, segment: 
     if ticker:
         df = df[df["ticker"] == ticker]
         if df.empty:
-            raise HTTPException(status_code=404, detail=f"Ingen data för ticker '{ticker}'.")
+            # BUGG (fixad, verkligt fall: small-cap-innehav som SECARE.ST/
+            # PLEJD.ST/ACCON.ST visade "ingen modelldata" på aktiedetalj-
+            # sidan) - frontend bifogar alltid det GLOBALT valda segmentet
+            # (currentSegment i api.js, default "large") på varje anrop,
+            # oavsett vilket segment TICKERN faktiskt tillhör. En användare
+            # med både stor- och småbolagsinnehav kan bara ha ETT segment
+            # valt åt gången i UI:t, så ~hälften av innehaven 404:ade trots
+            # att modellen hade full historik - bara i DET ANDRA segmentets
+            # signals.csv. Prova övriga segment innan vi ger upp.
+            for seg_name, seg_cfg in config.SEGMENTS.items():
+                alt_path = Path(seg_cfg["results_dir"]) / "signals.csv"
+                if alt_path == path or not alt_path.exists():
+                    continue
+                alt_df = _read_csv(alt_path, index_col=0, parse_dates=True)
+                alt_df = alt_df[alt_df["ticker"] == ticker]
+                if not alt_df.empty:
+                    df = alt_df
+                    break
+            if df.empty:
+                raise HTTPException(status_code=404, detail=f"Ingen data för ticker '{ticker}'.")
     df = df.sort_index().tail(limit).reset_index()
     df = df.rename(columns={df.columns[0]: "date"})
     out = _records(df)
