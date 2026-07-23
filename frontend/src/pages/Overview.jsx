@@ -162,162 +162,214 @@ export function OverviewPage() {
 
   return (
     <section className="page">
-      {/* CORE – Nästa köp: ETT rangordnat svar på "var ska nästa krona in?" */}
-      <div className="section-head">
-        <h2>
-          Nästa köp
-          <InfoButton title="Nästa köp – modellens Core">
-            <p>
-              Det här är appens huvudsvar: <b>hit går nästa krona</b>, givet dina sparade innehav
-              och målfördelningen (fyll-mot-mål – ingen försäljning, ingen timing).
+      {/* CORE – Nästa köp: bakom en knapp ("Planera nästa köp") så förstaskärmen
+          inte öppnar med hela köpplanen – bara det handlingsbara (Säljvakt,
+          Senaste köpsignaler) syns direkt. Allt som handlar om att TA FRAM
+          köpplanen (belopp, modell, listan, tilt/allokering, opportunistiskt
+          köp, fylla-på-läget) samlas under samma rubrik. */}
+      <details className="alloc-editor next-buy-panel">
+        <summary>
+          Planera nästa köp
+          {nextBuy.data?.rows?.[0] && (
+            <span className="pos" style={{ fontWeight: 400, marginLeft: 6 }}>
+              · ★ {nextBuy.data.rows[0].name} {fmtSek(nextBuy.data.rows[0].kr)}
+            </span>
+          )}
+        </summary>
+        <div style={{ padding: '8px 2px 2px' }}>
+          <div className="section-head">
+            <h2>
+              Nästa köp
+              <InfoButton title="Nästa köp – modellens Core">
+                <p>
+                  Det här är appens huvudsvar: <b>hit går nästa krona</b>, givet dina sparade innehav
+                  och målfördelningen (fyll-mot-mål – ingen försäljning, ingen timing).
+                </p>
+                <p>
+                  Ordningen är evidensordningen från våra egna tester: <b>bred global kärna först</b>
+                  (slog varje aktiv variant netto), därefter Sverige-modellen och rotationens tema som
+                  små satelliter – ärligt stämplade som obevisade aktiva vad.
+                </p>
+              </InfoButton>
+            </h2>
+            <SegmentedControl options={NEXTBUY_AMOUNTS} value={buyAmount} onChange={setBuyAmount} size="sm" />
+          </div>
+          {/* Rank-modell: HUR Sverige-kandidaten ovan väljs. Ren vy-inställning,
+              växlar server-side (persisteras) utan att köra om något nattligt. */}
+          <div className="model-picker">
+            <span className="model-picker__label">Modell</span>
+            {models.map((m) => (
+              <button
+                key={m}
+                type="button"
+                disabled={modelBusy}
+                className={`model-picker__btn${model === m ? ' model-picker__btn--active' : ''}`}
+                onClick={() => switchModel(m)}
+              >
+                {MODEL_LABELS[m] ?? m}
+              </button>
+            ))}
+            <span className="model-picker__hint">{MODEL_HINTS[model] ?? ''}</span>
+          </div>
+          {nextBuy.refreshing && <p className="footnote" style={{ margin: '-4px 0 6px' }}>Uppdaterar…</p>}
+          {nextBuy.data?.cash && Number(buyAmount) > nextBuy.data.cash.available_sek && (
+            <p className="footnote neg" style={{ margin: '-4px 0 6px' }}>
+              ⚠ Bara {fmtSek(nextBuy.data.cash.available_sek)} tillgängligt på ISK just nu (av {fmtSek(Number(buyAmount))})
+              – väntar insättningen fortfarande?
             </p>
-            <p>
-              Ordningen är evidensordningen från våra egna tester: <b>bred global kärna först</b>
-              (slog varje aktiv variant netto), därefter Sverige-modellen och rotationens tema som
-              små satelliter – ärligt stämplade som obevisade aktiva vad.
-            </p>
-          </InfoButton>
-        </h2>
-        <SegmentedControl options={NEXTBUY_AMOUNTS} value={buyAmount} onChange={setBuyAmount} size="sm" />
-      </div>
-      {/* Rank-modell: HUR Sverige-kandidaten ovan väljs. Ren vy-inställning,
-          växlar server-side (persisteras) utan att köra om något nattligt. */}
-      <div className="model-picker">
-        <span className="model-picker__label">Modell</span>
-        {models.map((m) => (
-          <button
-            key={m}
-            type="button"
-            disabled={modelBusy}
-            className={`model-picker__btn${model === m ? ' model-picker__btn--active' : ''}`}
-            onClick={() => switchModel(m)}
-          >
-            {MODEL_LABELS[m] ?? m}
-          </button>
-        ))}
-        <span className="model-picker__hint">{MODEL_HINTS[model] ?? ''}</span>
-      </div>
-      {nextBuy.refreshing && <p className="footnote" style={{ margin: '-4px 0 6px' }}>Uppdaterar…</p>}
-      {nextBuy.data?.cash && Number(buyAmount) > nextBuy.data.cash.available_sek && (
-        <p className="footnote neg" style={{ margin: '-4px 0 6px' }}>
-          ⚠ Bara {fmtSek(nextBuy.data.cash.available_sek)} tillgängligt på ISK just nu (av {fmtSek(Number(buyAmount))})
-          – väntar insättningen fortfarande?
-        </p>
-      )}
-      <div className="list-card">
-        {nextBuy.loading && <div className="list-card__empty">Räknar…</div>}
-        {nextBuy.error && <div className="list-card__empty">Kunde inte hämta planen.</div>}
-        {(nextBuy.data?.rows ?? []).map((r) => (
-          <div key={`${r.order}-${r.ticker}`} className="list-row">
-            <div className="list-row__main">
-              <Link to={`/aktie/${encodeURIComponent(r.ticker)}`} className="list-row__ticker ticker-link">
-                {r.order === 1 ? '★ ' : `${r.order}. `}{r.name}{' '}
-                <span className={r.evidence === 'kärna' ? 'pos' : ''} style={{ fontSize: '0.78em' }}>
-                  {r.evidence === 'kärna' ? '● kärna' : '○ satellit'}
-                </span>
-              </Link>
-              <span className="list-row__sub">{r.ticker} · {r.why}</span>
-            </div>
-            <div className="list-row__side">
-              <span className="list-row__num">{fmtSek(r.kr)}</span>
-              {tickets[r.ticker]?.url ? (
-                <a className="btn" href={tickets[r.ticker].url} target="_blank" rel="noreferrer">
-                  Öppna i Montrose ↗
-                </a>
-              ) : (
-                <button className="btn" disabled={tickets[r.ticker]?.loading}
-                  onClick={() => createTicket(r)}>
-                  {tickets[r.ticker]?.loading ? 'Skapar…' : 'Skapa ticket'}
-                </button>
-              )}
-              {tickets[r.ticker]?.error && (
-                <span className="footnote neg">{tickets[r.ticker].error}</span>
-              )}
-            </div>
-          </div>
-        ))}
-        {(nextBuy.data?.skipped ?? []).map((s) => (
-          <div key={s.bucket} className="list-row" style={{ opacity: 0.6 }}>
-            <div className="list-row__main">
-              <span className="list-row__sub">{s.reason}</span>
-            </div>
-          </div>
-        ))}
-        {nextBuy.data && !nextBuy.data.has_holdings && (
-          <div className="list-card__empty">
-            <Link to="/innehav">Spara dina innehav</Link> så anpassas planen efter vad du redan äger.
-          </div>
-        )}
-      </div>
-      {nextBuy.data?.tilt?.tilt_frac > 0 && (
-        <p className="footnote tilt-note">
-          ⇄ <b>Dynamisk fördelning:</b> {Math.round(nextBuy.data.tilt.tilt_frac * 100)}% av insättningen
-          tiltad från kärnan mot{' '}
-          {Object.entries(nextBuy.data.tilt.pulled_to ?? {})
-            .map(([b]) => ({ sweden: 'Sverige', theme: 'Tema' }[b] ?? b)).join(' + ') || 'satelliter'}
-          {' '}– ett attraktivt läge väger tyngre än ren mål-ifyllnad just nu. Kärngolvet skyddar kärnan;
-          är lägena likvärdiga avgör målvikten.
-        </p>
-      )}
-      {nextBuy.data?.note && <p className="footnote">{nextBuy.data.note}</p>}
-      {nextBuy.data?.theme_niche_note && (
-        <p className="footnote" style={{ opacity: 0.7 }}>
-          {nextBuy.data.theme_niche_note.note}
-        </p>
-      )}
-      {nextBuy.data?.global_theme_note && (
-        <p className="footnote" style={{ opacity: 0.7 }}>
-          {nextBuy.data.global_theme_note.note}
-        </p>
-      )}
-
-      {targetData.data?.target && (
-        <AllocationEditor initial={targetData.data.target} onSaved={() => setReloadKey((k) => k + 1)} />
-      )}
-
-      {/* Opportunistiskt köp – taktiskt front-load denna månad (PEAD-disciplin) */}
-      {nextBuy.data?.opportunity && (
-        <details className="alloc-editor" style={{ marginTop: 10 }}>
-          <summary>
-            Opportunistiskt köp denna månad{' '}
-            {nextBuy.data.opportunity.confirmed
-              ? <span className="pos">★ {nextBuy.data.opportunity.name} (bekräftad)</span>
-              : <span style={{ opacity: 0.6 }}>– vänta på bekräftelse</span>}
-          </summary>
-          <div style={{ padding: '8px 2px' }}>
-            {nextBuy.data.opportunity.confirmed ? (
-              <>
-                <div className="list-row" style={{ padding: '4px 0' }}>
-                  <div className="list-row__main">
-                    <Link to={`/aktie/${encodeURIComponent(nextBuy.data.opportunity.ticker)}`}
-                      className="list-row__ticker ticker-link">
-                      ★ {nextBuy.data.opportunity.name}
-                    </Link>
-                    <span className="list-row__sub">
-                      {nextBuy.data.opportunity.ticker} · {nextBuy.data.opportunity.note}
-                      {(nextBuy.data.opportunity.confirmations ?? []).length
-                        ? ` · ${nextBuy.data.opportunity.confirmations.join(' · ')}` : ''}
+          )}
+          <div className="list-card">
+            {nextBuy.loading && <div className="list-card__empty">Räknar…</div>}
+            {nextBuy.error && <div className="list-card__empty">Kunde inte hämta planen.</div>}
+            {(nextBuy.data?.rows ?? []).map((r) => (
+              <div key={`${r.order}-${r.ticker}`} className="list-row">
+                <div className="list-row__main">
+                  <Link to={`/aktie/${encodeURIComponent(r.ticker)}`} className="list-row__ticker ticker-link">
+                    {r.order === 1 ? '★ ' : `${r.order}. `}{r.name}{' '}
+                    <span className={r.evidence === 'kärna' ? 'pos' : ''} style={{ fontSize: '0.78em' }}>
+                      {r.evidence === 'kärna' ? '● kärna' : '○ satellit'}
                     </span>
-                  </div>
-                  <div className="list-row__side">
-                    <span className="list-row__num pos">{fmtSek(nextBuy.data.opportunity.kr)}</span>
-                  </div>
+                  </Link>
+                  <span className="list-row__sub">{r.ticker} · {r.why}</span>
                 </div>
-                <p className="footnote">{nextBuy.data.opportunity.advice}</p>
-              </>
-            ) : (
-              <p className="footnote">{nextBuy.data.opportunity.advice}</p>
+                <div className="list-row__side">
+                  <span className="list-row__num">{fmtSek(r.kr)}</span>
+                  {tickets[r.ticker]?.url ? (
+                    <a className="btn" href={tickets[r.ticker].url} target="_blank" rel="noreferrer">
+                      Öppna i Montrose ↗
+                    </a>
+                  ) : (
+                    <button className="btn" disabled={tickets[r.ticker]?.loading}
+                      onClick={() => createTicket(r)}>
+                      {tickets[r.ticker]?.loading ? 'Skapar…' : 'Skapa ticket'}
+                    </button>
+                  )}
+                  {tickets[r.ticker]?.error && (
+                    <span className="footnote neg">{tickets[r.ticker].error}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+            {(nextBuy.data?.skipped ?? []).map((s) => (
+              <div key={s.bucket} className="list-row" style={{ opacity: 0.6 }}>
+                <div className="list-row__main">
+                  <span className="list-row__sub">{s.reason}</span>
+                </div>
+              </div>
+            ))}
+            {nextBuy.data && !nextBuy.data.has_holdings && (
+              <div className="list-card__empty">
+                <Link to="/innehav">Spara dina innehav</Link> så anpassas planen efter vad du redan äger.
+              </div>
             )}
-            <p className="footnote" style={{ opacity: 0.7 }}>
-              Grinden: köp den bekräftade driften (inflöden + intakt trend + inte dyr), inte ryktet
-              före en rapport. Front-loadar du en satellit blir du undervikt kärnan → nästa månads
-              insättning styrs dit automatiskt.
-            </p>
           </div>
-        </details>
-      )}
+          {nextBuy.data?.tilt?.tilt_frac > 0 && (
+            <p className="footnote tilt-note">
+              ⇄ <b>Dynamisk fördelning:</b> {Math.round(nextBuy.data.tilt.tilt_frac * 100)}% av insättningen
+              tiltad från kärnan mot{' '}
+              {Object.entries(nextBuy.data.tilt.pulled_to ?? {})
+                .map(([b]) => ({ sweden: 'Sverige', theme: 'Tema' }[b] ?? b)).join(' + ') || 'satelliter'}
+              {' '}– ett attraktivt läge väger tyngre än ren mål-ifyllnad just nu. Kärngolvet skyddar kärnan;
+              är lägena likvärdiga avgör målvikten.
+            </p>
+          )}
+          {nextBuy.data?.note && <p className="footnote">{nextBuy.data.note}</p>}
+          {nextBuy.data?.theme_niche_note && (
+            <p className="footnote" style={{ opacity: 0.7 }}>
+              {nextBuy.data.theme_niche_note.note}
+            </p>
+          )}
+          {nextBuy.data?.global_theme_note && (
+            <p className="footnote" style={{ opacity: 0.7 }}>
+              {nextBuy.data.global_theme_note.note}
+            </p>
+          )}
 
-      {/* Säljvakten – enda sälj-regeln i köp-och-behåll-disciplinen */}
+          {targetData.data?.target && (
+            <AllocationEditor initial={targetData.data.target} onSaved={() => setReloadKey((k) => k + 1)} />
+          )}
+
+          {/* Opportunistiskt köp – taktiskt front-load denna månad (PEAD-disciplin) */}
+          {nextBuy.data?.opportunity && (
+            <details className="alloc-editor" style={{ marginTop: 10 }}>
+              <summary>
+                Opportunistiskt köp denna månad{' '}
+                {nextBuy.data.opportunity.confirmed
+                  ? <span className="pos">★ {nextBuy.data.opportunity.name} (bekräftad)</span>
+                  : <span style={{ opacity: 0.6 }}>– vänta på bekräftelse</span>}
+              </summary>
+              <div style={{ padding: '8px 2px' }}>
+                {nextBuy.data.opportunity.confirmed ? (
+                  <>
+                    <div className="list-row" style={{ padding: '4px 0' }}>
+                      <div className="list-row__main">
+                        <Link to={`/aktie/${encodeURIComponent(nextBuy.data.opportunity.ticker)}`}
+                          className="list-row__ticker ticker-link">
+                          ★ {nextBuy.data.opportunity.name}
+                        </Link>
+                        <span className="list-row__sub">
+                          {nextBuy.data.opportunity.ticker} · {nextBuy.data.opportunity.note}
+                          {(nextBuy.data.opportunity.confirmations ?? []).length
+                            ? ` · ${nextBuy.data.opportunity.confirmations.join(' · ')}` : ''}
+                        </span>
+                      </div>
+                      <div className="list-row__side">
+                        <span className="list-row__num pos">{fmtSek(nextBuy.data.opportunity.kr)}</span>
+                      </div>
+                    </div>
+                    <p className="footnote">{nextBuy.data.opportunity.advice}</p>
+                  </>
+                ) : (
+                  <p className="footnote">{nextBuy.data.opportunity.advice}</p>
+                )}
+                <p className="footnote" style={{ opacity: 0.7 }}>
+                  Grinden: köp den bekräftade driften (inflöden + intakt trend + inte dyr), inte ryktet
+                  före en rapport. Front-loadar du en satellit blir du undervikt kärnan → nästa månads
+                  insättning styrs dit automatiskt.
+                </p>
+              </div>
+            </details>
+          )}
+
+          {/* Fylla på-läget (OT-regeln): tog hem vinst högre → kursen en marginal under den nivån → caset håller */}
+          {(nextBuy.data?.refill ?? []).length > 0 && (
+            <>
+              <div className="section-head" style={{ marginTop: 10 }}>
+                <h2>
+                  Fylla på-läge
+                  <InfoButton title="Fylla på-regeln">
+                    <p>
+                      Om du tog hem vinsten när säljvakten flaggade, och kursen sedan fallit en bit
+                      under den nivån <b>utan att caset försämrats</b> (inga röda flaggor, inte dyr
+                      värdering, klarar fortfarande kvalitetsbarren) – då kan det vara läge att köpa
+                      tillbaka det du sålde. Rent rådgivande – ingen del av köpplanen ovan.
+                    </p>
+                  </InfoButton>
+                </h2>
+              </div>
+              <div className="list-card">
+                {(nextBuy.data?.refill ?? []).map((s) => (
+                  <div key={s.ticker} className="list-row">
+                    <div className="list-row__main">
+                      <Link to={`/aktie/${encodeURIComponent(s.ticker)}`} className="list-row__ticker ticker-link">
+                        🔄 {s.name}
+                      </Link>
+                      <span className="list-row__sub">{s.why}</span>
+                    </div>
+                    <div className="list-row__side">
+                      <span className="list-row__num pos">−{fmtPct(s.dip)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </details>
+
+      {/* Säljvakten – enda sälj-regeln i köp-och-behåll-disciplinen. Ligger
+          KVAR synlig (inte i "Planera nästa köp") – det här är sälj-larm,
+          inte köpplanering, och ska synas direkt utan extra klick. */}
       {(nextBuy.data?.sell_watch ?? []).length > 0 && (
         <>
           <div className="section-head">
@@ -368,40 +420,6 @@ export function OverviewPage() {
                   ) : (
                     <span className="list-row__num">?</span>
                   )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Fylla på-läget (OT-regeln): tog hem vinst högre → kursen en marginal under den nivån → caset håller */}
-      {(nextBuy.data?.refill ?? []).length > 0 && (
-        <>
-          <div className="section-head">
-            <h2>
-              Fylla på-läge
-              <InfoButton title="Fylla på-regeln">
-                <p>
-                  Om du tog hem vinsten när säljvakten flaggade, och kursen sedan fallit en bit
-                  under den nivån <b>utan att caset försämrats</b> (inga röda flaggor, inte dyr
-                  värdering, klarar fortfarande kvalitetsbarren) – då kan det vara läge att köpa
-                  tillbaka det du sålde. Rent rådgivande – ingen del av köpplanen ovan.
-                </p>
-              </InfoButton>
-            </h2>
-          </div>
-          <div className="list-card">
-            {(nextBuy.data?.refill ?? []).map((s) => (
-              <div key={s.ticker} className="list-row">
-                <div className="list-row__main">
-                  <Link to={`/aktie/${encodeURIComponent(s.ticker)}`} className="list-row__ticker ticker-link">
-                    🔄 {s.name}
-                  </Link>
-                  <span className="list-row__sub">{s.why}</span>
-                </div>
-                <div className="list-row__side">
-                  <span className="list-row__num pos">−{fmtPct(s.dip)}</span>
                 </div>
               </div>
             ))}
