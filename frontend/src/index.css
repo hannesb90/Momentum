@@ -1280,12 +1280,13 @@ h2 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 15px;
+  height: 15px;
   padding: 0;
   border-radius: 50%;
-  font-size: 0.68rem;
+  font-size: 0.58rem;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .qcomposite {
