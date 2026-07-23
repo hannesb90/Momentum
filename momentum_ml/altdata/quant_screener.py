@@ -217,17 +217,24 @@ def score(min_rev_msek=100) -> None:
         print("[score] tom cache.")
         return
     # Filtrera bort det som gör kvant-betyg meningslöst: pre-revenue-skal (biotech/
-    # prospektering med ~0 omsättning → skräp-marginaler) och Health Care (binärt
-    # lotteri, samma exkludering som LLM-screenern). Percentiler räknas på det som är kvar.
+    # prospektering med ~0 omsättning → skräp-marginaler). Omsättningsgolvet
+    # (min_rev_msek) FÅNGAR REDAN det här fallet - ett genuint binärt kliniskt
+    # lotteri (pre-revenue) har typiskt ~0 omsättning och exkluderas av
+    # revenue-filtret ensamt.
+    #
+    # BUGG (fixad, 2026-07-23): en tidigare version uteslöt DÄRUTÖVER hela
+    # sektorn "Health Care" blankt - fångade rätt de genuina pre-revenue-
+    # lotterierna, men rev med sig ETABLERADE, lönsamma bolag som råkar bära
+    # samma sektor-etikett (Swedencare: djurhälsoprodukter, 2 683 Mkr
+    # omsättning; Bonesupport/Senzime: säljande medtech, inte pre-klinisk
+    # forskning). Sektorn i sig säger inget om binärt-lotteri-risken -
+    # omsättningsgolvet gör det jobbet redan, mer träffsäkert.
     min_rev = min_rev_msek * 1e6
-    data, drop_rev, drop_sec = {}, 0, 0
+    data, drop_rev = {}, 0
     for t, rec in raw.items():
         rev = _num(rec.get("total_revenue"))
         if rev is None or rev < min_rev:            # för lite omsättning → ej betygsättbart
             drop_rev += 1
-            continue
-        if "health" in str(rec.get("sector") or "").lower():   # medtech/pharma = binärt lotteri
-            drop_sec += 1
             continue
         rec["_growth"] = next((rec[f] for f in _GROWTH_FIELDS
                                if isinstance(rec.get(f), (int, float))), None)
@@ -259,8 +266,7 @@ def score(min_rev_msek=100) -> None:
     if not data:
         print("[score] inga bolag kvar efter filter.")
         return
-    print(f"[score] filter: −{drop_rev} med < {min_rev_msek} MSEK omsättning, "
-          f"−{drop_sec} health → {len(data)} betygsatta")
+    print(f"[score] filter: −{drop_rev} med < {min_rev_msek} MSEK omsättning → {len(data)} betygsatta")
     groups = {"quality": _group_score(data, _QUALITY), "growth": _group_score(data, _GROWTH),
               "safety": _group_score(data, _SAFETY, sector_relative=True),
               "value": _group_score(data, _VALUE, sector_relative=True)}
@@ -359,12 +365,15 @@ def score_avanza(segment: str = "small", min_rev_msek: float = 10) -> None:
     latest_px = prices.sort_values("date").groupby("ticker")["close"].last()
 
     data: dict = {}
-    drop_rev = drop_sec = drop_px = 0
+    drop_rev = drop_px = 0
     for t, rec in latest.iterrows():
         sector = sector_map.get(t, "")
-        if "health" in str(sector).lower():   # samma exkludering som score()
-            drop_sec += 1
-            continue
+        # BUGG (fixad, 2026-07-23): uteslöt tidigare hela sektorn "Health Care"
+        # blankt (samma fälla som score() hade, se dess kommentar för
+        # resonemanget) - rev med sig lönsamma konsumenthälsobolag (Swedencare)
+        # och säljande medtech (Bonesupport, Senzime), inte bara genuina
+        # pre-revenue kliniska lotterier. Omsättningsgolvet nedan gör det
+        # jobbet mer träffsäkert på egen hand.
         # revenue/net_profit är REDAN i Mkr (miljoner, se kolumnen
         # revenue_unit i fundamentals_from_avanza.csv) - INTE rå SEK. Både
         # min_rev_msek-tröskeln och _ps nedan måste jämföra Mkr mot Mkr,
@@ -402,10 +411,10 @@ def score_avanza(segment: str = "small", min_rev_msek: float = 10) -> None:
         data[t] = row
     if not data:
         print(f"[score_avanza] inga bolag kvar efter filter (−{drop_rev} omsättning, "
-              f"−{drop_sec} health, −{drop_px} saknar pris/aktieantal).")
+              f"−{drop_px} saknar pris/aktieantal).")
         return
     print(f"[score_avanza] {segment}: filter −{drop_rev} < {min_rev_msek} MSEK omsättning, "
-          f"−{drop_sec} health, −{drop_px} saknar pris/aktieantal → {len(data)} betygsatta")
+          f"−{drop_px} saknar pris/aktieantal → {len(data)} betygsatta")
 
     groups = {"quality": _group_score(data, _AVANZA_QUALITY),
               "growth": _group_score(data, _AVANZA_GROWTH),
