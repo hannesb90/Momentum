@@ -21,7 +21,32 @@ npm ci
 npm run build   # bygger dist/ som nginx servar
 ```
 
+## 1b. Kontobundna hemligheter (ALDRIG i git)
+
+Repot är delat/publikt – inget kontobundet ska någonsin committas. `MONTROSE_ACCOUNT_ID`
+(används av `/api/trade-ticket` och den nattliga innehavssynken, steg 7) läses ur en
+miljövariabel (`config.py`), aldrig hårdkodad. Sätt den PER TJÄNST via en systemd
+drop-in i stället för att redigera de committade `.service`-filerna – då hamnar
+värdet bara i `/etc/systemd/system/…`, aldrig i arbetskopian git ser:
+
+```bash
+sudo systemctl edit momentum-api.service
+# klistra in i redigeraren som öppnas:
+#   [Service]
+#   Environment=MONTROSE_ACCOUNT_ID=<ditt-konto-id>
+
+sudo systemctl edit momentum-montrose-holdings.service
+# samma [Service]/Environment-rad här också
+```
+
+Ta reda på ditt konto-ID via Montrose-MCP:n: `python montrose_ticket.py fetch_holdings`
+(kräver att `montrose`-servern redan är lokalt registrerad, se steg 7). Kör
+`sudo systemctl daemon-reload && sudo systemctl restart momentum-api` efter ändringen.
+
 ## 2. API som alltid-på-tjänst
+
+Kräver `MONTROSE_ACCOUNT_ID` satt (se 1b) för att köp-biljett-knappen ska fungera –
+resten av API:t funkar utan den.
 
 ```bash
 sudo cp /opt/momentum/momentum_ml/deploy/momentum-api.service /etc/systemd/system/
@@ -166,7 +191,9 @@ sudo systemctl enable --now momentum-avanza-audit.timer momentum-avanza-calendar
 `momentum-montrose-holdings.timer` kör `sync_montrose_holdings.py
 --from-montrose` vid 00:00 – hämtar innehaven (läs-läge, headless Claude låst
 till `get_holdings`) och skriver `cache/portfolio_holdings.csv`, samma fil
-appen använder. Körs FÖRE nattträningen (02:00) så portfölj-uppdateringen
+appen använder. `MONTROSE_ACCOUNT_ID` (se 1b) är inte hårt krävt här – utan
+den hittas bara inte ISK-kontots tillgängliga köpkraft, resten av synken
+funkar ändå. Körs FÖRE nattträningen (02:00) så portfölj-uppdateringen
 värderar färska innehav. Vägrar skriva vid tomt/trasigt svar (rör aldrig
 befintlig fil då). Befintliga hinkar bevaras; bara nya tickers hink-gissas.
 

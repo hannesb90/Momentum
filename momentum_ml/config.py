@@ -767,7 +767,15 @@ NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
 # säljvakten/takeprofit i appen är rådgivande, ingen knapp säljer härifrån.
 # Alltid ISK-kontot, ALDRIG kreditkontot (hävstång/marginal är uttryckligen
 # uteslutet ur modellen, se PORTFOLIO_TARGET leverage=0).
-MONTROSE_ACCOUNT_ID = "019d24f8-fe28-7918-95fe-86d1fabe3004"   # ISK
+#
+# KONTOBUNDET, INTE KOD: sätts via env var (samma mönster som MOMENTUM_HOME
+# ovan), INTE hårdkodat – detta repo delas/är publikt, och kontots UUID hör
+# inte hemma i git-historiken. Sätt MONTROSE_ACCOUNT_ID=<ditt-konto-id> i
+# systemd-uniterna på Pi:n (momentum-api.service +
+# momentum-montrose-holdings.service), ALDRIG i en committad fil. Ta reda på
+# ditt konto-ID via Montrose-MCP:ns get_holdings, t.ex.
+# `python montrose_ticket.py fetch_holdings`.
+MONTROSE_ACCOUNT_ID = _os.environ.get("MONTROSE_ACCOUNT_ID", "").strip() or None
 CLAUDE_BIN = _os.environ.get("CLAUDE_BIN", _os.path.expanduser("~/.local/bin/claude"))
 # Kontobunden connector (inte lokalt .mcp.json) hinner inte alltid ansluta
 # inom Claude Codes default MCP-timeout (30s) i en färsk headless-process.
