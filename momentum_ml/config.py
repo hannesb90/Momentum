@@ -597,7 +597,15 @@ SENTIMENT_MAX_TOKENS = 400
 QUALITY_MODEL          = "claude-sonnet-4-6"
 QUALITY_CACHE_DIR      = "cache/quality"
 QUALITY_MAX_CHARS      = 24000      # underlag/bolag (senaste rapport + några PM) – rymmer resultaträkningen
-QUALITY_EXCLUDE_SECTORS = ["Health Care"]   # undvik medtech/pharma (binärt lotteri)
+# BUGG (fixad, 2026-07-23): uteslöt tidigare HELA sektorn "Health Care" blankt
+# (motiv: medtech/pharma = binärt kliniskt lotteri) - men samma träffsäkra
+# fix som quant_screener.py fick (se dess kommentar) gäller här: sektorn i
+# sig säger inget om binärt-lotteri-risken, och LLM:en läser ändå bolagets
+# EGNA rapporter/PM - en genuin pre-revenue-chansning (Sprint Bioscience-typ)
+# ska den kunna se och nedgradera själv via textbedömningen, medan ett
+# etablerat konsumenthälsobolag (Swedencare) eller säljande medtech
+# (Bonesupport, Senzime) inte längre exkluderas innan LLM:en ens fått läsa.
+QUALITY_EXCLUDE_SECTORS: list = []
 QUALITY_MARKET_CAP     = ["Small Cap", "Micro Cap", "Nano Cap"]   # tidiga, oupptäckta bolag
 # Värderingströsklar. Lönsamma bolag zonas på vinstmultipel (börsvärde/vinst):
 QUALITY_MULT_CHEAP     = 12        # <= billig, <= FAIR rimlig, över = dyr (EV/EBITDA-stil)
