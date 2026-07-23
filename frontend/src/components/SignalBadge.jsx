@@ -9,6 +9,14 @@ const LABELS = {
   unknown: 'INGEN DATA',
 }
 
-export function SignalBadge({ variant }) {
-  return <span className={`sigbadge sigbadge--${variant}`}>{LABELS[variant] ?? variant}</span>
+export function SignalBadge({ variant, round }) {
+  const label = LABELS[variant] ?? variant
+  if (round) {
+    return (
+      <span className={`sigbadge sigbadge--${variant} sigbadge--round`} title={label}>
+        {label.charAt(0)}
+      </span>
+    )
+  }
+  return <span className={`sigbadge sigbadge--${variant}`}>{label}</span>
 }

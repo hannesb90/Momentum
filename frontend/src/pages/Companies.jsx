@@ -648,7 +648,7 @@ export function CompaniesPage() {
                       </td>
                       <td>
                         {row.prob_up != null ? fmtPct(row.prob_up) : '–'}
-                        {row.pred_signal === 1 && <SignalBadge variant="buy" />}
+                        {row.pred_signal === 1 && <SignalBadge variant="buy" round />}
                       </td>
                       <td className="qcomposite">{row.quant_score == null ? '–' : Math.round(row.quant_score)}</td>
                       <td className="qcomposite">
@@ -658,8 +658,11 @@ export function CompaniesPage() {
                         ) : null}
                       </td>
                       <td>
-                        <span className={`zonebadge zonebadge--${zoneClass(row.zone)}`}>
-                          {ZONE_LABEL[row.zone] ?? String(row.zone).toUpperCase()}
+                        <span
+                          className={`zonebadge zonebadge--${zoneClass(row.zone)} zonebadge--round`}
+                          title={ZONE_LABEL[row.zone] ?? String(row.zone).toUpperCase()}
+                        >
+                          {(ZONE_LABEL[row.zone] ?? String(row.zone).toUpperCase()).charAt(0)}
                         </span>
                         {row.loss ? <span className="losschip" title="Går med förlust – zonad på P/S">förlust</span> : null}
                       </td>

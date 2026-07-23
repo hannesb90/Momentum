@@ -919,6 +919,21 @@ h2 {
   color: var(--text-muted);
 }
 
+/* Rund variant (en bokstav) – används i tabeller där en full pill tar för
+   mycket plats, t.ex. Bolag-listan. Behåller variantens färg, byter form. */
+.sigbadge--round,
+.zonebadge--round {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
 /* ── Filter bar / segmented control ──────────────────────────────────── */
 
 .filter-bar {
