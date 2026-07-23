@@ -203,6 +203,36 @@ Anthropic-nyckel i `~/.momentum.env`, (2) bekräftelse att Pi:n når mfn.se
   claude.ai-connectorn syns inte i headless-läge. `--allowedTools` låser
   varje anrop till exakt search_instruments + create_trade_ticket.
   Användarens riktiga portfölj (~170 k kr) är känslig finansiell data.
+- **Två buggar fixade 2026-07-23** (upptäckta via en användarfråga om en
+  orimlig −8,1% på Hem:s pappersportfölj-widget):
+  1. **Veckodags-ankring**: Yahoo kan leverera en enskild tickers `1wk`-staplar
+     på en ANNAN veckodag än resten av universumet (INCOAX.ST konsekvent
+     tisdags-ankrad sedan 2019, allt annat måndags-ankrat). Utan normalisering
+     blir varje sådan tisdag en HELT EGEN rad i `signals.index`/backtestens
+     datumindex - dubblerade "veckor" som gör `_compute_stats`s CAGR/Sharpe
+     (hårdkodat `ann=52, weeks=len(rets)`) fel, OCH kan trigga en spurios
+     ombalansering i pappershandeln på ett datum där nästan ingen ticker
+     faktiskt har färsk data. Fixat i `data/data_loader.py::_clean`
+     (`resample("W-MON").last()`) - samma mönster som redan fanns i
+     `backtest/accumulation.py::normalize_weekly_panel()` för ETT fristående
+     forskningsskript, nu i huvudpipelinen så ALLA konsumenter skyddas.
+  2. **PaperTrader-segmentläcka**: `PaperTrader()`s `results_dir`-default
+     (`config.RESULTS_DIR`) fångas vid MODUL-IMPORT (main.py:s importrad),
+     INNAN segmentväxlingen (`config.RESULTS_DIR = seg["results_dir"]`) hinner
+     köra i `main()`. Utan explicit `results_dir` skrev båda segmenten hela
+     tiden till SAMMA delade `results/paper_state.json`/`paper_ledger.csv` -
+     `results/small/` fick aldrig sin egen pappersportfölj, bara tyst
+     blandad/överskriven beroende på körordning. Fixat genom
+     `PaperTrader(results_dir=config.RESULTS_DIR)` på anropsplatsen (där
+     värdet redan är rätt segment-satt). Den korrupta delade liggaren gick
+     inte att reda ut i efterhand - arkiverad, båda segmenten börjar om rent.
+     **Läxa**: ett default-argument som pekar på ett modul-nivå-värde som
+     muteras vid körning är en klassisk Python-fälla - fångas vid definition,
+     inte vid anrop. Genomsökt HELA kodbasen efter samma mönster (2026-07-23):
+     `models/ensemble.py::_topn_invested_weights` har en likadan riskfylld
+     signatur (`n: int = config.MAX_POSITIONS`, som också muteras per segment
+     i `main.py`) men triggas ALDRIG i praktiken - båda anropsställena skickar
+     `n=` explicit. Inga andra levande instanser hittades.
 
 ---
 
