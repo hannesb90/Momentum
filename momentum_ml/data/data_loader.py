@@ -245,6 +245,28 @@ def _clean(df: pd.DataFrame, ticker: str) -> Optional[pd.DataFrame]:
     df["Volume"] = df["Volume"].fillna(0)
     df.sort_index(inplace=True)
 
+    # Normalisera till en GEMENSAM måndags-ankrad veckokalender (BUGG, upptäckt
+    # 2026-07-23 medan en användarfråga om "slår modellen index" granskades).
+    # yfinance kan ankra en enskild tickers '1wk'-staplar på en ANNAN veckodag
+    # än resten av universumet - verkligt fall: INCOAX.ST konsekvent
+    # tisdags-ankrad sedan 2019-12-31 (343 rader), alla andra small/micro-
+    # tickers måndags-ankrade. Utan normalisering blir "tisdagen" en HELT EGEN
+    # rad i det kombinerade backtest-datumindexet (backtest/backtester.py:
+    # dates = signals.index.unique()) - en extra "spökvecka" varje sådan
+    # vecka. Small/Micro-segmentets holdout-stats visade 233 rapporterade
+    # "veckor" mot en verklig kalenderlängd på ~116 (2024-04-29 -> idag) -
+    # nästan exakt dubblat - vilket i sin tur gör _compute_stats CAGR/Sharpe/
+    # Sortino fel (hårdkodat ann=52, weeks=len(rets): fel exponent på
+    # annualiseringen när "veckorna" inte är riktiga kalenderveckor). Samma
+    # mönster som redan flaggades och fixades i
+    # backtest/accumulation.py:normalize_weekly_panel() - men den fixen
+    # gällde bara ETT fristående forskningsskript, inte huvudpipelinen
+    # (träning/features/backtest) som använder just den här funktionen. .last()
+    # är en förenkling (ingen riktig OHLC-aggregering av High/Low/Open för de
+    # sällsynta sammanslagna veckorna) men berör bara en handfull rader per
+    # ticker, inte datan i stort.
+    df = df.resample("W-MON").last().dropna(subset=["Close"])
+
     min_rows = config.MIN_HISTORY_WEEKS
     if len(df) < min_rows:
         print(f"  [WARN] {ticker}: för kort historik ({len(df)} veckor), "
