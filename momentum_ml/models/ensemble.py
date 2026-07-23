@@ -112,7 +112,17 @@ def kelly_position_size(
     "inverse_vol" (adopterad) används `raw_kelly` INTE för viktningen (1/vol
     styr), så win_loss_ratio påverkar inte live-signalen. Den blir relevant först
     om conviction-läget återanvänds – estimera den då från data.
+
+    BUGG (fixad, verkligt fall: kodgranskning 2026-07-23): np.clip SANERAR
+    INTE NaN – np.clip(nan, 0.01, 0.99) returnerar nan, som sedan flödar
+    oförändrat genom hela uträkningen till slutresultatet. Ett NaN prob_up
+    (t.ex. ett kalibreringsfel eller en saknad rad i ensemble.combine())
+    gav därför en NaN position_size rakt in i backtesterns portföljvikter,
+    helt tyst. Explicit NaN/Inf-koll krävs FÖRE clip, den kan inte göra
+    jobbet själv.
     """
+    if not np.isfinite(prob_up):
+        return 0.0
     p = np.clip(prob_up, 0.01, 0.99)
     q = 1 - p
     b = max(win_loss_ratio, 0.1)

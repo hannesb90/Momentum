@@ -100,6 +100,20 @@ class MomentumLGBM:
         # cls_models/reg_models – används för datum-medveten prediktion.
         self.split_starts: List[pd.Timestamp] = []
         self.feature_importance_: Optional[pd.DataFrame] = None
+        # Per-split diagnostik (kodgranskning 2026-07-23): feature_importance_
+        # ovan är BARA medelvärdet över alla splits – om viktiga features
+        # faktiskt skiftar mellan perioder (2015-2018 vs 2023-2025) syns det
+        # aldrig i ett medelvärde. De rådata som skulle behövas fanns redan
+        # (cls_importances/reg_importances-listorna i fit_walk_forward) men
+        # kastades bort efter medelvärdesbildningen. Sparas nu istället här.
+        self.feature_importance_history_: Optional[pd.DataFrame] = None
+        # Per-fold (per walk-forward-split) prediktionsdiagnostik på
+        # TEST-fönstret. OBS: det här är INTE en portfölj-Sharpe (ingen
+        # positionsstorlek/kostnad/multi-ticker-aggregering, bara enkel
+        # avkastning/std på de rader modellen skulle köpt i just den
+        # splitten) - ett lättviktigt stabilitetsmått, inte en ersättning
+        # för backtester.run(). Se print_fold_diagnostics().
+        self.fold_diagnostics_: List[dict] = []
 
     # ── Träning ──────────────────────────────────────────────────────────────
 
@@ -136,6 +150,7 @@ class MomentumLGBM:
                 "cls_models": self.cls_models, "reg_models": self.reg_models,
                 "calibrators": self.calibrators, "split_starts": self.split_starts,
                 "cls_importances": cls_imp, "reg_importances": reg_imp,
+                "fold_diagnostics": self.fold_diagnostics_,
             }, tmp)
             os.replace(tmp, path)
         except Exception as e:  # noqa: BLE001 - checkpointen är en optimering, aldrig kritisk
@@ -153,10 +168,23 @@ class MomentumLGBM:
         except Exception:  # noqa: BLE001 - korrupt/ofullständig checkpoint, börja om
             return None
 
-    def fit_walk_forward(self, df: pd.DataFrame) -> "MomentumLGBM":
+    def fit_walk_forward(
+        self,
+        df: pd.DataFrame,
+        train_weeks: int = config.TRAIN_WINDOW_WEEKS,
+        val_weeks: int = config.VAL_WINDOW_WEEKS,
+        step_weeks: int = config.TEST_STEP_WEEKS,
+        embargo_weeks: int = config.EMBARGO_WEEKS,
+    ) -> "MomentumLGBM":
         """
         Tränar walk-forward. df måste ha DatetimeIndex och kolumner i FEATURE_COLS
         samt 'target_signal' och 'target_return'.
+
+        train_weeks/val_weeks/step_weeks/embargo_weeks: överstyr config-
+        defaulten för fönsterstorlekarna (t.ex. ett litet test som vill
+        trigga en split på syntetisk data utan 260v historik). Skickas
+        oförändrade vidare till walk_forward_splits – live-träningen (main.py)
+        anropar utan dessa och får exakt tidigare beteende.
 
         CHECKPOINT/RESUME (2026-07-22, verkligt fall: minnesvakten avbröt
         walk-forward-träningen mitt i split 1/31 flera kvällar i rad - hela
@@ -173,7 +201,8 @@ class MomentumLGBM:
         UTVECKLINGSLOGG - återupptagning inför alltså ingen NY brist på
         reproducerbarhet utöver den som redan finns).
         """
-        splits = walk_forward_splits(df.index)
+        splits = walk_forward_splits(df.index, train_weeks=train_weeks, val_weeks=val_weeks,
+                                      step_weeks=step_weeks, embargo_weeks=embargo_weeks)
         print(f"[LGBM] Walk-forward: {len(splits)} splits")
 
         key = self._checkpoint_key(df)
@@ -187,6 +216,7 @@ class MomentumLGBM:
             self.split_starts = checkpoint["split_starts"]
             cls_importances = checkpoint["cls_importances"]
             reg_importances = checkpoint["reg_importances"]
+            self.fold_diagnostics_ = checkpoint.get("fold_diagnostics", [])
             start_i = checkpoint["next_split"]
             print(f"  [checkpoint] Återupptar från split {start_i + 1}/{len(splits)} "
                   f"({len(self.cls_models)} redan tränade modeller från tidigare försök).")
@@ -206,7 +236,8 @@ class MomentumLGBM:
             cls_model = self._fit_cls(X_tr, y_cls_tr, X_va, y_cls_va)
             self.cls_models.append(cls_model)
             cls_importances.append(cls_model.feature_importance(importance_type="gain"))
-            self.calibrators.append(self._fit_calibrator(cls_model, X_va, y_cls_va))
+            calibrator = self._fit_calibrator(cls_model, X_va, y_cls_va)
+            self.calibrators.append(calibrator)
 
             # Regression
             reg_model = self._fit_reg(X_tr, y_reg_tr, X_va, y_reg_va)
@@ -214,11 +245,31 @@ class MomentumLGBM:
             reg_importances.append(reg_model.feature_importance(importance_type="gain"))
 
             self.split_starts.append(test_d[0])
+
+            # Per-fold diagnostik på TEST-fönstret (aldrig sett av vare sig
+            # träning eller kalibrering) - se attributets docstring i __init__
+            # för vad det INTE är (ingen portfölj-Sharpe).
+            self.fold_diagnostics_.append(
+                self._fold_diagnostics(df, test_d, cls_model, calibrator, i, len(splits))
+            )
+
             self._save_checkpoint(key, i + 1, cls_importances, reg_importances)
 
             print(f"  Split {i+1}/{len(splits)}: "
                   f"träning t.o.m {train_d[-1].date()}, "
                   f"test {test_d[0].date()}–{test_d[-1].date()}")
+
+        # Feature importance PER SPLIT (kodgranskning 2026-07-23) - de rådata
+        # som redan beräknades ovan (cls_importances) men tidigare kastades
+        # bort efter medelvärdesbildningen. En rad per split, en kolumn per
+        # feature, indexerad på splittens test-startdatum - gör det möjligt
+        # att se om viktiga features skiftar mellan perioder (se
+        # print_feature_importance_by_period nedan), inte bara det
+        # tidsoberoende medelvärdet i feature_importance_.
+        if cls_importances:
+            self.feature_importance_history_ = pd.DataFrame(
+                cls_importances, columns=FEATURE_COLS, index=pd.DatetimeIndex(self.split_starts, name="split_start"),
+            )
 
         # Feature importance (genomsnitt över splits)
         self.feature_importance_ = pd.DataFrame({
@@ -280,6 +331,48 @@ class MomentumLGBM:
         calibrator = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
         calibrator.fit(raw_va, y_va)
         return calibrator
+
+    def _fold_diagnostics(
+        self, df: pd.DataFrame, test_d: pd.DatetimeIndex,
+        cls_model: lgb.Booster, calibrator: IsotonicRegression,
+        split_i: int, n_splits: int,
+    ) -> dict:
+        """
+        Enkel, per-fold prediktionsdiagnostik på TEST-fönstret (aldrig sett av
+        träning eller kalibrering i den här splitten).
+
+        VIKTIGT vad det INTE är: ingen portfölj-Sharpe. Ingen positions-
+        storlek, inga kostnader, ingen aggregering över tickers per datum
+        (bara raden-för-raden-avkastning på de rader modellen skulle köpt).
+        Det är ett lättviktigt STABILITETSMÅTT - syftet är att se om
+        prestandan svänger vilt mellan fönster (t.ex. 2.4/2.3/2.1/-0.4/2.2,
+        instabilt) eller ligger jämnt (1.1/1.0/1.2/0.9/1.1, robust), inte att
+        ersätta backtester.run() som redan gör den riktiga, kostnadsjusterade
+        portföljsimuleringen på FULL ensemble-output.
+        """
+        X_te, y_cls_te, y_reg_te = self._slice(df, test_d)
+        out = {
+            "split": split_i + 1, "n_splits": n_splits,
+            "test_start": test_d[0], "test_end": test_d[-1], "n_test": len(X_te),
+            "hit_rate": None, "mean_return_if_bought": None, "pseudo_sharpe": None,
+        }
+        if len(X_te) == 0:
+            return out
+
+        raw = cls_model.predict(X_te)
+        prob = calibrator.transform(raw)
+        bought = prob > 0.5
+
+        out["hit_rate"] = float(np.mean((bought.astype(int)) == y_cls_te))
+        if bought.any():
+            rets = y_reg_te[bought]
+            out["mean_return_if_bought"] = float(np.mean(rets))
+            std = float(np.std(rets))
+            # "pseudo": avkastning/std på EN splits testfönster, inte en
+            # annualiserad portfölj-Sharpe - jämförbar mellan folds, inte
+            # med backtesterns riktiga Sharpe-tal.
+            out["pseudo_sharpe"] = float(np.mean(rets) / std) if std > 0 else None
+        return out
 
     # ── Prediktion ────────────────────────────────────────────────────────────
 
@@ -365,3 +458,46 @@ class MomentumLGBM:
         print(f"Top-{top_n} feature importance (klassifikation)")
         print(f"{'='*50}")
         print(self.feature_importance_.head(top_n).to_string(index=False))
+
+    def print_feature_importance_by_period(self, n_periods: int = 3, top_n: int = 10):
+        """
+        Delar feature_importance_history_ (en rad per walk-forward-split) i
+        n_periods ungefär lika stora KRONOLOGISKA hinkar och visar topp-features
+        per hink. Svarar på: bygger modellen hela tiden på samma signaler, eller
+        skiftar de viktigaste features mellan perioder (ett möjligt instabilitets-
+        tecken, se docs/UTVECKLINGSLOGG.md)?
+        """
+        if self.feature_importance_history_ is None or self.feature_importance_history_.empty:
+            print("Ingen per-split feature-importance-historik – träna modellen först.")
+            return
+        hist = self.feature_importance_history_
+        bucket = pd.qcut(np.arange(len(hist)), q=min(n_periods, len(hist)), duplicates="drop")
+        print(f"\n{'='*60}\nFeature importance per period ({n_periods} hinkar)\n{'='*60}")
+        for label, idx in hist.groupby(bucket).groups.items():
+            rows = hist.loc[idx]
+            start, end = rows.index.min().date(), rows.index.max().date()
+            top = rows.mean(axis=0).sort_values(ascending=False).head(top_n)
+            print(f"\n  {start} → {end}  ({len(rows)} splits)")
+            for feat, val in top.items():
+                print(f"    {feat:<28} {val:,.1f}")
+
+    def print_fold_diagnostics(self):
+        """
+        Skriver ut per-fold (per walk-forward-split) hit rate/avkastning/
+        pseudo-Sharpe, INTE bara ett aggregat – en modell som växlar mellan
+        starka och katastrofala fold är mindre robust än en som ligger jämnt,
+        vilket ett enda medelvärde döljer helt. Se _fold_diagnostics för vad
+        pseudo_sharpe är (och INTE är – ingen portfölj-Sharpe).
+        """
+        if not self.fold_diagnostics_:
+            print("Ingen fold-diagnostik – träna modellen först.")
+            return
+        print(f"\n{'='*70}\nPer-fold diagnostik ({len(self.fold_diagnostics_)} splits)\n{'='*70}")
+        print(f"  {'split':>7} {'test-start':>12} {'n':>6} {'hit-rate':>9} "
+              f"{'avk|köpt':>10} {'pseudo-Sharpe':>14}")
+        for d in self.fold_diagnostics_:
+            hr = f"{d['hit_rate']:.1%}" if d["hit_rate"] is not None else "–"
+            ret = f"{d['mean_return_if_bought']:+.1%}" if d["mean_return_if_bought"] is not None else "–"
+            ps = f"{d['pseudo_sharpe']:.2f}" if d["pseudo_sharpe"] is not None else "–"
+            print(f"  {d['split']:>4}/{d['n_splits']:<3} {str(d['test_start'].date()):>12} "
+                  f"{d['n_test']:>6} {hr:>9} {ret:>10} {ps:>14}")

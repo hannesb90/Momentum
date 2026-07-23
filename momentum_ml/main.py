@@ -333,6 +333,12 @@ def main():
         lgbm.fit_walk_forward(dev_df)
         lgbm.save(f"{config.RESULTS_DIR}/lgbm_model.pkl")
         lgbm.print_feature_importance(top_n=15)
+        # Kodgranskning 2026-07-23: per-fold-stabilitet och feature-drift
+        # över tid syntes tidigare aldrig – bara det tidsoberoende
+        # medelvärdet. Skrivs ut här (samma process som redan tränat,
+        # ingen extra körning), rör inte det som redan sparas/returneras.
+        lgbm.print_fold_diagnostics()
+        lgbm.print_feature_importance_by_period()
         return
 
     if args.train_lstm_only:
