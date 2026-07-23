@@ -71,7 +71,7 @@ def create_ticket(ticker: str, kr: float, account_id: str = None, timeout: int =
     """{"url": ...} eller {"error": ...}."""
     account_id = account_id or getattr(config, "MONTROSE_ACCOUNT_ID", None)
     if not account_id:
-        return {"error": "MONTROSE_ACCOUNT_ID saknas i config.py"}
+        return {"error": "MONTROSE_ACCOUNT_ID saknas – sätt miljövariabeln (se deploy/README.md 1b)"}
     prompt = _TICKET_PROMPT.format(ticker=ticker, base_ticker=_base_ticker(ticker),
                                     kr=round(float(kr)), account_id=account_id)
     return ch.run(prompt, _TICKET_TOOLS, timeout=timeout)
