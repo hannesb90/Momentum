@@ -1922,6 +1922,16 @@ def _takeprofit(rows) -> list:
                                 · distribution: CMF 13v < 0 (flöden UT)
                                 · modellen har släppt bolaget (pred_signal 0)
                                 · sprungit ≥ GAP_PP ifrån index (froth-kontext)
+                                · modellens riktkurs: handlas över bolagets EGEN
+                                  historiska Börsvärde/EBIT(DA)-multipel (90:e
+                                  percentilen, "OT-metoden" formaliserad i
+                                  altdata/model_target_price.py) - EMPIRISKT
+                                  VALIDERAD sälj-signal (docs/UTVECKLINGSLOGG.md
+                                  #25: 26v -3.8%, 52v -25.0% excess EFTER denna
+                                  nivå nås). Till skillnad från köp-sidans
+                                  motsvarighet (samma multipelband, men lägsta
+                                  percentilen) som ÄR TESTAD OCH FÖRKASTAD -
+                                  byggs därför INTE in som köp-signal någonstans.
                               → house money: sälj vinsten, behåll insatsen.
       nivå 3 'sälj'           armerad + TRENDBROTT (kurs < SMA20).
 
@@ -1964,6 +1974,19 @@ def _takeprofit(rows) -> list:
             if fp.exists():
                 for r in csv.DictReader(open(fp, encoding="utf-8")):
                     flows[(r.get("ticker") or "").upper()] = r
+            # Modellens riktkurs (altdata/model_target_price.py, "OT-metoden"
+            # formaliserad - se docs/UTVECKLINGSLOGG.md #25): bolagets EGEN
+            # historiska Börsvärde/EBIT(DA)-multipel (90:e percentilen)
+            # applicerad på DAGENS TTM-resultat. EMPIRISKT VALIDERAT som
+            # sälj-signal (till skillnad från köp-sidan, som är förkastad,
+            # se #25) - kurs EFTER att ha nått denna nivå vänder tydligt
+            # negativ (26v -3.8%, 52v -25.0% mot likaviktat index). Bara
+            # SENASTE raden per ticker (filen växer en rad per körning).
+            model_targets = {}
+            mtp = rd / "model_target_price.csv"
+            if mtp.exists():
+                for r in csv.DictReader(open(mtp, encoding="utf-8")):
+                    model_targets[(r.get("ticker") or "").upper()] = r
         except Exception:  # noqa: BLE001
             continue
         if len(idx) <= weeks:
@@ -2033,6 +2056,10 @@ def _takeprofit(rows) -> list:
                 confirms.append("modellen har släppt bolaget")
             if gap >= gap_min:
                 confirms.append(f"sprungit +{gap:.0%} ifrån index på {weeks}v")
+            mt = model_targets.get(tk, {})
+            if str(mt.get("warn_sell")).lower() == "true":
+                confirms.append(f"modellens riktkurs: handlas över egen-historisk-högsta "
+                                f"{mt.get('metric', 'multipel')}-multipel ({mt.get('own_high_mult', '?')}x)")
             broken = str(fl.get("below_sma20")) == "1"
 
             if gain is None:
