@@ -542,7 +542,8 @@ function FundamentalsCard({ ticker }) {
         </InfoButton>
       </h3>
       <div className="stat-grid" style={{ marginBottom: 16 }}>
-        <StatCard label="Marknadsvärde" value={latest.mcap_msek != null ? fmtSek(latest.mcap_msek * 1e6) : '–'} />
+        <StatCard label="Marknadsvärde"
+          value={latest.mcap_msek != null ? `${Number(latest.mcap_msek).toLocaleString('sv-SE', { maximumFractionDigits: 0 })} Mkr` : '–'} />
         <StatCard label={`Omsättning (${latest.period ?? 'senaste'})`}
           value={latest.revenue_msek != null ? `${fmtNum(latest.revenue_msek, 1)} Mkr` : '–'} />
         <StatCard label="Omsättningstillväxt"
