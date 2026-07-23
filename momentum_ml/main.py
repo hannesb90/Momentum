@@ -829,7 +829,17 @@ def main():
             # de-riskar i svag marknad precis som backtesten (ingen blankning).
             if current_exposure < 1.0:
                 tw = {t: w * current_exposure for t, w in tw.items()}
-            paper = PaperTrader()
+            # BUGG (fixad 2026-07-23): PaperTrader()s results_dir-default
+            # (config.RESULTS_DIR) fångas vid MODUL-IMPORT (raden längst upp i
+            # den här filen), INNAN segmentväxlingen ovan (config.RESULTS_DIR =
+            # seg["results_dir"]) hinner köra. Utan explicit results_dir skrev
+            # därför BÅDA segmenten hela tiden till samma delade
+            # results/paper_state.json/paper_ledger.csv - aldrig till
+            # results/small/ - så småbolagens pappersportfölj aldrig haft en
+            # egen historik, bara tyst blandats med/skrivit över storbolagens
+            # beroende på körordning. Explicit results_dir=config.RESULTS_DIR
+            # (nu det RÄTTA, segment-satta värdet på denna rad) isolerar dem.
+            paper = PaperTrader(results_dir=config.RESULTS_DIR)
             row = paper.step(latest_date, tw, data)
             if row:
                 print(f"\nSTEG 6.6: Pappershandel registrerad {row['date']}: "
