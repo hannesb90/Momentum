@@ -8,6 +8,7 @@ som referens för handel åt en bred publik.*
 
 | Vill du... | Läs |
 |---|---|
+| Köra en egen instans (eget konto, egna API-nycklar, egen data – inget hårdkodat i repot) | **[`SETUP.md`](SETUP.md)** |
 | Förstå *varför* koden ser ut som den gör – allt resonemang, alla tester och resultat, vad som är prövat & förkastat | **[`docs/UTVECKLINGSLOGG.md`](docs/UTVECKLINGSLOGG.md)** |
 | Se den externa kvalitets-/forskningsgranskningen (rigor, brister, roadmap) | [`docs/MODELLANALYS.md`](docs/MODELLANALYS.md) |
 | Köra/ändra modellen | [`momentum_ml/README.md`](momentum_ml/README.md) + `momentum_ml/config.py` (alla parametrar med inline-rationale) |
