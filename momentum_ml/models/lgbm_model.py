@@ -284,6 +284,41 @@ class MomentumLGBM:
 
         return self
 
+    def fit_serving(self, df: pd.DataFrame, val_weeks: int = 26) -> "MomentumLGBM":
+        """
+        SERVERINGSMODELL (UTVECKLINGSLOGG #29): EN modell tränad på ALL
+        labelad data (t.o.m. nu − FORWARD_WEEKS), för appens LIVE-
+        rekommendationer. Bakgrund: den frusna holdouten (104v) + val-
+        fönstret (52v) + embargot gör att fit_walk_forward:s SISTA modell
+        är tränad på data som slutar ~3-4 år bakåt – och det är den som
+        gjort appens "dagens" prediktioner. Staleness-testet (#29) visade
+        att färska folds ger blandat-positivt utfall 2024-2026 där den
+        gamla modellen rankade konsekvent FEL håll (IC −0,056).
+
+        FÅR ALDRIG användas för holdout-/backtest-mätning – den är tränad
+        på holdout-perioden. Mätningen ägs helt av fit_walk_forward
+        (lgbm_model.pkl / signals.csv), som lämnas orörd.
+
+        Sista `val_weeks` veckorna används för early stopping + isotonisk
+        kalibrering (inget embargo: syftet är färskhet, inte mätning).
+        """
+        dates = df.index.unique().sort_values()
+        if len(dates) <= val_weeks + 20:
+            raise ValueError("För lite data för en serveringsmodell.")
+        train_dates, val_dates = dates[:-val_weeks], dates[-val_weeks:]
+        X_tr, y_cls_tr, y_reg_tr = self._slice(df, train_dates)
+        X_va, y_cls_va, y_reg_va = self._slice(df, val_dates)
+
+        cls_model = self._fit_cls(X_tr, y_cls_tr, X_va, y_cls_va)
+        self.cls_models = [cls_model]
+        self.calibrators = [self._fit_calibrator(cls_model, X_va, y_cls_va)]
+        self.reg_models = [self._fit_reg(X_tr, y_reg_tr, X_va, y_reg_va)]
+        self.split_starts = [dates[0]]
+        print(f"[LGBM] Serveringsmodell: träning {train_dates[0].date()} -> "
+              f"{train_dates[-1].date()}, val/kalibrering {val_dates[0].date()} -> "
+              f"{val_dates[-1].date()} ({len(X_tr):,} rader)")
+        return self
+
     def _fit_cls(self, X_tr, y_tr, X_va, y_va) -> lgb.Booster:
         ds_tr = lgb.Dataset(X_tr, label=y_tr)
         ds_va = lgb.Dataset(X_va, label=y_va, reference=ds_tr)

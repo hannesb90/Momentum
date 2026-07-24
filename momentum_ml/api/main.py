@@ -185,12 +185,24 @@ def get_latest_signals(segment: Optional[str] = None):
     path = _require(_seg_dir(segment) / "signals.csv")
     seg_dir = _seg_dir(segment)
     mt = path.stat().st_mtime
+    # Serveringsöverlagring (UTVECKLINGSLOGG #29): signals_serving.csv (färsk
+    # modell tränad på all data) vinner per ticker över mätfilens medvetet
+    # frusna prediktioner - men bara om den inte är äldre än mätfilen (en
+    # fallerad serveringsträning ska inte låta gamla rader vinna).
+    serving_path = seg_dir / "signals_serving.csv"
+    smt = serving_path.stat().st_mtime if serving_path.exists() else None
+    if smt is not None and smt < mt:
+        smt = None
     enrich, enrich_mtimes = _signal_screener_enrichment(seg_dir)
-    cache_key = (mt, enrich_mtimes)
+    cache_key = (mt, smt, enrich_mtimes)
     hit = _LATEST_CACHE.get(str(path))
     if hit is not None and hit[0] == cache_key:
         return hit[1]
     df = _signals_tail_df(path)
+    if smt is not None:
+        # concat i denna ordning + groupby().last() => serving-raden (sist)
+        # vinner för varje ticker den täcker.
+        df = pd.concat([df, _signals_tail_df(serving_path)], ignore_index=True)
     latest = df.groupby("ticker").last().reset_index()
     if not enrich.empty:
         latest = latest.set_index("ticker").join(enrich).reset_index()

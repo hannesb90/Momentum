@@ -773,17 +773,35 @@ _SIGNALS_CACHE: dict = {}
 def _latest_signals(path) -> dict:
     """{TICKER: {prob_up, pred_signal, name}} – senaste raden per ticker ur en
     signals.csv. Memoiserad per (fil, mtime): samma fil läses annars flera
-    gånger per next_buy (_load_scores för båda segmenten + _momentum_picks)."""
+    gånger per next_buy (_load_scores för båda segmenten + _momentum_picks).
+
+    Serveringsöverlagring (UTVECKLINGSLOGG #29): finns en signals_serving.csv
+    bredvid (färsk modell tränad på all data, till skillnad från mät-filens
+    medvetet frusna, upp till 4 år gamla modeller) vinner DESS senaste rad per
+    ticker. Mätfilen förblir enda källan för backtest/tune-skript."""
+    p = Path(path)
     try:
-        mt = Path(path).stat().st_mtime
+        mt = p.stat().st_mtime
     except OSError:
         return {}
-    key = str(path)
+    sp = p.with_name("signals_serving.csv")
+    try:
+        smt = sp.stat().st_mtime
+    except OSError:
+        smt = None
+    if smt is not None and smt < mt:
+        # Serving-filen är ÄLDRE än mätfilen (t.ex. serveringsträningen
+        # fallerade i natt men mätkedjan gick igenom) - behandla den som
+        # frånvarande i stället för att låta gamla rader vinna.
+        smt = None
+    key = str(p)
     hit = _SIGNALS_CACHE.get(key)
-    if hit is not None and hit[0] == mt:
+    if hit is not None and hit[0] == (mt, smt):
         return hit[1]
-    out = _latest_signals_uncached(path)
-    _SIGNALS_CACHE[key] = (mt, out)
+    out = _latest_signals_uncached(p)
+    if smt is not None:
+        out.update(_latest_signals_uncached(sp))   # färsk modell vinner per ticker
+    _SIGNALS_CACHE[key] = ((mt, smt), out)
     return out
 
 

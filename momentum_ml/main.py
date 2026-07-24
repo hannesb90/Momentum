@@ -68,6 +68,9 @@ def parse_args():
     p.add_argument("--predict-only", action="store_true", help="Ladda modeller, ingen träning")
     p.add_argument("--train-lgbm-only", action="store_true",
                    help="(internt) Tränar bara LightGBM i denna process")
+    p.add_argument("--train-serving-only", action="store_true",
+                   help="Träna BARA serveringsmodellen (LGBM på ALL labelad data, "
+                        "för appens live-signaler - se UTVECKLINGSLOGG #29)")
     p.add_argument("--train-lstm-only", action="store_true",
                    help="(internt) Tränar bara LSTM i denna process")
     p.add_argument("--no-cache",     action="store_true", help="Hämta ny data (ignorera cache)")
@@ -189,6 +192,47 @@ def _save_feature_cache(args, all_features) -> None:
         pd.to_pickle(all_features, _feature_cache_path(args))
     except Exception as e:  # noqa: BLE001 - cachen är en optimering, aldrig kritisk
         print(f"  [WARN] Kunde inte skriva feature-cache (icke-kritiskt): {e}")
+
+
+def _attach_meta_and_limits(df: pd.DataFrame, data: dict) -> pd.DataFrame:
+    """Sektor/namn + köp-/sälj-limit på senaste raden. Delas av mät-signalerna
+    (signals.csv) och serveringssignalerna (signals_serving.csv, #29) så appen
+    får exakt samma schema oavsett källa.
+
+    Sektor: frontend (portföljfliken) visar sektorexponering/koncentrationsrisk.
+    Namn: sök/visning på bolagsnamn, fallback till tickern.
+    Limit: köpsignaler får limit på ref × (1 + BUY_LIMIT_TOLERANCE) så en
+    gap-upp inte äter edgen; icke-rekommenderade får sälj-limit på
+    ref × (1 - SELL_LIMIT_TOLERANCE). Bara senaste veckans rader (de man
+    faktiskt handlar på nu)."""
+    df["sector"] = df["ticker"].map(config.SECTOR_MAP).fillna("Okänd")
+    df["name"] = df["ticker"].map(config.NAME_MAP).fillna(df["ticker"])
+    df["limit_price"] = None
+    df["sell_limit"] = None
+    if len(df):
+        last_date = df.index.max()
+        ref_close = {}
+        for t in df.loc[[last_date], "ticker"].unique():
+            tdf = data.get(t)
+            s = tdf["Close"].dropna() if tdf is not None and "Close" in tdf else None
+            if s is not None and len(s):
+                ref_close[t] = float(s.iloc[-1])
+        tol = config.BUY_LIMIT_TOLERANCE
+        stol = config.SELL_LIMIT_TOLERANCE
+        last_mask = df.index == last_date
+        df.loc[last_mask, "limit_price"] = [
+            round(ref_close[tk] * (1 + tol), 2)
+            if sig == 1 and tk in ref_close else None
+            for tk, sig in zip(df.loc[last_mask, "ticker"],
+                               df.loc[last_mask, "pred_signal"])
+        ]
+        df.loc[last_mask, "sell_limit"] = [
+            round(ref_close[tk] * (1 - stol), 2)
+            if sig != 1 and tk in ref_close else None
+            for tk, sig in zip(df.loc[last_mask, "ticker"],
+                               df.loc[last_mask, "pred_signal"])
+        ]
+    return df
 
 
 def main():
@@ -341,6 +385,17 @@ def main():
         lgbm.print_feature_importance_by_period()
         return
 
+    if args.train_serving_only:
+        # OBS: model_df, INTE dev_df - serveringsmodellen tränar medvetet på
+        # all labelad data inkl. holdout-perioden. Den används ENBART för
+        # appens live-rekommendationer (signals_serving.csv), aldrig för
+        # mätning (se fit_serving-docstringen + UTVECKLINGSLOGG #29).
+        print("\nSTEG 3.5: Tränar serveringsmodell (LGBM, all labelad data)...")
+        lgbm = MomentumLGBM()
+        lgbm.fit_serving(model_df)
+        lgbm.save(f"{config.RESULTS_DIR}/lgbm_model_serving.pkl")
+        return
+
     if args.train_lstm_only:
         print("\nSTEG 4: Tränar LSTM...")
         lstm = MomentumLSTM()
@@ -404,6 +459,17 @@ def main():
         result = subprocess.run(lgbm_cmd)
         if result.returncode != 0:
             sys.exit(result.returncode)
+
+        # Serveringsmodellen (#29) - egen process av samma OpenMP/SIGILL-skäl
+        # som övriga steg. Får INTE stoppa nattkedjan om den fallerar:
+        # mätpipelinen (signals.csv/backtest/stats) är oberoende av den, och
+        # appens läsare faller tillbaka på signals.csv om signals_serving.csv
+        # saknas/är gammal.
+        print("\n[Main] Tränar serveringsmodell i ny process...")
+        result = subprocess.run(base_cmd + ["--train-serving-only"])
+        if result.returncode != 0:
+            print("  [WARN] Serveringsträningen misslyckades - appen faller "
+                  "tillbaka på mätmodellens signaler tills nästa lyckade natt.")
 
         if not args.skip_lstm:
             print("\n[Main] Tränar LSTM i ny process...")
@@ -551,48 +617,45 @@ def main():
         buy_threshold=buy_threshold,
     )
 
-    # Sektor per ticker – så frontend (portföljfliken) kan visa
-    # sektorexponering/koncentrationsrisk över användarens egna innehav,
-    # inte bara modellsignal per enskild ticker.
-    signals_df["sector"] = signals_df["ticker"].map(config.SECTOR_MAP).fillna("Okänd")
-    # Bolagsnamn per ticker – så frontend kan visa namn (inte bara ticker) i
-    # listor/aktievyn och låta användaren söka på bolagsnamn. Faller tillbaka på
-    # tickern om namn saknas (t.ex. ad-hoc --tickers-körningar).
-    signals_df["name"] = signals_df["ticker"].map(config.NAME_MAP).fillna(signals_df["ticker"])
-
-    # Inköpsgräns (limit) för AKTUELLA köpsignaler: lägg en limitorder på
-    # referenskurs × (1 + BUY_LIMIT_TOLERANCE) så att en gap-upp inte äter edgen.
-    # Sätts bara på senaste veckans rader (de man faktiskt handlar på nu).
-    signals_df["limit_price"] = None
-    if len(signals_df):
-        last_date = signals_df.index.max()
-        ref_close = {}
-        for t in signals_df.loc[[last_date], "ticker"].unique():
-            df = data.get(t)
-            s = df["Close"].dropna() if df is not None and "Close" in df else None
-            if s is not None and len(s):
-                ref_close[t] = float(s.iloc[-1])
-        tol = config.BUY_LIMIT_TOLERANCE
-        stol = config.SELL_LIMIT_TOLERANCE
-        last_mask = signals_df.index == last_date
-        signals_df.loc[last_mask, "limit_price"] = [
-            round(ref_close[tk] * (1 + tol), 2)
-            if sig == 1 and tk in ref_close else None
-            for tk, sig in zip(signals_df.loc[last_mask, "ticker"],
-                               signals_df.loc[last_mask, "pred_signal"])
-        ]
-        # Sälj-limit för icke-rekommenderade namn (sälj-kandidater om du äger dem):
-        # sälj inte in i ett gap-ned, lägg sälj-limit på minst ref × (1 - stol).
-        signals_df["sell_limit"] = None
-        signals_df.loc[last_mask, "sell_limit"] = [
-            round(ref_close[tk] * (1 - stol), 2)
-            if sig != 1 and tk in ref_close else None
-            for tk, sig in zip(signals_df.loc[last_mask, "ticker"],
-                               signals_df.loc[last_mask, "pred_signal"])
-        ]
+    signals_df = _attach_meta_and_limits(signals_df, data)
 
     signals_df.to_csv(f"{config.RESULTS_DIR}/signals.csv")
     print(f"  Signals sparade: {config.RESULTS_DIR}/signals.csv")
+
+    # ── 5.6 Serveringssignaler (#29): färsk modell för appens live-beslut ─────
+    # Mätmodellernas (walk-forward + frusen holdout) SISTA modell är tränad på
+    # data som slutar ~3-4 år bakåt - rätt för ÄRLIG mätning, fel för skarpa
+    # rekommendationer. Serveringsmodellen (fit_serving, all labelad data) gör
+    # om prediktionerna för de frusna datumen till signals_serving.csv, som
+    # appens "senaste signal"-läsare föredrar (portfolio._latest_signals,
+    # /api/signals/latest). signals.csv/backtest/stats förblir HELT orörda -
+    # tune-/mätskript ska aldrig läsa serving-filen. LGBM-only (mätensemblen
+    # är 60/40 LGBM/LSTM; ett serverings-LSTM vore dubblad nattlig träningstid
+    # på Pi:n - medvetet bortvalt tills värdet är bevisat).
+    serving_pkl = Path(f"{config.RESULTS_DIR}/lgbm_model_serving.pkl")
+    if serving_pkl.exists() and holdout_start is not None:
+        print("\nSTEG 5.6: Serveringssignaler (färsk modell, se UTVECKLINGSLOGG #29)...")
+        serving = MomentumLGBM.load(str(serving_pkl))
+        s_preds = {}
+        for ticker, feat_df in all_features.items():
+            fd = feat_df[feat_df.index >= holdout_start].dropna(subset=FEATURE_COLS[:5])
+            if len(fd) > 0:
+                s_preds[ticker] = serving.predict(fd)
+        s_feature_dfs = {t: d for t, d in
+                         ((t, df[df.index >= holdout_start].assign(ticker=t))
+                          for t, df in all_features.items()) if len(d) > 0}
+        serving_df = build_full_output(
+            s_preds, None, s_feature_dfs, ensemble,
+            ta_filter=args.ta_filter, ta_strictness=args.ta_strictness,
+            buy_threshold=buy_threshold,
+        )
+        serving_df = _attach_meta_and_limits(serving_df, data)
+        serving_df.to_csv(f"{config.RESULTS_DIR}/signals_serving.csv")
+        print(f"  Serveringssignaler sparade: {config.RESULTS_DIR}/signals_serving.csv "
+              f"({serving_df.index.min().date()} -> {serving_df.index.max().date()})")
+    else:
+        print("\nSTEG 5.6: Ingen serveringsmodell (kör --train-serving-only) - "
+              "appen använder mätmodellens signaler rakt av.")
 
     # Misstänkta prishopp (ojusterade corporate actions/data-glitchar, se
     # data_loader._check_suspicious_jumps) som sammanföll med en aktiv köp-
