@@ -5,6 +5,8 @@ Tar in sekvenser av features (config.LSTM_SEQUENCE_LEN veckor) och förutsäger
 samma targets som LightGBM-modellen för enkel ensemble-integrering.
 """
 
+import hashlib
+import os
 import numpy as np
 import pandas as pd
 import torch
@@ -138,6 +140,58 @@ class MomentumLSTM:
         print(f"[LSTM] Använder: {self.device} "
               f"({torch.get_num_threads()} trådar)")
 
+    # ── Checkpoint/resume (2026-07-24) ──────────────────────────────────────
+    # LSTM-träning saknade helt den checkpoint-mekanism LGBM fick 2026-07-22
+    # (UTVECKLINGSLOGG #20) efter upprepade nattkrascher mitt i träningen.
+    # Verkligt fall 2026-07-24: en LSTM-ablation kördes i 12+ timmar på en
+    # ARM-CPU utan GPU (139k rader × 26v-sekvenser - genuint tungt, inte
+    # fastfruset) och fick dödas manuellt för att frigöra minne åt annat
+    # arbete - all träning gick förlorad, ingen återupptagning möjlig. Samma
+    # hash-baserade princip som LGBM (kod+config+data → nyckel, ogiltigförklara
+    # tyst vid ändring), atomär temp-fil+os.replace, sparas EFTER varje epok
+    # (epok är den naturliga granulariteten - en enskild epok kan i sig ta
+    # flera minuter på den här hårdvaran).
+    def _checkpoint_path(self) -> Path:
+        return Path(config.RESULTS_DIR) / "_lstm_checkpoint.pt"
+
+    def _checkpoint_key(self, train_df: pd.DataFrame, val_df: pd.DataFrame) -> str:
+        code = Path(__file__).read_text() + Path(config.__file__).read_text()
+        code_hash = hashlib.sha1(code.encode()).hexdigest()[:16]
+        data_hash = hashlib.sha1(
+            pd.util.hash_pandas_object(train_df, index=True).values.tobytes()
+            + pd.util.hash_pandas_object(val_df, index=True).values.tobytes()
+        ).hexdigest()[:16]
+        return f"{code_hash}_{data_hash}"
+
+    def _save_checkpoint(self, key: str, epoch: int, optimizer, scheduler,
+                          best_val: float, best_state: dict, no_improve: int) -> None:
+        path = self._checkpoint_path()
+        tmp = path.with_suffix(".tmp")
+        try:
+            torch.save({
+                "key": key, "next_epoch": epoch + 1,
+                "net_state": self.net.state_dict(),
+                "optimizer_state": optimizer.state_dict(),
+                "scheduler_state": scheduler.state_dict(),
+                "scaler": self.scaler,
+                "best_val": best_val, "best_state": best_state, "no_improve": no_improve,
+            }, tmp)
+            os.replace(tmp, path)
+        except Exception as e:  # noqa: BLE001 - checkpointen är en optimering, aldrig kritisk
+            print(f"  [WARN] Kunde inte skriva LSTM-checkpoint (icke-kritiskt): {e}", flush=True)
+
+    def _load_checkpoint(self, key: str):
+        path = self._checkpoint_path()
+        if not path.exists():
+            return None
+        try:
+            saved = torch.load(path, map_location=self.device, weights_only=False)
+            if saved.get("key") != key:
+                return None
+            return saved
+        except Exception:  # noqa: BLE001 - korrupt/ofullständig checkpoint, börja om
+            return None
+
     # ── Träning ──────────────────────────────────────────────────────────────
 
     def fit(
@@ -166,9 +220,24 @@ class MomentumLSTM:
         cls_loss_fn = nn.BCELoss()
         reg_loss_fn = nn.HuberLoss()
 
-        best_val, no_improve = np.inf, 0
+        best_val, no_improve, start_epoch = np.inf, 0, 1
+        best_state = {k: v.clone() for k, v in self.net.state_dict().items()}
 
-        for epoch in range(1, epochs + 1):
+        key = self._checkpoint_key(train_df, val_df)
+        checkpoint = self._load_checkpoint(key)
+        if checkpoint is not None:
+            self.net.load_state_dict(checkpoint["net_state"])
+            optimizer.load_state_dict(checkpoint["optimizer_state"])
+            scheduler.load_state_dict(checkpoint["scheduler_state"])
+            self.scaler = checkpoint["scaler"]
+            best_val = checkpoint["best_val"]
+            best_state = checkpoint["best_state"]
+            no_improve = checkpoint["no_improve"]
+            start_epoch = checkpoint["next_epoch"]
+            print(f"  [checkpoint] Återupptar LSTM-träning från epoch {start_epoch}/{epochs} "
+                  f"(best_val={best_val:.4f}).", flush=True)
+
+        for epoch in range(start_epoch, epochs + 1):
             # Träning
             self.net.train()
             tr_loss = 0.0
@@ -195,9 +264,12 @@ class MomentumLSTM:
             avg_tr = tr_loss / max(len(train_dl), 1)
             avg_va = va_loss / max(len(val_dl), 1)
 
-            if epoch % 10 == 0:
-                print(f"  Epoch {epoch:3d}/{epochs} | "
-                      f"train={avg_tr:.4f} | val={avg_va:.4f}")
+            # flush=True + varje epok (inte var 10:e): utan flush kan print
+            # sitta obuffrad i timmar när stdout går till en fil, inte en
+            # terminal (verkligt fall 2026-07-24 - ingen framstegsrad syntes
+            # på flera timmar trots att träningen gick på för fullt).
+            print(f"  Epoch {epoch:3d}/{epochs} | "
+                  f"train={avg_tr:.4f} | val={avg_va:.4f}", flush=True)
 
             # Early stopping
             if avg_va < best_val - 1e-5:
@@ -206,11 +278,18 @@ class MomentumLSTM:
                 no_improve = 0
             else:
                 no_improve += 1
-                if no_improve >= patience:
-                    print(f"  Early stopping vid epoch {epoch}.")
-                    break
+
+            self._save_checkpoint(key, epoch, optimizer, scheduler, best_val, best_state, no_improve)
+
+            if no_improve >= patience:
+                print(f"  Early stopping vid epoch {epoch}.", flush=True)
+                break
 
         self.net.load_state_dict(best_state)
+        # Klart - checkpointen behövs inte längre (samma princip som LGBM:s
+        # walk-forward-checkpoint: en avslutad träning ska inte kunna råka
+        # återupptas från en gammal, redan färdig körning).
+        self._checkpoint_path().unlink(missing_ok=True)
 
         # Kalibrera på valideringsfönstret (ALDRIG träningsdata – då kalibrerar
         # man bort modellens egen overfitting i stället för att korrigera den).

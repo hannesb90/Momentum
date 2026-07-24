@@ -98,9 +98,15 @@ EXIT_SMA_WEEKS     = 20
 # bredare SMA-trend eller marknadsregim hunnit reagera än. En hög-vol-aktie
 # får automatiskt en vidare stop (i kronor) än en låg-vol-aktie - samma
 # princip som SIZING_MODE="inverse_vol" fast för EXIT i stället för sizing.
-# Default AV: måste A/B:as (tune_atr_stop.py, in-sample/OOS) innan adoption -
-# se SIZING_MODE/VOL_TARGET_ENABLED för hur "adopterat" dokumenteras här.
-ATR_STOP_ENABLED   = False
+# A/B:ad 2026-07-24 (UTVECKLINGSLOGG #36, large-segmentet, holdout+helperiod):
+# mult=2,5 höjer holdout-CAGR 4,0%->5,4% och förbättrar MaxDD (-9,5%->-8,9%)
+# UTAN att kosta helperioden (14,7% oförändrat) - enda av fyra testade
+# "täpp säljvakts-luckan"-idéer den dagen som faktiskt höll (#32/#33 gjorde
+# det sämre; en ren SMA-trendexit gjorde det också sämre). Skiljer sig från
+# de förkastade genom att vara per-position OCH volatilitetsnormaliserad -
+# ger en volatil extremvinnare mer utrymme innan den triggar, i stället för
+# en generell SMA/regim-regel som klipper vinnare och förlorare lika hårt.
+ATR_STOP_ENABLED   = True
 ATR_STOP_MULT      = 2.5      # antal ATR under peak innan sälj (svep 1.5-4.0)
 ATR_WINDOW_WEEKS   = 10       # rullande fönster för True Range-snittet
 
