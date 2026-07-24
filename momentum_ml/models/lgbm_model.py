@@ -118,6 +118,14 @@ class MomentumLGBM:
         self.split_starts: List[pd.Timestamp] = []
         self.split_ends: List[pd.Timestamp] = []
         self._stale_warned: bool = False   # se _warn_if_stale - en varning per instans, inte per rad
+        # Extern kodgranskning 2026-07-25, Fas 1 punkt 8: featurelistan
+        # (namn OCH ORDNING) VID TRÄNINGSTILLFÄLLET - FEATURE_COLS är en
+        # modulnivå-lista i feature_engineering.py, inte sparad på modellen
+        # tidigare. Ändras FEATURE_COLS (ny/borttagen/omordnad feature)
+        # efter att en modell tränats, skulle df[FEATURE_COLS].values i
+        # predict() tyst mata fel kolumn till fel plats i trädet - inga
+        # NaN/krascher, bara felaktiga prediktioner. Valideras i predict().
+        self.feature_cols_: List[str] = []
         self.feature_importance_: Optional[pd.DataFrame] = None
         # Per-split diagnostik (kodgranskning 2026-07-23): feature_importance_
         # ovan är BARA medelvärdet över alla splits – om viktiga features
@@ -228,6 +236,7 @@ class MomentumLGBM:
         splits = walk_forward_splits(df.index, train_weeks=train_weeks, val_weeks=val_weeks,
                                       step_weeks=step_weeks, embargo_weeks=embargo_weeks)
         print(f"[LGBM] Walk-forward: {len(splits)} splits")
+        self.feature_cols_ = list(FEATURE_COLS)
 
         key = self._checkpoint_key(df)
         start_i = 0
@@ -349,6 +358,7 @@ class MomentumLGBM:
         dates = df.index.unique().sort_values()
         if len(dates) <= val_weeks + 20:
             raise ValueError("För lite data för en serveringsmodell.")
+        self.feature_cols_ = list(FEATURE_COLS)
         train_dates, val_dates = dates[:-val_weeks], dates[-val_weeks:]
         X_tr, y_cls_tr, y_reg_tr = self._slice(df, train_dates)
         X_va, y_cls_va, y_reg_va = self._slice(df, val_dates)
@@ -358,6 +368,7 @@ class MomentumLGBM:
         self.calibrators = [self._fit_calibrator(cls_model, X_va, y_cls_va)]
         self.reg_models = [self._fit_reg(X_tr, y_reg_tr, X_va, y_reg_va)]
         self.split_starts = [dates[0]]
+        self.split_ends = [dates[-1]]
         print(f"[LGBM] Serveringsmodell: träning {train_dates[0].date()} -> "
               f"{train_dates[-1].date()}, val/kalibrering {val_dates[0].date()} -> "
               f"{val_dates[-1].date()} ({len(X_tr):,} rader)")
@@ -505,12 +516,31 @@ class MomentumLGBM:
         lämna av (default) för faktisk live/serving-prediktion, där
         fallbacken är avsedd, inte ett fel.
         """
+        # Featurevalidering (Fas 1 punkt 8): kör ALLTID, inte bara i strict-
+        # läge - en tyst kolumn-/ordningsmiss ger felaktiga prediktioner,
+        # inte extrapolering (det senare kan vara avsett, se strict ovan).
+        # Bakåtkompatibelt: äldre sparade modeller saknar feature_cols_
+        # (tom lista, attributet fanns inte innan denna kodändring) - då
+        # görs ingen kontroll i stället för en falsk krasch.
+        trained_cols = getattr(self, "feature_cols_", None)
+        if trained_cols and list(FEATURE_COLS) != trained_cols:
+            missing = set(trained_cols) - set(FEATURE_COLS)
+            added = set(FEATURE_COLS) - set(trained_cols)
+            raise ValueError(
+                f"predict(): FEATURE_COLS har ändrats sedan modellen tränades - "
+                f"saknas nu: {sorted(missing) or '–'}, nya: {sorted(added) or '–'}"
+                + (", ELLER ordningen har ändrats (samma mängd, annan sekvens)."
+                   if not missing and not added else ".")
+                + " Träna om modellen mot aktuell FEATURE_COLS."
+            )
+
         X = df[FEATURE_COLS].fillna(0).values
         model_idx = self._select_model_idx(df.index)
         self._warn_if_stale(df.index)
 
-        if strict and self.split_starts and self.split_ends:
-            lo, hi = pd.Timestamp(min(self.split_starts)), pd.Timestamp(max(self.split_ends))
+        split_ends = getattr(self, "split_ends", [])
+        if strict and self.split_starts and split_ends:
+            lo, hi = pd.Timestamp(min(self.split_starts)), pd.Timestamp(max(split_ends))
             dates = pd.DatetimeIndex(df.index)
             out_of_range = dates[(dates < lo) | (dates > hi)]
             if len(out_of_range):
