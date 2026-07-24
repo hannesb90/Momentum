@@ -46,19 +46,13 @@ rankningsformel) ger samma signatur. Nästa punkt (sizing via Kelly) är
 en genuint annan mekanism men bör testas med rimlig skepsis, inte
 förväntan om att den ensam löser indexgapet.
 
-## 🔄 Pågår just nu
-
-- 🔄 **Fas 1, punkt 1: låt `pred_return` påverka positionsSTORLEKEN** –
-  `kelly_position_size()` ignorerar `pred_return` helt (verifierat), och
-  `SIZING_MODE=inverse_vol` styr storleken oavsett prognosens magnitud
-  idag. Testar `score = pred_return/forecast_vol`-baserad tilt i stället
-  för/utöver inverse-vol.
-
 ## Fas 1 – korrigera tydliga kopplingsproblem (rekommenderad startordning)
 
-1. 🔄 `[ ]` **[SAKNAS, KRITISK] Låt `pred_return` påverka positionsSTORLEKEN**
-   – se "Pågår just nu" ovan. **Separat från punkt 2** – punkt 2 ändrar
-   bara VAL, inte VIKT.
+1. `[x]` **[SAKNAS, KRITISK] Låt `pred_return` påverka positionsSTORLEKEN**
+   (isolerat, oförändrat urval) → **#50, 🟡 Neutralt/marginellt positivt**
+   (första icke-negativa resultatet idag – holdout oförändrat, helperiod
+   marginellt bättre. För litet utslag för säker slutsats, kandidat för
+   vidare validering, ingen SAAB-räddning sker eftersom urvalet är orört).
 2. `[x]` **[DELVIS, KRITISK] Ranka inte topp-N enbart på `prob_up`** →
    **#49, ❌ Avvisat** (fjärde bekräftelsen av SAAB-mönstret, se varningsruta).
 3. `[ ]` **[SAKNAS, HÖG] Validera att regressionen tillför ekonomiskt värde**
@@ -200,6 +194,7 @@ visade SHAP-bidrag ≈ **0.00000** även då – ingen hävstång att hämta:
 - `liquidity_rank`-cap → **#47, ❌ Avvisat**.
 - Åldersviktade sample weights → **#48, ❌ Avvisat**.
 - Kombinerad rankningsscore (`prob_up × max(pred_return,0)`) → **#49, ❌ Avvisat**.
+- `pred_return`/vol-sizing, isolerat (oförändrat urval) → **#50, 🟡 Neutralt/marginellt positivt**.
 
 ## Större arkitekturfråga – inte ett snabbtest
 
