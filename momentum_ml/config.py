@@ -1072,10 +1072,20 @@ SEGMENTS = {
     # (UNIVERSE_MIN_AVG_TURNOVER) rensar ändå de ohandlade – kategorin ensam
     # ska inte utesluta bolag ur signaler/kurser. Nano exkluderas fortsatt
     # (klassningen är opålitlig i botten och spread/likviditet oftast otjänlig).
+    # forward_weeks/rebalance_weeks/embargo_weeks = 52 (mot large-segmentets
+    # 13v-default): UTVECKLINGSLOGG #30/#31, en riktig 1-års-etikett (inte den
+    # första, cache-korrumperade #30-mätningen - se #31) slår index i BÅDA
+    # fönstren för small (holdout +8,6% CAGR mot index +1,8%, gap −14,3pp;
+    # helperiod +2,6pp/år) och krymper drawdowen (helperiod-MaxDD 35,5%→19,7%
+    # mot dagens 13v). Motsatsen för large (52v gav 36pp EFTER index i
+    # holdout, sämre än 13v) - large behåller därför 13v. #19:s "momentum är
+    # en entry-edge, inte en ägar-edge" håller alltså bara för small i denna
+    # mätning; large-segmentets 2022-regimbrott adresseras separat (#28/#29).
     "small": {"label": "Småbolag",  "market_cap": ["Small Cap", "Micro Cap"], "results_dir": "results/small",
               "max_positions": 20, "conviction_blend": 0.5,
               "index_ticker": "XACT-SMABOLAG.ST", "index_label": "Svenska Småbolag (XACT)",
-              "gate_enabled": False, "gate_min": 0.10},
+              "gate_enabled": False, "gate_min": 0.10,
+              "forward_weeks": 52, "rebalance_weeks": 52, "embargo_weeks": 52},
 }
 DEFAULT_SEGMENT = "large"
 

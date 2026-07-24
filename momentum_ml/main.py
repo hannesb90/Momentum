@@ -262,9 +262,22 @@ def main():
             config.MOMENTUM_GATE_ENABLED = seg["gate_enabled"]
         if "gate_min" in seg:
             config.MOMENTUM_GATE_MIN = seg["gate_min"]
+        # Per-segment prognoshorisont (UTVECKLINGSLOGG #30/#31): small vann
+        # tydligt på en 1-års-etikett (52v), large gjorde det INTE - se
+        # SEGMENTS-kommentaren i config.py för siffrorna. REBALANCE_WEEKS/
+        # EMBARGO_WEEKS följer alltid med FORWARD_WEEKS (aldrig bara den ena)
+        # - annars läcker labels över embargot eller ombalanseras i fel takt
+        # mot vad modellen faktiskt är tränad att förutsäga.
+        if "forward_weeks" in seg:
+            config.FORWARD_WEEKS = seg["forward_weeks"]
+        if "rebalance_weeks" in seg:
+            config.REBALANCE_WEEKS = seg["rebalance_weeks"]
+        if "embargo_weeks" in seg:
+            config.EMBARGO_WEEKS = seg["embargo_weeks"]
         print(f"[Segment] {args.segment} ({seg['label']}): "
               f"market_cap={seg['market_cap']} -> {config.RESULTS_DIR}/ "
-              f"(N={config.MAX_POSITIONS}, blend={config.CONVICTION_BLEND})")
+              f"(N={config.MAX_POSITIONS}, blend={config.CONVICTION_BLEND}, "
+              f"horisont={config.FORWARD_WEEKS}v)")
     # Rebalanseringsläge (calendar/event) – för A/B utan att redigera config.
     if args.rebalance_mode:
         config.REBALANCE_MODE = args.rebalance_mode
