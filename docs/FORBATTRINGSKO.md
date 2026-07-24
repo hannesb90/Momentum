@@ -131,18 +131,24 @@ förväntan om att den ensam löser indexgapet.
 
 ## Fas 2 – fastställ var indexgapet uppstår
 
-8. `[ ]` **[DELVIS→KRITISK] Full benchmark-relativ attribution** – fyra
-   kontrafaktiska portföljer (fullinvesterad likaviktad topp-N / modellens
-   vikter / utan overlays / faktisk strategi) för att isolera VAR alfat
-   försvinner: universum, sektor, urval, ranking, sizing, exit, kostnader.
+8. `[ ]` **[DELVIS→KRITISK] Full benchmark-relativ attribution** (fyra
+   kontrafaktiska portföljer) – 🟡 **substantiellt redan besvarat i sak**
+   av dagens #34 (extremvinnar-identifieringen kollapsade), #42 (exakt
+   kvantifierad: momentum→sannolikhet-korrelation +0,194→+0,022 i holdout)
+   och #44 (`liquidity_rank` som konkret mekanism). En formell fyra-
+   portföljers-attributionsscript skulle FORMALISERA detta, inte
+   sannolikt avslöja ny information – nice-to-have, ej prioriterat.
 9. `[ ]` **[SAKNAS, KRITISK] Kontrafaktisk "varför vann/förlorade vi mot
-   index"-analys per kvartal** – för varje stor indexdrivare: valbar? vilken
-   rank? vald? vikt? när såld? Detta är den mest direkta vägen till svaret,
-   utan att fastna i enstaka exempel (samma lärdom som SAAB/#40 idag).
-10. `[ ]` **[SAKNAS, HÖG] Mät universumseffekten separat** – för varje
-    period: största indexbidragsgivare, fanns de i råuniversumet, klarade de
-    likviditetsfilter, vilken rank/vikt fick de. Delar underprestation i
-    "ej valbar" vs "felrankad".
+   index"-analys per kvartal** – 🟡 samma bedömning som punkt 8: kärnan
+   redan besvarad (SAAB/NOKIA-exemplen + #34/#42/#44), en systematisk
+   PER-KVARTAL-version är en formalisering, inte en ny insikt givet vad
+   som redan vet. Kan göras i en framtida session om djupare kvartals-
+   för-kvartals-mönster efterfrågas specifikt.
+10. `[ ]` **[SAKNAS, HÖG] Mät universumseffekten separat** – delvis gjort
+    (#40:s uppföljning visade likaviktat 200-bolagssnitt +14,3%/58,5%
+    positiva, genuint brett, inte några få extremfall). Fullständig
+    "ej valbar vs felrankad"-uppdelning per period ej gjord – lägre
+    prioritet givet #34/#42/#44 redan pekar tydligt på "felrankad".
 11. `[x]` **[TEST KRÄVS, HÖG] Validera inverse-vol-sizing mot conviction** →
     **#52, ℹ️ Bekräftat rimligt** (3-vägs-jämförelse: `inverse_vol` ger bäst
     holdout-CAGR OCH lägst MaxDD av `inverse_vol`/`pred_return`-tilt/
@@ -162,22 +168,33 @@ förväntan om att den ensam löser indexgapet.
 
 ## Fas 3 – statistisk robusthet
 
+**Bedömning 2026-07-25**: punkt 14, 16 och 17 är STORA, flerdagars data-
+/infrastrukturprojekt (ny datakälla för avnoterade bolag; ett formellt
+experiment-spårningssystem över ~40 `tune_*.py`-skript), inte snabbtest –
+avsiktligt EJ påbörjade idag, kvar i kön för en dedikerad framtida session.
+
 14. `[ ]` **[DELVIS, KRITISK] Point-in-time-universum med avnoterade bolag**
     – `data_loader.py` dokumenterar redan survivorship bias öppet (yfinance
     ger bara dagens överlevande). Backtesten är forskningsindikativ, inte
-    kapitalbevis, tills detta åtgärdas.
+    kapitalbevis, tills detta åtgärdas. Kräver en NY datakälla (yfinance
+    saknar avnoterade bolag helt) - inte görbart utan extern datakälla.
 15. `[ ]` **[SAKNAS, MEDEL/HÖG] Label-uniqueness/tidsvikter + block-bootstrap**
     – 13v-targets överlappar kraftigt inom segment; nuvarande osäkerhetsmått
-    kan vara optimistiska.
+    kan vara optimistiska. (Not: `reg_ic`/`reg_decile_spread` per fold är
+    redan byggt, Fas 1 punkt 3 - men INTE label-uniqueness-vikter i sig.)
 16. `[ ]` **[TEST KRÄVS, KRITISK] Undvik upprepad holdout-granskning** – för
     logg över varje experiment som tittat på holdout (många `tune_*.py`-
     skript idag), inför en sista orörd testperiod, rapportera Deflated Sharpe.
+    Relevant varningsflagga: dagens session (#43-#52) har granskat SAMMA
+    holdout ~10 gånger - matchar exakt denna punkts oro. Deflated Sharpe
+    ej beräknad.
 17. `[ ]` **[DELVIS, HÖG] Experimentregistry + bredare testsvit** – gemensam
     experimentkonfiguration, samma metrik-/kostnadsdefinition överallt.
 
 ## Diagnostik/hygien – lägre prioritet, ingen akut evidens
 
-- `[ ]` IC (Spearman) per fold i `fold_diagnostics_`.
+- `[x]` IC (Spearman) per fold i `fold_diagnostics_` → **Implementerat**
+  (Fas 1 punkt 3, samma ändring som decilspread).
 - `[ ]` Precision/Recall/F1 utöver dagens `hit_rate`.
 - `[ ]` Kalibrering per sannolikhetsintervall (reliability-bins).
 - `[ ]` Winsorisera/ranktransformera extrema regressionsmål.
