@@ -300,6 +300,15 @@ def build_full_output(
             # så portföljen alltid fylls. Kontanter uppstår bara när i stort sett
             # inget bolag har positiv förväntan (bred nedgång) + via marknadsfiltret.
             eligible = row["pred_return"] > config.MIN_EXPECTED_RETURN
+            # Fonder/ETF:er (cap_tier="Fond": XACT-index, tyska iShares/
+            # Xtrackers-sektor-ETF:er) laddas medvetet in för sektor-momentum-
+            # signaler (se load_sweden_universe()) men är INGA portfölj-
+            # kandidater - upptäckt 2026-07-24 att de läckte in som faktiska
+            # köpsignaler (t.ex. XACT-SVERIGE.ST/XACT-OMXS30.ST rekommenderade
+            # som "småbolagsköp"). config.CAP_TIER_MAP saknar okänd ticker →
+            # get() default "" (inte "Fond") → utesluter aldrig av misstag.
+            if config.CAP_TIER_MAP.get(ticker, "") == "Fond":
+                eligible = False
 
             # ── Valbart TA-bekräftelsefilter (opt-in, ovanpå momentum) ────────
             ta_score = 1.0

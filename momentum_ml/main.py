@@ -295,12 +295,14 @@ def main():
         tickers, sweden_sector_map, cap_tier_map, sweden_name_map = load_sweden_universe(min_market_cap=args.market_cap)
         config.SECTOR_MAP.update(sweden_sector_map)
         config.NAME_MAP.update(sweden_name_map)
+        config.CAP_TIER_MAP.update(cap_tier_map)
         if args.include_ngm:
             ngm_tickers, ngm_sector_map, ngm_cap_map, ngm_name_map = load_ngm_universe()
             tickers = tickers + ngm_tickers
             cap_tier_map.update(ngm_cap_map)
             config.SECTOR_MAP.update(ngm_sector_map)
             config.NAME_MAP.update(ngm_name_map)
+            config.CAP_TIER_MAP.update(ngm_cap_map)
             print(f"  --include-ngm: +{len(ngm_tickers)} NGM/Spotlight-tickers (Avanza-prisdata)")
     else:
         tickers = config.DEFAULT_TICKERS

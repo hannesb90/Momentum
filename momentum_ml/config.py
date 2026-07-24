@@ -396,6 +396,17 @@ MAX_SECTOR_EXPOSURE = 0.40   # max 40% portföljvikt i en enskild sektor
 # frontend visar namn + ticker i listor/aktievyn och kan söka på bolagsnamn.
 NAME_MAP: dict = {}
 
+# Cap-tier per ticker (Large/Mid/Small/Micro Cap ELLER "Fond" för ETF:er/
+# indexfonder). Fylls från load_sweden_universe() i main.py, samma mönster
+# som SECTOR_MAP/NAME_MAP. Används av ensemble.build_full_output för att
+# UTESLUTA fonder från köpkandidat-urvalet (2026-07-24: XACT-fonder och
+# tyska iShares/Xtrackers-ETF:er som medvetet laddas in för sektor-
+# momentum-signaler, se load_sweden_universe():s docstring, läckte in som
+# faktiska KÖPSIGNALER - 85 ggr i large, 448 ggr i small, inkl. att
+# XACT-SVERIGE.ST/XACT-OMXS30.ST rekommenderades som "småbolagsköp" 17
+# gånger. Fonder ska ge sektor-signaler, aldrig vara en portföljkandidat).
+CAP_TIER_MAP: dict = {}
+
 # Kanoniska kategorilistor för sektor/cap-tier som modell-features
 # (features/feature_engineering.py: sector_code, cap_tier_code). Fast
 # ordning krävs eftersom träning och prediktion körs i separata processer
