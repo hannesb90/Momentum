@@ -196,6 +196,54 @@ class MomentumLGBM:
         except Exception:  # noqa: BLE001 - korrupt/ofullständig checkpoint, börja om
             return None
 
+    @staticmethod
+    def _sanity_check(df: pd.DataFrame) -> None:
+        """
+        Extern kodgranskning 2026-07-25 (hygienlistan): automatiska
+        kontroller FÖRE träning - varnar (kraschar inte, en degenererad
+        indata ska inte tysta stoppa en hel nattkörning) om:
+          - NaN i target_signal/target_return (borde redan vara droppat av
+            to_model_df, men en framtida ändring där kunde tyst läcka in det)
+          - oändliga värden i FEATURE_COLS
+          - konstanta features (noll varians - ingen information, bara brus
+            för trädsplittarna)
+          - dubblettrader (samma (datum, alla features) mer än en gång)
+          - för få positiva ELLER negativa target_signal-labels (en nästan
+            ren klass gör klassificeringen meningslös)
+        """
+        n = len(df)
+        if n == 0:
+            print("  [sanity] VARNING: tom träningsdata.")
+            return
+
+        for col in ("target_signal", "target_return"):
+            if col in df.columns:
+                n_nan = int(df[col].isna().sum())
+                if n_nan:
+                    print(f"  [sanity] VARNING: {n_nan}/{n} NaN i '{col}' - borde redan vara droppat.")
+
+        X = df[FEATURE_COLS]
+        n_inf = int(np.isinf(X.select_dtypes(include=[np.number])).sum().sum())
+        if n_inf:
+            print(f"  [sanity] VARNING: {n_inf} oändliga värden i FEATURE_COLS.")
+
+        const_cols = [c for c in FEATURE_COLS if c in X.columns and X[c].nunique(dropna=True) <= 1]
+        if const_cols:
+            print(f"  [sanity] VARNING: {len(const_cols)} konstanta features (ingen information): {const_cols[:10]}"
+                  + (" ..." if len(const_cols) > 10 else ""))
+
+        n_dup = int(df.duplicated(subset=["target_signal", "target_return"] + FEATURE_COLS).sum())
+        if n_dup:
+            print(f"  [sanity] VARNING: {n_dup}/{n} exakta dubblettrader (datum+alla features+target).")
+
+        if "target_signal" in df.columns:
+            pos = int((df["target_signal"] == 1).sum())
+            neg = n - pos
+            pos_frac = pos / n if n else 0.0
+            if pos_frac < 0.05 or pos_frac > 0.95:
+                print(f"  [sanity] VARNING: kraftigt obalanserade klasser - {pos} positiva/{neg} negativa "
+                      f"({pos_frac:.1%} positiva).")
+
     def fit_walk_forward(
         self,
         df: pd.DataFrame,
@@ -233,6 +281,7 @@ class MomentumLGBM:
         som en ostörd körning, inte bara "giltiga" - avvikelser vore ett
         reproducerbarhetsfel värt att undersöka, inte förväntat brus).
         """
+        self._sanity_check(df)
         splits = walk_forward_splits(df.index, train_weeks=train_weeks, val_weeks=val_weeks,
                                       step_weeks=step_weeks, embargo_weeks=embargo_weeks)
         print(f"[LGBM] Walk-forward: {len(splits)} splits")
@@ -454,7 +503,9 @@ class MomentumLGBM:
             "split": split_i + 1, "n_splits": n_splits,
             "test_start": test_d[0], "test_end": test_d[-1], "n_test": len(X_te),
             "hit_rate": None, "mean_return_if_bought": None, "pseudo_sharpe": None,
-            "reg_ic": None, "reg_decile_spread": None,
+            "reg_ic": None, "reg_decile_spread": None, "n_bought": None,
+            "cls_best_iteration": getattr(cls_model, "best_iteration", None),
+            "reg_best_iteration": getattr(reg_model, "best_iteration", None),
         }
         if len(X_te) == 0:
             return out
@@ -462,6 +513,7 @@ class MomentumLGBM:
         raw = cls_model.predict(X_te)
         prob = calibrator.transform(raw)
         bought = prob > 0.5
+        out["n_bought"] = int(bought.sum())   # extern kodgranskning: upptäck degenererat "köp allt/inget"
 
         out["hit_rate"] = float(np.mean((bought.astype(int)) == y_cls_te))
         if bought.any():
