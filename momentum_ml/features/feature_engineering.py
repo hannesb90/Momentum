@@ -323,15 +323,25 @@ def add_cross_sectional(all_features: Dict[str, pd.DataFrame]) -> Dict[str, pd.D
 # överinvaliderande (en helt orelaterad config-ändring tvingar också en
 # ombyggnad) snarare än att riskera en tyst, felaktig cache-träff i en
 # modell som handlar riktiga pengar.
-_FEATURE_CODE_HASH: Optional[str] = None
+_FEATURE_SRC_HASH: Optional[str] = None
 
 
 def _feature_code_hash() -> str:
-    global _FEATURE_CODE_HASH
-    if _FEATURE_CODE_HASH is None:
+    """KRITISK LÄRDOM (2026-07-24, #31): käll-TEXT-hashen ensam räcker inte.
+    Ett skript som muterar config.FORWARD_WEEKS i runtime (horisonttester)
+    fick cache-TRÄFF på features vars target_return var byggd med det GAMLA
+    värdet - tyst fel horisont i träningen, och omvänt förgiftades
+    produktionscachen när ett sådant skript byggde om. Nyckeln inkluderar
+    därför numera de RUNTIME-värden som påverkar den cachade artefaktens
+    innehåll (target-horisonten + target-definitionen), utöver källtexten."""
+    global _FEATURE_SRC_HASH
+    if _FEATURE_SRC_HASH is None:
         src = Path(__file__).read_text() + Path(config.__file__).read_text()
-        _FEATURE_CODE_HASH = hashlib.sha1(src.encode()).hexdigest()[:16]
-    return _FEATURE_CODE_HASH
+        _FEATURE_SRC_HASH = hashlib.sha1(src.encode()).hexdigest()[:16]
+    runtime = (f"|fwd={config.FORWARD_WEEKS}|xs={getattr(config, 'XS_TARGET', False)}"
+               f"|q={getattr(config, 'XS_TARGET_QUANTILE', None)}"
+               f"|thr={getattr(config, 'RETURN_THRESHOLD', None)}")
+    return hashlib.sha1((_FEATURE_SRC_HASH + runtime).encode()).hexdigest()[:16]
 
 
 def _price_data_hash(df: pd.DataFrame) -> str:
