@@ -479,7 +479,7 @@ class MomentumLGBM:
 
     # ── Prediktion ────────────────────────────────────────────────────────────
 
-    def predict(self, df: pd.DataFrame) -> pd.DataFrame:
+    def predict(self, df: pd.DataFrame, strict: bool = False) -> pd.DataFrame:
         """
         Returnerar DataFrame med kolumner:
           prob_up, pred_signal, pred_return
@@ -493,10 +493,34 @@ class MomentumLGBM:
         (dagens/levande signaler) får senaste modellen – den enda som
         faktiskt vore tillgänglig i produktion vid den tidpunkten. Datum
         före första test-fönstret (sällan förekommande) får äldsta modellen.
+
+        strict (extern kodgranskning 2026-07-25, Fas 1 punkt 6): False
+        (default, ALLA befintliga anrop opåverkade) = ovanstående live/
+        serving-fallback tillåts tyst. True = kastar ValueError om NÅGOT
+        datum ligger utanför [första split_start, sista split_end] - dvs.
+        inget verkligt walk-forward-testfönster täcker det, bara
+        extrapolering med senaste modellen. Använd strict=True i backtest-/
+        forskningskod där ett datum SKA ha en äkta historisk modell (aldrig
+        av misstag blanda in live-extrapolering i ett historiskt resultat);
+        lämna av (default) för faktisk live/serving-prediktion, där
+        fallbacken är avsedd, inte ett fel.
         """
         X = df[FEATURE_COLS].fillna(0).values
         model_idx = self._select_model_idx(df.index)
         self._warn_if_stale(df.index)
+
+        if strict and self.split_starts and self.split_ends:
+            lo, hi = pd.Timestamp(min(self.split_starts)), pd.Timestamp(max(self.split_ends))
+            dates = pd.DatetimeIndex(df.index)
+            out_of_range = dates[(dates < lo) | (dates > hi)]
+            if len(out_of_range):
+                raise ValueError(
+                    f"predict(strict=True): {len(out_of_range)} datum ligger utanför "
+                    f"tränade testfönster [{lo.date()}, {hi.date()}] - t.ex. "
+                    f"{out_of_range[0].date()}. Inget verkligt walk-forward-testfönster "
+                    f"täcker dem, bara extrapolering med senaste modellen. Använd "
+                    f"strict=False om detta är avsedd live/serving-prediktion."
+                )
 
         cls_preds = np.empty(len(df))
         raw_preds = np.empty(len(df))
