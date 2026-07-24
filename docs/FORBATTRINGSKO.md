@@ -11,31 +11,36 @@ just nu · `⛔` ej tillämplig/redundant (motiverat nedan)
 
 ---
 
-## Pågår just nu
+## ⚠️ Robust bevisad slutsats (tre oberoende test, samma mönster)
 
-- 🔄 **Åldersviktade sample weights** (exponentiell decay, half-life 104v/2 år)
-  – mjukare variant av #43 (som avvisade en hård 130v-fönsteravskärning).
-  Testskript: `age_weight_test.py`. Väntar på resultat.
+Native NaN (#46), `liquidity_rank`-cap (#47) och åldersviktning (#48) fick
+ALLA SAAB köpt i holdout (11, 10 resp. 27/104 veckor) – och ALLA gjorde
+holdout SÄMRE, inte bättre. **"Få modellen att köpa SAAB" är inte längre en
+hypotes att jaga – det är nu bevisat att det inte är vägen till bättre
+holdout-resultat**, oavsett metod (feature-nivå eller sample-weight-nivå).
+Punkter nedan som primärt är riktade SAAB-räddningar är nedprioriterade av
+det skälet; punkter som angriper en ANNAN mekanism (t.ex. topp-N-urvalet
+generellt) står kvar och utvärderas på egna meriter.
 
 ## Kö – näst i tur (prioritetsordning)
 
 1. `[ ]` **Kombinerad rankningsscore** `score = prob_up × max(pred_return, 0)`
    för topp-N-urvalet i `ensemble.py` – i stället för att klassificering och
    regression används separat. Högst prioriterat: matchar #45:s fynd att
-   urvalet EFTER prediktionen är flaskhalsen, inte feature engineering.
+   urvalet EFTER prediktionen är flaskhalsen, inte feature engineering. OBS:
+   detta angriper en ANNAN mekanism än de tre avvisade (#46/#47/#48) – inte
+   en riktad SAAB-räddning – ska INTE förväntas upprepa mönstret automatiskt.
 2. `[ ]` **Regressionsobjective: Huber eller Quantile** i stället för RMSE –
    billigt, välspecificerat, kompletterar punkt 1 (RMSE drar extrema
    uppgångar mot medelvärdet).
-3. `[ ]` **Avkastningsviktade sample weights** (magnitud, inte ålder) – vikta
-   upp observationer med stor FAKTISK framtida avkastning. Separat hypotes
-   från det pågående ålders-testet, kan kombineras senare.
-4. `[ ]` **Diagnostik (ingen omträning): dämpar tvärsnittsnormalisering
+3. `[ ]` **Diagnostik (ingen omträning): dämpar tvärsnittsnormalisering
    extremvinnare?** – jämför råa `roc_13w`-extremvärden mot normaliserade
    `mom_12_1`/`resid_mom`-percentiler för kända extremvinnare (SAAB, NOKIA).
    Billig förstudie innan ev. omträning.
-5. `[ ]` **Tak på volatilitetsnämnaren i `resid_mom`** – viss SHAP-evidens
+4. `[ ]` **Tak på volatilitetsnämnaren i `resid_mom`** – viss SHAP-evidens
    (konsekvent negativt bidrag på SAAB/NOKIA, växande över tid), men mindre
-   magnitud än `liquidity_rank`. Lägre prioritet än 1–4.
+   magnitud än `liquidity_rank`. Lägre prioritet, och OBS ovanstående
+   slutsats – kan mycket väl visa samma mönster igen.
 
 ## Testade idag – se `docs/UTVECKLINGSLOGG.md` för fullständig motivering
 
@@ -49,9 +54,11 @@ just nu · `⛔` ej tillämplig/redundant (motiverat nedan)
 - `[x]` Native NaN-hantering i stället för `fillna(0)` → **#46, ❌ Avvisat**
   (fick SAAB köpt 11/104v men holdout blev sämre i aggregat).
 - `[x]` Tak/winsorisering på `liquidity_rank` (CAP=0,90) → **#47, ❌ Avvisat**
-  (samma mönster som #46 – SAAB köpt 10/104v, holdout ändå sämre. **Viktig
-  metaobservation: två oberoende metoder fick båda SAAB köpt och båda
-  gjorde holdout sämre** – SAAB generaliserar inte till en systematisk fix).
+  (samma mönster som #46 – SAAB köpt 10/104v, holdout ändå sämre).
+- `[x]` Åldersviktade sample weights (half-life 104v) → **#48, ❌ Avvisat**
+  (SAAB köpt 27/104v – ännu oftare – men både holdout OCH helperiod sämre.
+  **Tredje oberoende bekräftelsen: robust bevisat, inte längre en hypotes**,
+  se varningsrutan ovan).
 
 ## Bevisat overifierade/lågt prioriterade för DETTA problem
 
