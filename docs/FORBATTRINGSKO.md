@@ -143,9 +143,11 @@ förväntan om att den ensam löser indexgapet.
     period: största indexbidragsgivare, fanns de i råuniversumet, klarade de
     likviditetsfilter, vilken rank/vikt fick de. Delar underprestation i
     "ej valbar" vs "felrankad".
-11. `[ ]` **[TEST KRÄVS, HÖG] Validera inverse-vol-sizing mot conviction** –
-    jämför `inverse_vol`/`equal_weight`/`conviction`/riskjusterad score på
-    Sharpe OCH excess CAGR.
+11. `[x]` **[TEST KRÄVS, HÖG] Validera inverse-vol-sizing mot conviction** →
+    **#52, ℹ️ Bekräftat rimligt** (3-vägs-jämförelse: `inverse_vol` ger bäst
+    holdout-CAGR OCH lägst MaxDD av `inverse_vol`/`pred_return`-tilt/
+    `conviction`; conviction köper högre helperiod-CAGR mot sämre risk och
+    sämre holdout – ingen ändring motiverad).
 12. `[ ]` **[TEST KRÄVS, MEDEL/HÖG] Kontrollera dubbla riskjusteringar** –
     volskalad momentum-feature + prob_up-urval + inverse-vol-sizing +
     marknadsfilter/sektor-/korrelationsspärrar kan tillsammans dämpa
