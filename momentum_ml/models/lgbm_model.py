@@ -22,6 +22,17 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
 from features.feature_engineering import FEATURE_COLS
 
+# Extern kodgranskning 2026-07-25, Fas 1 punkt 4: early stopping och isotonic-
+# kalibrering använde tidigare EXAKT samma valideringsfönster - kalibratorn
+# var därmed inte helt oberoende av modellvalet (early stopping har redan
+# "sett" och optimerat mot just detta fönster). Delar nu valideringsfönstret
+# KRONOLOGISKT i två delar i stället: den tidigare delen för early stopping,
+# den SENARE (närmast test-fönstret, mest representativ för regimen modellen
+# faktiskt ska användas i) för kalibrering. Ingen ändring av
+# walk_forward_splits egna train/val/test-datum krävs - bara hur
+# valideringsfönstret ANVÄNDS internt i fit_walk_forward.
+CALIBRATION_VAL_FRACTION = 0.4
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Walk-forward splitter
@@ -246,11 +257,28 @@ class MomentumLGBM:
                 self._save_checkpoint(key, i + 1, cls_importances, reg_importances)
                 continue
 
+            # Dela valideringsfönstret kronologiskt: tidigare del -> early
+            # stopping, senare del -> kalibrering (se CALIBRATION_VAL_FRACTION
+            # ovan). Faller tillbaka på HELA val_d för båda om den senare
+            # delen skulle bli för liten (litet valideringsfönster/få rader
+            # per datum) - hellre än att krascha eller kalibrera på nästan
+            # ingen data.
+            val_dates_sorted = pd.DatetimeIndex(val_d).sort_values().unique()
+            split_i_val = int(len(val_dates_sorted) * (1 - CALIBRATION_VAL_FRACTION))
+            val_d_stop = val_dates_sorted[:split_i_val]
+            val_d_calib = val_dates_sorted[split_i_val:]
+            X_va_calib, y_cls_va_calib, _ = self._slice(df, val_d_calib)
+            if len(val_d_stop) == 0 or len(val_d_calib) == 0 or len(X_va_calib) < 30:
+                X_va_stop, y_cls_va_stop = X_va, y_cls_va
+                X_va_calib, y_cls_va_calib = X_va, y_cls_va
+            else:
+                X_va_stop, y_cls_va_stop, _ = self._slice(df, val_d_stop)
+
             # Klassifikation
-            cls_model = self._fit_cls(X_tr, y_cls_tr, X_va, y_cls_va)
+            cls_model = self._fit_cls(X_tr, y_cls_tr, X_va_stop, y_cls_va_stop)
             self.cls_models.append(cls_model)
             cls_importances.append(cls_model.feature_importance(importance_type="gain"))
-            calibrator = self._fit_calibrator(cls_model, X_va, y_cls_va)
+            calibrator = self._fit_calibrator(cls_model, X_va_calib, y_cls_va_calib)
             self.calibrators.append(calibrator)
 
             # Regression
