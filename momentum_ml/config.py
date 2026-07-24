@@ -435,6 +435,16 @@ DRIFT_WINDOW_WEEKS = 26     # rullande fönster för realiserad prestanda
 DRIFT_AUC_FLOOR    = 0.52   # under denna rullande AUC -> flagga
 DRIFT_MIN_SAMPLES  = 20     # minsta antal observationer för att räkna AUC
 
+# Extern kodgranskning 2026-07-25 (P0-fynd #2): _build_close_panel gjorde
+# tidigare OBEGRÄNSAD forward-fill - ett bolag med ett dataluckor (handels-
+# stopp, tunn omsättning i small/micro cap) fick sitt SISTA kända pris
+# återanvänt i all evighet i stället för att flaggas som stale. Ren
+# survivorship-filtrerade (helt avnoterade, se filter_active_universe())
+# bolag berörs inte - de utesluts redan helt ur universumet - men ett
+# TILLFÄLLIGT dataglapp mitt i en annars aktiv akties historik dolde
+# tidigare portföljvärdet som stabilt under glappet i stället för okänt.
+MAX_PRICE_FFILL_WEEKS      = 8      # cap på hur länge ett pris återanvänds
+
 # ── Likviditet & marknadsimpact ───────────────────────────────────────────────
 LIQUIDITY_LOOKBACK_WEEKS   = 13     # fönster för genomsnittlig dollarvolym
 LIQUIDITY_MAX_ADV_FRACTION = 0.10   # max andel av ADV som handlas per vecka

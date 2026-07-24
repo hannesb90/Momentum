@@ -698,7 +698,16 @@ class MomentumBacktester:
         """
         panel = pd.DataFrame({t: df["Close"] for t, df in self.prices.items() if "Close" in df})
         full_idx = panel.index.union(pd.DatetimeIndex(dates))
-        panel = panel.reindex(full_idx).sort_index().ffill()
+        # Begränsad forward-fill (extern kodgranskning 2026-07-25, P0-fynd
+        # #2): ett pris återanvänds högst MAX_PRICE_FFILL_WEEKS i sträck -
+        # ett dataglapp (handelsstopp, tunn small/micro-cap-omsättning) blir
+        # NaN i stället för att tyst se ut som ett stabilt marknadsvärde.
+        # _get_price/_portfolio_value returnerar då None/hoppar över
+        # positionen (samma befintliga NaN-hantering som redan finns) -
+        # detta ändrar INTE vad som händer vid en NaN, bara hur LÄNGE ett
+        # gammalt pris får maskera att det saknas färsk data.
+        limit = int(getattr(config, "MAX_PRICE_FFILL_WEEKS", 0)) or None
+        panel = panel.reindex(full_idx).sort_index().ffill(limit=limit)
         self._close_panel = panel
         # Trend-brott-panel: True där kursen ligger UNDER sitt EXIT_SMA_WEEKS-
         # glidande medel. Behövs av asymmetrisk exit (calendar) och av behåll-/
