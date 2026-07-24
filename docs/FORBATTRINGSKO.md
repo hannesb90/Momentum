@@ -148,14 +148,17 @@ förväntan om att den ensam löser indexgapet.
     holdout-CAGR OCH lägst MaxDD av `inverse_vol`/`pred_return`-tilt/
     `conviction`; conviction köper högre helperiod-CAGR mot sämre risk och
     sämre holdout – ingen ändring motiverad).
-12. `[ ]` **[TEST KRÄVS, MEDEL/HÖG] Kontrollera dubbla riskjusteringar** –
-    volskalad momentum-feature + prob_up-urval + inverse-vol-sizing +
-    marknadsfilter/sektor-/korrelationsspärrar kan tillsammans dämpa
-    uppmarknadsfångst mer än avsett. Stegvis ablation av varje lager.
-13. `[ ]` **[DELVIS, HÖG] Validera 13-veckors rebalansering mot signalens
-    verkliga halveringstid** – REBALANCE_WEEKS=FORWARD_WEEKS är redan
-    bekräftat robust (#41), men om EN fast hållperiod passar ALLA signaler
-    är otestat.
+12. `[x]` **[TEST KRÄVS, MEDEL/HÖG] Kontrollera dubbla riskjusteringar** →
+    **Redan besvarat** (tidigare session, "Etablerade sanningar" #2 i
+    loggen): risklagren (#14 inverse-vol, #15 vol-target-overlay, #17
+    momentum-kvalitetsgrind) redan ablerade stegvis – "gör kurvan snyggare
+    men skapar ingen ny alfa". Ingen ny körning behövs.
+13. `[x]` **[DELVIS, HÖG] Validera 13-veckors rebalansering mot signalens
+    verkliga halveringstid** → **Redan gjort idag** (#41: både ett
+    REBALANCE_WEEKS-svep 4/8/13/17/26v OCH kalender-vs-event-läge, 13v
+    robust bäst på båda). Kvarstår ändå otestat: om EN fast hållperiod
+    passar ALLA signaler lika bra (staggered portfolios, per-signal-IC
+    vecka 1-20) – smalare uppföljningsfråga, lägre prioritet.
 
 ## Fas 3 – statistisk robusthet
 
