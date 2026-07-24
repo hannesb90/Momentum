@@ -490,7 +490,13 @@ TA_FILTER_HIGH52_MIN = 0.90   # high52_ratio: hur nära 52v-högsta (1.0 = vid h
 TA_FILTER_BB_MAX     = 1.0    # bb_position-tak: över detta = för överköpt
 
 # ── Marknadsregimer ───────────────────────────────────────────────────────────
-REGIME_SMA_WEEKS = 26       # trend-proxy för bull/bear/sidledes-klassificering
+# 26v var för trögt (lagg) - i en snabb återhämtning hann klassificeraren
+# fortfarande läsa "björn/sidledes" flera veckor efter att uppgången redan
+# återupptagits, vilket kostade avkastning UTAN att ge mer skydd (se
+# UTVECKLINGSLOGG.md #28: svep 8/13/17/26/39/52v, large-segmentet). 13v gav
+# bäst balans - holdout-CAGR −1,8%→+0,4%, och dessutom klart BÄTTRE
+# helperiod-MaxDD (−19,5%→−13,9%) än 26v, inte en avvägning åt något håll.
+REGIME_SMA_WEEKS = 13       # trend-proxy för bull/bear/sidledes-klassificering
 
 # ── Marknadsfilter (long-only exponerings-overlay) ────────────────────────────
 # Long-only momentum bär full marknadsrisk. I stället för att blanka (som vi
