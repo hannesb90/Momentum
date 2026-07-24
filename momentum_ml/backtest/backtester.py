@@ -781,11 +781,29 @@ class MomentumBacktester:
         return float(getattr(config, "SLIPPAGE_VIX_STRESS_MULT", 2.0)) if in_stress else 1.0
 
     def _get_price(self, ticker: str, date: pd.Timestamp) -> Optional[float]:
+        """
+        VIKTIGT om samspelet med MAX_PRICE_FFILL_WEEKS (P0-fynd #2/#11,
+        extern kodgranskning 2026-07-25): _close_panel capar hur länge ett
+        pris återanvänds DÄR (NaN efter gränsen - används av t.ex.
+        _below_sma/trendbrott, som rimligen INTE ska tro att en akties
+        trend är intakt under ett dataglapp). MEN denna metod - som styr
+        FAKTISK VÄRDERING och KÖP/SÄLJ-EXEKVERING - faller alltid tillbaka
+        på senast kända pris (obegränsat) om panelen gett NaN. Utan denna
+        fallback skulle en position med ett tillfälligt dataglapp tyst
+        VÄRDERAS TILL NOLL (_portfolio_value räknar bara priser den FÅR,
+        en NaN bidrar inget) och sedan ALDRIG kunna säljas (_rebalance:s
+        sälj-loopar gör `continue` vid saknat pris) - en position som
+        fastnar olikviderbar för alltid är värre än att återanvända ett
+        gammalt pris. "Bästa tillgängliga information" - inte perfekt,
+        men konservativt korrekt: en riktig mäklare skulle också behöva
+        agera mot senast kända kurs vid ett handelsstopp.
+        """
         panel = getattr(self, "_close_panel", None)
         if panel is not None and ticker in panel.columns:
             try:
                 v = panel.at[date, ticker]
-                return float(v) if pd.notna(v) else None
+                if pd.notna(v):
+                    return float(v)
             except Exception:
                 pass   # faller tillbaka på get_indexer nedan
         df = self.prices.get(ticker)
