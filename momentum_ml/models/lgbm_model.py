@@ -96,9 +96,17 @@ class MomentumLGBM:
         # (ensemble.py), vilket gör positionsstorlekarna otillförlitliga
         # om t.ex. 0.65 i praktiken bara träffar 55% av tiden.
         self.calibrators: List[IsotonicRegression] = []
-        # test-fönstrets startdatum per modell, samma ordning/index som
+        # test-fönstrets start-/slutdatum per modell, samma ordning/index som
         # cls_models/reg_models – används för datum-medveten prediktion.
+        # split_ends (tillagd 2026-07-25, extern kodgranskning punkt 5):
+        # _select_model_idx väljer redan rätt modell för datum INOM ett
+        # testfönster via split_starts, men kunde inte skilja "en riktig
+        # split täcker det här datumet" från "vi extrapolerar långt bortom
+        # sista kända testfönster" (live/serving-fallet) - split_ends gör
+        # den skillnaden mätbar (se predict()).
         self.split_starts: List[pd.Timestamp] = []
+        self.split_ends: List[pd.Timestamp] = []
+        self._stale_warned: bool = False   # se _warn_if_stale - en varning per instans, inte per rad
         self.feature_importance_: Optional[pd.DataFrame] = None
         # Per-split diagnostik (kodgranskning 2026-07-23): feature_importance_
         # ovan är BARA medelvärdet över alla splits – om viktiga features
@@ -149,6 +157,7 @@ class MomentumLGBM:
                 "key": key, "next_split": next_i,
                 "cls_models": self.cls_models, "reg_models": self.reg_models,
                 "calibrators": self.calibrators, "split_starts": self.split_starts,
+                "split_ends": self.split_ends,
                 "cls_importances": cls_imp, "reg_importances": reg_imp,
                 "fold_diagnostics": self.fold_diagnostics_,
             }, tmp)
@@ -196,10 +205,14 @@ class MomentumLGBM:
         (varje split tränar sin egen modell, ingen delad tillstånd mellan
         dem) - inte en partiell/inkrementell omträning av en enda modell,
         så en återupptagen körning ger giltigt tränade modeller för varje
-        split, på samma sätt som en ostörd körning skulle gjort (LightGBM är
-        redan osådd/icke-deterministisk mellan körningar, se
-        UTVECKLINGSLOGG - återupptagning inför alltså ingen NY brist på
-        reproducerbarhet utöver den som redan finns).
+        split, på samma sätt som en ostörd körning skulle gjort. KORRIGERAT
+        2026-07-25 (den äldre versionen av denna kommentar hävdade felaktigt
+        att LightGBM var osådd/icke-deterministisk - config.LGBM_PARAMS har
+        redan seed/bagging_seed/feature_fraction_seed/data_random_seed +
+        deterministic=True/force_row_wise=True, verifierat i koden. En
+        återupptagen körning ska alltså ge BIT-FÖR-BIT identiska modeller
+        som en ostörd körning, inte bara "giltiga" - avvikelser vore ett
+        reproducerbarhetsfel värt att undersöka, inte förväntat brus).
         """
         splits = walk_forward_splits(df.index, train_weeks=train_weeks, val_weeks=val_weeks,
                                       step_weeks=step_weeks, embargo_weeks=embargo_weeks)
@@ -214,6 +227,7 @@ class MomentumLGBM:
             self.reg_models = checkpoint["reg_models"]
             self.calibrators = checkpoint["calibrators"]
             self.split_starts = checkpoint["split_starts"]
+            self.split_ends = checkpoint.get("split_ends", [])
             cls_importances = checkpoint["cls_importances"]
             reg_importances = checkpoint["reg_importances"]
             self.fold_diagnostics_ = checkpoint.get("fold_diagnostics", [])
@@ -245,6 +259,7 @@ class MomentumLGBM:
             reg_importances.append(reg_model.feature_importance(importance_type="gain"))
 
             self.split_starts.append(test_d[0])
+            self.split_ends.append(test_d[-1])
 
             # Per-fold diagnostik på TEST-fönstret (aldrig sett av vare sig
             # träning eller kalibrering) - se attributets docstring i __init__
@@ -428,6 +443,7 @@ class MomentumLGBM:
         """
         X = df[FEATURE_COLS].fillna(0).values
         model_idx = self._select_model_idx(df.index)
+        self._warn_if_stale(df.index)
 
         cls_preds = np.empty(len(df))
         raw_preds = np.empty(len(df))
@@ -462,6 +478,33 @@ class MomentumLGBM:
         starts = pd.DatetimeIndex(self.split_starts)
         idx = starts.searchsorted(dates, side="right") - 1
         return np.clip(idx, 0, len(self.split_starts) - 1)
+
+    def _warn_if_stale(self, dates: pd.DatetimeIndex, threshold_weeks: int = 4 * config.TEST_STEP_WEEKS) -> None:
+        """
+        Extern kodgranskning 2026-07-25, punkt 5/hygienlistan: varna EN
+        gång per modellinstans (inte per rad) om vi predikterar långt bortom
+        sista kända testfönster - dvs. vi extrapolerar med senaste modellen
+        i stället för att en riktig walk-forward-split faktiskt täcker
+        datumet (samma "senaste modellen"-fallback som _select_model_idx
+        redan använder avsiktligt för live/serving-datum, se predict():s
+        docstring - varningen ändrar inget beteende, gör bara det synligt).
+        Bakåtkompatibelt: äldre sparade modeller saknar split_ends helt
+        (attributet fanns inte innan denna kodändring) - tyst no-op då,
+        inte en krasch.
+        """
+        ends = getattr(self, "split_ends", None)
+        if not ends or getattr(self, "_stale_warned", False) or len(dates) == 0:
+            return
+        last_end = pd.DatetimeIndex(ends).max()
+        max_date = pd.DatetimeIndex(dates).max()
+        staleness_weeks = (max_date - last_end).days / 7.0
+        if staleness_weeks > threshold_weeks:
+            print(f"  [VARNING] MomentumLGBM.predict(): predikterar för {max_date.date()}, "
+                  f"{staleness_weeks:.0f}v efter sista tränade testfönstrets slut "
+                  f"({last_end.date()}) - senaste modellen återanvänds som extrapolering, "
+                  f"ingen split täcker faktiskt detta datum. Förväntat för live/serving-"
+                  f"signaler, men flaggar om det gäller ett HISTORISKT backtest-datum.")
+            self._stale_warned = True
 
     # ── Hjälpare ──────────────────────────────────────────────────────────────
 
