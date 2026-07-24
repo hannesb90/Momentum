@@ -265,7 +265,8 @@ class MomentumLGBM:
             # träning eller kalibrering) - se attributets docstring i __init__
             # för vad det INTE är (ingen portfölj-Sharpe).
             self.fold_diagnostics_.append(
-                self._fold_diagnostics(df, test_d, cls_model, calibrator, i, len(splits))
+                self._fold_diagnostics(df, test_d, cls_model, calibrator, i, len(splits),
+                                        reg_model=reg_model)
             )
 
             self._save_checkpoint(key, i + 1, cls_importances, reg_importances)
@@ -386,6 +387,7 @@ class MomentumLGBM:
         self, df: pd.DataFrame, test_d: pd.DatetimeIndex,
         cls_model: lgb.Booster, calibrator: IsotonicRegression,
         split_i: int, n_splits: int,
+        reg_model: Optional[lgb.Booster] = None,
     ) -> dict:
         """
         Enkel, per-fold prediktionsdiagnostik på TEST-fönstret (aldrig sett av
@@ -399,12 +401,21 @@ class MomentumLGBM:
         instabilt) eller ligger jämnt (1.1/1.0/1.2/0.9/1.1, robust), inte att
         ersätta backtester.run() som redan gör den riktiga, kostnadsjusterade
         portföljsimuleringen på FULL ensemble-output.
+
+        reg_model (tillagd 2026-07-25, extern kodgranskning punkt 3): mäter
+        REGRESSIONENS ekonomiska värde separat från klassificeringen -
+        IC (Spearman-rankkorrelation mellan pred_return och faktisk
+        target_return) och decilspread (medel-avkastning topp- minus
+        bottendecil av pred_return), på SAMMA aldrig-sedda testfönster.
+        Valfri parameter (default None) - gamla anrop utan reg_model funkar
+        oförändrat, bara IC/decilspread blir None.
         """
         X_te, y_cls_te, y_reg_te = self._slice(df, test_d)
         out = {
             "split": split_i + 1, "n_splits": n_splits,
             "test_start": test_d[0], "test_end": test_d[-1], "n_test": len(X_te),
             "hit_rate": None, "mean_return_if_bought": None, "pseudo_sharpe": None,
+            "reg_ic": None, "reg_decile_spread": None,
         }
         if len(X_te) == 0:
             return out
@@ -422,6 +433,20 @@ class MomentumLGBM:
             # annualiserad portfölj-Sharpe - jämförbar mellan folds, inte
             # med backtesterns riktiga Sharpe-tal.
             out["pseudo_sharpe"] = float(np.mean(rets) / std) if std > 0 else None
+
+        if reg_model is not None and len(X_te) >= 10:
+            reg_pred = reg_model.predict(X_te)
+            s_pred = pd.Series(reg_pred)
+            s_actual = pd.Series(y_reg_te)
+            ic = s_pred.corr(s_actual, method="spearman")
+            out["reg_ic"] = float(ic) if pd.notna(ic) else None
+            try:
+                deciles = pd.qcut(s_pred, 10, labels=False, duplicates="drop")
+                by_decile = s_actual.groupby(deciles).mean()
+                if len(by_decile) >= 2:
+                    out["reg_decile_spread"] = float(by_decile.iloc[-1] - by_decile.iloc[0])
+            except ValueError:
+                pass   # för få unika pred_return-värden för 10 deciler i det här fönstret
         return out
 
     # ── Prediktion ────────────────────────────────────────────────────────────
@@ -572,10 +597,12 @@ class MomentumLGBM:
             return
         print(f"\n{'='*70}\nPer-fold diagnostik ({len(self.fold_diagnostics_)} splits)\n{'='*70}")
         print(f"  {'split':>7} {'test-start':>12} {'n':>6} {'hit-rate':>9} "
-              f"{'avk|köpt':>10} {'pseudo-Sharpe':>14}")
+              f"{'avk|köpt':>10} {'pseudo-Sharpe':>14} {'reg-IC':>8} {'decilspr':>10}")
         for d in self.fold_diagnostics_:
             hr = f"{d['hit_rate']:.1%}" if d["hit_rate"] is not None else "–"
             ret = f"{d['mean_return_if_bought']:+.1%}" if d["mean_return_if_bought"] is not None else "–"
             ps = f"{d['pseudo_sharpe']:.2f}" if d["pseudo_sharpe"] is not None else "–"
+            ic = f"{d.get('reg_ic'):+.3f}" if d.get("reg_ic") is not None else "–"
+            ds = f"{d.get('reg_decile_spread'):+.1%}" if d.get("reg_decile_spread") is not None else "–"
             print(f"  {d['split']:>4}/{d['n_splits']:<3} {str(d['test_start'].date()):>12} "
-                  f"{d['n_test']:>6} {hr:>9} {ret:>10} {ps:>14}")
+                  f"{d['n_test']:>6} {hr:>9} {ret:>10} {ps:>14} {ic:>8} {ds:>10}")
