@@ -1,132 +1,198 @@
-# Förbättringskö – förslag från extern granskning (2026-07-24)
+# Förbättringskö – förslag från extern granskning
 
 Löpande, avbockningsbar checklista över alla förbättringsförslag som samlats
-in (mestadels från en extern AI-granskning av modellkoden) sedan #44:s
-SAAB/`liquidity_rank`-fynd. Varje punkt får en status när den testats –
-resultatet skrivs alltid till `docs/UTVECKLINGSLOGG.md` (den ärliga,
-permanenta loggen); den här filen är bara en KÖ/checklista, inte facit.
+in från extern AI-granskning av modellkoden. Varje punkt får en status när
+den testats – resultatet skrivs alltid till `docs/UTVECKLINGSLOGG.md` (den
+ärliga, permanenta loggen); den här filen är bara en KÖ/checklista, inte
+facit.
 
-Status-nycklar: `[ ]` ej testad · `[x]` testad, se loggreferens · `🔄` pågår
-just nu · `⛔` ej tillämplig/redundant (motiverat nedan)
+Status: `[ ]` ej testad · `[x]` testad, se loggreferens · `🔄` pågår just nu
+· `⛔` ej tillämplig/redundant/motbevisad (motiverat inline)
 
----
+**2026-07-25: fil omstrukturerad** runt en mycket mer genomarbetad,
+kodverifierad 40-punktsgranskning (statuskoder [SAKNAS]/[DELVIS]/
+[IMPLEMENTERAT]/[TEST KRÄVS] + prioritet + rekommenderad fasordning). De två
+mest kritiska sakpåståendena är verifierade direkt mot koden:
 
-## ⚠️ Robust bevisad slutsats (tre oberoende test, samma mönster)
+1. **`kelly_position_size()` (`models/ensemble.py:92-138`) tar emot
+   `pred_return` som parameter men använder den ALDRIG i beräkningen** –
+   `p`/`q`/`b` kommer bara från `prob_up`/`win_loss_ratio`. Koden har redan
+   en kommentar som medger detta.
+2. **`config.py:266: SIZING_MODE = "inverse_vol"`** – bekräftad
+   produktionsdefault. Idag: VILKA N bolag väljs på `prob_up`, HUR MYCKET av
+   varje bestäms av `1/volatilitet`. `pred_return` påverkar varken rankning
+   eller storlek, bara en binär grind (`pred_return > MIN_EXPECTED_RETURN`).
+
+## ⚠️ Robust bevisad slutsats (tre oberoende SAAB-räddningstest, 2026-07-24)
 
 Native NaN (#46), `liquidity_rank`-cap (#47) och åldersviktning (#48) fick
 ALLA SAAB köpt i holdout (11, 10 resp. 27/104 veckor) – och ALLA gjorde
 holdout SÄMRE, inte bättre. **"Få modellen att köpa SAAB" är inte längre en
-hypotes att jaga – det är nu bevisat att det inte är vägen till bättre
-holdout-resultat**, oavsett metod (feature-nivå eller sample-weight-nivå).
-Punkter nedan som primärt är riktade SAAB-räddningar är nedprioriterade av
-det skälet; punkter som angriper en ANNAN mekanism (t.ex. topp-N-urvalet
-generellt) står kvar och utvärderas på egna meriter.
+hypotes att jaga.** Punkter nedan som är RIKTADE SAAB-räddningar (t.ex.
+volymkatalysator/klippning, se avsnittet längst ner) är nedprioriterade av
+det skälet. Dagens 40-punktsgranskning är däremot inte SAAB-fokuserad –
+den riktar in sig på arkitekturen (ranking/sizing/kalibrering/attribution)
+och ska bedömas på egna meriter.
 
-## Kö – näst i tur (prioritetsordning)
+---
 
-1. `[ ]` **Kombinerad rankningsscore** `score = prob_up × max(pred_return, 0)`
-   för topp-N-urvalet i `ensemble.py` – i stället för att klassificering och
-   regression används separat. Högst prioriterat: matchar #45:s fynd att
-   urvalet EFTER prediktionen är flaskhalsen, inte feature engineering. OBS:
-   detta angriper en ANNAN mekanism än de tre avvisade (#46/#47/#48) – inte
-   en riktad SAAB-räddning – ska INTE förväntas upprepa mönstret automatiskt.
-2. `[ ]` **Regressionsobjective: Huber eller Quantile** i stället för RMSE –
-   billigt, välspecificerat, kompletterar punkt 1 (RMSE drar extrema
-   uppgångar mot medelvärdet).
-3. `[ ]` **Diagnostik (ingen omträning): dämpar tvärsnittsnormalisering
-   extremvinnare?** – jämför råa `roc_13w`-extremvärden mot normaliserade
-   `mom_12_1`/`resid_mom`-percentiler för kända extremvinnare (SAAB, NOKIA).
-   Billig förstudie innan ev. omträning.
-4. `[ ]` **Tak på volatilitetsnämnaren i `resid_mom`** – viss SHAP-evidens
-   (konsekvent negativt bidrag på SAAB/NOKIA, växande över tid), men mindre
-   magnitud än `liquidity_rank`. Lägre prioritet, och OBS ovanstående
-   slutsats – kan mycket väl visa samma mönster igen.
+## 🔄 Pågår just nu
 
-## Testade idag – se `docs/UTVECKLINGSLOGG.md` för fullständig motivering
+- 🔄 **Fas 1, punkt 2: kombinerad rankningsscore** `score = prob_up ×
+  max(pred_return, 0)` för topp-N-urvalet, i stället för sortering på enbart
+  `prob_up`/`prob_raw`. Kräver ingen omträning (bara omrankning av redan
+  tränade modellens output). Testskript: `combined_score_test.py`.
 
-- `[x]` Kort träningsfönster (130v i stället för 260v) → **#43, ❌ Avvisat**
-  (sämre på alla mått).
-- `[x]` SHAP-diagnos: varför litar modellen inte på SAAB? → **#44, ℹ️ Diagnos**
-  (`liquidity_rank` dominerande bov).
-- `[x]` IntegratedBacktester / härdighets-bonus (Stage 1) mot dagens baslinje
-  → **#45, ❌ Avvisat** (verkar EFTER `pred_signal`-grinden, kan aldrig
-  rädda ett uteslutet bolag; empiriskt negativt mot dagens baslinje).
-- `[x]` Native NaN-hantering i stället för `fillna(0)` → **#46, ❌ Avvisat**
-  (fick SAAB köpt 11/104v men holdout blev sämre i aggregat).
-- `[x]` Tak/winsorisering på `liquidity_rank` (CAP=0,90) → **#47, ❌ Avvisat**
-  (samma mönster som #46 – SAAB köpt 10/104v, holdout ändå sämre).
-- `[x]` Åldersviktade sample weights (half-life 104v) → **#48, ❌ Avvisat**
-  (SAAB köpt 27/104v – ännu oftare – men både holdout OCH helperiod sämre.
-  **Tredje oberoende bekräftelsen: robust bevisat, inte längre en hypotes**,
-  se varningsrutan ovan).
+## Fas 1 – korrigera tydliga kopplingsproblem (rekommenderad startordning)
 
-## Bevisat overifierade/lågt prioriterade för DETTA problem
+1. `[ ]` **[SAKNAS, KRITISK] Låt `pred_return` påverka positionsSTORLEKEN**
+   – `kelly_position_size()` ignorerar `pred_return` helt (verifierat ovan);
+   med `SIZING_MODE=inverse_vol` styr `1/volatilitet` storleken helt oavsett
+   prognosens magnitud. Åtgärd: `score = prob_up × max(pred_return,0)` eller
+   `pred_return / forecast_vol`, jämför mot dagens sizing på frusen holdout.
+   **Separat från punkt 2 nedan** – punkt 2 ändrar bara VAL, inte VIKT.
+2. 🔄 `[ ]` **[DELVIS, KRITISK] Ranka inte topp-N enbart på `prob_up`** – se
+   "Pågår just nu" ovan.
+3. `[ ]` **[SAKNAS, HÖG] Validera att regressionen tillför ekonomiskt värde**
+   – logga Spearman-IC per fold för `pred_return`, avkastning per decil,
+   ablera klassificering-utan-regression mot kombinerad modell.
+4. `[ ]` **[SAKNAS, HÖG] Separera early stopping och kalibrering** – samma
+   valideringsfönster används idag för båda; inför train→val→calibration→test
+   eller cross-fitted calibration.
+5. `[ ]` **[SAKNAS, HÖG] Spara test_start/test_end per walk-forward-modell**
+   – `_select_model_idx()` verifierar idag bara att ett datum ligger EFTER
+   ett split-startdatum, inte att det ligger INOM rätt testfönster.
+6. `[ ]` **[SAKNAS, HÖG] Separera historisk prediktion från live-prediktion**
+   – `predict_walk_forward()` (strikt OOS-kontroll) vs `predict_serving()`
+   (senaste produktionsmodellen), aldrig blandade.
+7. `[ ]` **[SAKNAS, HÖG] Gör LightGBM-träningen reproducerbar** – seeds
+   (`feature_fraction_seed`, `bagging_seed`, `data_random_seed`,
+   `deterministic=True`), logga bibliotoksversioner + manifest (datahash,
+   kodhash, parametrar, featureordning).
+
+## Fas 2 – fastställ var indexgapet uppstår
+
+8. `[ ]` **[DELVIS→KRITISK] Full benchmark-relativ attribution** – fyra
+   kontrafaktiska portföljer (fullinvesterad likaviktad topp-N / modellens
+   vikter / utan overlays / faktisk strategi) för att isolera VAR alfat
+   försvinner: universum, sektor, urval, ranking, sizing, exit, kostnader.
+9. `[ ]` **[SAKNAS, KRITISK] Kontrafaktisk "varför vann/förlorade vi mot
+   index"-analys per kvartal** – för varje stor indexdrivare: valbar? vilken
+   rank? vald? vikt? när såld? Detta är den mest direkta vägen till svaret,
+   utan att fastna i enstaka exempel (samma lärdom som SAAB/#40 idag).
+10. `[ ]` **[SAKNAS, HÖG] Mät universumseffekten separat** – för varje
+    period: största indexbidragsgivare, fanns de i råuniversumet, klarade de
+    likviditetsfilter, vilken rank/vikt fick de. Delar underprestation i
+    "ej valbar" vs "felrankad".
+11. `[ ]` **[TEST KRÄVS, HÖG] Validera inverse-vol-sizing mot conviction** –
+    jämför `inverse_vol`/`equal_weight`/`conviction`/riskjusterad score på
+    Sharpe OCH excess CAGR.
+12. `[ ]` **[TEST KRÄVS, MEDEL/HÖG] Kontrollera dubbla riskjusteringar** –
+    volskalad momentum-feature + prob_up-urval + inverse-vol-sizing +
+    marknadsfilter/sektor-/korrelationsspärrar kan tillsammans dämpa
+    uppmarknadsfångst mer än avsett. Stegvis ablation av varje lager.
+13. `[ ]` **[DELVIS, HÖG] Validera 13-veckors rebalansering mot signalens
+    verkliga halveringstid** – REBALANCE_WEEKS=FORWARD_WEEKS är redan
+    bekräftat robust (#41), men om EN fast hållperiod passar ALLA signaler
+    är otestat.
+
+## Fas 3 – statistisk robusthet
+
+14. `[ ]` **[DELVIS, KRITISK] Point-in-time-universum med avnoterade bolag**
+    – `data_loader.py` dokumenterar redan survivorship bias öppet (yfinance
+    ger bara dagens överlevande). Backtesten är forskningsindikativ, inte
+    kapitalbevis, tills detta åtgärdas.
+15. `[ ]` **[SAKNAS, MEDEL/HÖG] Label-uniqueness/tidsvikter + block-bootstrap**
+    – 13v-targets överlappar kraftigt inom segment; nuvarande osäkerhetsmått
+    kan vara optimistiska.
+16. `[ ]` **[TEST KRÄVS, KRITISK] Undvik upprepad holdout-granskning** – för
+    logg över varje experiment som tittat på holdout (många `tune_*.py`-
+    skript idag), inför en sista orörd testperiod, rapportera Deflated Sharpe.
+17. `[ ]` **[DELVIS, HÖG] Experimentregistry + bredare testsvit** – gemensam
+    experimentkonfiguration, samma metrik-/kostnadsdefinition överallt.
+
+## Diagnostik/hygien – lägre prioritet, ingen akut evidens
+
+- `[ ]` IC (Spearman) per fold i `fold_diagnostics_`.
+- `[ ]` Precision/Recall/F1 utöver dagens `hit_rate`.
+- `[ ]` Kalibrering per sannolikhetsintervall (reliability-bins).
+- `[ ]` Winsorisera/ranktransformera extrema regressionsmål.
+- `[ ]` Modellera nedsiderisk separat (P(return < -X%) eller negativ kvantil).
+- `[ ]` Omkalibrera den FÄRDIGA ensemblen (LGBM+LSTM), inte bara var för sig.
+- `[ ]` Validera fasta ensemblevikter (0,6/0,4) via ablation.
+- `[ ]` Antal köpsignaler per fold (upptäck degenererat "köp allt/inget").
+- `[ ]` Feature distribution drift train/val/test (generaliserar #42).
+- `[ ]` `best_iteration` per fold sparad.
+- `[ ]` Automatiska sanity checks före träning (NaN/oändligheter/konstanta
+  features/dubbletter/tillräckligt många +/- labels).
+- `[ ]` Vikta varje handelsdatum lika i träningsförlusten (`1/antal bolag`
+  samma datum, motverkar att universumsstorlek dominerar förlusten).
+- `[ ]` Maskinläsbar diagnostik (CSV/Parquet i stället för utskrift).
+- `[ ]` Rätt ekonomisk målfunktion vid hyperparameterval (separat dev-
+  portföljmått, inte bara early-stopping-loss).
+- `[ ]` Enhetstest: `predict()` väljer rätt split-modell per datum (övriga
+  walk-forward-invarianter redan testade, `tests/test_walk_forward.py`).
+- `[ ]` Varning vid prediktion långt efter sista walk-forward-split (kopplar
+  till #29 serveringsmodellen).
+- `[ ]` Minska checkpoint-filstorlek (spara modeller separat).
+- `[ ]` Ensemble-/fold-diversitet + prediktionsosäkerhet via oenighet.
+- `[ ]` Permutation importance på testfolds (SHAP redan använt manuellt, #44).
+- `[ ]` Featurelista/ordning/datatyp validerad vid modelladdning (utöver
+  checkpointens hash).
+- `[ ]` Mät effekten av `MIN_HISTORY_WEEKS` (78v) på nynoteringar.
+- `[ ]` Verifiera kostnadsmodellen mot verkliga fills, per likviditetssegment.
+- `[ ]` Validera `ASYMMETRIC_EXIT` separat innan ev. aktivering (redan av).
+
+## Redan byggt – ingen ny insats behövs (dubbelräkna inte)
+
+- Purged walk-forward + embargo train/val/test.
+- Cross-sectional target (XS_TARGET, topp-tertil per datum).
+- Prognoshorisont = rebalansering = 13v.
+- Optimerbar köptröskel på dev, holdout utanför sökningen.
+- Alltid-investerad relativ topp-N-design.
+- `prob_raw` som tie-break på isotonic-platåer.
+- Benchmarkrapport (alfa/beta).
+- Transaktionskostnader: courtage, slippage, spread, marknadsimpact.
+- Driftmonitor (rullande AUC/hit rate) – `⛔` men bör KOMPLETTERAS med
+  feature-drift, pred_return-IC-drift, kalibreringsdrift, ekonomisk drift.
+- Point-in-time merge-logik för flera datakällor.
+- Misstänkta prishopp/corporate actions loggas.
+- Feature-cache + walk-forward-checkpoint kod-/databundna.
+- Survivorship bias dokumenterad öppet i koden.
+- Kalibreringsvalidering (Brier/ECE) – `backtest/calibration_check.py`.
+- Feature-stabilitet per period – `feature_importance_history_`.
+- SHAP över gain-importance – använt manuellt idag (#44).
+
+## Ej tillämpligt på arkitekturen
+
+- Optimera beslutströskeln mot 0.5 – `pred_signal` sätts av topp-N-urval
+  (`ensemble.py:417`), ingen fri `prob_up`-tröskel att optimera.
+
+## Bevisat overifierade/lågprioriterade SAAB-räddningsförsök (se varningsruta)
 
 SHAP-kontroll på SAAB:s FAKTISKA smäll-vecka (2022-02-28, +25%/1v, volym 4x)
-visade att dessa features hade SHAP-bidrag ≈ **0.00000** även då – ingen
-hävstång att hämta oavsett hur de justeras, om inte modellens lärda
-featureviktning ändras i grunden:
+visade SHAP-bidrag ≈ **0.00000** även då – ingen hävstång att hämta:
 
-- `⛔` Volymkatalysator för utbrott (pris + volym>3x) – SHAP=0 vid SAAB:s
-  faktiska utbrott.
-- `⛔` Klippning av `bb_position`/`ret_1w` ("anti-whipsaw") – samma skäl.
-- `⛔` Kortsiktigt momentum aktiverat vid volymstöd (OBV) – samma skäl.
-- `⛔` Dynamisk reducering av `MOM_SKIP_WEEKS` vid volymdriven nyhetschock –
-  samma familj, samma brist på hävstång.
-- `⛔` Monotona restriktioner som tvingar en utbrottssignal alltid positiv –
-  riskabelt utöver att vara overifierat: #42 visade att momentum→avkastning-
-  sambandet INTE är stabilt över regimer, ett tvingat samband kan förvärra.
-- `⛔` PEAD-override (låt stark `report_reaction_abn` överstyra svag
-  historisk tillväxt) – featuren fick redan ett stort positivt SHAP-bidrag
-  naturligt (NOKIA +0,016) utan någon override. Ingen evidens för behov.
+- Volymkatalysator för utbrott, klippning av `bb_position`/`ret_1w`,
+  kortsiktigt momentum vid volymstöd, dynamisk `MOM_SKIP_WEEKS`-reducering –
+  alla targetar features modellen knappt använder vid dessa värden.
+- Monotona restriktioner som tvingar en utbrottssignal alltid positiv –
+  riskabelt: #42 visade momentum→avkastning-sambandet INTE är stabilt över
+  regimer.
+- PEAD-override (`report_reaction_abn`) – fick redan stort positivt SHAP-
+  bidrag naturligt (NOKIA +0,016), ingen evidens för behov av override.
 
-## Diagnostik/hygien – ej akut, ingen specifik evidens pekar dit idag
+## Testat idag – se `docs/UTVECKLINGSLOGG.md` för fullständig motivering
 
-- `[ ]` IC (Spearman-rankkorrelation) per fold, sparad i `fold_diagnostics_`.
-- `[ ]` Precision/Recall/F1 utöver dagens `hit_rate`.
-- `[ ]` Kalibrering per sannolikhetsintervall (reliability-bins per fold).
-- `[ ]` Winsorisera extrema regressionsmål.
-- `[ ]` Antal köpsignaler per fold (upptäck degenererat "köp allt/inget").
-- `[ ]` Feature distribution drift train/val/test (generaliserar #42:s fynd
-  till alla features, inte bara `mom_12_1`).
-- `[ ]` `best_iteration` per fold sparad.
-- `[ ]` Automatiska sanity checks före träning (NaN i labels, oändligheter,
-  konstanta features, dubbletter, tillräckligt många +/- labels).
-- `[ ]` Maskinläsbar diagnostik (CSV/Parquet i stället för bara utskrift).
-- `[ ]` Enhetstest: `predict()` väljer verkligen rätt split-modell per datum
-  (resten av walk-forward-invarianterna är redan testade,
-  `tests/test_walk_forward.py`).
-- `[ ]` Reproducerbarhet: seeds (`feature_fraction_seed`, `bagging_seed`,
-  `data_random_seed`, `deterministic=True`).
-- `[ ]` Varning när modellen predikterar långt efter sista walk-forward-split
-  (kopplar till #29 serveringsmodellen).
-- `[ ]` Minska checkpoint-filstorlek (spara modeller separat).
-- `[ ]` Ensemble-diversitet (korrelation mellan walk-forward-foldens
-  modeller).
-- `[ ]` Permutation importance på testfolds (SHAP redan använt manuellt idag,
-  #44).
-- `[ ]` Prediktionsosäkerhet via fold-modellernas inbördes oenighet.
+- Kort träningsfönster (130v) → **#43, ❌ Avvisat**.
+- SHAP-diagnos SAAB → **#44, ℹ️ Diagnos** (`liquidity_rank` dominerande bov).
+- IntegratedBacktester/härdighetsbonus → **#45, ❌ Avvisat** (verkar EFTER
+  `pred_signal`-grinden).
+- Native NaN-hantering → **#46, ❌ Avvisat**.
+- `liquidity_rank`-cap → **#47, ❌ Avvisat**.
+- Åldersviktade sample weights → **#48, ❌ Avvisat**.
 
-## Redan byggt – ingen ny insats behövs
+## Större arkitekturfråga – inte ett snabbtest
 
-- `⛔` Kalibreringsvalidering (Brier score, ECE) – redan `backtest/
-  calibration_check.py` (Stage 0).
-- `⛔` Feature-stabilitet/fold-metrics – `feature_importance_history_` är
-  redan en DataFrame med per-period-uppdelning.
-- `⛔` SHAP över gain-importance – redan använt manuellt idag (#44),
-  identifierade `liquidity_rank`.
-
-## Ej tillämpligt på den här arkitekturen
-
-- `⛔` Optimera beslutströskeln mot 0.5 – `pred_signal` sätts av topp-N-
-  urval (`ensemble.py:417`), inte av en fri `prob_up`-tröskel. Ingenting
-  att optimera här.
-
-## Större arkitekturfråga – inte ett snabbtest, egen framtida session
-
-- `[ ]` Optimera modellen direkt mot portfölj-Sharpe/CAGR/Information Ratio
-  i stället för rad-för-rad klassificerings-/regressionsfel
-  ("learning-to-rank"-nivå, inte en parameterjustering).
-- `[ ]` Granska hela kedjan modell → ensemble → ranking → portföljkonstruktion
-  systematiskt (delvis redan gjort via #45, men en fullständig, strukturerad
-  genomgång är större än dagens enskilda test).
+- `[ ]` Optimera modellen direkt mot portfölj-Sharpe/CAGR/IR i stället för
+  rad-för-rad-fel ("learning-to-rank"-nivå).
