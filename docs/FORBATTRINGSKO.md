@@ -36,23 +36,31 @@ och ska bedömas på egna meriter.
 
 ---
 
+## ⚠️ Nu fyra oberoende bekräftelser av samma mönster (2026-07-25)
+
+Native NaN (#46), `liquidity_rank`-cap (#47), åldersviktning (#48) OCH nu
+även **kombinerad rankningsscore (#49)** fick alla SAAB köpt mer i holdout
+– och alla gav sämre/oförändrad holdout-prestanda (MaxDD t.o.m. SÄMST av
+alla fyra för #49). Fyra helt olika sorters fix (feature/sample-weight/
+rankningsformel) ger samma signatur. Nästa punkt (sizing via Kelly) är
+en genuint annan mekanism men bör testas med rimlig skepsis, inte
+förväntan om att den ensam löser indexgapet.
+
 ## 🔄 Pågår just nu
 
-- 🔄 **Fas 1, punkt 2: kombinerad rankningsscore** `score = prob_up ×
-  max(pred_return, 0)` för topp-N-urvalet, i stället för sortering på enbart
-  `prob_up`/`prob_raw`. Kräver ingen omträning (bara omrankning av redan
-  tränade modellens output). Testskript: `combined_score_test.py`.
+- 🔄 **Fas 1, punkt 1: låt `pred_return` påverka positionsSTORLEKEN** –
+  `kelly_position_size()` ignorerar `pred_return` helt (verifierat), och
+  `SIZING_MODE=inverse_vol` styr storleken oavsett prognosens magnitud
+  idag. Testar `score = pred_return/forecast_vol`-baserad tilt i stället
+  för/utöver inverse-vol.
 
 ## Fas 1 – korrigera tydliga kopplingsproblem (rekommenderad startordning)
 
-1. `[ ]` **[SAKNAS, KRITISK] Låt `pred_return` påverka positionsSTORLEKEN**
-   – `kelly_position_size()` ignorerar `pred_return` helt (verifierat ovan);
-   med `SIZING_MODE=inverse_vol` styr `1/volatilitet` storleken helt oavsett
-   prognosens magnitud. Åtgärd: `score = prob_up × max(pred_return,0)` eller
-   `pred_return / forecast_vol`, jämför mot dagens sizing på frusen holdout.
-   **Separat från punkt 2 nedan** – punkt 2 ändrar bara VAL, inte VIKT.
-2. 🔄 `[ ]` **[DELVIS, KRITISK] Ranka inte topp-N enbart på `prob_up`** – se
-   "Pågår just nu" ovan.
+1. 🔄 `[ ]` **[SAKNAS, KRITISK] Låt `pred_return` påverka positionsSTORLEKEN**
+   – se "Pågår just nu" ovan. **Separat från punkt 2** – punkt 2 ändrar
+   bara VAL, inte VIKT.
+2. `[x]` **[DELVIS, KRITISK] Ranka inte topp-N enbart på `prob_up`** →
+   **#49, ❌ Avvisat** (fjärde bekräftelsen av SAAB-mönstret, se varningsruta).
 3. `[ ]` **[SAKNAS, HÖG] Validera att regressionen tillför ekonomiskt värde**
    – logga Spearman-IC per fold för `pred_return`, avkastning per decil,
    ablera klassificering-utan-regression mot kombinerad modell.
@@ -191,6 +199,7 @@ visade SHAP-bidrag ≈ **0.00000** även då – ingen hävstång att hämta:
 - Native NaN-hantering → **#46, ❌ Avvisat**.
 - `liquidity_rank`-cap → **#47, ❌ Avvisat**.
 - Åldersviktade sample weights → **#48, ❌ Avvisat**.
+- Kombinerad rankningsscore (`prob_up × max(pred_return,0)`) → **#49, ❌ Avvisat**.
 
 ## Större arkitekturfråga – inte ett snabbtest
 
