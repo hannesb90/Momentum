@@ -9,6 +9,52 @@ facit.
 Status: `[ ]` ej testad · `[x]` testad, se loggreferens · `🔄` pågår just nu
 · `⛔` ej tillämplig/redundant/motbevisad (motiverat inline)
 
+## Del B – exekvering/produktion/säkerhet (#51, 2026-07-25)
+
+Ny granskningsvinkel: signal→exekvering-timing, backtest-realism, API-
+säkerhet, filintegritet. Fyra P0-fynd, se #51 i loggen för fullständig
+motivering:
+
+- `[x]` **P0-1: samma-bar signal/exekvering** (features + `_get_price`
+  använder samma datums close) → ℹ️ **Dokumenterad, medveten begränsning**
+  – target_return delar samma antagande (internt konsistent), men båda
+  förutsätter idealiserad market-on-close-exekvering. Kräver target-
+  redefinition + omträning för en riktig fix – EGEN PLANERAD SESSION,
+  gör INTE detta oplanerat (skulle göra alla #1-#50 icke-jämförbara).
+- `[x]` **P0-2: obegränsad forward-fill** → ✅ **Adopterat**
+  (`MAX_PRICE_FFILL_WEEKS=8`).
+- `[x]` **P0-2/P1-11-interaktion: osäljbar/nollvärderad position vid
+  dataglapp** → ✅ **Adopterat** (`_get_price` faller tillbaka på senast
+  kända pris för värdering/exekvering, upptäckt och fixad SAMMA session
+  som P0-2 – utan detta hade P0-2 introducerat en NY regression).
+- `[x]` **P0-3: API utan auth + CORS=\*, aktiv Cloudflare-tunnel** →
+  🟡 **Bekräftat avsiktligt** (användarens egen fjärråtkomst) – INGEN
+  autentisering/CORS-ändring utan att fråga igen explicit.
+- `[ ]` **P0-4: icke-atomiska fil-/statesskrivningar** (`main.py`,
+  `portfolio.py`, `api/main.py`) – samma temp-fil+`os.replace()`-mönster
+  som redan finns för LGBM-checkpoints, inte utbrett till CSV/JSON-
+  skrivningarna. Ej gjort.
+
+**P1 (produktionsdrift, ej prioriterat idag – rör live-appen, inte
+"slår modellen index"-spåret):** samtidiga state-skrivningar utan lås
+(portfolio.py/api), `/api/health` kollar bara att processen lever (inte
+data-/modell-färskhet), global felhanterare maskerar programfel som 503,
+pickle-cacher laddas utan integritetsverifiering, datafreshness mäts mot
+datasetets EGET senaste datum (inte verklig "nu" – kan dölja ett helt
+leverantörsfel), exekveringskostnad använder samma dags ADV (bör laggas
+en bar), köp som inte ryms i kassan hoppas över i stället för att skalas
+proportionellt, rebalanseringens ordning kan göra resultatet beroende av
+radordning (permutationstest saknas), fail-open vid trasig makro-/
+regimdata (ska vara fail-safe/konservativ, inte full exponering).
+
+**P2 (robusthet/realism, lägre prioritet):** fraktionella aktier utan
+heltalsavrundning, saknar schema-/versionsmigrering för JSON/CSV-state,
+API saknar storleks-/resursgränser (rate limits, request-body-limits),
+resultatpublicering saknar ett sammanhållet atomiskt snapshot/manifest
+(kan blanda gammal+ny pipelineversion), inga rådata-vintages/revisions-
+spår (yfinance kan revidera historik i efterhand utan spårbarhet), saknar
+full frontend-/API-integrationstestning.
+
 **2026-07-25: fil omstrukturerad** runt en mycket mer genomarbetad,
 kodverifierad 40-punktsgranskning (statuskoder [SAKNAS]/[DELVIS]/
 [IMPLEMENTERAT]/[TEST KRÄVS] + prioritet + rekommenderad fasordning). De två
@@ -46,7 +92,7 @@ rankningsformel) ger samma signatur. Nästa punkt (sizing via Kelly) är
 en genuint annan mekanism men bör testas med rimlig skepsis, inte
 förväntan om att den ensam löser indexgapet.
 
-## Fas 1 – korrigera tydliga kopplingsproblem (rekommenderad startordning)
+## Fas 1 – korrigera tydliga kopplingsproblem — ✅ KLAR (2026-07-25)
 
 1. `[x]` **[SAKNAS, KRITISK] Låt `pred_return` påverka positionsSTORLEKEN**
    (isolerat, oförändrat urval) → **#50, 🟡 Neutralt/marginellt positivt**
@@ -55,22 +101,33 @@ förväntan om att den ensam löser indexgapet.
    vidare validering, ingen SAAB-räddning sker eftersom urvalet är orört).
 2. `[x]` **[DELVIS, KRITISK] Ranka inte topp-N enbart på `prob_up`** →
    **#49, ❌ Avvisat** (fjärde bekräftelsen av SAAB-mönstret, se varningsruta).
-3. `[ ]` **[SAKNAS, HÖG] Validera att regressionen tillför ekonomiskt värde**
-   – logga Spearman-IC per fold för `pred_return`, avkastning per decil,
-   ablera klassificering-utan-regression mot kombinerad modell.
-4. `[ ]` **[SAKNAS, HÖG] Separera early stopping och kalibrering** – samma
-   valideringsfönster används idag för båda; inför train→val→calibration→test
-   eller cross-fitted calibration.
-5. `[ ]` **[SAKNAS, HÖG] Spara test_start/test_end per walk-forward-modell**
-   – `_select_model_idx()` verifierar idag bara att ett datum ligger EFTER
-   ett split-startdatum, inte att det ligger INOM rätt testfönster.
-6. `[ ]` **[SAKNAS, HÖG] Separera historisk prediktion från live-prediktion**
-   – `predict_walk_forward()` (strikt OOS-kontroll) vs `predict_serving()`
-   (senaste produktionsmodellen), aldrig blandade.
-7. `[ ]` **[SAKNAS, HÖG] Gör LightGBM-träningen reproducerbar** – seeds
-   (`feature_fraction_seed`, `bagging_seed`, `data_random_seed`,
-   `deterministic=True`), logga bibliotoksversioner + manifest (datahash,
-   kodhash, parametrar, featureordning).
+3. `[x]` **[SAKNAS, HÖG] Validera att regressionen tillför ekonomiskt värde**
+   → **Implementerat** (`_fold_diagnostics` beräknar nu Spearman-IC +
+   topp-botten-decilspread för `pred_return` vs faktisk `target_return` per
+   fold, `models/lgbm_model.py`). Ablation klassificering-utan-regression
+   ej gjord (lägre prioritet, kräver egen omträningskörning).
+4. `[x]` **[SAKNAS, HÖG] Separera early stopping och kalibrering** →
+   **Implementerat**: valideringsfönstret delas kronologiskt (60/40, se
+   `CALIBRATION_VAL_FRACTION`), tidigare del → early stopping, senare del
+   (närmast testfönstret) → isotonic-kalibrering. Fallback till hela
+   fönstret om delningen ger för lite kalibreringsdata.
+5. `[x]` **[SAKNAS, HÖG] Spara test_start/test_end per walk-forward-modell**
+   → **Implementerat**: `split_ends` sparas parallellt med `split_starts`
+   (checkpoint + instans, bakåtkompatibelt). `predict()` varnar nu en gång
+   per instans vid extrapolering långt bortom sista kända testfönster.
+6. `[x]` **[SAKNAS, HÖG] Separera historisk prediktion från live-prediktion**
+   → **Implementerat, lättviktigt**: `predict(strict=True)` kastar
+   `ValueError` om något datum ligger utanför tränade testfönster, i
+   stället för en full `predict_walk_forward()`/`predict_serving()`-
+   uppdelning (mindre riskabel ändring, alla befintliga anrop opåverkade
+   med default `strict=False`). Uppföljning: inför `strict=True` i
+   backtest-/tune-skript som ALDRIG ska extrapolera – ej gjort ännu.
+7. `[x]` **[SAKNAS, HÖG] Gör LightGBM-träningen reproducerbar** → **Redan
+   implementerat** (kodgranskningens påstående var föråldrat) –
+   `config.LGBM_PARAMS` har redan `seed`/`bagging_seed`/
+   `feature_fraction_seed`/`data_random_seed`/`deterministic=True`/
+   `force_row_wise=True` med `RANDOM_SEED=42`. Korrigerade en föråldrad
+   kodkommentar som hävdade motsatsen.
 
 ## Fas 2 – fastställ var indexgapet uppstår
 
@@ -139,8 +196,9 @@ förväntan om att den ensam löser indexgapet.
 - `[ ]` Minska checkpoint-filstorlek (spara modeller separat).
 - `[ ]` Ensemble-/fold-diversitet + prediktionsosäkerhet via oenighet.
 - `[ ]` Permutation importance på testfolds (SHAP redan använt manuellt, #44).
-- `[ ]` Featurelista/ordning/datatyp validerad vid modelladdning (utöver
-  checkpointens hash).
+- `[x]` Featurelista/ordning validerad vid `predict()` → **Implementerat**
+  (`feature_cols_` sparas vid träning, jämförs mot aktuell `FEATURE_COLS`,
+  kastar tydligt fel vid mismatch). Datatyp-validering ej gjord.
 - `[ ]` Mät effekten av `MIN_HISTORY_WEEKS` (78v) på nynoteringar.
 - `[ ]` Verifiera kostnadsmodellen mot verkliga fills, per likviditetssegment.
 - `[ ]` Validera `ASYMMETRIC_EXIT` separat innan ev. aktivering (redan av).
