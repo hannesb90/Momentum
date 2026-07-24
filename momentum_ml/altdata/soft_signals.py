@@ -92,17 +92,33 @@ _RED_FLAGS: Dict[str, str] = {
     "kontrollbalansräkning": r"kontrollbalansräkning",
     # företrädesemission/nyemission är ETT ord; "riktad emission" två.
     "nyemission_nöd": r"(?:nyemission|företrädesemission|riktad\s+(?:ny)?emission)\s+för\s+att\s+(?:säkra|stärka|finansiera\s+(?:fortsatt|löpande))|likviditetsbrist|behov\s+av\s+ytterligare\s+finansiering",
-    "vinstvarning": r"vinstvarning|sänker\s+(?:prognos|utsikter|sina?\s+mål)|profit\s+warning|lowers\s+(?:guidance|outlook)",
+    # (?<!omvänd\s) - "OMVÄND vinstvarning" är motsatsen (resultatet är
+    # BÄTTRE än väntat) - verkligt fall (BTS-B.ST 2019/2021): "Omvänd
+    # vinstvarning: resultat ca 30-55% BÄTTRE än väntat" flaggades felaktigt
+    # som en varning innan denna uteslutning fanns (2026-07-24).
+    "vinstvarning": r"(?<!omvänd\s)vinstvarning|sänker\s+(?:prognos|utsikter|sina?\s+mål)|profit\s+warning|lowers\s+(?:guidance|outlook)",
     "revisor": r"revisor\w*\s+(?:anmärkning|reservation|avstyrk\w*)|oren\s+revisionsberättelse",
     # "lämnar" kräver post/tjänst/bolag-objekt ("VD lämnar sina kommentarer" är
-    # standard-PM-språk); "avgår som VD" fångar omvänd ordföljd.
-    "ledningsavhopp": (r"(?:vd|verkställande\s+direktör\w*|cfo|finanschef\w*)\s+"
+    # standard-PM-språk); "avgår som VD" fångar omvänd ordföljd. (?<!om\s) -
+    # verkligt fall (TRUE-B.ST 2025): en årsstämmokallelses rutinmässiga
+    # ersättningsvillkor ("Om VD avgår ska uppsägningstiden vara...") är en
+    # HYPOTETISK policy-klausul, inte en faktisk avgång - "om" omedelbart
+    # före är den skiljande markören (2026-07-24).
+    "ledningsavhopp": (r"(?<!om\s)(?:vd|verkställande\s+direktör\w*|cfo|finanschef\w*)\s+"
                        r"(?:avgår|entledigas|har\s+avgått|lämnar\s+(?:sin\s+(?:post|tjänst|roll)|bolaget|sitt\s+uppdrag))"
-                       r"|avgår\s+som\s+(?:vd|verkställande\s+direktör|cfo|finanschef)"),
-    # Bara ny-annonserade nedskrivningar av substans (goodwill/belopp) – INTE
-    # resultaträkningens stående "av- och nedskrivningar"-rad.
-    "nedskrivning": (r"nedskrivning\w*\s+av\s+goodwill|goodwillnedskrivning|nedskrivningsbehov"
-                     r"|(?:gör|redovisar|beslutat\s+om)\s+(?:en\s+)?nedskrivning"
+                       r"|(?<!om\s)avgår\s+som\s+(?:vd|verkställande\s+direktör|cfo|finanschef)"),
+    # Kräver ett handlings-/aviseringsverb intill "nedskrivning" - INTE bara
+    # frasen "nedskrivning av goodwill" var som helst i texten. Verkliga fall
+    # (2026-07-24) som den gamla, bara-fras-varianten flaggade felaktigt:
+    # ATRLJ-B.ST ("60 Mkr AVSER nedskrivning av goodwill" - en delpost i en
+    # LÖNSAM fastighetsförsäljning) och BAHN-B.ST ("nedskrivning ... SOM
+    # UPPSTOD vid förvärvet 2015" - en historisk referens i en rutinrapport,
+    # inte en ny händelse). "kan behöva genomföra"/"aviserar" behålls för att
+    # fortsatt fånga en genuin FRAMÅTBLICKANDE varning (FLAT-B.ST 2024: "kan
+    # behöva genomföra ytterligare nedskrivningar" av ett innehav).
+    "nedskrivning": (r"(?:gör|redovisar|beslutat\s+om|genomför\w*|aviserar|väntas?\s+göra|"
+                     r"kan\s+behöva\s+genomföra|behöver\s+göra)\s+(?:en\s+|ytterligare\s+)?nedskrivning\w*"
+                     r"|nedskrivningsbehov"
                      r"|impairment\s+(?:charge|loss|of\s+goodwill)"),
 }
 _LEX_RE = {k: re.compile(v, re.I) for k, v in _LEXICON.items()}
