@@ -1,0 +1,16 @@
+[Unit]
+Description=Momentum Avanza ETF flow snapshot (forward-only)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
+ExecStart=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/etf_flow_collector.py
+Nice=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/momentum/momentum_ml/results/etf_flow

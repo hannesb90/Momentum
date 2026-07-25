@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect delayed Avanza ETF flow snapshot on trading days
+
+[Timer]
+OnCalendar=Mon..Fri 18:15:00 Europe/Stockholm
+Persistent=true
+RandomizedDelaySec=5m
+Unit=momentum-etf-flow.service
+
+[Install]
+WantedBy=timers.target
