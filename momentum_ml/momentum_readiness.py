@@ -71,6 +71,27 @@ def etf_gate(path: Path) -> dict:
     }
 
 
+def forward_signal_gate(path: Path, min_matured: int = 13) -> dict:
+    if not path.exists():
+        return {"ready": False, "reason": "scorecard_missing"}
+    card = json.loads(path.read_text())
+    matured = int(card.get("matured_dates", 0))
+    metrics = card.get("forward_metrics") or {}
+    spread = metrics.get("mean_spread")
+    consistency = metrics.get("positive_spread_share")
+    checks = {
+        "matured_dates": matured >= min_matured,
+        "positive_spread": spread is not None and spread > 0,
+        "spread_consistency_55pct": (
+            consistency is not None and consistency >= .55),
+    }
+    return {
+        "ready": all(checks.values()), "checks": checks,
+        "matured_dates": matured, "required_matured_dates": min_matured,
+        "mean_spread": spread, "positive_spread_share": consistency,
+    }
+
+
 def regime_gate(path: Path) -> dict:
     if not path.exists():
         return {"forecast_approved": False, "reason": "audit_missing"}
@@ -104,11 +125,17 @@ def build() -> dict:
         HOME / "results/small13_challenger/challenger_scorecard.json")
     etf = etf_gate(
         HOME / "results/etf_flow/etf_flow_snapshots.csv")
+    etf_alpha = forward_signal_gate(
+        HOME / "results/etf_flow/challenger_scorecard.json")
+    target_revisions = forward_signal_gate(
+        HOME / "results/target_revision_scorecard.json")
     regime = regime_gate(
         HOME / "results/regime_accuracy/summary.json")
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "large13": large, "small13": small, "etf_flow": etf,
+        "etf_flow_alpha": etf_alpha,
+        "target_revision_alpha": target_revisions,
         "market_regime": regime,
         "equity_candidates_ready": large["ready"] and small["ready"],
         # Deliberately never auto-promote money-affecting behavior.

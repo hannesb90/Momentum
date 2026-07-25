@@ -8,6 +8,7 @@ User=hannesb
 WorkingDirectory=/opt/momentum/momentum_ml
 Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
 ExecStart=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/etf_flow_collector.py
+ExecStartPost=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/etf_flow_challenger.py
 Nice=15
 NoNewPrivileges=true
 PrivateTmp=true

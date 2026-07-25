@@ -1,0 +1,18 @@
+[Unit]
+Description=Momentum weekly analyst target/recommendation snapshots
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
+Environment=PYTHONPATH=/opt/momentum/momentum_ml
+ExecStart=/opt/momentum/venv/bin/python -m altdata.public_target_price fetch all
+ExecStartPost=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/target_revision_challenger.py
+Nice=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/momentum/momentum_ml/results

@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from momentum_readiness import challenger_gate, regime_gate
+from momentum_readiness import challenger_gate, forward_signal_gate, regime_gate
 
 
 def test_challenger_gate_requires_maturity_and_positive_metrics(tmp_path: Path):
@@ -37,3 +37,14 @@ def test_regime_gate_rejects_wrong_direction_despite_raw_accuracy(tmp_path: Path
         "modern_separation_4w": -.01, "modern_separation_13w": .02,
     }}))
     assert regime_gate(path)["forecast_approved"] is False
+
+
+def test_forward_signal_gate_requires_consistent_positive_alpha(tmp_path: Path):
+    path = tmp_path / "signal.json"
+    path.write_text(json.dumps({
+        "matured_dates": 13,
+        "forward_metrics": {
+            "mean_spread": .02, "positive_spread_share": .62,
+        },
+    }))
+    assert forward_signal_gate(path)["ready"] is True

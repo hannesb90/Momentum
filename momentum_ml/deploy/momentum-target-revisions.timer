@@ -1,0 +1,11 @@
+[Unit]
+Description=Collect weekly analyst target/recommendation snapshots
+
+[Timer]
+OnCalendar=Mon 19:10:00 Europe/Stockholm
+Persistent=true
+RandomizedDelaySec=10m
+Unit=momentum-target-revisions.service
+
+[Install]
+WantedBy=timers.target
