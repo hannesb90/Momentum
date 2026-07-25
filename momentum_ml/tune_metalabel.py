@@ -32,6 +32,8 @@ Kör på Pi:n från /opt/momentum/src/momentum_ml (bakgrund, ~20–40 min):
 """
 import sys
 sys.path.insert(0, '.')
+from pathlib import Path
+import os
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
@@ -41,7 +43,8 @@ from data.data_loader import (
     fetch_weekly_data, filter_liquid_universe, filter_active_universe, load_sweden_universe,
 )
 from features.feature_engineering import (
-    build_all_features, attach_categorical_features, to_model_df, FEATURE_COLS,
+    build_all_features, attach_categorical_features, attach_fundamentals_features,
+    to_model_df, FEATURE_COLS,
 )
 from models.lgbm_model import MomentumLGBM
 
@@ -61,7 +64,9 @@ def _oof_primary(feats, dev_dates):
     # inuti predict() gör detta out-of-fold på DEV och sista-modell på HOLDOUT).
     frames = []
     for t, f in feats.items():
-        fclean = f.dropna(subset=FEATURE_COLS)
+        # LGBM-pipelinen fyller enskilda saknade features med 0. Att kräva
+        # komplett rad här tömmer tvärsnittet när rapportdata saknas.
+        fclean = f[f[FEATURE_COLS].notna().any(axis=1)]
         if fclean.empty:
             continue
         p = lgbm.predict(fclean)
@@ -90,6 +95,11 @@ def main():
 
     feats = build_all_features(data)
     feats = attach_categorical_features(feats, sector_map=config.SECTOR_MAP, cap_tier_map=cap_tier_map)
+    feats = attach_fundamentals_features(feats, segment="large", prices=data)
+    # Forskningskörningen får aldrig skriva/radera produktionscheckpointen.
+    config.RESULTS_DIR = os.environ.get(
+        "MOMENTUM_RESEARCH_DIR", "/tmp/momentum_metalabel")
+    Path(config.RESULTS_DIR).mkdir(parents=True, exist_ok=True)
 
     mdf = to_model_df(feats)
     all_dates = mdf.index.unique().sort_values()
