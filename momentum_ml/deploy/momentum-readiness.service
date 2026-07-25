@@ -1,0 +1,15 @@
+[Unit]
+Description=Momentum forward shadow readiness scorecard
+After=momentum-small13-shadow.service momentum-challenger.service
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
+ExecStart=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/momentum_readiness.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/momentum/momentum_ml/results

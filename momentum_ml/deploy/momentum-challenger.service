@@ -1,5 +1,5 @@
 [Unit]
-Description=Momentum monotone rank challenger (shadow only)
+Description=Momentum Large/Mid 13-week rank shadow refresh
 After=network-online.target
 
 [Service]
@@ -11,12 +11,14 @@ Environment=MOMENTUM_TRAINING_THREADS=3
 Environment=MPLCONFIGDIR=/tmp/matplotlib
 Nice=15
 IOSchedulingClass=idle
-ExecStart=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/shadow_challenger.py --out-dir /opt/momentum/momentum_ml/results/challenger
+ExecStart=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/large13_shadow_refresh.py
 
-# Explicit isolation: the process only needs to read deployed model data and
-# write its own results/challenger directory. It has no order/Montrose secrets.
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
+ReadWritePaths=/opt/momentum/momentum_ml/cache
 ReadWritePaths=/opt/momentum/momentum_ml/results/challenger
+
+[Install]
+WantedBy=multi-user.target

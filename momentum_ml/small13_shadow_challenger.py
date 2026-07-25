@@ -83,11 +83,11 @@ def load_panel() -> tuple[pd.DataFrame, Path]:
             f"kräver exakt {FORWARD_WEEKS} veckor.")
     frames = []
     for ticker, feat in cache.items():
-        missing = [c for c in RAW_FEATURES + ["target_return"]
+        missing = [c for c in RAW_FEATURES + ["target_return", "ret_1w"]
                    if c not in feat.columns]
         if missing:
             raise ValueError(f"{ticker}: saknar kolumner {missing}")
-        x = feat[RAW_FEATURES + ["target_return"]].copy()
+        x = feat[RAW_FEATURES + ["target_return", "ret_1w"]].copy()
         x["Date"] = pd.to_datetime(x.index)
         x["ticker"] = ticker
         frames.append(x.reset_index(drop=True))
@@ -219,11 +219,15 @@ def update_ledger(signals: pd.DataFrame, panel: pd.DataFrame,
     now = datetime.now(timezone.utc).isoformat()
     new = signals.copy()
     new["created_at"] = now
-    new["realized_52w_return"] = np.nan
+    new["realized_13w_return"] = np.nan
     new["matured_at"] = ""
 
     if ledger_path.exists():
         old = pd.read_csv(ledger_path, parse_dates=["Date"])
+        if ("realized_13w_return" not in old and
+                "realized_52w_return" in old):
+            old = old.rename(columns={
+                "realized_52w_return": "realized_13w_return"})
         if "model_version" not in old:
             old["model_version"] = "legacy_rank5_raw_v1"
         ledger = pd.concat([old, new], ignore_index=True)
@@ -235,25 +239,83 @@ def update_ledger(signals: pd.DataFrame, panel: pd.DataFrame,
 
     actual = panel[["Date", "ticker", "target_return"]].dropna()
     lookup = actual.set_index(["Date", "ticker"]).target_return
-    pending = ledger.realized_52w_return.isna()
+    pending = ledger.realized_13w_return.isna()
     keys = pd.MultiIndex.from_frame(ledger.loc[pending, ["Date", "ticker"]])
     values = lookup.reindex(keys).to_numpy()
     matured = pending.copy()
     matured.loc[pending] = pd.notna(values)
-    ledger.loc[pending, "realized_52w_return"] = values
+    ledger.loc[pending, "realized_13w_return"] = values
     ledger.loc[matured & (ledger.matured_at.fillna("") == ""), "matured_at"] = now
     return ledger.sort_values(["Date", "challenger_position"])
 
 
-def scorecard(ledger: pd.DataFrame, meta: dict, cache_path: Path) -> dict:
+def update_vol15_nav(ledger: pd.DataFrame, panel: pd.DataFrame,
+                     nav_path: Path) -> pd.DataFrame:
+    """Mark one causal weekly return using prior week's top-20 and 15% vol cap."""
+    if nav_path.exists():
+        nav = pd.read_csv(nav_path, parse_dates=["Date"])
+    else:
+        nav = pd.DataFrame(columns=[
+            "Date", "gross_return", "vol_exposure", "net_return", "nav"])
+    dates = sorted(ledger.loc[
+        ledger.model_version == MODEL_VERSION, "Date"].unique())
+    if not dates:
+        return nav
+    current_date = pd.Timestamp(dates[-1])
+    if not nav.empty and current_date <= nav.Date.max():
+        return nav
+    if nav.empty:
+        row = {
+            "Date": current_date, "gross_return": np.nan,
+            "vol_exposure": 1.0, "net_return": np.nan, "nav": 1.0}
+    else:
+        previous_date = pd.Timestamp(dates[-2]) if len(dates) >= 2 else nav.Date.max()
+        previous = ledger[
+            (ledger.model_version == MODEL_VERSION) &
+            (ledger.Date == previous_date) &
+            ledger.challenger_top20.astype(str).str.lower().isin(["true", "1"])
+        ]
+        returns = panel[
+            (panel.Date == current_date) &
+            panel.ticker.isin(previous.ticker)
+        ].ret_1w.dropna()
+        gross = float(returns.mean()) if not returns.empty else 0.0
+        nav_returns = nav["nav"].pct_change().dropna().tail(13)
+        if len(nav_returns) >= 2 and nav_returns.std() > 0:
+            realized_vol = float(nav_returns.std() * np.sqrt(52))
+            exposure = min(0.15 / realized_vol, 1.0)
+        else:
+            exposure = 1.0
+        net = gross * exposure
+        row = {
+            "Date": current_date, "gross_return": gross,
+            "vol_exposure": exposure, "net_return": net,
+            "nav": float(nav.iloc[-1]["nav"]) * (1 + net)}
+    nav = pd.concat([nav, pd.DataFrame([row])], ignore_index=True)
+    return nav.sort_values("Date")
+
+
+def scorecard(ledger: pd.DataFrame, meta: dict, cache_path: Path,
+              nav: pd.DataFrame | None = None) -> dict:
     current = ledger[ledger.model_version == MODEL_VERSION].copy()
-    matured = current.dropna(subset=["realized_52w_return"]).copy()
+    matured = current.dropna(subset=["realized_13w_return"]).copy()
     out = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "collecting" if matured.empty else "measuring",
         "cache": str(cache_path), "model": meta,
         "prediction_dates": int(current.Date.nunique()),
         "matured_prediction_dates": int(matured.Date.nunique()),
+        "risk_overlay": {
+            "type": "causal_vol_target", "annual_target": 0.15,
+            "max_leverage": 1.0,
+            "nav_observations": 0 if nav is None else len(nav),
+            "current_exposure": (
+                None if nav is None or nav.empty
+                else float(nav.iloc[-1].vol_exposure)),
+            "nav": (
+                None if nav is None or nav.empty
+                else float(nav.iloc[-1]["nav"])),
+        },
     }
     if matured.empty:
         return out
@@ -261,14 +323,14 @@ def scorecard(ledger: pd.DataFrame, meta: dict, cache_path: Path) -> dict:
     for date, g in matured.groupby("Date"):
         if len(g) < 20:
             continue
-        ic = spearmanr(g.challenger_score, g.realized_52w_return).statistic
+        ic = spearmanr(g.challenger_score, g.realized_13w_return).statistic
         top = g[g.challenger_top20.astype(str).str.lower().isin(["true", "1"])]
         rest = g.drop(top.index)
         weekly.append({
             "Date": date, "ic": ic,
-            "top20_return": top.realized_52w_return.mean(),
-            "top20_spread": (top.realized_52w_return.mean() -
-                             rest.realized_52w_return.mean()),
+            "top20_return": top.realized_13w_return.mean(),
+            "top20_spread": (top.realized_13w_return.mean() -
+                             rest.realized_13w_return.mean()),
         })
     w = pd.DataFrame(weekly)
     if not w.empty:
@@ -292,7 +354,10 @@ def run(out_dir: Path) -> None:
                 out_dir / "challenger_model.pkl")
     ledger = update_ledger(signals, panel, out_dir / "challenger_ledger.csv")
     atomic_csv(ledger, out_dir / "challenger_ledger.csv")
-    card = scorecard(ledger, meta, cache_path)
+    nav = update_vol15_nav(
+        ledger, panel, out_dir / "challenger_vol15_nav.csv")
+    atomic_csv(nav, out_dir / "challenger_vol15_nav.csv")
+    card = scorecard(ledger, meta, cache_path, nav)
     atomic_json(card, out_dir / "challenger_scorecard.json")
     overlap = np.nan
     if "pred_signal" in signals:

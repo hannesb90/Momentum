@@ -1,10 +1,10 @@
 [Unit]
-Description=Run Momentum shadow challenger after nightly training
+Description=Refresh Momentum Large/Mid 13-week shadow weekly
 
 [Timer]
-OnCalendar=*-*-* 04:00:00 Europe/Stockholm
+OnCalendar=Mon *-*-* 04:10:00 Europe/Stockholm
 Persistent=true
-RandomizedDelaySec=120
+RandomizedDelaySec=90
 Unit=momentum-challenger.service
 
 [Install]

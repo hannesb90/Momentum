@@ -52,8 +52,10 @@ def atomic_json(obj: dict, path: Path) -> None:
 
 
 def load_panel() -> tuple[pd.DataFrame, Path]:
-    caches = sorted((HOME / "results").glob("_features_cache_*.pkl"),
-                    key=lambda p: p.stat().st_mtime, reverse=True)
+    explicit = os.environ.get("MOMENTUM_LARGE13_CACHE")
+    caches = ([Path(explicit)] if explicit else sorted(
+        (HOME / "results").glob("_features_cache_*.pkl"),
+        key=lambda p: p.stat().st_mtime, reverse=True))
     if not caches:
         raise FileNotFoundError("Ingen Large/Mid-featurecache hittades.")
     cache = joblib.load(caches[0])
@@ -146,7 +148,13 @@ def train(panel: pd.DataFrame) -> tuple[lgb.Booster, dict]:
 
 
 def current_signals(panel: pd.DataFrame, model: lgb.Booster) -> pd.DataFrame:
-    latest_date = panel.Date.max()
+    coverage = panel.groupby("Date").ticker.nunique()
+    minimum = min(TOP_N, max(1, int(coverage.max() * 0.5)))
+    complete_dates = coverage[coverage >= minimum]
+    if complete_dates.empty:
+        raise ValueError(
+            f"Inget datum har tillräcklig tvärsnittstäckning (minst {minimum}).")
+    latest_date = complete_dates.index.max()
     latest = panel[panel.Date == latest_date].copy()
     latest["challenger_score"] = model.predict(
         model_matrix(latest), num_iteration=model.best_iteration)

@@ -1,0 +1,10 @@
+[Unit]
+Description=Evaluate Momentum shadow readiness weekly
+
+[Timer]
+OnCalendar=Mon *-*-* 05:00:00 Europe/Stockholm
+Persistent=true
+Unit=momentum-readiness.service
+
+[Install]
+WantedBy=timers.target
