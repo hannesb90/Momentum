@@ -92,6 +92,30 @@ def forward_signal_gate(path: Path, min_matured: int = 13) -> dict:
     }
 
 
+def conditional_shadow_gate(path: Path, min_matured: int = 13) -> dict:
+    if not path.exists():
+        return {"ready": False, "reason": "scorecard_missing"}
+    card = json.loads(path.read_text())
+    matured = int(card.get("matured_dates", 0))
+    metrics = card.get("forward_metrics") or {}
+    checks = {
+        "matured_dates": matured >= min_matured,
+        "positive_alpha_vs_base": metrics.get("mean_alpha_vs_base", 0) > 0,
+        "base_consistency_55pct": (
+            metrics.get("positive_alpha_vs_base_share", 0) >= .55),
+        "positive_alpha_vs_production": (
+            metrics.get("mean_alpha_vs_production", 0) > 0),
+        "production_consistency_55pct": (
+            metrics.get("positive_alpha_vs_production_share", 0) >= .55),
+        "positive_alpha_vs_index": metrics.get("mean_alpha_vs_index", 0) > 0,
+        "index_consistency_55pct": (
+            metrics.get("positive_alpha_vs_index_share", 0) >= .55),
+    }
+    return {
+        "ready": all(checks.values()), "checks": checks,
+        "matured_dates": matured, "required_matured_dates": min_matured,
+        "production_change_authorized": False,
+    }
 def regime_gate(path: Path) -> dict:
     if not path.exists():
         return {"forecast_approved": False, "reason": "audit_missing"}
@@ -131,12 +155,15 @@ def build() -> dict:
         HOME / "results/target_revision_scorecard.json")
     regime = regime_gate(
         HOME / "results/regime_accuracy/summary.json")
+    conditional = conditional_shadow_gate(
+        HOME / "results/challenger/conditional_shadow_scorecard.json")
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "large13": large, "small13": small, "etf_flow": etf,
         "etf_flow_alpha": etf_alpha,
         "target_revision_alpha": target_revisions,
         "market_regime": regime,
+        "large_conditional_shadow": conditional,
         "equity_candidates_ready": large["ready"] and small["ready"],
         # Deliberately never auto-promote money-affecting behavior.
         "production_change_authorized": False,

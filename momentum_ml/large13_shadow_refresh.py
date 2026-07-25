@@ -20,6 +20,7 @@ from features.feature_engineering import (
     build_all_features,
 )
 import shadow_challenger
+import conditional_shadow
 
 
 HOME = Path("/opt/momentum/momentum_ml")
@@ -54,6 +55,10 @@ def refresh(snapshot: Path, out_dir: Path) -> None:
         features, sector_map=config.SECTOR_MAP, cap_tier_map=cap_map)
     features = attach_fundamentals_features(
         features, segment="large", prices=data)
+    # The conditional shadow needs causal price history for its already
+    # validated holder trend rule.  Production feature consumers ignore it.
+    for ticker, frame in features.items():
+        frame["Close"] = data[ticker]["Close"].reindex(frame.index)
     gaps = {
         len(frame.loc[frame.target_return.last_valid_index():]) - 1
         for frame in features.values()
@@ -63,7 +68,20 @@ def refresh(snapshot: Path, out_dir: Path) -> None:
         raise ValueError(f"Vägrar skriva snapshot: targetgap={sorted(gaps)}")
     atomic_joblib(features, snapshot)
     os.environ["MOMENTUM_LARGE13_CACHE"] = str(snapshot)
-    shadow_challenger.run(out_dir)
+    panel, _ = shadow_challenger.load_panel()
+    model, model_meta = shadow_challenger.train(panel)
+    signals = shadow_challenger.current_signals(panel, model)
+    shadow_challenger.atomic_csv(signals, out_dir / "signals_challenger.csv")
+    joblib.dump({"model": model, "meta": model_meta},
+                out_dir / "challenger_model.pkl")
+    ledger = shadow_challenger.update_ledger(
+        signals, panel, out_dir / "challenger_ledger.csv")
+    shadow_challenger.atomic_csv(
+        ledger, out_dir / "challenger_ledger.csv")
+    card = shadow_challenger.scorecard(ledger, model_meta, snapshot)
+    shadow_challenger.atomic_json(
+        card, out_dir / "challenger_scorecard.json")
+    conditional_shadow.run(out_dir, panel, model, signals)
 
 
 if __name__ == "__main__":

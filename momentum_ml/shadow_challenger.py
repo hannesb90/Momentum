@@ -67,7 +67,10 @@ def load_panel() -> tuple[pd.DataFrame, Path]:
                    if c not in feat.columns]
         if missing:
             raise ValueError(f"{ticker}: saknar kolumner {missing}")
-        x = feat[RAW_FEATURES + ["ema_cross_8_21", "target_return"]].copy()
+        optional = ["Close"] if "Close" in feat.columns else []
+        x = feat[
+            RAW_FEATURES + ["ema_cross_8_21", "target_return"] + optional
+        ].copy()
         x["Date"] = pd.to_datetime(x.index)
         x["ticker"] = ticker
         frames.append(x.reset_index(drop=True))
