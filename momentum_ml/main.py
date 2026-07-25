@@ -242,6 +242,7 @@ def _attach_meta_and_limits(df: pd.DataFrame, data: dict) -> pd.DataFrame:
 
 def main():
     args = parse_args()
+    config.ACTIVE_SEGMENT = args.segment or config.DEFAULT_SEGMENT
     # Segment: sätt market_cap + results-katalog från config.SEGMENTS. Måste ske
     # FÖRST (innan results skrivs/läses) och driva config.RESULTS_DIR så att
     # modell, signals, stats m.m. hamnar i segmentets egen mapp. Resolvas i varje

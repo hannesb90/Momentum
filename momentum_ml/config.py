@@ -413,6 +413,16 @@ NAME_MAP: dict = {}
 # gånger. Fonder ska ge sektor-signaler, aldrig vara en portföljkandidat).
 CAP_TIER_MAP: dict = {}
 
+# FI:s historiska blankningsregister. Validerad endast för Large/Mid:
+# 0,03 percentilenheter i avdrag per blankad procentenhet. Small/Micro är
+# uttryckligen av eftersom avsaknad av blankning där ofta är ett lånebarhetsfel.
+SHORT_SIGNAL_ENABLED = True
+SHORT_ENTRY_PENALTY_PER_PCT = 0.03
+SHORT_ENTRY_MAX_PCT = 10.0
+SHORT_EXIT_DELTA_8W_PP = 0.5
+SHORT_EXIT_LEVEL_PCT = 3.0
+ACTIVE_SEGMENT = "large"  # main.py skriver över från --segment före modellbygget
+
 # Kanoniska kategorilistor för sektor/cap-tier som modell-features
 # (features/feature_engineering.py: sector_code, cap_tier_code). Fast
 # ordning krävs eftersom träning och prediktion körs i separata processer

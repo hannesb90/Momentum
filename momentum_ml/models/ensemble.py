@@ -346,6 +346,29 @@ def build_full_output(
             })
 
     df = pd.DataFrame(rows).set_index("Date").sort_index()
+    short_active = (
+        bool(getattr(config, "SHORT_SIGNAL_ENABLED", False))
+        and getattr(config, "ACTIVE_SEGMENT", "large") == "large"
+    )
+    if short_active:
+        try:
+            from altdata.fi_blankning import attach_features
+            df = attach_features(df)
+        except Exception as exc:
+            print(f"  [WARN] FI-blankningssignal kunde inte läsas: {exc}")
+    for col in ("short_pct", "short_delta_4w", "short_delta_8w", "short_delta_13w"):
+        if col not in df:
+            df[col] = np.nan
+    df["short_entry_penalty"] = 0.0
+    df["short_adjusted_rank"] = df.groupby(level="Date")["prob_raw"].rank(pct=True)
+    if short_active:
+        pct = df["short_pct"].clip(
+            lower=0.0, upper=float(getattr(config, "SHORT_ENTRY_MAX_PCT", 10.0))
+        ).fillna(0.0)
+        df["short_entry_penalty"] = (
+            pct * float(getattr(config, "SHORT_ENTRY_PENALTY_PER_PCT", 0.03))
+        )
+        df["short_adjusted_rank"] -= df["short_entry_penalty"]
 
     # Alltid-investerad topp-N (tvärsnitts-momentum): bland behöriga kandidater,
     # ranka efter prob_up (conviction, alltid definierad) och håll de N starkaste
@@ -379,7 +402,9 @@ def build_full_output(
         # Sortera på kalibrerad prob FÖRST (oförändrat där den skiljer), med rå
         # poäng som TIE-BREAK: på isotonic-platån (nästan alla exakt 34,4%) var
         # urvalet annars godtycklig radordning – nu avgör modellens finordning.
-        top = (cand.sort_values(["prob_up", "prob_raw"], ascending=False)
+        sort_cols = (["short_adjusted_rank", "prob_up", "prob_raw"]
+                     if short_active else ["prob_up", "prob_raw"])
+        top = (cand.sort_values(sort_cols, ascending=False)
                .head(config.MAX_POSITIONS))
         n = len(top)
         eq = 1.0 / n

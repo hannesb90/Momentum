@@ -3142,6 +3142,22 @@ def exitscan():
             if found:
                 print(f"[exitscan] Avanza-reserv gav pris för {len(found)}/{len(missing)}: {', '.join(found)}")
     table, total = _sector_table()
+    short = {}
+    try:
+        from altdata.fi_blankning import latest_features
+        # Exitscan kan köras fristående, utan main.py som normalt fyller dessa
+        # mappar. Läs därför namn/cap här och skicka bara Large/Mid till den
+        # validerade signalen (Small/Micro-nollor är inte jämförbara).
+        import pandas as pd
+        universe = pd.read_csv(Path(__file__).parent / "data" / "sweden_universe.csv")
+        names = dict(zip(universe["ticker"], universe["name"]))
+        caps = dict(zip(universe["ticker"], universe["market_cap"]))
+        config.NAME_MAP.update(names)
+        large_tickers = [ticker for ticker in tickers
+                         if caps.get(ticker) in ("Large Cap", "Mid Cap")]
+        short = latest_features(large_tickers)
+    except Exception as e:  # noqa: BLE001
+        print(f"[exitscan] FI-blankning kunde inte läsas: {e}")
     out = []
     for r, tk in resolved:
         sec = _sector_of(tk) if tk else ""
@@ -3149,11 +3165,21 @@ def exitscan():
         tech = _tech_signal(prices[tk]) if tk in prices else None
         broken = bool(tech and tech["broken"])
         strong = bool(tech and tech["strong"])
-        if broken and weak:
+        short_row = short.get(tk, {})
+        short_pct = _signed_num(short_row.get("short_pct"))
+        short_d8 = _signed_num(short_row.get("short_delta_8w"))
+        short_accel = bool(short_d8 is not None and short_d8 >=
+                           float(getattr(config, "SHORT_EXIT_DELTA_8W_PP", 0.5)))
+        short_high = bool(short_pct is not None and short_pct >=
+                          float(getattr(config, "SHORT_EXIT_LEVEL_PCT", 3.0)))
+        short_confirmed = short_accel and (short_high or broken or weak)
+        if short_confirmed:
+            tier = "red"
+        elif broken and weak:
             tier = "red"
         elif (broken and sec == "") and strong:       # ETF utan sektor: djupt tekniskt brott
             tier = "red"
-        elif broken or weak:
+        elif broken or weak or short_accel or short_high:
             tier = "amber"
         elif tk and tech is None:
             tier = "unknown"
@@ -3161,7 +3187,13 @@ def exitscan():
             tier = "ok"
         out.append({"name": r["name"], "ticker": tk, "bucket": r.get("bucket"),
                     "sector": sec, "tier": tier,
-                    "sector_note": snote, "tech_note": (tech["note"] if tech else "ingen prisdata")})
+                    "sector_note": snote, "tech_note": (tech["note"] if tech else "ingen prisdata"),
+                    "short_pct": short_pct, "short_delta_8w": short_d8,
+                    "short_note": (
+                        f"blankning {short_pct:.2f}%, 8v {short_d8:+.2f} pp"
+                        if short_pct is not None and short_d8 is not None
+                        else "ingen säker FI-signal"
+                    )})
     order = {"red": 0, "amber": 1, "unknown": 2, "ok": 3}
     out.sort(key=lambda x: order.get(x["tier"], 9))
     res = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"), "holdings": out}
@@ -3172,9 +3204,9 @@ def exitscan():
     ambers = [o for o in out if o["tier"] == "amber"]
     print(f"[exitscan] {len(out)} innehav · {len(reds)} RÖDA (end this now) · {len(ambers)} gula → {p}")
     for o in reds:
-        print(f"   🔴 {o['name']:<24} {o['ticker']:<12} {o['tech_note']} | {o['sector_note']}")
+        print(f"   🔴 {o['name']:<24} {o['ticker']:<12} {o['tech_note']} | {o['sector_note']} | {o['short_note']}")
     for o in ambers:
-        print(f"   🟡 {o['name']:<24} {o['ticker']:<12} {o['tech_note']} | {o['sector_note']}")
+        print(f"   🟡 {o['name']:<24} {o['ticker']:<12} {o['tech_note']} | {o['sector_note']} | {o['short_note']}")
 
 
 def _write_json(data):
