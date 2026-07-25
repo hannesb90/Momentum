@@ -355,12 +355,22 @@ def build_full_output(
     # i backtestern drar ner exponeringen i kris.
     def _size_date(group: pd.DataFrame) -> pd.Series:
         cand = group[group["eligible"] == 1]
-        # Momentum-kvalitetsgrind (experiment, default AV): håll bara namn med
-        # GENUINT momentum (abs. 12-1 > MOMENTUM_GATE_MIN). Annars tvingar
-        # alltid-investerad topp-N in ~100% i N namn även när få trendar → de få
-        # vinnarna späds ut av "minst dåliga" namn. Med grinden får portföljen
-        # hålla FÄRRE än N och bygga kontanter när momentum är ont om (jfr
-        # kap-viktning som låter vinnaren bli stor och struntar i resten).
+        # Momentum-kvalitetsgrind (#17 i UTVECKLINGSLOGG.md, adopterad per
+        # segment; #62 validerade den strikt mot alternativ - se loggen):
+        # håll bara namn med POSITIVT 12-1-momentum över MOMENTUM_GATE_MIN.
+        # KORRIGERAT 2026-07-25 (extern kodgranskning): denna kommentar sa
+        # tidigare felaktigt "abs. 12-1" (absolutvärde) - koden nedan har
+        # ALDRIG använt abs(), bara ett strikt POSITIVT tröskelvillkor
+        # (mom > MOMENTUM_GATE_MIN, inte abs(mom) > MOMENTUM_GATE_MIN).
+        # Kommentaren var missvisande; koden (som styr beteendet) är och
+        # har varit oförändrad. Annars tvingar alltid-investerad topp-N in
+        # ~100% i N namn även när få trendar → de få vinnarna späds ut av
+        # "minst dåliga" namn. Med grinden får portföljen hålla FÄRRE än N
+        # och bygga kontanter när momentum är ont om (jfr kap-viktning som
+        # låter vinnaren bli stor och struntar i resten). Ingen skillnad
+        # görs mellan NYA kandidater och REDAN ÄGDA innehav - grinden
+        # omprövas tillståndslöst varje vecka för alla (#63 testade att
+        # låta ägda innehav slippa omprövningen - ingen förbättring).
         gate = bool(getattr(config, "MOMENTUM_GATE_ENABLED", False))
         if gate and "mom" in cand.columns:
             cand = cand[cand["mom"] > float(getattr(config, "MOMENTUM_GATE_MIN", 0.0))]
