@@ -156,7 +156,7 @@ def train(panel: pd.DataFrame) -> tuple[lgb.Booster, dict]:
 
 def current_signals(panel: pd.DataFrame, model: lgb.Booster) -> pd.DataFrame:
     coverage = panel.groupby("Date").ticker.nunique()
-    minimum = max(TOP_N, int(coverage.max() * 0.5))
+    minimum = min(TOP_N, max(1, int(coverage.max() * 0.5)))
     complete_dates = coverage[coverage >= minimum]
     if complete_dates.empty:
         raise ValueError(
