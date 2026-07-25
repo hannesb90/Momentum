@@ -26,7 +26,7 @@ from data.data_loader import (
 )
 from features.feature_engineering import (
     build_all_features, to_model_df, attach_categorical_features,
-    attach_fundamentals_features, FEATURE_COLS,
+    attach_fundamentals_features, FEATURE_COLS, _feature_code_hash,
 )
 from models.lgbm_model import MomentumLGBM
 from models.lstm_model import MomentumLSTM
@@ -160,6 +160,11 @@ def _feature_cache_key(args) -> str:
         "start": args.start, "end": args.end, "min_turnover": float(args.min_turnover),
         "stale_weeks": args.stale_weeks, "min_history": args.min_history,
         "no_liquidity_filter": args.no_liquidity_filter,
+        # Segmentnamnet räcker inte när segmentets runtime-konfiguration eller
+        # featurekoden ändras mellan två körningar. Utan dessa fält kunde Small
+        # återanvända en 13v-cache efter övergången till 52v.
+        "forward_weeks": int(config.FORWARD_WEEKS),
+        "feature_code_hash": _feature_code_hash(),
     }
     return hashlib.sha1(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
