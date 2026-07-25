@@ -1,0 +1,24 @@
+[Unit]
+Description=Momentum Small/Micro 13-week rank shadow refresh
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
+Environment=MOMENTUM_TRAINING_THREADS=3
+Environment=MPLCONFIGDIR=/tmp/matplotlib
+Nice=15
+IOSchedulingClass=idle
+ExecStart=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/small13_shadow_refresh.py
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/momentum/momentum_ml/cache
+ReadWritePaths=/opt/momentum/momentum_ml/results/small13_challenger
+
+[Install]
+WantedBy=multi-user.target
