@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Momentum shadow challenger after nightly training
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 Europe/Stockholm
+Persistent=true
+RandomizedDelaySec=120
+Unit=momentum-challenger.service
+
+[Install]
+WantedBy=timers.target

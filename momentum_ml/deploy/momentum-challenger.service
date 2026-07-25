@@ -1,0 +1,22 @@
+[Unit]
+Description=Momentum monotone rank challenger (shadow only)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
+Environment=MOMENTUM_TRAINING_THREADS=3
+Environment=MPLCONFIGDIR=/tmp/matplotlib
+Nice=15
+IOSchedulingClass=idle
+ExecStart=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/shadow_challenger.py --out-dir /opt/momentum/momentum_ml/results/challenger
+
+# Explicit isolation: the process only needs to read deployed model data and
+# write its own results/challenger directory. It has no order/Montrose secrets.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/momentum/momentum_ml/results/challenger
