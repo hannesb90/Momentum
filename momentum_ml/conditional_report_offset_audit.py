@@ -8,8 +8,11 @@ import pandas as pd
 import config
 from data.data_loader import fetch_weekly_data, load_sweden_universe
 
-BINS = [-1, 7, 14, 28, 56, 91, 10_000]
-LABELS = ["0-7d", "8-14d", "15-28d", "29-56d", "57-91d", ">91d"]
+SIGNED_BINS = [-10_000, -92, -57, -29, -15, -8, -1, 7, 14, 28, 56, 91, 10_000]
+SIGNED_LABELS = [
+    "<-91d", "-91--57d", "-56--29d", "-28--15d", "-14--8d", "-7--1d",
+    "0-7d", "8-14d", "15-28d", "29-56d", "57-91d", ">91d",
+]
 
 
 def main():
@@ -48,10 +51,18 @@ def main():
             dates = report_dates.get(r.ticker)
             if dates is None:
                 continue
-            report_pos = dates.searchsorted(date, side="right") - 1
-            if report_pos < 0:
+            next_pos = dates.searchsorted(date, side="right")
+            prev_pos = next_pos - 1
+            prev_days = (
+                (date - dates[prev_pos]).days if prev_pos >= 0 else 10_000)
+            next_days = (
+                (dates[next_pos] - date).days if next_pos < len(dates)
+                else 10_000)
+            if prev_days == 10_000 and next_days == 10_000:
                 continue
-            days = (date - dates[report_pos]).days
+            # Närmaste faktiska rapport: negativt = före, positivt = efter.
+            # Negativa värden är diagnostiska/icke-kausala utan kalender-snapshot.
+            days = -next_days if next_days < prev_days else prev_days
             p0, p1 = px[r.ticker].iloc[pos], px[r.ticker].iloc[pos + 13]
             if pd.isna(p0) or pd.isna(p1) or p0 == 0:
                 continue
@@ -60,7 +71,8 @@ def main():
                 "rank": getattr(r, rank_col), "ret13": p1 / p0 - 1,
             })
     out = pd.DataFrame(rows)
-    out["offset"] = pd.cut(out["days"], BINS, labels=LABELS)
+    out["offset"] = pd.cut(
+        out["days"], SIGNED_BINS, labels=SIGNED_LABELS)
     # Excess mot samma dags topp-20-medel isolerar rapporttimingen från marknaden.
     out["excess"] = out["ret13"] - out.groupby("Date")["ret13"].transform("mean")
     print("period       rapportoffset      n  medel-excess median-excess positiv")
@@ -68,13 +80,13 @@ def main():
         ("DEV <2024", out["Date"] < "2024-01-01"),
         ("TEST 2024+", out["Date"] >= "2024-01-01"),
     ):
-        for label in LABELS:
+        for label in SIGNED_LABELS:
             x = out.loc[mask & (out["offset"] == label), "excess"].dropna()
             if len(x):
                 print(f"{period:<13}{label:<16}{len(x):>5}{x.mean():>14.2%}"
                       f"{x.median():>14.2%}{(x > 0).mean():>9.1%}")
-    print("\nNegativa offsets kräver historiska kalender-snapshots och testas inte "
-          "med framtida faktiskt rapportdatum (det vore lookahead).")
+    print("\nNegativa offsets använder faktiskt framtida rapportdatum och är ett "
+          "diagnostiskt övre tak, inte kausalt produktionsbevis.")
 
 
 if __name__ == "__main__":
