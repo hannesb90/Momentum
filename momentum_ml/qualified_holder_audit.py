@@ -25,8 +25,14 @@ from data.data_loader import (
 )
 
 HORIZONS = (13, 26, 52)
+QUARANTINES = (4, 8, 13)
 METRICS = ("revenue", "ebit", "eps", "operating_cash_flow")
 FUND_MAX_AGE_DAYS = 400
+ROUND_TRIP_COST = 2 * (
+    float(getattr(config, "COMMISSION", .0015))
+    + float(getattr(config, "SLIPPAGE", .001))
+    + float(getattr(config, "SPREAD_MIN", 0.0))
+)
 
 
 def load_reports(results_dir: Path) -> pd.DataFrame:
@@ -130,6 +136,49 @@ def main():
             old1, new1 = px[r.ticker].iloc[pos + h], px[replacement].iloc[pos + h]
             out[f"delta_{h}"] = (
                 old1 / old0 - new1 / new0) if pd.notna(old1) and pd.notna(new1) else np.nan
+
+        # Kausal karantän: äg gamla bolaget i k veckor. På beslutet vecka k
+        # behålls det om det åter kvalificerat sig, annars köps dåtidens
+        # högst rankade signal. Baslinjen köper ersättaren direkt vid vecka 0.
+        for k in QUARANTINES:
+            delay_pos = pos + k
+            if delay_pos >= len(px):
+                continue
+            delay_date = px.index[delay_pos]
+            delayed_signals = by_date.get(delay_date)
+            if delayed_signals is None:
+                continue
+            old_row = delayed_signals[delayed_signals["ticker"] == r.ticker]
+            requalified = (
+                not old_row.empty and int(old_row.iloc[-1]["pred_signal"]) == 1)
+            delayed_ticker = r.ticker
+            delayed_trade = False
+            if not requalified:
+                dc = delayed_signals[
+                    (delayed_signals["pred_signal"] == 1)
+                    & delayed_signals["ticker"].isin(px.columns)]
+                if dc.empty:
+                    continue
+                delayed_ticker = dc.sort_values(
+                    rank_col, ascending=False).iloc[0]["ticker"]
+                delayed_trade = delayed_ticker != r.ticker
+            oldk = px[r.ticker].iloc[delay_pos]
+            delayed0 = px[delayed_ticker].iloc[delay_pos]
+            if pd.isna(oldk) or pd.isna(delayed0) or delayed0 == 0:
+                continue
+            for h in HORIZONS:
+                if h < k or pos + h >= len(px):
+                    continue
+                base_h = px[replacement].iloc[pos + h]
+                delayed_h = px[delayed_ticker].iloc[pos + h]
+                if pd.isna(base_h) or pd.isna(delayed_h):
+                    continue
+                baseline_wealth = (base_h / new0) * (1 - ROUND_TRIP_COST)
+                delayed_wealth = (oldk / old0) * (delayed_h / delayed0)
+                if delayed_trade:
+                    delayed_wealth *= (1 - ROUND_TRIP_COST)
+                out[f"q{k}_{h}"] = delayed_wealth - baseline_wealth
+            out[f"q{k}_requalified"] = requalified
         rows.append(out)
     audit = pd.DataFrame(rows)
     audit["fund_up"] = audit["fund_change"] > 0
@@ -174,6 +223,46 @@ def main():
     print(f"\nFörhandsvald regel från utvecklingsperioden: {selected}")
     print("BESLUT:", "GODKÄND FÖR SHADOW" if approved else "FÖRKASTAD / MER DATA KRÄVS")
     print("Krav per horisont i 2024+: n≥30, medelΔ>0, medianΔ>0, vinstfrekvens≥55%.")
+
+    print(f"\nEXIT-KARANTÄN (endast trendintakta avhopp, kostnad {ROUND_TRIP_COST:.2%})")
+    print("period              k/h      n   medelΔ  medianΔ    vinst återkval")
+    period_masks = {
+        "UTVECKLING <2024": audit["Date"] < "2024-01-01",
+        "KONTROLL 2024+": audit["Date"] >= "2024-01-01",
+    }
+    for period, pmask in period_masks.items():
+        for k in QUARANTINES:
+            req = audit.loc[pmask & audit["trend"], f"q{k}_requalified"].mean()
+            for h in HORIZONS:
+                col = f"q{k}_{h}"
+                if col not in audit:
+                    continue
+                x = audit.loc[pmask & audit["trend"], col].dropna()
+                if not x.empty:
+                    print(f"{period:<19}{k:>2}/{h:<3} {len(x):>6} "
+                          f"{x.mean():>+8.2%} {x.median():>+8.2%} "
+                          f"{(x > 0).mean():>8.1%} {req:>8.1%}")
+
+    # Välj k endast på utvecklingsperiodens median över alla tre horisonter.
+    dev = period_masks["UTVECKLING <2024"] & audit["trend"]
+    def qscore(k):
+        vals = []
+        for h in HORIZONS:
+            col = f"q{k}_{h}"
+            if col in audit:
+                vals.append(audit.loc[dev, col].median())
+        return np.nanmean(vals)
+    selected_k = max(QUARANTINES, key=qscore)
+    control = period_masks["KONTROLL 2024+"] & audit["trend"]
+    qchecks = []
+    for h in HORIZONS:
+        x = audit.loc[control, f"q{selected_k}_{h}"].dropna()
+        qchecks.append(
+            len(x) >= 30 and x.mean() > 0 and x.median() > 0
+            and (x > 0).mean() >= .55)
+    print(f"\nFörhandsvald karantän: {selected_k} veckor")
+    print("KARANTÄNBESLUT:",
+          "GODKÄND FÖR SHADOW" if all(qchecks) else "FÖRKASTAD")
 
 
 if __name__ == "__main__":
