@@ -175,6 +175,15 @@ def build(out_dir: Path) -> dict:
                 page.read_text(encoding="utf-8"), ticker, fact["url"]))
         p = prices.get(ticker, {})
         is_dead = fact.get("status") == "avnoterad"
+        price_start = pd.to_datetime(p.get("price_start"), errors="coerce")
+        delisted = pd.to_datetime(fact.get("delisted_date"), errors="coerce")
+        price_overlaps_lifecycle = bool(
+            p and (
+                pd.isna(delisted) or pd.isna(price_start)
+                or price_start <= delisted))
+        ticker_reuse_conflict = bool(
+            is_dead and p and pd.notna(price_start) and pd.notna(delisted)
+            and price_start > delisted + pd.Timedelta(days=90))
         coverage.append({
             "ticker": ticker, "name": fact.get("name"),
             "in_current_universe": ticker in current_tickers,
@@ -183,7 +192,10 @@ def build(out_dir: Path) -> dict:
             "delisted_date": fact.get("delisted_date"),
             "has_cached_price": bool(p),
             **p,
-            "delisted_price_gap": bool(is_dead and not p),
+            "price_overlaps_lifecycle": price_overlaps_lifecycle,
+            "ticker_reuse_conflict": ticker_reuse_conflict,
+            "delisted_price_gap": bool(
+                is_dead and (not p or not price_overlaps_lifecycle)),
             "source_url": fact.get("url"),
         })
 
@@ -209,14 +221,20 @@ def build(out_dir: Path) -> dict:
         "facts_extracted": len(facts), "intervals": len(interval_df),
         "corporate_actions": len(action_df),
         "delisted_facts": int(dead.sum()),
-        "delisted_with_cached_price": int(
-            (dead & coverage_df.has_cached_price).sum()),
+        "delisted_with_cached_price": int((
+            dead & coverage_df.has_cached_price
+            & coverage_df.price_overlaps_lifecycle).sum()),
         "delisted_missing_price": int(
-            (dead & ~coverage_df.has_cached_price).sum()),
+            (dead & (
+                ~coverage_df.has_cached_price
+                | ~coverage_df.price_overlaps_lifecycle)).sum()),
+        "ticker_reuse_conflicts": int(coverage_df.ticker_reuse_conflict.sum()),
         "historical_backtest_ready": False,
         "blocking_reason": (
             "delisted_price_history_missing"
-            if (dead & ~coverage_df.has_cached_price).any()
+            if (dead & (
+                ~coverage_df.has_cached_price
+                | ~coverage_df.price_overlaps_lifecycle)).any()
             else "manual_point_in_time_review_required"),
         "production_change_authorized": False,
     }
