@@ -771,7 +771,7 @@ _SIGNALS_CACHE: dict = {}
 
 
 def _latest_signals(path) -> dict:
-    """{TICKER: {prob_up, pred_signal, name}} – senaste raden per ticker ur en
+    """Senaste modellvärden per ticker ur en
     signals.csv. Memoiserad per (fil, mtime): samma fil läses annars flera
     gånger per next_buy (_load_scores för båda segmenten + _momentum_picks).
 
@@ -839,7 +839,9 @@ def _latest_signals_uncached(path) -> dict:
     if not header_line:
         return {}
     cols = header_line.decode("utf-8", "replace").rstrip("\r\n").split(",")
-    want = [c for c in ("ticker", "name", "prob_up", "pred_signal") if c in cols]
+    want = [c for c in ("ticker", "name", "prob_up", "prob_rank",
+                        "selection_rank", "pred_signal", "short_pct",
+                        "short_adjusted_rank") if c in cols]
     if "ticker" not in want or not chunk:
         return {}
     try:
@@ -854,7 +856,11 @@ def _latest_signals_uncached(path) -> dict:
         tk = str(row.get("ticker") or "").strip().upper()
         if tk:
             out[tk] = {"prob_up": row.get("prob_up"),
+                       "prob_rank": row.get("prob_rank"),
+                       "selection_rank": row.get("selection_rank"),
                        "pred_signal": row.get("pred_signal"),
+                       "short_pct": row.get("short_pct"),
+                       "short_adjusted_rank": row.get("short_adjusted_rank"),
                        "name": row.get("name")}
     return out
 
@@ -869,13 +875,14 @@ def _momentum_picks():
     latest = _latest_signals(sp)   # pandas-snabb, delad med _load_scores
     def pu(r):
         try:
-            return float(r.get("prob_up") or 0)
+            return float(r.get("selection_rank") or r.get("prob_rank")
+                         or r.get("prob_up") or 0)
         except (ValueError, TypeError):
             return 0.0
     buys = [(tk, r) for tk, r in latest.items() if str(r.get("pred_signal")) in ("1", "1.0", "1")]
     buys.sort(key=lambda x: pu(x[1]), reverse=True)
     return [{"name": r.get("name") or tk, "ticker": tk,
-             "note": f"momentum P(upp) {pu(r):.0%}", "source": "momentum"} for tk, r in buys[:5]]
+             "note": f"momentumrank {pu(r):.0%}", "source": "momentum"} for tk, r in buys[:5]]
 
 
 def _candidates() -> dict:
@@ -1221,6 +1228,9 @@ def _load_scores_uncached() -> dict:
                 # säljvakten läser som en äkta sälj-bekräftelse.
                 if p >= (e.get("prob_up") or 0.0):
                     e["prob_up"] = p
+                    e["prob_rank"] = _score_num(
+                        r.get("selection_rank") or r.get("prob_rank")
+                    )
                     e["pred_signal"] = str(r.get("pred_signal"))
 
     # Mjuka värden TOKEN-FRITT (altdata/soft_signals.py, nattligt): destillerad
@@ -1629,7 +1639,12 @@ def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted,
     vn = _pct_rank(v_sorted, e.get("value_score"))
     if qn is None and kn is None and vn is None:
         return None                      # köp-och-behåll: kräver fundament, inte bara fart
-    pn = e.get("prob_up")
+    # Kärnmodellen väljer på tvärsnittsrank, inte den isotonic-kalibrerade
+    # sannolikheten. prob_up ligger ofta på breda identiska platåer och gjorde
+    # momentumvikten i köp-vakten nästan verkningslös/filordningsberoende.
+    pn = e.get("prob_rank")
+    if pn is None:
+        pn = e.get("prob_up")  # äldre signals.csv
     # Coalesce: en modell ska inte straffa ett bolag för att EN datakälla
     # saknas – fall tillbaka på de andra fundament-betygen. Bara signaler
     # som modellen FAKTISKT viktar (>0) räknas in i fallbacken, så
@@ -1665,7 +1680,7 @@ def _composite_score(e: dict, model: str, w: dict, q_sorted, k_sorted, v_sorted,
     if e.get("quant") is not None:
         why.append(f"kvant {e['quant']:.0f}")
     if pn is not None:
-        why.append(f"P(upp) {pn:.0%}")
+        why.append(f"modellrank {pn:.0%}")
     if research:
         why.append("uppdragsanalys ✓")
     if ins_net >= 2 and ins_bonus > 0:
@@ -3151,7 +3166,7 @@ def exitscan():
         import pandas as pd
         universe = pd.read_csv(Path(__file__).parent / "data" / "sweden_universe.csv")
         names = dict(zip(universe["ticker"], universe["name"]))
-        caps = dict(zip(universe["ticker"], universe["market_cap"]))
+        caps = dict(zip(universe["ticker"], universe["market_cap_category"]))
         config.NAME_MAP.update(names)
         large_tickers = [ticker for ticker in tickers
                          if caps.get(ticker) in ("Large Cap", "Mid Cap")]
@@ -3172,7 +3187,10 @@ def exitscan():
                            float(getattr(config, "SHORT_EXIT_DELTA_8W_PP", 0.5)))
         short_high = bool(short_pct is not None and short_pct >=
                           float(getattr(config, "SHORT_EXIT_LEVEL_PCT", 3.0)))
-        short_confirmed = short_accel and (short_high or broken or weak)
+        short_confirmed = (
+            bool(getattr(config, "SHORT_EXIT_RED_ENABLED", False))
+            and short_accel and (short_high or broken or weak)
+        )
         if short_confirmed:
             tier = "red"
         elif broken and weak:

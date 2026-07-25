@@ -39,3 +39,19 @@ def test_unmatched_ticker_is_unknown_not_zero(monkeypatch):
     result = fi.attach_features(frame, Path("unused"))
 
     assert pd.isna(result.iloc[0]["short_pct"])
+
+
+def test_attach_accepts_second_resolution_feature_dates(monkeypatch):
+    dates = pd.date_range("2025-01-06", periods=10, freq="W-MON").values.astype("datetime64[s]")
+    frame = pd.DataFrame({"ticker": ["AAA.ST"] * 10},
+                         index=pd.DatetimeIndex(dates, name="Date"))
+    events = pd.DataFrame({
+        "date": pd.Series([pd.Timestamp("2025-01-07")], dtype="datetime64[us]"),
+        "issuer": ["Alpha AB"], "short_pct": [1.0], "isin": ["SE1"],
+    })
+    monkeypatch.setattr(fi, "load_events", lambda path=None: events)
+    monkeypatch.setattr(fi.config, "NAME_MAP", {"AAA.ST": "Alpha AB"})
+
+    result = fi.attach_features(frame, Path("unused"))
+
+    assert result["short_pct"].notna().sum() == 9

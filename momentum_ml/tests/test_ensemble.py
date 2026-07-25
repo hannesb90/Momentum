@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config  # noqa: E402
-from models.ensemble import MomentumEnsemble, kelly_position_size  # noqa: E402
+from models.ensemble import MomentumEnsemble, build_full_output, kelly_position_size  # noqa: E402
 
 
 # ── kelly_position_size ────────────────────────────────────────────────────
@@ -124,3 +124,82 @@ def test_ensemble_combine_empty_lstm_falls_back_to_lgbm():
     lgbm = _preds([0.3, 0.7])
     out = ens.combine(lgbm, pd.DataFrame())
     pd.testing.assert_frame_equal(out, lgbm)
+
+
+def test_neutral_short_signal_preserves_prob_then_raw_order(monkeypatch):
+    """Blankningslagret får inte göra prob_raw primär när alla avdrag är noll."""
+    dates = pd.DatetimeIndex(["2025-01-06", "2025-01-13"])
+    preds = {
+        "HIGH_PROB.ST": pd.DataFrame(
+            {"prob_up": [0.8, 0.8], "prob_raw": [0.1, 0.1],
+             "pred_return": [0.1, 0.1]}, index=dates),
+        "HIGH_RAW.ST": pd.DataFrame(
+            {"prob_up": [0.7, 0.7], "prob_raw": [0.9, 0.9],
+             "pred_return": [0.1, 0.1]}, index=dates),
+    }
+    features = {
+        ticker: pd.DataFrame({"rvol_13w": [0.2, 0.2], "mom_12_1": [0.2, 0.2]},
+                             index=dates)
+        for ticker in preds
+    }
+    monkeypatch.setattr(config, "MAX_POSITIONS", 1)
+    monkeypatch.setattr(config, "SHORT_SIGNAL_ENABLED", False)
+    monkeypatch.setattr(config, "MOMENTUM_GATE_ENABLED", False)
+
+    result = build_full_output(preds, None, features, MomentumEnsemble())
+
+    picked = result.loc[result["pred_signal"] == 1, "ticker"].tolist()
+    assert picked == ["HIGH_PROB.ST", "HIGH_PROB.ST"]
+
+
+def test_selection_eligible_exposes_all_active_gates(monkeypatch):
+    date = pd.Timestamp("2025-01-06")
+    preds = {"WEAK.ST": pd.DataFrame(
+        {"prob_up": [0.9], "prob_raw": [0.9], "pred_return": [0.1]}, index=[date])}
+    features = {"WEAK.ST": pd.DataFrame(
+        {"rvol_13w": [0.2], "mom_12_1": [0.05]}, index=[date])}
+    monkeypatch.setattr(config, "SHORT_SIGNAL_ENABLED", False)
+    monkeypatch.setattr(config, "MOMENTUM_GATE_ENABLED", True)
+    monkeypatch.setattr(config, "MOMENTUM_GATE_MIN", 0.10)
+
+    result = build_full_output(preds, None, features, MomentumEnsemble())
+
+    assert result.iloc[0]["selection_eligible"] == 0
+    assert result.iloc[0]["pred_signal"] == 0
+
+
+def test_short_shadow_is_computed_but_only_changes_selection_when_enabled(monkeypatch):
+    import altdata.fi_blankning as fi
+    dates = pd.DatetimeIndex(["2025-01-06", "2025-01-13"])
+    preds = {
+        "SHORTED.ST": pd.DataFrame(
+            {"prob_up": [.8, .8], "prob_raw": [.8, .8],
+             "pred_return": [.1, .1]}, index=dates),
+        "CLEAN.ST": pd.DataFrame(
+            {"prob_up": [.7, .7], "prob_raw": [.7, .7],
+             "pred_return": [.1, .1]}, index=dates),
+    }
+    features = {ticker: pd.DataFrame(
+        {"rvol_13w": [.2, .2], "mom_12_1": [.2, .2]}, index=dates)
+        for ticker in preds}
+
+    def fake_attach(frame):
+        out = frame.copy()
+        out["short_pct"] = out["ticker"].map({"SHORTED.ST": 10.0, "CLEAN.ST": 0.0})
+        return out
+
+    monkeypatch.setattr(fi, "attach_features", fake_attach)
+    monkeypatch.setattr(config, "MAX_POSITIONS", 1)
+    monkeypatch.setattr(config, "MOMENTUM_GATE_ENABLED", False)
+    monkeypatch.setattr(config, "SHORT_SIGNAL_ENABLED", True)
+    monkeypatch.setattr(config, "ACTIVE_SEGMENT", "large")
+    monkeypatch.setattr(config, "SHORT_ENTRY_PENALTY_PER_PCT", 0.10)
+
+    monkeypatch.setattr(config, "SHORT_ENTRY_ENABLED", False)
+    shadow = build_full_output(preds, None, features, MomentumEnsemble())
+    assert shadow.loc[shadow.pred_signal == 1, "ticker"].tolist() == ["SHORTED.ST"] * 2
+    assert (shadow["short_entry_penalty"] > 0).any()
+
+    monkeypatch.setattr(config, "SHORT_ENTRY_ENABLED", True)
+    active = build_full_output(preds, None, features, MomentumEnsemble())
+    assert active.loc[active.pred_signal == 1, "ticker"].tolist() == ["CLEAN.ST"] * 2

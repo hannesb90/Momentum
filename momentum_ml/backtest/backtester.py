@@ -654,10 +654,18 @@ class MomentumBacktester:
         n = int(config.MAX_POSITIONS)
         keep_mult = float(getattr(config, "KEEP_BAND_MULT", 2.0))
 
-        elig = day[day["pred_return"] > config.MIN_EXPECTED_RETURN]
-        # prob_raw som tie-break om kolumnen finns (isotonic-platån gör prob_up
-        # identisk för nästan alla → utan tie-break blir rankningen radordning).
-        sort_cols = ["prob_up", "prob_raw"] if "prob_raw" in elig.columns else ["prob_up"]
+        # Samma kandidatgrind och samma sammansatta ordning som calendar-läget.
+        # Tidigare byggde event-läget om universumet från bara pred_return och
+        # kunde därför återinföra ETF:er, TA-vetade och momentum-vetade namn samt
+        # ignorera blankningsavdraget.
+        if "selection_eligible" in day.columns:
+            elig = day[day["selection_eligible"] == 1]
+        else:  # bakåtkompatibilitet med äldre signals.csv
+            elig = day[day["pred_return"] > config.MIN_EXPECTED_RETURN]
+        sort_cols = (["selection_rank", "prob_up", "prob_raw"]
+                     if "selection_rank" in elig.columns
+                     else (["prob_up", "prob_raw"] if "prob_raw" in elig.columns
+                           else ["prob_up"]))
         elig = elig.sort_values(sort_cols, ascending=False)
         elig_tickers = list(elig["ticker"])
         keep_set = set(elig_tickers[:max(int(n * keep_mult), 1)])

@@ -72,6 +72,12 @@ def _ods_rows(path: Path) -> list[list[str]]:
 def load_events(path: Path | None = None) -> pd.DataFrame:
     """Returnera aggregerad blankning efter varje historisk positionsändring."""
     path = path or refresh_history()
+    parsed = path.with_suffix(".events.pkl")
+    if parsed.exists() and parsed.stat().st_mtime >= path.stat().st_mtime:
+        try:
+            return pd.read_pickle(parsed)
+        except Exception:
+            pass
     raw = []
     for row in _ods_rows(path):
         if len(row) < 5:
@@ -92,7 +98,12 @@ def load_events(path: Path | None = None) -> pd.DataFrame:
         # Signalen får användas först följande kalenderdag.
         events.append((reported + pd.Timedelta(days=1), issuer,
                        sum(positions[issuer].values()), isin))
-    return pd.DataFrame(events, columns=["date", "issuer", "short_pct", "isin"])
+    result = pd.DataFrame(events, columns=["date", "issuer", "short_pct", "isin"])
+    try:
+        result.to_pickle(parsed)
+    except OSError:
+        pass
+    return result
 
 
 def _issuer_map(events: pd.DataFrame, ticker_names: dict[str, str]) -> dict[str, str]:
@@ -136,28 +147,23 @@ def attach_features(frame: pd.DataFrame, path: Path | None = None) -> pd.DataFra
     )
     work["_order"] = range(len(work))
     parts = []
-    histories = {ticker: group[["date", "short_pct"]].sort_values("date")
-                 for ticker, group in events.groupby("ticker")}
-    for ticker, panel in work.groupby("ticker", sort=False):
-        history = histories.get(ticker)
-        if history is None:
-            history = pd.DataFrame(columns=["date", "short_pct"])
-        if history.empty:
-            for col in feature_cols:
-                panel[col] = float("nan")
-            parts.append(panel)
-            continue
-        panel = panel.sort_values("Date").copy()
-        panel["Date"] = pd.to_datetime(panel["Date"])
-        history = history.sort_values("date").copy()
-        merged = pd.merge_asof(panel, history, left_on="Date", right_on="date",
-                               direction="backward")
-        merged = merged.drop(columns=["date"])
-        merged["short_delta_4w"] = merged["short_pct"] - merged["short_pct"].shift(4)
-        merged["short_delta_8w"] = merged["short_pct"] - merged["short_pct"].shift(8)
-        merged["short_delta_13w"] = merged["short_pct"] - merged["short_pct"].shift(13)
-        parts.append(merged)
-    joined = pd.concat(parts).sort_values("_order").drop(columns="_order")
+    # Ett enda vektoriserat asof-join. Den tidigare tickerslingan gjorde ~200
+    # separata merge_asof och lade flera minuter på varje nattkörning.
+    work["Date"] = pd.to_datetime(work["Date"]).astype("datetime64[ns]")
+    history = events[["ticker", "date", "short_pct"]].copy()
+    history["date"] = pd.to_datetime(history["date"]).astype("datetime64[ns]")
+    # merge_asof kräver global sortering på själva tidsnyckeln även med by=.
+    joined = pd.merge_asof(
+        work.sort_values(["Date", "ticker"]),
+        history.sort_values(["date", "ticker"]),
+        left_on="Date", right_on="date", by="ticker", direction="backward",
+    ).drop(columns=["date"])
+    joined = joined.sort_values(["ticker", "Date"])
+    for weeks in (4, 8, 13):
+        joined[f"short_delta_{weeks}w"] = (
+            joined["short_pct"] - joined.groupby("ticker")["short_pct"].shift(weeks)
+        )
+    joined = joined.sort_values("_order").drop(columns=["_order", "Date"])
     joined.index = original_index
     return joined
 

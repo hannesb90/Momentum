@@ -417,10 +417,14 @@ CAP_TIER_MAP: dict = {}
 # 0,03 percentilenheter i avdrag per blankad procentenhet. Small/Micro är
 # uttryckligen av eftersom avsaknad av blankning där ofta är ett lånebarhetsfel.
 SHORT_SIGNAL_ENABLED = True
+# Shadow tills samma förbättring syns både före och i frusen holdout. Matris
+# 2022–2024 / 2024–2026 gav motsatt tecken trots stark senaste holdout.
+SHORT_ENTRY_ENABLED = False
 SHORT_ENTRY_PENALTY_PER_PCT = 0.03
 SHORT_ENTRY_MAX_PCT = 10.0
 SHORT_EXIT_DELTA_8W_PP = 0.5
 SHORT_EXIT_LEVEL_PCT = 3.0
+SHORT_EXIT_RED_ENABLED = False  # amber-observation tills full exit är portföljvaliderad
 ACTIVE_SEGMENT = "large"  # main.py skriver över från --segment före modellbygget
 
 # Kanoniska kategorilistor för sektor/cap-tier som modell-features

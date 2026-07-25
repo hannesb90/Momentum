@@ -359,8 +359,23 @@ def build_full_output(
     for col in ("short_pct", "short_delta_4w", "short_delta_8w", "short_delta_13w"):
         if col not in df:
             df[col] = np.nan
+    # Exakt percentil av den BEFINTLIGA lexikografiska grundordningen:
+    # prob_up först, prob_raw endast tie-break. Att bara ranka prob_raw här
+    # skulle göra råpoängen primär även för helt oblan­kade namn och därmed
+    # förändra basmodellen när den nya signalen är neutral.
+    ordered = (df.assign(_row=np.arange(len(df)))
+               .sort_values(["Date", "prob_up", "prob_raw"],
+                            ascending=[True, True, True]))
+    ordered["_base_order_rank"] = (
+        ordered.groupby(level="Date").cumcount().add(1)
+        / ordered.groupby(level="Date")["ticker"].transform("size")
+    )
+    base_order_rank = ordered.set_index("_row")["_base_order_rank"].reindex(
+        np.arange(len(df))
+    ).to_numpy()
+    df["model_order_rank"] = base_order_rank
     df["short_entry_penalty"] = 0.0
-    df["short_adjusted_rank"] = df.groupby(level="Date")["prob_raw"].rank(pct=True)
+    df["short_adjusted_rank"] = df["model_order_rank"]
     if short_active:
         pct = df["short_pct"].clip(
             lower=0.0, upper=float(getattr(config, "SHORT_ENTRY_MAX_PCT", 10.0))
@@ -369,6 +384,12 @@ def build_full_output(
             pct * float(getattr(config, "SHORT_ENTRY_PENALTY_PER_PCT", 0.03))
         )
         df["short_adjusted_rank"] -= df["short_entry_penalty"]
+    short_entry_active = short_active and bool(
+        getattr(config, "SHORT_ENTRY_ENABLED", False)
+    )
+    df["selection_rank"] = (
+        df["short_adjusted_rank"] if short_entry_active else df["model_order_rank"]
+    )
 
     # Alltid-investerad topp-N (tvärsnitts-momentum): bland behöriga kandidater,
     # ranka efter prob_up (conviction, alltid definierad) och håll de N starkaste
@@ -376,8 +397,14 @@ def build_full_output(
     # (alla ~0, dvs svag edge) faller vi tillbaka på likavikt så portföljen ändå
     # fylls. Normaliserat till ~100%. Marknadsfilter/sektor-/korrelationsspärrar
     # i backtestern drar ner exponeringen i kris.
+    gate = bool(getattr(config, "MOMENTUM_GATE_ENABLED", False))
+    df["selection_eligible"] = df["eligible"].astype(int)
+    if gate:
+        df.loc[df["mom"] <= float(getattr(config, "MOMENTUM_GATE_MIN", 0.0)),
+               "selection_eligible"] = 0
+
     def _size_date(group: pd.DataFrame) -> pd.Series:
-        cand = group[group["eligible"] == 1]
+        cand = group[group["selection_eligible"] == 1]
         # Momentum-kvalitetsgrind (#17 i UTVECKLINGSLOGG.md, adopterad per
         # segment; #62 validerade den strikt mot alternativ - se loggen):
         # håll bara namn med POSITIVT 12-1-momentum över MOMENTUM_GATE_MIN.
@@ -394,16 +421,12 @@ def build_full_output(
         # görs mellan NYA kandidater och REDAN ÄGDA innehav - grinden
         # omprövas tillståndslöst varje vecka för alla (#63 testade att
         # låta ägda innehav slippa omprövningen - ingen förbättring).
-        gate = bool(getattr(config, "MOMENTUM_GATE_ENABLED", False))
-        if gate and "mom" in cand.columns:
-            cand = cand[cand["mom"] > float(getattr(config, "MOMENTUM_GATE_MIN", 0.0))]
         if cand.empty:
             return pd.Series(0.0, index=group.index)
         # Sortera på kalibrerad prob FÖRST (oförändrat där den skiljer), med rå
         # poäng som TIE-BREAK: på isotonic-platån (nästan alla exakt 34,4%) var
         # urvalet annars godtycklig radordning – nu avgör modellens finordning.
-        sort_cols = (["short_adjusted_rank", "prob_up", "prob_raw"]
-                     if short_active else ["prob_up", "prob_raw"])
+        sort_cols = ["selection_rank", "prob_up", "prob_raw"]
         top = (cand.sort_values(sort_cols, ascending=False)
                .head(config.MAX_POSITIONS))
         n = len(top)
@@ -417,6 +440,11 @@ def build_full_output(
         mode = str(getattr(config, "SIZING_MODE", "conviction"))
         if mode == "inverse_vol":
             inv = (1.0 / top["vol"].clip(lower=0.05))
+            # TA score är ett explicit storleks-overlay. Tidigare multiplicerade
+            # det bara raw_kelly och blev därför en tyst no-op i det adopterade
+            # inverse-vol-läget.
+            if ta_filter == "score":
+                inv = inv * top["ta_score"].clip(lower=0.0, upper=1.0)
             isum = float(inv.sum())
             tilt = (inv / isum) if isum > 0 else pd.Series(eq, index=top.index)
         else:
