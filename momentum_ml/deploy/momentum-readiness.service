@@ -8,6 +8,7 @@ User=hannesb
 WorkingDirectory=/opt/momentum/momentum_ml
 Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
 ExecStartPre=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/regime_accuracy_audit.py
+ExecStartPre=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/point_in_time_registry.py
 ExecStart=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/momentum_readiness.py
 NoNewPrivileges=true
 PrivateTmp=true

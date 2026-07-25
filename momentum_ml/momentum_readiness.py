@@ -142,6 +142,23 @@ def regime_gate(path: Path) -> dict:
     }
 
 
+def point_in_time_gate(path: Path) -> dict:
+    if not path.exists():
+        return {"historical_backtest_ready": False, "reason": "registry_missing"}
+    report = json.loads(path.read_text())
+    missing = int(report.get("delisted_missing_price", 0))
+    checks = {
+        "registry_has_intervals": int(report.get("intervals", 0)) > 0,
+        "registry_has_corporate_actions": (
+            int(report.get("corporate_actions", 0)) > 0),
+        "all_delisted_have_prices": missing == 0,
+    }
+    return {
+        "historical_backtest_ready": all(checks.values()),
+        "checks": checks, "delisted_missing_price": missing,
+        "facts_extracted": report.get("facts_extracted"),
+        "blocking_reason": report.get("blocking_reason"),
+    }
 def build() -> dict:
     large = challenger_gate(
         HOME / "results/challenger/challenger_scorecard.json")
@@ -157,6 +174,8 @@ def build() -> dict:
         HOME / "results/regime_accuracy/summary.json")
     conditional = conditional_shadow_gate(
         HOME / "results/challenger/conditional_shadow_scorecard.json")
+    pit = point_in_time_gate(
+        HOME / "results/point_in_time/pit_coverage.json")
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "large13": large, "small13": small, "etf_flow": etf,
@@ -164,6 +183,7 @@ def build() -> dict:
         "target_revision_alpha": target_revisions,
         "market_regime": regime,
         "large_conditional_shadow": conditional,
+        "point_in_time_data": pit,
         "equity_candidates_ready": large["ready"] and small["ready"],
         # Deliberately never auto-promote money-affecting behavior.
         "production_change_authorized": False,
