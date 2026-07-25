@@ -23,11 +23,17 @@ from scipy.stats import spearmanr
 
 
 HOME = Path("/opt/momentum/momentum_ml")
-FEATURES = [
+RAW_FEATURES = [
     "mom_12_1", "mom_tstat_26w", "resid_mom", "atr_norm",
-    "report_reaction_abn",
+    "report_reaction_abn", "days_since_report",
 ]
-CONSTRAINTS = [1, 1, 1, -1, 1]
+FEATURES = [
+    "mom_12_1_rank", "mom_tstat_26w_rank", "resid_mom_rank",
+    "atr_norm_rank", "report_reaction_abn_rank", "report_maturity_rank",
+]
+RANK_DIRECTIONS = [1, 1, 1, -1, 1, 1]
+CONSTRAINTS = [1] * len(FEATURES)
+MODEL_VERSION = "weekly_rank6_neutral_missing_v1"
 TOP_N = 10
 VAL_WEEKS = 26
 SEED = 42
@@ -53,10 +59,11 @@ def load_panel() -> tuple[pd.DataFrame, Path]:
     cache = joblib.load(caches[0])
     frames = []
     for ticker, feat in cache.items():
-        missing = [c for c in FEATURES + ["target_return"] if c not in feat.columns]
+        missing = [c for c in RAW_FEATURES + ["target_return"]
+                   if c not in feat.columns]
         if missing:
             raise ValueError(f"{ticker}: saknar kolumner {missing}")
-        x = feat[FEATURES + ["target_return"]].copy()
+        x = feat[RAW_FEATURES + ["target_return"]].copy()
         x["Date"] = pd.to_datetime(x.index)
         x["ticker"] = ticker
         frames.append(x.reset_index(drop=True))
@@ -68,12 +75,36 @@ def load_panel() -> tuple[pd.DataFrame, Path]:
         universe.market_cap_category.isin(["Large Cap", "Mid Cap"]), "ticker"
     ])
     panel = panel[panel.ticker.isin(allowed)]
+    issuer = universe.drop_duplicates("ticker").set_index("ticker")["name"]
+    panel["issuer_name"] = panel.ticker.map(issuer).fillna(panel.ticker)
     panel = panel.sort_values(["Date", "ticker"]).reset_index(drop=True)
+    panel = add_weekly_ranks(panel)
     return panel, caches[0]
 
 
+def add_weekly_ranks(frame: pd.DataFrame) -> pd.DataFrame:
+    """Create causal cross-sectional ranks; missing raw signals are neutral."""
+    frame = frame.copy()
+    frame["report_maturity"] = (
+        frame.days_since_report.where(frame.days_since_report < 365, 0)
+        .clip(0, 180)
+    )
+    raw = RAW_FEATURES[:-1] + ["report_maturity"]
+    for source, target, direction in zip(raw, FEATURES, RANK_DIRECTIONS):
+        values = frame[source].replace([np.inf, -np.inf], np.nan)
+        ranked = values.groupby(frame["Date"]).rank(
+            pct=True, method="average")
+        if direction < 0:
+            ranked = 1.0 - ranked
+        frame[target] = ranked.fillna(0.5)
+    return frame
+
+
 def model_matrix(frame: pd.DataFrame) -> pd.DataFrame:
-    return frame[FEATURES].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    matrix = frame[FEATURES].replace([np.inf, -np.inf], np.nan)
+    if matrix.isna().any().any():
+        raise ValueError("Rankmatrisen innehåller saknade värden.")
+    return matrix
 
 
 def target_rank(frame: pd.DataFrame) -> pd.Series:
@@ -109,7 +140,7 @@ def train(panel: pd.DataFrame) -> tuple[lgb.Booster, dict]:
         "train_start": train_dates[0], "train_end": train_dates[-1],
         "validation_start": val_dates[0], "validation_end": val_dates[-1],
         "best_iteration": model.best_iteration, "features": FEATURES,
-        "constraints": CONSTRAINTS,
+        "constraints": CONSTRAINTS, "model_version": MODEL_VERSION,
     }
     return model, meta
 
@@ -121,9 +152,14 @@ def current_signals(panel: pd.DataFrame, model: lgb.Booster) -> pd.DataFrame:
         model_matrix(latest), num_iteration=model.best_iteration)
     latest["challenger_rank"] = latest.challenger_score.rank(
         pct=True, method="average")
-    latest["challenger_position"] = latest.challenger_score.rank(
-        ascending=False, method="first").astype(int)
-    latest["challenger_top10"] = latest.challenger_position <= TOP_N
+    latest = latest.sort_values(
+        ["challenger_score", "ticker"], ascending=[False, True])
+    latest["challenger_position"] = np.arange(1, len(latest) + 1)
+    latest["challenger_top10"] = False
+    unique_issuers = latest.drop_duplicates("issuer_name", keep="first").head(TOP_N)
+    latest.loc[unique_issuers.index, "challenger_top10"] = True
+    latest["issuer_duplicate"] = latest.duplicated("issuer_name", keep="first")
+    latest["model_version"] = MODEL_VERSION
 
     prod_path = HOME / "results/signals_serving.csv"
     if not prod_path.exists():
@@ -137,7 +173,8 @@ def current_signals(panel: pd.DataFrame, model: lgb.Booster) -> pd.DataFrame:
 
     cols = [
         "Date", "ticker", "challenger_score", "challenger_rank",
-        "challenger_position", "challenger_top10",
+        "challenger_position", "challenger_top10", "issuer_duplicate",
+        "model_version",
         *[c for c in ["prob_raw", "prob_up", "prob_rank", "pred_signal"]
           if c in latest.columns],
     ]
@@ -154,11 +191,14 @@ def update_ledger(signals: pd.DataFrame, panel: pd.DataFrame,
 
     if ledger_path.exists():
         old = pd.read_csv(ledger_path, parse_dates=["Date"])
+        if "model_version" not in old:
+            old["model_version"] = "legacy_rank5_raw_v1"
         ledger = pd.concat([old, new], ignore_index=True)
     else:
         ledger = new
     ledger["Date"] = pd.to_datetime(ledger["Date"])
-    ledger = ledger.drop_duplicates(["Date", "ticker"], keep="first")
+    ledger = ledger.drop_duplicates(
+        ["Date", "ticker", "model_version"], keep="first")
 
     actual = panel[["Date", "ticker", "target_return"]].dropna()
     lookup = actual.set_index(["Date", "ticker"]).target_return
@@ -173,12 +213,13 @@ def update_ledger(signals: pd.DataFrame, panel: pd.DataFrame,
 
 
 def scorecard(ledger: pd.DataFrame, meta: dict, cache_path: Path) -> dict:
-    matured = ledger.dropna(subset=["realized_13w_return"]).copy()
+    current = ledger[ledger.model_version == MODEL_VERSION].copy()
+    matured = current.dropna(subset=["realized_13w_return"]).copy()
     out = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "collecting" if matured.empty else "measuring",
         "cache": str(cache_path), "model": meta,
-        "prediction_dates": int(ledger.Date.nunique()),
+        "prediction_dates": int(current.Date.nunique()),
         "matured_prediction_dates": int(matured.Date.nunique()),
     }
     if matured.empty:
@@ -227,7 +268,8 @@ def run(out_dir: Path) -> None:
         overlap = len(prod & chall) / TOP_N
     print(json.dumps({
         "latest_date": str(signals.Date.max().date()),
-        "top10": signals.head(TOP_N).ticker.tolist(),
+        "top10": signals.loc[signals.challenger_top10, "ticker"].head(
+            TOP_N).tolist(),
         "production_overlap": overlap,
         "scorecard_status": card["status"],
         "out_dir": str(out_dir),
