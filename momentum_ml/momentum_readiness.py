@@ -12,13 +12,14 @@ import pandas as pd
 HOME = Path("/opt/momentum/momentum_ml")
 
 
-def challenger_gate(path: Path, min_matured: int = 8) -> dict:
+def challenger_gate(path: Path, min_matured: int = 13) -> dict:
     if not path.exists():
         return {"ready": False, "reason": "scorecard_missing"}
     card = json.loads(path.read_text())
     matured = int(card.get("matured_prediction_dates", 0))
     metrics = card.get("forward_metrics") or {}
     ic = metrics.get("mean_ic")
+    positive_ic_share = metrics.get("positive_ic_share")
     spread = (
         metrics.get("mean_top10_spread")
         if "mean_top10_spread" in metrics
@@ -26,13 +27,21 @@ def challenger_gate(path: Path, min_matured: int = 8) -> dict:
     checks = {
         "matured_dates": matured >= min_matured,
         "positive_ic": ic is not None and ic > 0,
+        "ic_consistency_55pct": (
+            positive_ic_share is not None and positive_ic_share >= .55),
         "positive_top_spread": spread is not None and spread > 0,
+        "spread_consistency_55pct": (
+            metrics.get("positive_top_spread_share") is not None
+            and metrics["positive_top_spread_share"] >= .55),
     }
     return {
         "ready": all(checks.values()), "checks": checks,
         "matured_prediction_dates": matured,
         "required_matured_dates": min_matured,
-        "mean_ic": ic, "mean_top_spread": spread,
+        "mean_ic": ic, "positive_ic_share": positive_ic_share,
+        "mean_top_spread": spread,
+        "positive_top_spread_share": metrics.get(
+            "positive_top_spread_share"),
     }
 
 
@@ -49,8 +58,8 @@ def etf_gate(path: Path) -> dict:
         float(latest.owner_change_1d.notna().mean())
         if not latest.empty and "owner_change_1d" in latest else 0.0)
     checks = {
-        "at_least_8_weeks": weeks >= 8,
-        "at_least_8_snapshots": len(dates) >= 8,
+        "at_least_13_weeks": weeks >= 13,
+        "at_least_40_snapshots": len(dates) >= 40,
         "owner_change_coverage_70pct": owner_coverage >= .70,
     }
     return {
@@ -62,6 +71,32 @@ def etf_gate(path: Path) -> dict:
     }
 
 
+def regime_gate(path: Path) -> dict:
+    if not path.exists():
+        return {"forecast_approved": False, "reason": "audit_missing"}
+    audit = json.loads(path.read_text())
+    current = audit.get("current") or {}
+    checks = {
+        "accuracy_4w_55pct": current.get("modern_accuracy_4w", 0) >= .55,
+        "accuracy_13w_55pct": current.get("modern_accuracy_13w", 0) >= .55,
+        "positive_4w_separation": (
+            current.get("modern_separation_4w", 0) > 0),
+        "positive_13w_separation": (
+            current.get("modern_separation_13w", 0) > 0),
+    }
+    return {
+        "forecast_approved": all(checks.values()),
+        "checks": checks,
+        "modern_accuracy_4w": current.get("modern_accuracy_4w"),
+        "modern_accuracy_13w": current.get("modern_accuracy_13w"),
+        "modern_separation_4w": current.get("modern_separation_4w"),
+        "modern_separation_13w": current.get("modern_separation_13w"),
+        "note": (
+            "Regime labels remain descriptive unless every predictive "
+            "accuracy check passes."),
+    }
+
+
 def build() -> dict:
     large = challenger_gate(
         HOME / "results/challenger/challenger_scorecard.json")
@@ -69,9 +104,12 @@ def build() -> dict:
         HOME / "results/small13_challenger/challenger_scorecard.json")
     etf = etf_gate(
         HOME / "results/etf_flow/etf_flow_snapshots.csv")
+    regime = regime_gate(
+        HOME / "results/regime_accuracy/summary.json")
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "large13": large, "small13": small, "etf_flow": etf,
+        "market_regime": regime,
         "equity_candidates_ready": large["ready"] and small["ready"],
         # Deliberately never auto-promote money-affecting behavior.
         "production_change_authorized": False,

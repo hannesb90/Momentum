@@ -339,6 +339,7 @@ def scorecard(ledger: pd.DataFrame, meta: dict, cache_path: Path,
             "positive_ic_share": (w.ic > 0).mean(),
             "mean_top20_return": w.top20_return.mean(),
             "mean_top20_spread": w.top20_spread.mean(),
+            "positive_top_spread_share": (w.top20_spread > 0).mean(),
             "weeks": len(w),
         }
     return out

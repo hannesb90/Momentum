@@ -153,11 +153,38 @@ def enrich(frame: pd.DataFrame) -> pd.DataFrame:
         frame.owner_change_1d
         / frame.groupby("ticker").number_of_owners.shift(1).replace(0, np.nan)
     )
+    frame["owner_change_5obs"] = (
+        frame.number_of_owners
+        - frame.groupby("ticker").number_of_owners.shift(5)
+    )
+    frame["owner_change_pct_5obs"] = (
+        frame.owner_change_5obs
+        / frame.groupby("ticker").number_of_owners.shift(5).replace(0, np.nan)
+    )
+    positive = frame.owner_change_1d.gt(0).where(frame.owner_change_1d.notna())
+    frame["owner_flow_persistence_5obs"] = (
+        positive.groupby(frame.ticker)
+        .rolling(5, min_periods=3).mean().reset_index(level=0, drop=True)
+    )
     frame["price_vs_vwap"] = frame["last"] / frame["vwap"] - 1
     frame["owner_rank"] = frame.groupby("snapshot_date").number_of_owners.rank(
         pct=True, method="average")
     frame["owner_change_rank"] = frame.groupby(
         "snapshot_date").owner_change_pct_1d.rank(pct=True, method="average")
+    frame["owner_change_5obs_rank"] = frame.groupby(
+        "snapshot_date").owner_change_pct_5obs.rank(
+            pct=True, method="average")
+    frame["flow_score"] = pd.concat([
+        frame.owner_change_rank,
+        frame.owner_change_5obs_rank,
+        frame.owner_flow_persistence_5obs,
+    ], axis=1).mean(axis=1, skipna=True)
+    # Within-kind rank prevents the larger theme set from drowning the smaller
+    # sector and region sleeves when the flow overlay is eventually evaluated.
+    if "kind" in frame:
+        frame["flow_rank_within_kind"] = frame.groupby(
+            ["snapshot_date", "kind"]).flow_score.rank(
+                pct=True, method="average")
     return frame
 
 

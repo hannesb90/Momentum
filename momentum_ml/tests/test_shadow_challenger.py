@@ -59,6 +59,7 @@ def test_top10_never_contains_two_share_classes_of_same_issuer():
         "ticker": [f"T{i}" for i in range(rows)],
         "issuer_name": ["Same issuer", "Same issuer"] +
                        [f"Issuer {i}" for i in range(2, rows)],
+        "ema_cross_8_21": np.linspace(1, 0, rows),
     })
     for feature in challenger.FEATURES:
         panel[feature] = np.linspace(1, 0, rows)
@@ -66,3 +67,5 @@ def test_top10_never_contains_two_share_classes_of_same_issuer():
     chosen = signals[signals.challenger_top10]
     assert len(chosen) == 10
     assert chosen.ticker.isin(["T0", "T1"]).sum() == 1
+    assert {"base_challenger_score", "timing_overlay",
+            "timing_version"}.issubset(signals.columns)

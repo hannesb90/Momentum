@@ -33,7 +33,9 @@ FEATURES = [
 ]
 RANK_DIRECTIONS = [1, 1, 1, -1, 1, 1]
 CONSTRAINTS = [1] * len(FEATURES)
-MODEL_VERSION = "weekly_rank6_neutral_missing_v1"
+MODEL_VERSION = "weekly_rank6_neutral_missing_ema_timing_v2"
+TIMING_VERSION = "large_ema8_21_rank_tilt_v1"
+TIMING_WEIGHT = 0.20
 TOP_N = 10
 VAL_WEEKS = 26
 SEED = 42
@@ -61,11 +63,11 @@ def load_panel() -> tuple[pd.DataFrame, Path]:
     cache = joblib.load(caches[0])
     frames = []
     for ticker, feat in cache.items():
-        missing = [c for c in RAW_FEATURES + ["target_return"]
+        missing = [c for c in RAW_FEATURES + ["ema_cross_8_21", "target_return"]
                    if c not in feat.columns]
         if missing:
             raise ValueError(f"{ticker}: saknar kolumner {missing}")
-        x = feat[RAW_FEATURES + ["target_return"]].copy()
+        x = feat[RAW_FEATURES + ["ema_cross_8_21", "target_return"]].copy()
         x["Date"] = pd.to_datetime(x.index)
         x["ticker"] = ticker
         frames.append(x.reset_index(drop=True))
@@ -156,8 +158,12 @@ def current_signals(panel: pd.DataFrame, model: lgb.Booster) -> pd.DataFrame:
             f"Inget datum har tillräcklig tvärsnittstäckning (minst {minimum}).")
     latest_date = complete_dates.index.max()
     latest = panel[panel.Date == latest_date].copy()
-    latest["challenger_score"] = model.predict(
+    latest["base_challenger_score"] = model.predict(
         model_matrix(latest), num_iteration=model.best_iteration)
+    base_rank = latest.base_challenger_score.rank(pct=True, method="average")
+    ema_rank = latest.ema_cross_8_21.rank(pct=True, method="average").fillna(.5)
+    latest["timing_overlay"] = TIMING_WEIGHT * (ema_rank - .5)
+    latest["challenger_score"] = base_rank + latest.timing_overlay
     latest["challenger_rank"] = latest.challenger_score.rank(
         pct=True, method="average")
     latest = latest.sort_values(
@@ -168,6 +174,7 @@ def current_signals(panel: pd.DataFrame, model: lgb.Booster) -> pd.DataFrame:
     latest.loc[unique_issuers.index, "challenger_top10"] = True
     latest["issuer_duplicate"] = latest.duplicated("issuer_name", keep="first")
     latest["model_version"] = MODEL_VERSION
+    latest["timing_version"] = TIMING_VERSION
 
     prod_path = HOME / "results/signals_serving.csv"
     if not prod_path.exists():
@@ -180,9 +187,10 @@ def current_signals(panel: pd.DataFrame, model: lgb.Booster) -> pd.DataFrame:
         latest = latest.merge(prod[keep], on="ticker", how="left")
 
     cols = [
-        "Date", "ticker", "challenger_score", "challenger_rank",
+        "Date", "ticker", "base_challenger_score", "timing_overlay",
+        "challenger_score", "challenger_rank",
         "challenger_position", "challenger_top10", "issuer_duplicate",
-        "model_version",
+        "model_version", "timing_version",
         *[c for c in ["prob_raw", "prob_up", "prob_rank", "pred_signal"]
           if c in latest.columns],
     ]
@@ -252,6 +260,7 @@ def scorecard(ledger: pd.DataFrame, meta: dict, cache_path: Path) -> dict:
             "positive_ic_share": (w.ic > 0).mean(),
             "mean_top10_return": w.top10_return.mean(),
             "mean_top10_spread": w.top10_spread.mean(),
+            "positive_top_spread_share": (w.top10_spread > 0).mean(),
             "weeks": len(w),
         }
     return out

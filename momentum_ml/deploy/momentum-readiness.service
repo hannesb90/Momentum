@@ -7,6 +7,7 @@ Type=oneshot
 User=hannesb
 WorkingDirectory=/opt/momentum/momentum_ml
 Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
+ExecStartPre=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/regime_accuracy_audit.py
 ExecStart=/opt/momentum/venv/bin/python /opt/momentum/momentum_ml/momentum_readiness.py
 NoNewPrivileges=true
 PrivateTmp=true
