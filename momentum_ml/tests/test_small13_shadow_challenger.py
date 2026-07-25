@@ -60,3 +60,23 @@ def test_top10_never_contains_two_share_classes_of_same_issuer():
     chosen = signals[signals.challenger_top20]
     assert len(chosen) == rows - 1
     assert chosen.ticker.isin(["T0", "T1"]).sum() == 1
+
+
+def test_canonical_issuer_removes_share_class_suffix():
+    assert (
+        challenger.canonical_issuer("Tingsvalvet Fastighets AB Class A")
+        == challenger.canonical_issuer("Tingsvalvet Fastighets AB Class B")
+    )
+
+
+def test_preference_share_is_never_selected():
+    panel = pd.DataFrame({
+        "Date": pd.to_datetime(["2025-01-06"] * 21),
+        "ticker": ["BEST-PREF.ST"] + [f"T{i}.ST" for i in range(20)],
+        "issuer_name": ["Best Pref"] + [f"Issuer {i}" for i in range(20)],
+    })
+    for feature in challenger.FEATURES:
+        panel[feature] = np.linspace(1, 0, len(panel))
+    signals = challenger.current_signals(panel, FakeModel())
+    assert "BEST-PREF.ST" not in set(
+        signals.loc[signals.challenger_top20, "ticker"])

@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -38,6 +39,17 @@ TOP_N = 20
 VAL_WEEKS = 26
 FORWARD_WEEKS = 13
 SEED = 42
+
+
+def canonical_issuer(name: str) -> str:
+    """Normalize share-class decorations without conflating different issuers."""
+    value = str(name).lower()
+    value = re.sub(r"\bclass\s+[a-z]\b", " ", value)
+    value = re.sub(r"\bsek\s+[\d.]+\s+cum\s+pref.*$", " ", value)
+    value = re.sub(r"\bpref(?:erence)?\.?\s*(?:shs|shares)?\b", " ", value)
+    value = re.sub(r"\b(?:ab|publ)\b", " ", value)
+    value = re.sub(r"[^a-z0-9åäö]+", " ", value)
+    return " ".join(value.split())
 
 
 def atomic_csv(df: pd.DataFrame, path: Path) -> None:
@@ -89,6 +101,7 @@ def load_panel() -> tuple[pd.DataFrame, Path]:
     panel = panel[panel.ticker.isin(allowed)]
     issuer = universe.drop_duplicates("ticker").set_index("ticker")["name"]
     panel["issuer_name"] = panel.ticker.map(issuer).fillna(panel.ticker)
+    panel["issuer_key"] = panel.issuer_name.map(canonical_issuer)
     panel = panel.sort_values(["Date", "ticker"]).reset_index(drop=True)
     panel = add_weekly_ranks(panel)
     return panel, caches[0]
@@ -155,6 +168,9 @@ def train(panel: pd.DataFrame) -> tuple[lgb.Booster, dict]:
 
 
 def current_signals(panel: pd.DataFrame, model: lgb.Booster) -> pd.DataFrame:
+    panel = panel.copy()
+    if "issuer_key" not in panel:
+        panel["issuer_key"] = panel.issuer_name.map(canonical_issuer)
     coverage = panel.groupby("Date").ticker.nunique()
     minimum = min(TOP_N, max(1, int(coverage.max() * 0.5)))
     complete_dates = coverage[coverage >= minimum]
@@ -163,6 +179,8 @@ def current_signals(panel: pd.DataFrame, model: lgb.Booster) -> pd.DataFrame:
             f"Inget datum har tillräcklig tvärsnittstäckning (minst {minimum}).")
     latest_date = complete_dates.index.max()
     latest = panel[panel.Date == latest_date].copy()
+    latest = latest[
+        ~latest.ticker.str.contains(r"-PREF", case=False, regex=True)]
     latest["challenger_score"] = model.predict(
         model_matrix(latest), num_iteration=model.best_iteration)
     latest["challenger_rank"] = latest.challenger_score.rank(
@@ -171,9 +189,9 @@ def current_signals(panel: pd.DataFrame, model: lgb.Booster) -> pd.DataFrame:
         ["challenger_score", "ticker"], ascending=[False, True])
     latest["challenger_position"] = np.arange(1, len(latest) + 1)
     latest["challenger_top20"] = False
-    unique_issuers = latest.drop_duplicates("issuer_name", keep="first").head(TOP_N)
+    unique_issuers = latest.drop_duplicates("issuer_key", keep="first").head(TOP_N)
     latest.loc[unique_issuers.index, "challenger_top20"] = True
-    latest["issuer_duplicate"] = latest.duplicated("issuer_name", keep="first")
+    latest["issuer_duplicate"] = latest.duplicated("issuer_key", keep="first")
     latest["model_version"] = MODEL_VERSION
 
     prod_path = HOME / "results/small/signals_serving.csv"
