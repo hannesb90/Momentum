@@ -247,6 +247,7 @@ def build_full_output(
     ta_filter: Optional[str] = None,
     ta_strictness: str = config.TA_FILTER_STRICTNESS,
     buy_threshold: Optional[float] = None,
+    apply_entry_policy: bool = False,
 ) -> pd.DataFrame:
     """
     Returnerar ett long-format DataFrame med alla outputs:
@@ -329,6 +330,28 @@ def build_full_output(
                     ta_score = score
                     raw_kelly *= score
 
+            entry_action = "normal"
+            entry_overextended = False
+            entry_fundamental_override = False
+            entry_peak_roc13_13w = np.nan
+            new_entry_allowed = True
+            if apply_entry_policy:
+                from models.entry_policy import decide_entry
+                try:
+                    decision = decide_entry(
+                        getattr(config, "ACTIVE_SEGMENT", "large"),
+                        feat_df.loc[:date],
+                        bool(eligible),
+                    )
+                    new_entry_allowed = decision.eligible
+                    entry_action = decision.action
+                    entry_overextended = decision.overextended
+                    entry_fundamental_override = decision.fundamental_override
+                    entry_peak_roc13_13w = decision.peak_roc13_13w
+                except Exception as exc:
+                    # Fail open for availability, but expose the fallback.
+                    entry_action = f"policy_fallback:{type(exc).__name__}"
+
             rows.append({
                 "Date":          date,
                 "ticker":        ticker,
@@ -343,6 +366,11 @@ def build_full_output(
                 "vol":           float(vol) if vol and vol > 0 else 0.20,
                 "mom":           float(mom) if mom is not None and not pd.isna(mom) else 0.0,
                 "eligible":      int(eligible),
+                "entry_action":  entry_action,
+                "entry_overextended": int(entry_overextended),
+                "entry_fundamental_override": int(entry_fundamental_override),
+                "entry_peak_roc13_13w": entry_peak_roc13_13w,
+                "new_entry_allowed": int(new_entry_allowed),
             })
 
     df = pd.DataFrame(rows).set_index("Date").sort_index()

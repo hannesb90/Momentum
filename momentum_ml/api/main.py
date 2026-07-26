@@ -596,6 +596,23 @@ async def create_trade_ticket_endpoint(request: Request):
     return result
 
 
+@app.post("/api/purchase-review")
+async def create_purchase_review_endpoint(request: Request):
+    """Dagsfärsk, källbelagd falsifiering innan en Montrose-biljett skapas."""
+    import purchase_review as pr
+    body = await request.json()
+    ticker = str(body.get("ticker") or "").strip()
+    kr = body.get("kr")
+    if not ticker or not kr:
+        raise HTTPException(400, "ticker och kr krävs")
+    from fastapi.concurrency import run_in_threadpool
+    result = await run_in_threadpool(
+        pr.review, ticker, float(kr), body.get("segment"))
+    if "error" in result:
+        raise HTTPException(502, result["error"])
+    return _clean(result)
+
+
 @app.get("/api/trade-tickets")
 def get_trade_tickets():
     """"Följde jag planen?" – skapade trade-tickets och om köpet landade

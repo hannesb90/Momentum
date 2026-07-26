@@ -686,6 +686,7 @@ def main():
             s_preds, None, s_feature_dfs, ensemble,
             ta_filter=args.ta_filter, ta_strictness=args.ta_strictness,
             buy_threshold=buy_threshold,
+            apply_entry_policy=True,
         )
         serving_df = _attach_meta_and_limits(serving_df, data)
         serving_df.to_csv(f"{config.RESULTS_DIR}/signals_serving.csv")
