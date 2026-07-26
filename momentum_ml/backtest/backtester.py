@@ -59,6 +59,10 @@ class MomentumBacktester:
         self._stress_series = None   # lazy: VIX/kreditspread-stress-flagga (dynamisk spread)
         self._isk_quarters: Dict[tuple, float] = {}   # {(år, kvartal): kapitalunderlags-mätpunkt}
         self._isk_warned_years: set = set()   # undvik att spamma samma "SLR saknas"-varning
+        # Beslutslogg för event-läget. Hårda exits och frivilliga rotationer
+        # hålls isär så efterföljande tester kan mäta replacement-alpha utan att
+        # blanda in risk-/datakvalitetsexits.
+        self._event_decisions: list[dict] = []
 
     # ── Kör backtest ──────────────────────────────────────────────────────────
 
@@ -630,13 +634,62 @@ class MomentumBacktester:
             peak = self._peak_price.get(ticker)
             if price is None or atr is None or atr <= 0 or peak is None:
                 continue
-            if price <= peak - mult * atr:
+            if self._atr_stop_triggered(ticker, date):
                 shares = self._portfolio.pop(ticker)
                 trade_value = shares * price
                 cost_rate = self._execution_cost_rate(ticker, date, trade_value)
                 cash += trade_value * (1 - cost_rate)
                 self._peak_price.pop(ticker, None)
         return cash
+
+    def _atr_stop_triggered(self, ticker: str, date: pd.Timestamp) -> bool:
+        """Pure ATR predicate shared by calendar and event decision paths."""
+        if not getattr(config, "ATR_STOP_ENABLED", False):
+            return False
+        price = self._get_price(ticker, date)
+        atr = self._atr_value(ticker, date)
+        peak = self._peak_price.get(ticker)
+        if price is None or atr is None or atr <= 0 or peak is None:
+            return False
+        mult = float(getattr(config, "ATR_STOP_MULT", 2.5))
+        return bool(price <= peak - mult * atr)
+
+    def _price_is_stale(self, ticker: str, date: pd.Timestamp) -> bool:
+        """True when no real close exists within the configured ffill window."""
+        frame = self.prices.get(ticker)
+        if frame is None or "Close" not in frame:
+            return True
+        known = frame.loc[:date, "Close"].dropna()
+        if known.empty:
+            return True
+        max_weeks = int(getattr(config, "MAX_PRICE_FFILL_WEEKS", 8))
+        return bool(pd.Timestamp(date) - pd.Timestamp(known.index[-1])
+                    > pd.Timedelta(weeks=max_weeks))
+
+    def _additional_event_hard_exit_reasons(
+        self, ticker: str, date: pd.Timestamp,
+    ) -> list[str]:
+        """Extension hook for delisting or strategy-specific mandatory exits."""
+        return []
+
+    def _event_hard_exit_reasons(
+        self,
+        ticker: str,
+        date: pd.Timestamp,
+        eligible: set[str],
+    ) -> list[str]:
+        """Classify mandatory exits before any voluntary replacement logic."""
+        reasons = []
+        if ticker not in eligible:
+            reasons.append("ineligible")
+        if self._is_broken(ticker, date):
+            reasons.append("trend_break")
+        if self._atr_stop_triggered(ticker, date):
+            reasons.append("atr_stop")
+        if self._price_is_stale(ticker, date):
+            reasons.append("stale_price")
+        reasons.extend(self._additional_event_hard_exit_reasons(ticker, date))
+        return list(dict.fromkeys(reasons))
 
     def _event_rebalance(self, date, portfolio_value, cash, market_exp, guard) -> float:
         """
@@ -671,10 +724,57 @@ class MomentumBacktester:
         keep_set = set(elig_tickers[:max(int(n * keep_mult), 1)])
 
         held = list(self._portfolio.keys())
-        survivors = [t for t in held if t in keep_set and not self._is_broken(t, date)]
+        eligible_set = set(elig_tickers)
+        hard_reasons = {
+            ticker: self._event_hard_exit_reasons(
+                ticker, pd.Timestamp(date), eligible_set)
+            for ticker in held
+        }
+        hard_exits = {
+            ticker for ticker, reasons in hard_reasons.items() if reasons}
+
+        # Hårda exits löses FÖRE frivillig rotation. En ticker i denna mängd
+        # är blockerad för resten av beslutscykeln även om den fortfarande
+        # ligger högst i modellrankingen.
+        survivors = [
+            ticker for ticker in held
+            if ticker not in hard_exits and ticker in keep_set
+        ]
+        voluntary_exits = [
+            ticker for ticker in held
+            if ticker not in hard_exits and ticker not in survivors
+        ]
         slots = n - len(survivors)
-        entries = [t for t in elig_tickers if t not in survivors][:max(slots, 0)]
+        entries = [
+            ticker for ticker in elig_tickers
+            if ticker not in survivors and ticker not in hard_exits
+        ][:max(slots, 0)]
         target = survivors + entries
+
+        ranks = {ticker: i + 1 for i, ticker in enumerate(elig_tickers)}
+        scores = (
+            elig.drop_duplicates("ticker").set_index("ticker")[
+                "selection_rank"].to_dict()
+            if "selection_rank" in elig.columns else {})
+        for ticker in hard_exits:
+            self._event_decisions.append({
+                "date": pd.Timestamp(date), "decision": "hard_exit",
+                "ticker": ticker,
+                "reasons": tuple(hard_reasons[ticker]),
+                "rank": ranks.get(ticker), "score": scores.get(ticker),
+            })
+        for ticker in voluntary_exits:
+            self._event_decisions.append({
+                "date": pd.Timestamp(date), "decision": "voluntary_exit",
+                "ticker": ticker, "reasons": ("outside_keep_band",),
+                "rank": ranks.get(ticker), "score": scores.get(ticker),
+            })
+        for ticker in entries:
+            self._event_decisions.append({
+                "date": pd.Timestamp(date), "decision": "entry",
+                "ticker": ticker, "reasons": (),
+                "rank": ranks.get(ticker), "score": scores.get(ticker),
+            })
 
         if target:
             w = 1.0 / len(target)

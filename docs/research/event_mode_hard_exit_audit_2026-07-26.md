@@ -47,3 +47,22 @@ The raw local audit artefacts are:
 
 - `/home/hannesb/event_hard_exit_audit.json`
 - `/home/hannesb/event_hard_exit_audit.csv`
+
+## Result after correction
+
+The identical historical audit was rerun after hard exits were resolved before
+candidate selection and blocked for the remainder of the cycle:
+
+| Measure | Count |
+|---|---:|
+| Hard-exit events | 1,965 |
+| Trend-break events | 1,942 |
+| ATR-stop events | 23 |
+| Same-cycle hard-exit violations | **0** |
+| Trend-break violations | **0** |
+| ATR-stop violations | **0** |
+
+The lower event count is expected: the corrected engine no longer carries the
+same already-broken holding into repeated later weeks. Five focused regression
+tests cover trend, ATR, ineligibility, stale prices and the custom
+delisting/mandatory-exit hook.
