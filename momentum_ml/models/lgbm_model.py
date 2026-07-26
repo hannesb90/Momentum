@@ -34,6 +34,17 @@ from features.feature_engineering import FEATURE_COLS
 CALIBRATION_VAL_FRACTION = 0.4
 
 
+def _code_hash() -> str:
+    """Hash av lgbm_model.py + config.py:s källkod - samma paranoida
+    invalideringsprincip som _checkpoint_key (varje kodändring, t.ex. nya
+    hyperparametrar, ska synas i hashen). Utdragen till en modulfunktion
+    (2026-07-26, pipeline-hälsogranskning) så både _checkpoint_key och
+    reproducerbarhetsmetadata i pipeline_diagnostics.py delar EN
+    implementation i stället för att riskera att de driver isär."""
+    code = Path(__file__).read_text() + Path(config.__file__).read_text()
+    return hashlib.sha1(code.encode()).hexdigest()[:16]
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Walk-forward splitter
 # ─────────────────────────────────────────────────────────────────────────────
@@ -158,8 +169,7 @@ class MomentumLGBM:
         automatiskt en gammal checkpoint i stället för att riskera att tyst
         återuppta träning med gammal logik. Datahash (hash_pandas_object)
         fångar om df (features/labels) ändrats sedan checkpointen skrevs."""
-        code = Path(__file__).read_text() + Path(config.__file__).read_text()
-        code_hash = hashlib.sha1(code.encode()).hexdigest()[:16]
+        code_hash = _code_hash()
         data_hash = hashlib.sha1(
             pd.util.hash_pandas_object(df, index=True).values.tobytes()
         ).hexdigest()[:16]
@@ -195,6 +205,76 @@ class MomentumLGBM:
             return saved
         except Exception:  # noqa: BLE001 - korrupt/ofullständig checkpoint, börja om
             return None
+
+    def _preserve_rejected_split(
+        self, split_i: int, train_d, val_d, val_d_stop,
+        X_tr: np.ndarray, y_cls_tr: np.ndarray, X_va_stop: np.ndarray, y_cls_va_stop: np.ndarray,
+        cls_model: lgb.Booster,
+    ) -> None:
+        """
+        Sparar EXAKT träningsindata + reproducerbarhetsmetadata för en
+        underkänd split (num_trees<=1) till results/rejected_splits/.
+
+        BAKGRUND (session 2026-07-26): en granskning av rank-gap/bytesfrekvens
+        i pipeline_health.json ledde till att ~en tredjedel av walk-forward-
+        splittarna visade sig ha bara ETT träd (num_trees==best_iteration==
+        current_iteration==1) - LightGBM:s EGEN interna "no further splits
+        with positive gain"-terminering, inte den konfigurerade 50-rundors
+        tålamods-regeln (den senare hade krävt >=51 körda rundor). Ett försök
+        att i efterhand reproducera en av dessa splits gav ETT ANNAT resultat
+        (13 träd, en äkta om än svag modell) på en tillgänglig men INTE
+        bit-identisk feature-cache - main.py:s _feature_cache_path.unlink()
+        raderar feature-cachen efter varje orkestrerad körning, så den
+        EXAKTA datan som faktiskt orsakade en given natts 1-träds-resultat
+        gick inte att återskapa. Det här stänger den luckan: nästa gång en
+        split underkänns bevaras dess exakta (X, y) + fullständig
+        reproducerbarhetsmetadata, så framtida forskning slipper gissa.
+
+        Filnamnet nyckelas på split-startdatumet (inte körningstillfället) -
+        walk-forward-splittarnas datum är deterministiska givet samma
+        historik+config, så en förnyad natts körning skriver helt enkelt över
+        en tidigare bevarad, fortsatt underkänd splits fil i stället för att
+        ackumulera obegränsat.
+        """
+        out_dir = Path(config.RESULTS_DIR) / "rejected_splits"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        split_start_str = pd.Timestamp(pd.DatetimeIndex(val_d).min()).date().isoformat()
+        path = out_dir / f"rejected_split_{split_start_str}.pkl"
+        tmp = path.with_suffix(".tmp")
+
+        payload = {
+            "saved_at": pd.Timestamp.now("UTC").isoformat(),
+            "split_index": split_i,
+            "train_date_range": (
+                pd.Timestamp(pd.DatetimeIndex(train_d).min()).isoformat(),
+                pd.Timestamp(pd.DatetimeIndex(train_d).max()).isoformat()),
+            "val_date_range": (
+                pd.Timestamp(pd.DatetimeIndex(val_d).min()).isoformat(),
+                pd.Timestamp(pd.DatetimeIndex(val_d).max()).isoformat()),
+            "val_stop_date_range": (
+                (pd.Timestamp(pd.DatetimeIndex(val_d_stop).min()).isoformat(),
+                 pd.Timestamp(pd.DatetimeIndex(val_d_stop).max()).isoformat())
+                if len(val_d_stop) else None),
+            "num_trees": cls_model.num_trees(),
+            "best_iteration": cls_model.best_iteration,
+            "reproducibility": {
+                "code_hash": _code_hash(),
+                "random_seed": config.RANDOM_SEED,
+                "cls_params": dict(self.cls_params),
+                "feature_cols": list(FEATURE_COLS),
+            },
+            # EXAKT indata - inte bara en hash - så en framtida undersökning
+            # kan återköra lgb.train direkt utan att bygga om features/priser.
+            "X_tr": X_tr, "y_cls_tr": y_cls_tr,
+            "X_va_stop": X_va_stop, "y_cls_va_stop": y_cls_va_stop,
+        }
+        try:
+            joblib.dump(payload, tmp, compress=3)
+            os.replace(tmp, path)
+            print(f"  [KRITISKT] Split {split_i+1}: underkänd (num_trees="
+                  f"{cls_model.num_trees()}) - exakt indata bevarad: {path}")
+        except Exception as e:  # noqa: BLE001 - bevarandet är diagnostik, aldrig kritiskt för träningen
+            print(f"  [WARN] Kunde inte bevara underkänd split {split_i+1} (icke-kritiskt): {e}")
 
     @staticmethod
     def _sanity_check(df: pd.DataFrame) -> None:
@@ -334,6 +414,16 @@ class MomentumLGBM:
 
             # Klassifikation
             cls_model = self._fit_cls(X_tr, y_cls_tr, X_va_stop, y_cls_va_stop)
+            if cls_model.num_trees() <= 1:
+                # Underkänd split (pipeline-hälsogranskning 2026-07-26): LightGBM
+                # hittade ingen split med positiv vinst efter runda 1 och avbröt
+                # HELT (inte den vanliga 50-rundors-tålamodsregeln - se
+                # _preserve_rejected_split-docstringen). Bevara den EXAKTA
+                # indatan nu - main.py raderar feature-cachen efter varje
+                # orkestrerad körning, så det här är enda chansen att kunna
+                # undersöka/reproducera varför i efterhand.
+                self._preserve_rejected_split(
+                    i, train_d, val_d, val_d_stop, X_tr, y_cls_tr, X_va_stop, y_cls_va_stop, cls_model)
             self.cls_models.append(cls_model)
             cls_importances.append(cls_model.feature_importance(importance_type="gain"))
             calibrator = self._fit_calibrator(cls_model, X_va_calib, y_cls_va_calib)
@@ -506,6 +596,14 @@ class MomentumLGBM:
             "reg_ic": None, "reg_decile_spread": None, "n_bought": None,
             "cls_best_iteration": getattr(cls_model, "best_iteration", None),
             "reg_best_iteration": getattr(reg_model, "best_iteration", None),
+            # Pipeline-hälsogranskning 2026-07-26: num_trees (INTE bara
+            # best_iteration) avslöjar en LightGBM-intern "no further splits
+            # with positive gain"-terminering - se _preserve_rejected_split.
+            # De två är samma tal i praktiken (current_iteration stannar där
+            # boostingen faktiskt avbröts), men lagras separat/explicit så
+            # ett framtida LightGBM-beteende (save_best etc.) inte tyst gör
+            # dem olika utan att någon märker det.
+            "cls_num_trees": cls_model.num_trees(),
         }
         if len(X_te) == 0:
             return out
