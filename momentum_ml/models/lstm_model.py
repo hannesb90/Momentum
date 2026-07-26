@@ -202,12 +202,26 @@ class MomentumLSTM:
         patience: int = config.LSTM_PATIENCE,
     ) -> "MomentumLSTM":
 
+        # Determinism (fixad 2026-07-26, pipeline-fingeravtrycksgranskning
+        # #10): till skillnad från LGBM (config.LGBM_PARAMS: seed/
+        # bagging_seed/feature_fraction_seed/data_random_seed/
+        # deterministic=True) satte LSTM-träningen tidigare ALDRIG ett
+        # seed - varken för nätverkets viktinitiering eller för
+        # DataLoaderns shuffle=True nedan. Två annars identiska körningar
+        # (samma kod, config, data) kunde därför ge olika tränade vikter,
+        # vilket gjorde ett determinism-/fingeravtryckstest (backtest/
+        # pipeline_fingerprint.py) meningslöst för LSTM-benet - inte en
+        # riktig pipeline-drift, bara okontrollerad slump.
+        torch.manual_seed(config.RANDOM_SEED)
+        np.random.seed(config.RANDOM_SEED)
+
         train_ds = MomentumDataset(train_df, fit_scaler=True)
         self.scaler = train_ds.scaler
         val_ds   = MomentumDataset(val_df,   scaler=self.scaler)
 
         train_dl = DataLoader(train_ds, batch_size=config.LSTM_BATCH_SIZE,
-                              shuffle=True,  drop_last=True)
+                              shuffle=True,  drop_last=True,
+                              generator=torch.Generator().manual_seed(config.RANDOM_SEED))
         val_dl   = DataLoader(val_ds,   batch_size=config.LSTM_BATCH_SIZE,
                               shuffle=False, drop_last=False)
 
