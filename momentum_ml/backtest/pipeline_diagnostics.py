@@ -408,6 +408,28 @@ def model_tree_health_report(lgbm_model, as_of=None) -> dict:
         "active_status": active["status"] if active else None,
         "critical": bool(active and active["degenerate"]),
         "splits": splits,
+        "val_auc_trend": _val_auc_trend(fold_diagnostics),
+    }
+
+
+def _val_auc_trend(fold_diagnostics: List[dict], n_recent: int = 3) -> dict:
+    """
+    Tidig varningssignal (session 2026-07-26, uppföljning på rank-gap-
+    granskningen): validerings-AUC visade sig falla MONOTONT över 2-3
+    splittar innan en degenererad split (0,610->0,577->0,546->0,497 i den
+    undersökningen, lag-1-korrelation -0,58 mot "degenererad") och
+    återhämtade sig direkt efteråt. Framåtblicksfri - varje splits
+    val_auc_best är känt när DEN splitten tränas, långt före nästa splits
+    testfönster. Beräknas på de `n_recent` SENASTE splittarna i
+    fold_diagnostics_ (samma ordning som split_starts).
+    """
+    aucs = [d.get("cls_val_auc") for d in fold_diagnostics[-n_recent:]]
+    valid = [a for a in aucs if a is not None]
+    declining = len(valid) >= 2 and all(valid[i] > valid[i + 1] for i in range(len(valid) - 1))
+    return {
+        "recent_val_aucs": aucs,
+        "n_recent_checked": len(aucs),
+        "declining_trend": bool(declining),
     }
 
 
@@ -643,6 +665,7 @@ def build_and_write_report(
         "degenerate_split_count": tree_health.get("degenerate_split_count"),
         "tree_health_critical": tree_health.get("critical"),
         "model_fallback_used": tree_health.get("fallback_used"),
+        "val_auc_declining_trend": (tree_health.get("val_auc_trend") or {}).get("declining_trend"),
         "code_hash": reproducibility.get("code_hash"),
     }
     write_header = not history_path.exists()

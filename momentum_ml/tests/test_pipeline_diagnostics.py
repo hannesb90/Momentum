@@ -514,6 +514,46 @@ def test_model_tree_health_report_missing_fold_diagnostics_defaults_to_none():
     assert report["splits"][0]["status"] == "OK"
 
 
+def test_val_auc_trend_flags_monotonic_decline():
+    starts = pd.to_datetime(["2020-01-01", "2020-04-01", "2020-07-01", "2020-10-01"])
+    fold_diagnostics = [
+        {"cls_current_iteration": 20, "cls_val_auc": 0.61,
+         "cls_val_score_n_unique": 100, "cls_val_score_largest_plateau_frac": 0.1},
+        {"cls_current_iteration": 15, "cls_val_auc": 0.58,
+         "cls_val_score_n_unique": 90, "cls_val_score_largest_plateau_frac": 0.1},
+        {"cls_current_iteration": 10, "cls_val_auc": 0.55,
+         "cls_val_score_n_unique": 80, "cls_val_score_largest_plateau_frac": 0.1},
+        {"cls_current_iteration": 1, "cls_val_auc": 0.50,
+         "cls_val_score_n_unique": 40, "cls_val_score_largest_plateau_frac": 0.2},
+    ]
+    fake = _FakeLGBMModel([_FakeBooster(20), _FakeBooster(15), _FakeBooster(10), _FakeBooster(1)],
+                          list(starts), fold_diagnostics)
+    report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2020-10-15"))
+    trend = report["val_auc_trend"]
+    assert trend["declining_trend"] is True
+    assert trend["recent_val_aucs"] == [0.58, 0.55, 0.50]
+
+
+def test_val_auc_trend_not_flagged_when_auc_recovers():
+    starts = pd.to_datetime(["2020-01-01", "2020-04-01", "2020-07-01"])
+    fold_diagnostics = [
+        {"cls_val_auc": 0.50}, {"cls_val_auc": 0.48}, {"cls_val_auc": 0.55},
+    ]
+    fake = _FakeLGBMModel([_FakeBooster(1), _FakeBooster(1), _FakeBooster(20)],
+                          list(starts), fold_diagnostics)
+    report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2020-08-01"))
+    assert report["val_auc_trend"]["declining_trend"] is False
+
+
+def test_val_auc_trend_handles_missing_values():
+    starts = pd.to_datetime(["2020-01-01", "2020-04-01"])
+    fold_diagnostics = [{"cls_val_auc": None}, {"cls_val_auc": 0.55}]
+    fake = _FakeLGBMModel([_FakeBooster(1), _FakeBooster(20)], list(starts), fold_diagnostics)
+    report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2020-05-01"))
+    assert report["val_auc_trend"]["declining_trend"] is False
+    assert report["val_auc_trend"]["n_recent_checked"] == 2
+
+
 def test_model_tree_health_report_empty_model_returns_no_active_split():
     fake = _FakeLGBMModel([], [])
     report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2020-01-01"))
