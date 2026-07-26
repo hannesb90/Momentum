@@ -520,6 +520,21 @@ def load_target() -> dict:
     return _normalize_target(base)
 
 
+def _allocation_target(target: Optional[dict] = None) -> dict:
+    """Mål som den AKTIVA kapitalmodellen får använda.
+
+    Appens sparade theme-mål lämnas orört och visas fortsatt, men när ETF är
+    advisory-only flyttas dess modellkapital till den breda kärnan. Det gör
+    visning/innehavsanalys oberoende av köpbeslutet.
+    """
+    target = dict(target or load_target())
+    if getattr(config, "ETF_ADVISORY_ONLY", False):
+        target["broad"] = target.get("broad", 0.0) + target.get("theme", 0.0)
+        target["theme"] = 0.0
+        target = _normalize_target(target)
+    return target
+
+
 def _normalize_target(d: dict) -> dict:
     """Behåll broad/sweden/theme, klamp [0,1], normalisera till summa 1. leverage=0
     (evidens: hävstång ger decay/ruinrisk – aldrig ett nytt-kapital-mål)."""
@@ -955,7 +970,7 @@ def months_to_target(rows, amount, threshold=None, max_months=360):
     övervikt (t.ex. Sverige 56%) tar därför lång tid att späda till 15% enbart via
     inflöden. Kärnan blir största innehav långt innan hela portföljen är i balans.
     """
-    tgt = load_target()
+    tgt = _allocation_target()
     buckets = {b: 0.0 for b in BUCKETS}
     for r in rows:
         buckets[r["bucket"] if r["bucket"] in buckets else "theme"] += r.get("value", 0.0)
@@ -1000,7 +1015,8 @@ def compute(rows, amount=None) -> dict:
         if big and big["value"] / total > 0.12:
             warnings.append(f"Störst enskilt innehav: {big['name']} ({big['value']/total:.0%}).")
 
-    tgt = load_target()
+    display_target = load_target()
+    tgt = _allocation_target(display_target)
 
     # Steg 3 i modellen ("bevaka innehavens framsteg och utsikter"): varje
     # innehav får sin FUNDAMENTA-status ur poängkartan (value_screener +
@@ -1029,7 +1045,8 @@ def compute(rows, amount=None) -> dict:
     out = {"total": round(total, 0),
            "buckets": {b: (round(buckets[b] / total, 4) if total else 0.0) for b in BUCKETS},
            "buckets_sek": {b: round(buckets[b], 0) for b in BUCKETS},
-           "target": tgt,
+           "target": display_target,
+           "model_target": tgt,
            "warnings": warnings,
            "candidates": _candidates(),
            "housemoney": _house_money(rows),
@@ -2326,7 +2343,7 @@ def _bucket_attractiveness(rows, model, risk_on) -> dict:
         ta = _ta_confirm(active[0].get("ticker"))
         attr["sweden"] = _clamp01(mw * s_active + (1 - mw) * (0.5 * s_other + 0.5 * ta))
 
-    if risk_on:                    # tema bara relevant i risk-on (annars 0)
+    if risk_on and not getattr(config, "ETF_ADVISORY_ONLY", False):
         cands = _safe(_candidates, {"theme": []}, "attraktivitet tema")
         tpick = (cands.get("theme") or [None])[0]
         if tpick:
@@ -2426,8 +2443,8 @@ def next_buy(rows, amount=None) -> dict:
          PORTFOLIO_CORE_SPLIT-docstringen i config.py för siffrorna.
       2. SVERIGE-SATELLIT – modellens bästa kandidat. Ärligt stämplad OBEVISAD
          (holdouten var negativ); får bara den kapacitet målfördelningen ger.
-      3. TEMA-SATELLIT – rotationens starkaste tema, bara i risk-on. Rotationen
-         slog aldrig index netto → minsta hinken, aldrig kärnersättning.
+      3. TEMA/ETF – visas som research i appen men är advisory-only och får
+         inget nytt modellkapital medan rotationen ligger efter index OOS.
     En satellit utan kandidat/regim-stöd skickar sina kronor till kärnan i
     stället – planen blir alltid ett komplett "så här placeras hela beloppet".
     """
@@ -2439,7 +2456,8 @@ def next_buy(rows, amount=None) -> dict:
     if cache_key in _NEXTBUY_CACHE:
         return _NEXTBUY_CACHE[cache_key]
 
-    tgt = load_target()
+    display_target = load_target()
+    tgt = _allocation_target(display_target)
     buckets = {b: 0.0 for b in BUCKETS}
     for r in rows:
         buckets[r["bucket"] if r["bucket"] in buckets else "theme"] += r.get("value", 0.0)
@@ -2562,7 +2580,9 @@ def next_buy(rows, amount=None) -> dict:
         "skipped": skipped,
         "tilt": (tilt_meta or None),   # dynamisk fördelning: hur mycket som tiltats mot satelliterna
         "buckets": {b: (round(buckets[b] / total, 4) if total else 0.0) for b in BUCKETS},
-        "target": tgt,
+        "target": display_target,
+        "model_target": tgt,
+        "etf_advisory_only": bool(getattr(config, "ETF_ADVISORY_ONLY", False)),
         "has_holdings": bool(rows),
         "cash": _safe(load_cash, None, "montrose-kassa"),   # None om ingen Montrose-synk kört än
         # REN KONTEXT (se _global_theme_note-docstring) - påverkar ALDRIG
@@ -2766,7 +2786,7 @@ def backtest_result(monthly=10000, months=None):
     # Användarens SPARADE målvikter (load_target) – inte config-defaulten.
     # Annars backtestas en annan fördelning än den next_buy faktiskt kör med
     # så fort användaren justerat målet i appen.
-    res = _dca_backtest(px, load_target(), start_book, monthly)
+    res = _dca_backtest(px, _allocation_target(), start_book, monthly)
     from datetime import datetime
     out = {
         "start_value": round(V0), "monthly": monthly,

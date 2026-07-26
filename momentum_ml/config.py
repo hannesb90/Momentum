@@ -77,6 +77,12 @@ XS_TARGET_QUANTILE = 0.67       # topp-tertil = positiv klass
 # kan ändå de-riska däremellan (se backtester.run).
 REBALANCE_WEEKS    = FORWARD_WEEKS  # följer prognoshorisonten (13v)
 
+# Post-prediction rank smoothing. 1 = av (dagens produktionsbaslinje), 2 =
+# tvåveckors EMA. Miljöknappen gör att samma frusna modell kan A/B-testas utan
+# omträning eller källkodsbyte. Aktiveras permanent först efter ny validering
+# mot den korrigerade urvalsordningen.
+RANK_EMA_SPAN = int(_os.environ.get("MOMENTUM_RANK_EMA_SPAN", "1"))
+
 # Asymmetrisk exit: behåll de långsamma kvartals-INGÅNGARNA (rid vinnare), men
 # tillåt en SNABB utgång mellan rebalanseringar om ett innehavs trend bryts
 # (priset faller under sitt EXIT_SMA_WEEKS-glidande medel). "Sälj när bolaget är
@@ -902,10 +908,11 @@ DYNAMIC_ALLOC_CORE_FLOOR    = 0.30   # kärngolv: kärnan behåller minst denna 
 # teknisk timing ges lite inflytande, inte bara den valda modellen.
 DYNAMIC_ALLOC_MODEL_WEIGHT  = 0.70
 # ── Insynshandel + PEAD (altdata/mfn_events.py, nattlig skanning) ────────────
-# Kluster av insynsköp (netto ≥ 2 PDMR-köp-PM på 90d) ger en liten additiv
-# rank-bonus (som research-bonusen). 0 stänger av helt.
-PORTFOLIO_INSIDER_BONUS = 0.05
-# Härdighets-justering ("3-års-fundamenta", validerad 2026-07-22, se
+# Kluster av insynsköp visas som bekräftelse men ger tills vidare ingen additiv
+# rank-bonus: marginaltestet ovanpå den samlade modellen sänkte holdout-resultatet.
+# 0 stänger av påverkan utan att ta bort signalen från appen.
+PORTFOLIO_INSIDER_BONUS = 0.0
+# Härdighets-signalen ("3-års-fundamenta", analyserad 2026-07-22, se
 # tune_hold_forever.py + tune_hold_forever_fundamentals.py): momentum-signalens
 # edge klingar av med innehavstiden (median-excess +1.4% @13v → −24% @156v),
 # men köp med TOPP-TERCIL fundamenta-komposit (ROE + omsättningstillväxt +
@@ -913,10 +920,12 @@ PORTFOLIO_INSIDER_BONUS = 0.05
 # höll mot index på 104/156v (win 51%/47% mot 28–35% för resten) och fångade
 # 156v-dubblare 2,4x oftare. Additiv bonus för topp-tercilen / lika stort
 # avdrag för botten-tercilen i köp-vaktens rank (bara köp-och-behåll-
-# profilerna, se _MODEL_WEIGHTS "holdfund" i portfolio.py). 0 stänger av.
+# profilerna, se _MODEL_WEIGHTS "holdfund" i portfolio.py). Den breda
+# marginaltesten ovanpå nuvarande modell var negativ, så påverkan är 0 medan
+# datapunkten fortsatt visas och kan följas i shadow.
 # OBS: skyddar INTE vänstersvansen (topp-tercilen hade lika många halverare) –
 # nedsidan är säljvaktens jobb, inte köpanalysens.
-PORTFOLIO_HOLD_FUND_BONUS = 0.08
+PORTFOLIO_HOLD_FUND_BONUS = 0.0
 # PEAD-fönster: rapport ≤ FRESH dagar sedan + bekräftade flöden = köp driften.
 # BLACKOUT: ~kvartalsrytm (91d) sedan senaste rapporten → nästa väntas strax →
 # köp-vakten blockar ("köp inte ryktet före en rapport").
@@ -993,6 +1002,11 @@ ETF_ROT_CORR_MAX    = float(_os.environ.get("MOMENTUM_ETF_CORR_MAX", 1.0))
 # US-referenser visas också. OMX var fel (svenskt index mot global rotation).
 ETF_ROT_BENCHMARK   = "IUSQ.DE"           # iShares MSCI ACWI (global)
 ETF_ROT_BENCHMARKS_EXTRA = ["SXR8.DE", "SXRV.DE"]   # S&P 500 + Nasdaq 100 som US-referens
+
+# ETF-/tema-rotation visas fortsatt i appen som research och portföljkontext,
+# men får inte styra modellens kapital eller "Nästa köp" innan den slagit sin
+# passiva benchmark OOS. Befintliga ETF-innehav påverkas inte.
+ETF_ADVISORY_ONLY = True
 
 # ── Makro-/bakgrundsdata (räntor, obligationer, index, VIX, FX, råvaror) ──────
 # Fria Yahoo-serier att räkna på (regim, ränte-/kreditstress, flight-to-safety).
@@ -1107,7 +1121,7 @@ SEGMENTS = {
     "large": {"label": "Storbolag", "market_cap": ["Large Cap", "Mid Cap"], "results_dir": "results",
               "max_positions": 10, "conviction_blend": 0.5,
               "index_ticker": "XACT-SVERIGE.ST",  "index_label": "OMX Sthlm bred (XACT Sverige)",
-              "gate_enabled": True,  "gate_min": 0.10},
+              "gate_enabled": True,  "gate_min": 0.10, "rank_ema_span": 2},
     # Micro Cap ingår i småbolagssegmentet (First North-namn som Acconeer/
     # Swedencare/Physitrack klassas Micro): likviditetsfiltret
     # (UNIVERSE_MIN_AVG_TURNOVER) rensar ändå de ohandlade – kategorin ensam
@@ -1126,7 +1140,8 @@ SEGMENTS = {
               "max_positions": 20, "conviction_blend": 0.5,
               "index_ticker": "XACT-SMABOLAG.ST", "index_label": "Svenska Småbolag (XACT)",
               "gate_enabled": False, "gate_min": 0.10,
-              "forward_weeks": 52, "rebalance_weeks": 52, "embargo_weeks": 52},
+              "forward_weeks": 52, "rebalance_weeks": 52, "embargo_weeks": 52,
+              "rank_ema_span": 1},
 }
 DEFAULT_SEGMENT = "large"
 

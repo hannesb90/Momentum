@@ -280,6 +280,10 @@ def main():
             config.REBALANCE_WEEKS = seg["rebalance_weeks"]
         if "embargo_weeks" in seg:
             config.EMBARGO_WEEKS = seg["embargo_weeks"]
+        # Rankutjämning måste valideras per storleksben. EMA2 hjälper Large/Mid
+        # men försämrade Small52 i exakt A/B; Small/Micro behåller därför rå rank.
+        if "rank_ema_span" in seg:
+            config.RANK_EMA_SPAN = seg["rank_ema_span"]
         print(f"[Segment] {args.segment} ({seg['label']}): "
               f"market_cap={seg['market_cap']} -> {config.RESULTS_DIR}/ "
               f"(N={config.MAX_POSITIONS}, blend={config.CONVICTION_BLEND}, "
@@ -367,7 +371,19 @@ def main():
         # saknas de blir kolumnerna bara NaN, ingen krasch.
         all_features = attach_fundamentals_features(all_features, segment=args.segment, prices=data)
         _save_feature_cache(args, all_features)
-    model_df = to_model_df(all_features)
+    # ETF/fonder behövs fortsatt för sektor-/tema-vyer och benchmark, men får
+    # aldrig påverka aktiemodellens target, kalibrering, träning eller signaler.
+    # Ett sent kandidatfilter räcker inte: då har fondraderna redan ändrat det
+    # tvärsnitt som XS-targeten och modellen lär sig från.
+    model_features = {
+        ticker: frame for ticker, frame in all_features.items()
+        if config.CAP_TIER_MAP.get(ticker, cap_tier_map.get(ticker, "")) != "Fond"
+    }
+    excluded_funds = len(all_features) - len(model_features)
+    if excluded_funds:
+        print(f"  Modelluniversum: exkluderar {excluded_funds} ETF/fonder "
+              "(finns kvar i appens sektor-/benchmarkdata).")
+    model_df = to_model_df(model_features)
     print(f"  Dataset: {len(model_df):,} samples × {model_df[FEATURE_COLS].shape[1]} features")
     gc.collect()
 
@@ -439,7 +455,7 @@ def main():
         # kopior medan barnen kör – annars ligger två fulla universum i RAM
         # samtidigt (parent + barn) och tippar över i swap på en 2GB-Pi.
         # Frigör innan vi startar barnen; parent gör bara sys.exit efteråt.
-        del data, all_features, model_df, dev_df
+        del data, all_features, model_features, model_df, dev_df
         gc.collect()
 
         # Träning (LGBM, LSTM) och prediktion körs i HELT FRISKA processer
@@ -534,7 +550,7 @@ def main():
     print("  [LGBM] Laddade sparad modell.")
 
     lgbm_preds_by_ticker = {}
-    for ticker, feat_df in all_features.items():
+    for ticker, feat_df in model_features.items():
         feat_df_clean = feat_df.dropna(subset=FEATURE_COLS[:5])
         if len(feat_df_clean) > 0:
             lgbm_preds_by_ticker[ticker] = lgbm.predict(feat_df_clean)
@@ -552,7 +568,7 @@ def main():
         lstm = MomentumLSTM().load(f"{config.RESULTS_DIR}/lstm_model.pt")
         print("  [LSTM] Laddade sparad modell.")
 
-        for ticker, feat_df in all_features.items():
+        for ticker, feat_df in model_features.items():
             feat_df_clean = feat_df.dropna(subset=FEATURE_COLS[:5])
             if len(feat_df_clean) >= config.LSTM_SEQUENCE_LEN + 10:
                 try:
@@ -582,7 +598,7 @@ def main():
         print(f"  TA-filter: {args.ta_filter} (stränghet: {args.ta_strictness})")
     ensemble    = MomentumEnsemble()
     lstm_preds  = lstm_preds_by_ticker if not args.skip_lstm else None
-    feature_dfs = {t: df.assign(ticker=t) for t, df in all_features.items()}
+    feature_dfs = {t: df.assign(ticker=t) for t, df in model_features.items()}
 
     # ── 5.0 Köptröskel (legacy) ──────────────────────────────────────────────
     # I den alltid-investerade topp-N-designen styr INGEN absolut prob_up-tröskel
@@ -624,8 +640,9 @@ def main():
             "grid": grid_json,
             "buy_threshold": buy_threshold,
         }
-    print(f"  Portföljläge: alltid-investerad topp-{config.MAX_POSITIONS} "
-          f"(conviction-viktat). Kontanter endast via marknadsfiltret. "
+    print(f"  Urvalsläge: topp-{config.MAX_POSITIONS} (conviction-viktat) före "
+          f"riskfilter. Slutlig exponering kan sänkas av marknadsfilter"
+          f"{' och momentumgrind' if config.MOMENTUM_GATE_ENABLED else ''}. "
           f"Selektivitetsgolv: förv.avk > {config.MIN_EXPECTED_RETURN:.1%}")
 
     signals_df = build_full_output(
@@ -658,13 +675,13 @@ def main():
         print("\nSTEG 5.6: Serveringssignaler (färsk modell, se UTVECKLINGSLOGG #29)...")
         serving = MomentumLGBM.load(str(serving_pkl))
         s_preds = {}
-        for ticker, feat_df in all_features.items():
+        for ticker, feat_df in model_features.items():
             fd = feat_df[feat_df.index >= holdout_start].dropna(subset=FEATURE_COLS[:5])
             if len(fd) > 0:
                 s_preds[ticker] = serving.predict(fd)
         s_feature_dfs = {t: d for t, d in
                          ((t, df[df.index >= holdout_start].assign(ticker=t))
-                          for t, df in all_features.items()) if len(d) > 0}
+                          for t, df in model_features.items()) if len(d) > 0}
         serving_df = build_full_output(
             s_preds, None, s_feature_dfs, ensemble,
             ta_filter=args.ta_filter, ta_strictness=args.ta_strictness,
@@ -943,7 +960,7 @@ def main():
 
     # ── 7. Modell-drift ───────────────────────────────────────────────────────
     print("\nSTEG 7: Modell-drift...")
-    signals_with_outcomes = attach_realized_outcomes(signals_df, all_features)
+    signals_with_outcomes = attach_realized_outcomes(signals_df, model_features)
     drift_report = rolling_drift_report(signals_with_outcomes)
     print_drift_summary(drift_report)
     drift_report.to_csv(f"{config.RESULTS_DIR}/drift_report.csv")

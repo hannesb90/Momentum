@@ -374,6 +374,28 @@ def build_full_output(
         np.arange(len(df))
     ).to_numpy()
     df["model_order_rank"] = base_order_rank
+    # Kort EMA över modellens fulla lexikografiska ordning (prob_up först,
+    # prob_raw bara tie-break) kan dämpa enveckorsbrus utan att råpoängen blir
+    # primär. Span=1 är en exakt no-op. Vi exporterar
+    # challenger-ranken även när den inte styr urvalet så A/B-resultatet går att
+    # granska i efterhand.
+    ema_span = max(int(getattr(config, "RANK_EMA_SPAN", 1)), 1)
+    ordered_time = (
+        df.reset_index()
+        .assign(_row=np.arange(len(df)))
+        .sort_values(["ticker", "Date", "_row"])
+    )
+    ordered_time["rank_ema_score"] = (
+        ordered_time.groupby("ticker", sort=False)["model_order_rank"]
+        .transform(lambda s: s.ewm(span=ema_span, adjust=False).mean())
+    )
+    ema_score = ordered_time.set_index("_row")["rank_ema_score"].reindex(
+        np.arange(len(df))
+    ).to_numpy()
+    df["rank_ema_score"] = ema_score
+    df["rank_ema_rank"] = df.groupby(level="Date")["rank_ema_score"].rank(
+        method="first", pct=True
+    )
     df["short_entry_penalty"] = 0.0
     df["short_adjusted_rank"] = df["model_order_rank"]
     if short_active:
@@ -387,9 +409,14 @@ def build_full_output(
     short_entry_active = short_active and bool(
         getattr(config, "SHORT_ENTRY_ENABLED", False)
     )
-    df["selection_rank"] = (
-        df["short_adjusted_rank"] if short_entry_active else df["model_order_rank"]
-    )
+    if ema_span > 1:
+        df["selection_rank"] = df["rank_ema_rank"]
+        if short_entry_active:
+            df["selection_rank"] -= df["short_entry_penalty"]
+    else:
+        df["selection_rank"] = (
+            df["short_adjusted_rank"] if short_entry_active else df["model_order_rank"]
+        )
 
     # Alltid-investerad topp-N (tvärsnitts-momentum): bland behöriga kandidater,
     # ranka efter prob_up (conviction, alltid definierad) och håll de N starkaste
