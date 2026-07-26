@@ -323,6 +323,103 @@ def rank_gap_and_turnover_report(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Modell-trädhälsa ("varför blir score identiska?" - uppföljning 2026-07-26)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Grävde vidare i rank-gap-fyndet ovan: två genuint olika bolag fick
+# BIT-IDENTISK rå LGBM-poäng. Orsaken visade sig vara att den split som
+# faktiskt används för dagens/live-prediktioner bara hade num_trees()==1 -
+# LightGBM:s EGNA interna "no further splits with positive gain"-
+# terminering (INTE den konfigurerade 50-rundors tålamodsregeln - den hade
+# krävt >=51 körda rundor; num_trees==current_iteration==best_iteration==1
+# betyder att runda 2 aldrig ens kördes). ~en tredjedel av alla 31
+# walk-forward-splits visade samma mönster. Den AKTIVA splitten (den
+# `_select_model_idx` faktiskt väljer för "idag") är den enda som spelar
+# roll för LIVE-signaler - en gammal, degenererad split långt bak i
+# historiken är bara ett kuriosum, men om den AKTIVA splitten degenererar
+# ska det stoppa live-servering, inte bara loggas.
+
+def model_tree_health_report(lgbm_model, as_of=None) -> dict:
+    """
+    lgbm_model: en laddad MomentumLGBM (eller vad som helst med samma
+    kontrakt: .cls_models (lista lgb.Booster), .split_starts,
+    ._select_model_idx(dates) -> array).
+    as_of: datumet "idag" avser - vilken split som är AKTIV beror på detta
+    (default: nu). Backtest-/forskningskod bör skicka in det historiska
+    datum den faktiskt undersöker, inte låta det defaulta till "nu".
+
+    Returnerar:
+      - splits: lista {split_index, split_start, num_trees, best_iteration,
+        degenerate (num_trees<=1), active}
+      - active_split_index/_start/_num_trees/_best_iteration: den split som
+        `as_of` faktiskt skulle använda för prediktion.
+      - degenerate_split_count: totalt antal degenererade splits (alla,
+        inte bara den aktiva) - ett stigande antal över tid är i sig ett
+        varningstecken även innan den AKTIVA splitten träffas.
+      - critical: True om den AKTIVA splitten är degenererad - detta (inte
+        degenerate_split_count) är vad som ska trigga fallback till senast
+        godkända modell, se main.py STEG 3.
+    """
+    as_of = pd.Timestamp.now("UTC").tz_localize(None) if as_of is None else pd.Timestamp(as_of)
+    cls_models = getattr(lgbm_model, "cls_models", None) or []
+    split_starts = getattr(lgbm_model, "split_starts", None) or []
+
+    splits = []
+    for i, (model, start) in enumerate(zip(cls_models, split_starts)):
+        num_trees = int(model.num_trees())
+        best_iter = getattr(model, "best_iteration", None)
+        splits.append({
+            "split_index": i,
+            "split_start": str(pd.Timestamp(start).date()),
+            "num_trees": num_trees,
+            "best_iteration": int(best_iter) if best_iter is not None else None,
+            "degenerate": bool(num_trees <= 1),
+        })
+
+    active_idx = None
+    if splits and hasattr(lgbm_model, "_select_model_idx"):
+        active_idx = int(lgbm_model._select_model_idx(pd.DatetimeIndex([as_of]))[0])
+    for s in splits:
+        s["active"] = (s["split_index"] == active_idx)
+    active = splits[active_idx] if active_idx is not None else None
+
+    return {
+        "as_of": str(as_of.date()),
+        "n_splits": len(splits),
+        "degenerate_split_count": sum(1 for s in splits if s["degenerate"]),
+        "active_split_index": active_idx,
+        "active_split_start": active["split_start"] if active else None,
+        "active_num_trees": active["num_trees"] if active else None,
+        "active_best_iteration": active["best_iteration"] if active else None,
+        "critical": bool(active and active["degenerate"]),
+        "splits": splits,
+    }
+
+
+def reproducibility_metadata() -> dict:
+    """
+    Minimal "hur skulle jag återskapa den här modellen"-metadata:
+    slumpfrö, LGBM-parametrar, featurelistans hash och en kodhash (samma
+    _code_hash() som models/lgbm_model.py använder för sin checkpoint-
+    nyckel och för att bevara underkända splits, se
+    MomentumLGBM._preserve_rejected_split). Loggas varje natt i
+    pipeline_health.json så en framtida "varför skiljer sig den här
+    modellen från förra veckans" går att slå upp direkt utan att gräva i
+    git-historik.
+    """
+    from features.feature_engineering import FEATURE_COLS
+    from models.lgbm_model import _code_hash
+
+    return {
+        "code_hash": _code_hash(),
+        "random_seed": config.RANDOM_SEED,
+        "lgbm_params": {k: v for k, v in config.LGBM_PARAMS.items() if k != "num_threads"},
+        "feature_cols_count": len(FEATURE_COLS),
+        "feature_cols_hash": hashlib.sha1(",".join(FEATURE_COLS).encode()).hexdigest()[:16],
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 5/9. Eligible-mask-tratt / överfiltrering
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -420,6 +517,8 @@ def build_and_write_report(
     calibration_resolution: dict,
     latest_drift: Optional[dict] = None,
     rank_gap_turnover: Optional[dict] = None,
+    tree_health: Optional[dict] = None,
+    reproducibility: Optional[dict] = None,
     out_dir: Optional[str] = None,
 ) -> dict:
     """Slår ihop alla insamlade diagnostik-bitar (universumskonsistens,
@@ -444,7 +543,10 @@ def build_and_write_report(
     drift_path = Path(out_dir) / "feature_drift_report.csv"
     funnel_path = Path(out_dir) / "eligible_funnel_history.csv"
     rank_path = Path(out_dir) / "rank_gap_turnover.csv"
+    tree_path = Path(out_dir) / "model_tree_health.csv"
     rank_gap_turnover = rank_gap_turnover or {}
+    tree_health = tree_health or {}
+    reproducibility = reproducibility or {}
 
     universe_stages = get_universe_stages()
     nan_log = get_nan_log()
@@ -471,6 +573,8 @@ def build_and_write_report(
         "eligible_funnel_totals": funnel_totals,
         "drift": latest_drift,
         "rank_gap_turnover": rank_gap_turnover,
+        "tree_health": tree_health,
+        "reproducibility": reproducibility,
     }
 
     prev = _read_last_history_row(history_path)
@@ -519,6 +623,12 @@ def build_and_write_report(
         "turnover_rank_10_filter_exit_frac": rank_gap_turnover.get("turnover_rank_10_filter_exit_frac"),
         "turnover_rank_10_score_reorder_frac": rank_gap_turnover.get("turnover_rank_10_score_reorder_frac"),
         "turnover_rank_10_common_universe_turnover": rank_gap_turnover.get("turnover_rank_10_common_universe_turnover"),
+        "active_num_trees": tree_health.get("active_num_trees"),
+        "active_best_iteration": tree_health.get("active_best_iteration"),
+        "degenerate_split_count": tree_health.get("degenerate_split_count"),
+        "tree_health_critical": tree_health.get("critical"),
+        "model_fallback_used": tree_health.get("fallback_used"),
+        "code_hash": reproducibility.get("code_hash"),
     }
     write_header = not history_path.exists()
     pd.DataFrame([history_row]).to_csv(history_path, mode="a", header=write_header, index=False)
@@ -541,7 +651,14 @@ def build_and_write_report(
     ]
     if turnover_rows:
         pd.DataFrame(turnover_rows).to_csv(rank_path, index=False)
+    if tree_health.get("splits"):
+        pd.DataFrame(tree_health["splits"]).to_csv(tree_path, index=False)
 
+    critical_note = ""
+    if tree_health.get("critical"):
+        critical_note = (f" [KRITISKT: aktiv split {tree_health.get('active_split_start')} "
+                          f"har bara {tree_health.get('active_num_trees')} träd]")
     print(f"[PipelineHealth] Rapport skriven: {out_path} (+{history_path.name}, "
-          f"{n_drift_flagged}/{len(feature_drift)} features flaggade för drift)")
+          f"{n_drift_flagged}/{len(feature_drift)} features flaggade för drift)"
+          f"{critical_note}")
     return report

@@ -551,6 +551,35 @@ def main():
     lgbm = MomentumLGBM.load(f"{config.RESULTS_DIR}/lgbm_model.pkl")
     print("  [LGBM] Laddade sparad modell.")
 
+    # Modell-trädhälsa (pipeline-granskning 2026-07-26): är splitten som
+    # FAKTISKT används för dagens signaler degenererad (num_trees<=1 -
+    # LightGBM:s egen "no further splits with positive gain"-terminering,
+    # se models/lgbm_model.py::_preserve_rejected_split)? En sådan modell har
+    # ingen verklig lärd differentiering - falla då tillbaka på senast
+    # GODKÄNDA modell i stället för att servera degenererade signaler.
+    tree_health = pipeline_diagnostics.model_tree_health_report(
+        lgbm, as_of=all_dates[-1] if len(all_dates) else None)
+    approved_path = Path(f"{config.RESULTS_DIR}/lgbm_model_last_approved.pkl")
+    if tree_health["critical"]:
+        print(f"  [KRITISKT] Aktiv split ({tree_health['active_split_start']}) har bara "
+              f"{tree_health['active_num_trees']} träd - degenererad modell, otillförlitlig "
+              f"för live-signaler.")
+        if approved_path.exists():
+            print(f"  Faller tillbaka på senast godkända modell: {approved_path}")
+            lgbm = MomentumLGBM.load(str(approved_path))
+            tree_health["fallback_used"] = True
+            tree_health["fallback_path"] = str(approved_path)
+        else:
+            print("  [VARNING] Ingen tidigare godkänd modell finns att falla tillbaka på - "
+                  "fortsätter med den degenererade modellen (inget bättre alternativ).")
+            tree_health["fallback_used"] = False
+    else:
+        tree_health["fallback_used"] = False
+        try:
+            shutil.copy(f"{config.RESULTS_DIR}/lgbm_model.pkl", approved_path)
+        except Exception as e:
+            print(f"  [WARN] Kunde inte uppdatera senast godkända modell (icke-kritiskt): {e}")
+
     lgbm_preds_by_ticker = {}
     for ticker, feat_df in model_features.items():
         feat_df_clean = feat_df.dropna(subset=FEATURE_COLS[:5])
@@ -1054,6 +1083,7 @@ def main():
         # meningsfull eller brus? (score-gap rank5/6, 10/11, 20/21 +
         # bytesfrekvens per rank + signal/brus-kvot, se pipeline_diagnostics.py)
         rank_gap_turnover = pipeline_diagnostics.rank_gap_and_turnover_report(signals_df)
+        reproducibility = pipeline_diagnostics.reproducibility_metadata()
 
         pipeline_diagnostics.build_and_write_report(
             feature_drift=feature_drift,
@@ -1061,6 +1091,8 @@ def main():
             calibration_resolution=calibration_resolution,
             latest_drift=summary.get("drift"),
             rank_gap_turnover=rank_gap_turnover,
+            tree_health=tree_health,
+            reproducibility=reproducibility,
         )
     except Exception as e:
         print(f"  Pipeline Health Report misslyckades (icke-kritiskt): {e}")
