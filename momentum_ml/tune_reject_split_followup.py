@@ -15,6 +15,12 @@ regularisering). Fyra frågor:
                 jämviktad/benchmark-exponering i stället) i lågt-AUC-
                 perioder, baserat på validerings-AUC (känt FÖRE
                 testfönstret, ingen framåtblick)?
+  abstention_sweep – samma fråga som abstention, men svept över flera
+                AUC-trösklar (0,50-0,54) + explicit verifiering att varje
+                splits train/val/test-fönster är strikt kronologiskt
+                ordnat (ingen framåtblick i beslutsunderlaget). Kräver att
+                'abstention' körts minst en gång först (återanvänder
+                results/reject_split_abstention.csv, ingen omträning).
 
 Samma datakälla-caveat som tune_reject_split_diagnosis.py: nyaste
 TILLGÄNGLIGA feature-cache, inte en bit-identisk reproduktion av en
@@ -24,6 +30,7 @@ specifik natts produktionskörning.
     /opt/momentum/venv/bin/python3 tune_reject_split_followup.py windows
     /opt/momentum/venv/bin/python3 tune_reject_split_followup.py regime
     /opt/momentum/venv/bin/python3 tune_reject_split_followup.py abstention
+    /opt/momentum/venv/bin/python3 tune_reject_split_followup.py abstention_sweep
 """
 import sys
 from pathlib import Path
@@ -283,6 +290,75 @@ def cmd_abstention(threshold: float = 0.52):
               f"andel splits där modellens urval slog jämvikt={beat_rate:.1%}")
 
 
+ABSTENTION_CSV = Path("results/reject_split_abstention.csv")
+SWEEP_THRESHOLDS = [0.50, 0.51, 0.52, 0.53, 0.54]
+
+
+def _verify_no_lookahead() -> None:
+    """Explicit, programmatisk kontroll (inte bara en kommentar) att varje
+    splits train/val/test-fönster är strikt kronologiskt ordnat - dvs att
+    val_auc_best (avstående-beslutets underlag) alltid är beräknat på data
+    som ligger HELT FÖRE testfönstret, aldrig delvis inom eller efter det."""
+    dev_df = _load_dev_df()
+    splits = walk_forward_splits(dev_df.index)
+    violations = []
+    for i, (train_d, val_d, test_d) in enumerate(splits):
+        if not (train_d.max() < val_d.min() and val_d.max() < test_d.min()):
+            violations.append(i + 1)
+    if violations:
+        print(f"  [VARNING] {len(violations)} split(ar) med kronologisk överlappning: {violations}")
+    else:
+        print(f"  OK - samtliga {len(splits)} splits: träning < validering < test, "
+              f"strikt kronologiskt, ingen överlappning.")
+
+
+def cmd_abstention_sweep():
+    if not ABSTENTION_CSV.exists():
+        raise SystemExit(f"{ABSTENTION_CSV} saknas - kör 'abstention' först.")
+    df = pd.read_csv(ABSTENTION_CSV)
+
+    print(f"{'='*100}\nSteg 1: verifiera att beslutsunderlaget (val_auc_best) inte innehåller framåtblick\n{'='*100}")
+    _verify_no_lookahead()
+
+    print(f"\n{'='*100}\nSteg 2: svep över AUC-trösklar {SWEEP_THRESHOLDS}\n{'='*100}")
+    rows = []
+    for t in SWEEP_THRESHOLDS:
+        abstain = df[df["val_auc_best"] < t]
+        trade = df[df["val_auc_best"] >= t]
+        for label, sub in (("abstain", abstain), ("trade", trade)):
+            if sub.empty:
+                continue
+            edge = sub["test_top_decile_return"] - sub["test_equal_weight_return"]
+            rows.append({
+                "threshold": t, "group": label, "n": len(sub),
+                "mean_top_decile_ret": float(sub["test_top_decile_return"].mean()),
+                "mean_equal_weight_ret": float(sub["test_equal_weight_return"].mean()),
+                "mean_edge": float(edge.mean()),
+                "win_rate": float(sub["picks_beat_equal_weight"].mean()),
+            })
+
+    sweep = pd.DataFrame(rows)
+    print(sweep.to_string(index=False))
+    sweep.to_csv("results/reject_split_abstention_sweep.csv", index=False)
+
+    print(f"\n{'='*100}\nRobusthetsbedömning\n{'='*100}")
+    abstain_edges = sweep[sweep["group"] == "abstain"].set_index("threshold")["mean_edge"]
+    trade_edges = sweep[sweep["group"] == "trade"].set_index("threshold")["mean_edge"]
+    for t in SWEEP_THRESHOLDS:
+        if t in abstain_edges.index and t in trade_edges.index:
+            n_abstain = int(sweep[(sweep["threshold"] == t) & (sweep["group"] == "abstain")]["n"].iloc[0])
+            print(f"  tröskel {t:.2f}: abstain-grupp (n={n_abstain}) edge={abstain_edges[t]:+.4f}, "
+                  f"trade-grupp edge={trade_edges[t]:+.4f}, "
+                  f"skillnad={trade_edges[t]-abstain_edges[t]:+.4f}")
+    holds = all(
+        abstain_edges.get(t, 0) < trade_edges.get(t, -1) for t in SWEEP_THRESHOLDS
+        if t in abstain_edges.index and t in trade_edges.index)
+    print(f"\n  Abstain-gruppens edge lägre än trade-gruppens vid ALLA trösklar i svepet: {holds}")
+    if any(sweep[sweep["group"] == "abstain"]["n"] < 5):
+        print("  OBS: minst en tröskel har <5 splits i abstain-gruppen - litet stickprov, "
+              "tolka som riktning/indikation, inte en statistiskt säkerställd effekt.")
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "precursors"
     {
@@ -290,4 +366,5 @@ if __name__ == "__main__":
         "windows": cmd_windows,
         "regime": cmd_regime,
         "abstention": cmd_abstention,
+        "abstention_sweep": cmd_abstention_sweep,
     }[cmd]()
