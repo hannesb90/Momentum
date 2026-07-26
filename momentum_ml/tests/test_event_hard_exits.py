@@ -42,8 +42,8 @@ def _backtester(signals=None, prices=None):
         {"A.ST": [False], "B.ST": [False]}, index=[DATE])
     bt._atr_panel = pd.DataFrame(
         {"A.ST": [5.0], "B.ST": [5.0]}, index=[DATE])
-    bt._correlation_filter = lambda weights, date: weights
-    bt._sector_exposure_filter = lambda weights: weights
+    bt._correlation_filter = lambda weights, date, **kwargs: weights
+    bt._sector_exposure_filter = lambda weights, **kwargs: weights
     return bt
 
 
@@ -115,8 +115,8 @@ def test_custom_hard_exit_hook_blocks_same_cycle_entry(monkeypatch):
     bt._close_panel = base._close_panel
     bt._below_sma = base._below_sma
     bt._atr_panel = base._atr_panel
-    bt._correlation_filter = lambda weights, date: weights
-    bt._sector_exposure_filter = lambda weights: weights
+    bt._correlation_filter = lambda weights, date, **kwargs: weights
+    bt._sector_exposure_filter = lambda weights, **kwargs: weights
     _run_event(bt)
     assert "A.ST" not in bt._portfolio
     assert any(

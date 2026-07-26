@@ -260,6 +260,7 @@ class MomentumBacktester:
     def _sector_exposure_filter(
         self,
         target_weights: Dict[str, float],
+        protected_tickers: Optional[set[str]] = None,
     ) -> Dict[str, float]:
         """
         Skalar ner vikter proportionellt inom en sektor om sektorns
@@ -275,12 +276,37 @@ class MomentumBacktester:
             sector_totals[sector] = sector_totals.get(sector, 0.0) + w
 
         weights = dict(target_weights)
+        protected = set(protected_tickers or ())
         for sector, total in sector_totals.items():
             if total > config.MAX_SECTOR_EXPOSURE:
-                scale = config.MAX_SECTOR_EXPOSURE / total
-                for ticker in weights:
-                    if config.SECTOR_MAP.get(ticker, "Okänd") == sector:
+                members = [
+                    ticker for ticker in weights
+                    if config.SECTOR_MAP.get(ticker, "Okänd") == sector]
+                incumbents = [t for t in members if t in protected]
+                newcomers = [t for t in members if t not in protected]
+                incumbent_total = sum(weights[t] for t in incumbents)
+                cap = float(config.MAX_SECTOR_EXPOSURE)
+                if incumbent_total >= cap:
+                    # Incumbents already consume the sector budget. Preserve
+                    # their relative weights and exclude new candidates first.
+                    scale = cap / incumbent_total if incumbent_total else 0.0
+                    for ticker in incumbents:
                         weights[ticker] *= scale
+                    for ticker in newcomers:
+                        weights[ticker] = 0.0
+                else:
+                    remaining = cap - incumbent_total
+                    newcomer_total = sum(weights[t] for t in newcomers)
+                    scale = (
+                        min(1.0, remaining / newcomer_total)
+                        if newcomer_total else 0.0)
+                    for ticker in newcomers:
+                        weights[ticker] *= scale
+
+        # A zero-weight newcomer is not a target position. Removing it avoids
+        # leaving a zero-share/zero-intent key in downstream decision ledgers.
+        weights = {ticker: weight for ticker, weight in weights.items()
+                   if weight > 0}
 
         return weights
 
@@ -288,6 +314,7 @@ class MomentumBacktester:
         self,
         target_weights: Dict[str, float],
         date: pd.Timestamp,
+        protected_tickers: Optional[set[str]] = None,
     ) -> Dict[str, float]:
         """
         Om två kandidater har rullande avkastningskorrelation över
@@ -317,6 +344,7 @@ class MomentumBacktester:
 
         corr = ret_df.corr()
         weights = dict(target_weights)
+        protected = set(protected_tickers or ())
         dropped = set()
 
         pairs = [(a, b) for i, a in enumerate(corr.columns)
@@ -327,7 +355,13 @@ class MomentumBacktester:
             if a in dropped or b in dropped:
                 continue
             if corr.loc[a, b] > config.MAX_PAIRWISE_CORRELATION:
-                loser  = a if weights.get(a, 0) <= weights.get(b, 0) else b
+                if a in protected and b not in protected:
+                    loser = b
+                elif b in protected and a not in protected:
+                    loser = a
+                else:
+                    loser = (
+                        a if weights.get(a, 0) <= weights.get(b, 0) else b)
                 winner = b if loser == a else a
                 weights[winner] = weights.get(winner, 0) + weights.get(loser, 0)
                 weights.pop(loser, None)
@@ -782,8 +816,11 @@ class MomentumBacktester:
         else:
             target_weights = {}
 
-        target_weights = self._correlation_filter(target_weights, date)
-        target_weights = self._sector_exposure_filter(target_weights)
+        incumbent_set = set(survivors)
+        target_weights = self._correlation_filter(
+            target_weights, date, protected_tickers=incumbent_set)
+        target_weights = self._sector_exposure_filter(
+            target_weights, protected_tickers=incumbent_set)
         total_w = sum(target_weights.values())
         if total_w > 1.0:
             target_weights = {t: w / total_w for t, w in target_weights.items()}
