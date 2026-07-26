@@ -1050,12 +1050,17 @@ def main():
 
         target_balance = pipeline_diagnostics.target_balance_stats(model_df)
         calibration_resolution = prob_resolution_stats(signals_df["prob_up"].values)
+        # Är rangordningen nära urvalsgränsen (MAX_POSITIONS) statistiskt
+        # meningsfull eller brus? (score-gap rank5/6, 10/11, 20/21 +
+        # bytesfrekvens per rank + signal/brus-kvot, se pipeline_diagnostics.py)
+        rank_gap_turnover = pipeline_diagnostics.rank_gap_and_turnover_report(signals_df)
 
         pipeline_diagnostics.build_and_write_report(
             feature_drift=feature_drift,
             target_balance=target_balance,
             calibration_resolution=calibration_resolution,
             latest_drift=summary.get("drift"),
+            rank_gap_turnover=rank_gap_turnover,
         )
     except Exception as e:
         print(f"  Pipeline Health Report misslyckades (icke-kritiskt): {e}")

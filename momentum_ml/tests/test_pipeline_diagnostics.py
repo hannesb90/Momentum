@@ -201,6 +201,116 @@ def test_build_and_write_report_writes_json_and_history_csv(tmp_path):
     assert (tmp_path / "eligible_funnel_history.csv").exists()
 
 
+# ── Rank-gap / bytesfrekvens ─────────────────────────────────────────────────
+
+def _make_signals_df(n_weeks=30, n_tickers=25, rotate=False, weekly_drift=0.0):
+    """Syntetisk signals_df: DatetimeIndex 'Date', ticker, prob_raw/prob_up/
+    selection_rank (satta lika för enkelhetens skull - sorteringsordningen
+    bryr sig bara om den relativa storleken) och selection_eligible=1.
+
+    rotate=False: ticker T{k} ligger alltid på rank-position k (0-indexerad)
+    varje vecka -> 0% bytesfrekvens, deterministiskt gap mellan valfria
+    rankpar.
+    rotate=True: rankpositionerna roterar en tickerpositon per vecka -> 100%
+    bytesfrekvens vid varje enskild vecko-övergång (skift 1 mod n_tickers är
+    aldrig 0).
+    weekly_drift: en UNIFORM offset (drift*veckoindex) läggs till ALLA
+    tickers score samma vecka - påverkar inte rank-ordningen eller gapet
+    mellan rankpar (kancellerar i differensen), men ger EN tickers egen
+    score en exakt, känd vecko-till-vecko-förändring (= weekly_drift) att
+    mäta brus-referensen mot.
+    """
+    dates = pd.date_range("2020-01-06", periods=n_weeks, freq="W-MON")
+    tickers = [f"T{i:02d}" for i in range(n_tickers)]
+    base_scores = np.linspace(1.0, 0.0, n_tickers)
+    rows = []
+    for wi, date in enumerate(dates):
+        order = list(np.roll(tickers, wi)) if rotate else tickers
+        for rank_pos, ticker in enumerate(order):
+            score = float(base_scores[rank_pos] + weekly_drift * wi)
+            rows.append({
+                "Date": date, "ticker": ticker,
+                "prob_raw": score, "prob_up": score, "selection_rank": score,
+                "selection_eligible": 1,
+            })
+    return pd.DataFrame(rows).set_index("Date")
+
+
+def test_rank_gap_matches_expected_score_difference():
+    df = _make_signals_df(n_weeks=5, n_tickers=25)
+    report = diag.rank_gap_and_turnover_report(
+        df, rank_pairs=((5, 6),), recent_weeks=5)
+    base_scores = np.linspace(1.0, 0.0, 25)
+    expected = base_scores[4] - base_scores[5]   # rank 5/6 -> index 4/5
+    assert report["gap_prob_raw_5_6"] == pytest.approx(expected)
+
+
+def test_turnover_is_zero_when_ticker_identity_is_stable():
+    df = _make_signals_df(n_weeks=10, n_tickers=25, rotate=False)
+    report = diag.rank_gap_and_turnover_report(
+        df, recent_weeks=10, rebalance_weeks=1, max_turnover_rank=20)
+    for n in range(1, 21):
+        assert report[f"turnover_rank_{n}"] == pytest.approx(0.0)
+
+
+def test_turnover_is_full_when_tickers_rotate_every_week():
+    df = _make_signals_df(n_weeks=10, n_tickers=25, rotate=True)
+    report = diag.rank_gap_and_turnover_report(
+        df, recent_weeks=10, rebalance_weeks=1, max_turnover_rank=20)
+    for n in range(1, 21):
+        assert report[f"turnover_rank_{n}"] == pytest.approx(1.0)
+
+
+def test_own_score_weekly_noise_and_signal_to_noise_ratio():
+    df = _make_signals_df(n_weeks=10, n_tickers=25, rotate=False, weekly_drift=0.001)
+    report = diag.rank_gap_and_turnover_report(
+        df, rank_pairs=((10, 11),), recent_weeks=10)
+    assert report["own_score_weekly_median"] == pytest.approx(0.001)
+    base_scores = np.linspace(1.0, 0.0, 25)
+    expected_gap = base_scores[9] - base_scores[10]
+    assert report["gap_prob_raw_10_11"] == pytest.approx(expected_gap)
+    assert report["signal_to_noise_10_11"] == pytest.approx(expected_gap / 0.001)
+
+
+def test_signal_to_noise_absent_when_no_own_score_movement():
+    df = _make_signals_df(n_weeks=5, n_tickers=25, rotate=False, weekly_drift=0.0)
+    report = diag.rank_gap_and_turnover_report(df, rank_pairs=((10, 11),), recent_weeks=5)
+    assert "signal_to_noise_10_11" not in report
+
+
+def test_rank_gap_report_empty_df_returns_zero_weeks_checked():
+    df = pd.DataFrame(
+        columns=["ticker", "prob_raw", "prob_up", "selection_rank", "selection_eligible"])
+    df.index = pd.DatetimeIndex([], name="Date")
+    report = diag.rank_gap_and_turnover_report(df)
+    assert report["n_weeks_checked"] == 0
+
+
+def test_rank_gap_report_skips_weeks_with_too_few_candidates():
+    df = _make_signals_df(n_weeks=3, n_tickers=15)   # < rank 21 needed for default pairs
+    report = diag.rank_gap_and_turnover_report(df, recent_weeks=3)
+    assert report["n_weeks_checked"] == 0
+
+
+def test_build_and_write_report_includes_rank_gap_turnover(tmp_path):
+    feature_drift = pd.DataFrame(columns=["feature", "drift_flag"])
+    target_balance = {"n": 10, "positive_share": 0.5, "median_forward_return": 0.01}
+    calibration_resolution = {"n": 10, "n_unique": 3, "largest_plateau_frac": 0.5}
+    rank_gap_turnover = {
+        "gap_prob_raw_10_11": 0.001, "turnover_rank_10": 0.8,
+        "own_score_weekly_std": 0.01, "signal_to_noise_10_11": 0.5,
+    }
+
+    report = diag.build_and_write_report(
+        feature_drift=feature_drift, target_balance=target_balance,
+        calibration_resolution=calibration_resolution,
+        rank_gap_turnover=rank_gap_turnover, out_dir=str(tmp_path),
+    )
+    assert report["rank_gap_turnover"] == rank_gap_turnover
+    hist = pd.read_csv(tmp_path / "pipeline_health_history.csv")
+    assert hist.iloc[0]["turnover_rank_10"] == pytest.approx(0.8)
+
+
 def test_build_and_write_report_computes_change_vs_previous(tmp_path):
     diag.record_universe_stage("fetch", ["A", "B", "C"])
     feature_drift = pd.DataFrame(columns=["feature", "drift_flag"])
