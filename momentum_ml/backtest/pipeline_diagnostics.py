@@ -350,12 +350,17 @@ def model_tree_health_report(lgbm_model, as_of=None) -> dict:
 
     Returnerar:
       - splits: lista {split_index, split_start, num_trees, best_iteration,
-        degenerate (num_trees<=1), active}
+        current_iteration, val_auc, val_score_n_unique,
+        val_score_largest_plateau_frac, degenerate (num_trees<=1),
+        status ("FAILED"/"OK"), active}. current_iteration/val_auc/
+        score-upplösningen läses från lgbm_model.fold_diagnostics_ (satta
+        av fit_walk_forward/fit_serving) om det finns - annars None (t.ex.
+        en äldre sparad modell utan den diagnostiken).
       - active_split_index/_start/_num_trees/_best_iteration: den split som
         `as_of` faktiskt skulle använda för prediktion.
-      - degenerate_split_count: totalt antal degenererade splits (alla,
-        inte bara den aktiva) - ett stigande antal över tid är i sig ett
-        varningstecken även innan den AKTIVA splitten träffas.
+      - degenerate_split_count: totalt antal degenererade (FAILED) splits
+        (alla, inte bara den aktiva) - ett stigande antal över tid är i sig
+        ett varningstecken även innan den AKTIVA splitten träffas.
       - critical: True om den AKTIVA splitten är degenererad - detta (inte
         degenerate_split_count) är vad som ska trigga fallback till senast
         godkända modell, se main.py STEG 3.
@@ -363,17 +368,24 @@ def model_tree_health_report(lgbm_model, as_of=None) -> dict:
     as_of = pd.Timestamp.now("UTC").tz_localize(None) if as_of is None else pd.Timestamp(as_of)
     cls_models = getattr(lgbm_model, "cls_models", None) or []
     split_starts = getattr(lgbm_model, "split_starts", None) or []
+    fold_diagnostics = getattr(lgbm_model, "fold_diagnostics_", None) or []
 
     splits = []
     for i, (model, start) in enumerate(zip(cls_models, split_starts)):
         num_trees = int(model.num_trees())
         best_iter = getattr(model, "best_iteration", None)
+        fd = fold_diagnostics[i] if i < len(fold_diagnostics) else {}
         splits.append({
             "split_index": i,
             "split_start": str(pd.Timestamp(start).date()),
             "num_trees": num_trees,
             "best_iteration": int(best_iter) if best_iter is not None else None,
+            "current_iteration": fd.get("cls_current_iteration"),
+            "val_auc": fd.get("cls_val_auc"),
+            "val_score_n_unique": fd.get("cls_val_score_n_unique"),
+            "val_score_largest_plateau_frac": fd.get("cls_val_score_largest_plateau_frac"),
             "degenerate": bool(num_trees <= 1),
+            "status": "FAILED" if num_trees <= 1 else "OK",
         })
 
     active_idx = None
@@ -391,6 +403,9 @@ def model_tree_health_report(lgbm_model, as_of=None) -> dict:
         "active_split_start": active["split_start"] if active else None,
         "active_num_trees": active["num_trees"] if active else None,
         "active_best_iteration": active["best_iteration"] if active else None,
+        "active_current_iteration": active["current_iteration"] if active else None,
+        "active_val_auc": active["val_auc"] if active else None,
+        "active_status": active["status"] if active else None,
         "critical": bool(active and active["degenerate"]),
         "splits": splits,
     }

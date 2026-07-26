@@ -21,6 +21,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
 from features.feature_engineering import FEATURE_COLS
+from backtest.calibration_check import prob_resolution_stats
 
 # Extern kodgranskning 2026-07-25, Fas 1 punkt 4: early stopping och isotonic-
 # kalibrering använde tidigare EXAKT samma valideringsfönster - kalibratorn
@@ -207,13 +208,13 @@ class MomentumLGBM:
             return None
 
     def _preserve_rejected_split(
-        self, split_i: int, train_d, val_d, val_d_stop,
-        X_tr: np.ndarray, y_cls_tr: np.ndarray, X_va_stop: np.ndarray, y_cls_va_stop: np.ndarray,
-        cls_model: lgb.Booster,
+        self, split_i: int, df: pd.DataFrame, train_d, val_d, val_d_stop,
+        cls_model: lgb.Booster, eval_history: dict,
     ) -> None:
         """
-        Sparar EXAKT träningsindata + reproducerbarhetsmetadata för en
-        underkänd split (num_trees<=1) till results/rejected_splits/.
+        Sparar EXAKT tränings-/valideringsunderlag + reproducerbarhets-
+        metadata för en underkänd (FAILED) split (num_trees<=1) till
+        results/rejected_splits/.
 
         BAKGRUND (session 2026-07-26): en granskning av rank-gap/bytesfrekvens
         i pipeline_health.json ledde till att ~en tredjedel av walk-forward-
@@ -226,9 +227,16 @@ class MomentumLGBM:
         bit-identisk feature-cache - main.py:s _feature_cache_path.unlink()
         raderar feature-cachen efter varje orkestrerad körning, så den
         EXAKTA datan som faktiskt orsakade en given natts 1-träds-resultat
-        gick inte att återskapa. Det här stänger den luckan: nästa gång en
-        split underkänns bevaras dess exakta (X, y) + fullständig
-        reproducerbarhetsmetadata, så framtida forskning slipper gissa.
+        gick inte att återskapa. Det här stänger den luckan.
+
+        Bevarar (utöver X/y): TRÄNINGS-/VALIDERINGS-INDEX (Date+ticker per
+        rad, inte bara de råa arrayerna - så en framtida undersökning vet
+        VILKA bolag/veckor som ingick), featurelistan I TRÄNAD ORDNING,
+        BÅDA targets (target_signal OCH target_return), en explicit notering
+        att inga sample weights används i denna pipeline (lgb.Dataset skapas
+        utan weight=), LGBM-parametrar + slumpfrö, LightGBM:s egen per-runda
+        eval_history (record_evaluation - hur träningen faktiskt utvecklade
+        sig, inte bara slutresultatet), samt hashar av all indata.
 
         Filnamnet nyckelas på split-startdatumet (inte körningstillfället) -
         walk-forward-splittarnas datum är deterministiska givet samma
@@ -242,9 +250,28 @@ class MomentumLGBM:
         path = out_dir / f"rejected_split_{split_start_str}.pkl"
         tmp = path.with_suffix(".tmp")
 
+        train_sub = df[df.index.isin(train_d)]
+        val_sub = df[df.index.isin(val_d_stop)] if len(val_d_stop) else df[df.index.isin(val_d)]
+
+        def _identity(sub: pd.DataFrame) -> pd.DataFrame:
+            out = pd.DataFrame({"Date": sub.index})
+            out["ticker"] = sub["ticker"].values if "ticker" in sub.columns else None
+            return out
+
+        X_tr = train_sub[FEATURE_COLS].fillna(0).values
+        y_cls_tr = train_sub["target_signal"].values
+        y_reg_tr = train_sub["target_return"].values
+        X_va = val_sub[FEATURE_COLS].fillna(0).values
+        y_cls_va = val_sub["target_signal"].values
+        y_reg_va = val_sub["target_return"].values
+
+        def _hash(arr) -> str:
+            return hashlib.sha1(np.ascontiguousarray(arr).tobytes()).hexdigest()[:16]
+
         payload = {
             "saved_at": pd.Timestamp.now("UTC").isoformat(),
             "split_index": split_i,
+            "status": "FAILED",
             "train_date_range": (
                 pd.Timestamp(pd.DatetimeIndex(train_d).min()).isoformat(),
                 pd.Timestamp(pd.DatetimeIndex(train_d).max()).isoformat()),
@@ -255,24 +282,37 @@ class MomentumLGBM:
                 (pd.Timestamp(pd.DatetimeIndex(val_d_stop).min()).isoformat(),
                  pd.Timestamp(pd.DatetimeIndex(val_d_stop).max()).isoformat())
                 if len(val_d_stop) else None),
+            "train_index": _identity(train_sub),   # Date + ticker per tränings-rad
+            "val_index": _identity(val_sub),        # Date + ticker per validerings-rad
             "num_trees": cls_model.num_trees(),
             "best_iteration": cls_model.best_iteration,
+            "current_iteration": cls_model.current_iteration(),
+            "eval_history": eval_history,   # {metric: [värde per boosting-runda]}
             "reproducibility": {
                 "code_hash": _code_hash(),
                 "random_seed": config.RANDOM_SEED,
                 "cls_params": dict(self.cls_params),
                 "feature_cols": list(FEATURE_COLS),
             },
-            # EXAKT indata - inte bara en hash - så en framtida undersökning
+            # Inga sample weights används någonstans i den här pipelinen
+            # (lgb.Dataset skapas utan weight=) - explicit noterat i stället
+            # för att bara utelämnas, så frånvaron är en bekräftad fakta,
+            # inte en lucka i bevarandet.
+            "sample_weights": None,
+            "data_hashes": {
+                "X_tr": _hash(X_tr), "y_cls_tr": _hash(y_cls_tr), "y_reg_tr": _hash(y_reg_tr),
+                "X_va": _hash(X_va), "y_cls_va": _hash(y_cls_va), "y_reg_va": _hash(y_reg_va),
+            },
+            # EXAKT indata - inte bara hashar - så en framtida undersökning
             # kan återköra lgb.train direkt utan att bygga om features/priser.
-            "X_tr": X_tr, "y_cls_tr": y_cls_tr,
-            "X_va_stop": X_va_stop, "y_cls_va_stop": y_cls_va_stop,
+            "X_tr": X_tr, "y_cls_tr": y_cls_tr, "y_reg_tr": y_reg_tr,
+            "X_va": X_va, "y_cls_va": y_cls_va, "y_reg_va": y_reg_va,
         }
         try:
             joblib.dump(payload, tmp, compress=3)
             os.replace(tmp, path)
-            print(f"  [KRITISKT] Split {split_i+1}: underkänd (num_trees="
-                  f"{cls_model.num_trees()}) - exakt indata bevarad: {path}")
+            print(f"  [KRITISKT] Split {split_i+1}: FAILED (num_trees="
+                  f"{cls_model.num_trees()}) - exakt underlag bevarat: {path}")
         except Exception as e:  # noqa: BLE001 - bevarandet är diagnostik, aldrig kritiskt för träningen
             print(f"  [WARN] Kunde inte bevara underkänd split {split_i+1} (icke-kritiskt): {e}")
 
@@ -413,17 +453,19 @@ class MomentumLGBM:
                 X_va_stop, y_cls_va_stop, _ = self._slice(df, val_d_stop)
 
             # Klassifikation
-            cls_model = self._fit_cls(X_tr, y_cls_tr, X_va_stop, y_cls_va_stop)
+            cls_model, eval_history = self._fit_cls(X_tr, y_cls_tr, X_va_stop, y_cls_va_stop)
             if cls_model.num_trees() <= 1:
                 # Underkänd split (pipeline-hälsogranskning 2026-07-26): LightGBM
                 # hittade ingen split med positiv vinst efter runda 1 och avbröt
                 # HELT (inte den vanliga 50-rundors-tålamodsregeln - se
                 # _preserve_rejected_split-docstringen). Bevara den EXAKTA
                 # indatan nu - main.py raderar feature-cachen efter varje
-                # orkestrerad körning, så det här är enda chansen att kunna
-                # undersöka/reproducera varför i efterhand.
+                # orkestrerad körning OM INGEN split underkändes (se
+                # main.py:s _rejected_splits_this_run.flag-hantering), så det
+                # här är annars enda chansen att kunna undersöka/reproducera
+                # varför i efterhand.
                 self._preserve_rejected_split(
-                    i, train_d, val_d, val_d_stop, X_tr, y_cls_tr, X_va_stop, y_cls_va_stop, cls_model)
+                    i, df, train_d, val_d, val_d_stop, cls_model, eval_history)
             self.cls_models.append(cls_model)
             cls_importances.append(cls_model.feature_importance(importance_type="gain"))
             calibrator = self._fit_calibrator(cls_model, X_va_calib, y_cls_va_calib)
@@ -439,11 +481,20 @@ class MomentumLGBM:
 
             # Per-fold diagnostik på TEST-fönstret (aldrig sett av vare sig
             # träning eller kalibrering) - se attributets docstring i __init__
-            # för vad det INTE är (ingen portfölj-Sharpe).
-            self.fold_diagnostics_.append(
-                self._fold_diagnostics(df, test_d, cls_model, calibrator, i, len(splits),
-                                        reg_model=reg_model)
-            )
+            # för vad det INTE är (ingen portfölj-Sharpe). Trädhälsa (num_trees/
+            # current_iteration/val-AUC/score-upplösning) läggs till här i
+            # stället för i _fold_diagnostics självt - de mäts mot
+            # VALIDERINGS-/early-stopping-fönstret (X_va_stop), inte
+            # test-fönstret som resten av den funktionen handlar om.
+            fold_diag = self._fold_diagnostics(df, test_d, cls_model, calibrator, i, len(splits),
+                                                reg_model=reg_model)
+            fold_diag["cls_current_iteration"] = cls_model.current_iteration()
+            fold_diag["cls_val_auc"] = (
+                cls_model.best_score.get("valid_0", {}).get("auc") if cls_model.best_score else None)
+            val_resolution = prob_resolution_stats(cls_model.predict(X_va_stop))
+            fold_diag["cls_val_score_n_unique"] = val_resolution["n_unique"]
+            fold_diag["cls_val_score_largest_plateau_frac"] = val_resolution["largest_plateau_frac"]
+            self.fold_diagnostics_.append(fold_diag)
 
             self._save_checkpoint(key, i + 1, cls_importances, reg_importances)
 
@@ -502,7 +553,9 @@ class MomentumLGBM:
         X_tr, y_cls_tr, y_reg_tr = self._slice(df, train_dates)
         X_va, y_cls_va, y_reg_va = self._slice(df, val_dates)
 
-        cls_model = self._fit_cls(X_tr, y_cls_tr, X_va, y_cls_va)
+        cls_model, eval_history = self._fit_cls(X_tr, y_cls_tr, X_va, y_cls_va)
+        if cls_model.num_trees() <= 1:
+            self._preserve_rejected_split(0, df, train_dates, val_dates, val_dates, cls_model, eval_history)
         self.cls_models = [cls_model]
         self.calibrators = [self._fit_calibrator(cls_model, X_va, y_cls_va)]
         self.reg_models = [self._fit_reg(X_tr, y_reg_tr, X_va, y_reg_va)]
@@ -513,12 +566,19 @@ class MomentumLGBM:
               f"{val_dates[-1].date()} ({len(X_tr):,} rader)")
         return self
 
-    def _fit_cls(self, X_tr, y_tr, X_va, y_va) -> lgb.Booster:
+    def _fit_cls(self, X_tr, y_tr, X_va, y_va) -> Tuple[lgb.Booster, dict]:
+        """Returnerar (modell, eval_history). eval_history (tillagd
+        2026-07-26, pipeline-hälsogranskning: "spara ... eval history" för
+        underkända splits) är LightGBM:s per-runda valideringsmått
+        (record_evaluation) - {metric: [värde per runda]} - den enda
+        platsen där man i efterhand kan se HUR träningen faktiskt utvecklade
+        sig fram till att den stannade, inte bara slutresultatet."""
         ds_tr = lgb.Dataset(X_tr, label=y_tr)
         ds_va = lgb.Dataset(X_va, label=y_va, reference=ds_tr)
         p = {k: v for k, v in self.cls_params.items()
              if k not in ("n_estimators", "early_stopping_rounds")}
-        return lgb.train(
+        evals_result: dict = {}
+        model = lgb.train(
             p,
             ds_tr,
             num_boost_round=self.cls_params["n_estimators"],
@@ -526,8 +586,10 @@ class MomentumLGBM:
             callbacks=[
                 lgb.early_stopping(self.cls_params["early_stopping_rounds"], verbose=False),
                 lgb.log_evaluation(period=-1),
+                lgb.record_evaluation(evals_result),
             ],
         )
+        return model, evals_result.get("valid_0", {})
 
     def _fit_reg(self, X_tr, y_tr, X_va, y_va) -> lgb.Booster:
         ds_tr = lgb.Dataset(X_tr, label=y_tr)

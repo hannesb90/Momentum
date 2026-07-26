@@ -437,9 +437,10 @@ class _FakeLGBMModel:
     model_tree_health_report: .cls_models, .split_starts, ._select_model_idx
     (samma searchsorted-logik som den riktiga modellklassen)."""
 
-    def __init__(self, cls_models, split_starts):
+    def __init__(self, cls_models, split_starts, fold_diagnostics=None):
         self.cls_models = cls_models
         self.split_starts = split_starts
+        self.fold_diagnostics_ = fold_diagnostics or []
 
     def _select_model_idx(self, dates):
         starts = pd.DatetimeIndex(self.split_starts)
@@ -480,6 +481,37 @@ def test_model_tree_health_report_extrapolates_to_last_split_for_future_dates():
     fake = _FakeLGBMModel([_FakeBooster(10), _FakeBooster(20)], list(starts))
     report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2026-01-01"))
     assert report["active_split_index"] == 1
+
+
+def test_model_tree_health_report_marks_status_and_merges_fold_diagnostics():
+    starts = pd.to_datetime(["2020-01-01", "2020-04-01"])
+    fold_diagnostics = [
+        {"cls_current_iteration": 1, "cls_val_auc": 0.51,
+         "cls_val_score_n_unique": 2, "cls_val_score_largest_plateau_frac": 0.95},
+        {"cls_current_iteration": 40, "cls_val_auc": 0.58,
+         "cls_val_score_n_unique": 300, "cls_val_score_largest_plateau_frac": 0.1},
+    ]
+    fake = _FakeLGBMModel([_FakeBooster(1), _FakeBooster(40)], list(starts), fold_diagnostics)
+    report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2020-04-15"))
+
+    assert report["splits"][0]["status"] == "FAILED"
+    assert report["splits"][1]["status"] == "OK"
+    assert report["splits"][0]["current_iteration"] == 1
+    assert report["splits"][0]["val_auc"] == pytest.approx(0.51)
+    assert report["splits"][1]["val_score_n_unique"] == 300
+    assert report["active_status"] == "OK"
+    assert report["active_val_auc"] == pytest.approx(0.58)
+
+
+def test_model_tree_health_report_missing_fold_diagnostics_defaults_to_none():
+    """En äldre sparad modell utan fold_diagnostics_ (eller en tom lista) ska
+    inte krascha - bara sakna de extra fälten."""
+    starts = pd.to_datetime(["2020-01-01"])
+    fake = _FakeLGBMModel([_FakeBooster(20)], list(starts))
+    report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2020-02-01"))
+    assert report["splits"][0]["current_iteration"] is None
+    assert report["splits"][0]["val_auc"] is None
+    assert report["splits"][0]["status"] == "OK"
 
 
 def test_model_tree_health_report_empty_model_returns_no_active_split():

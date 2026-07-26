@@ -234,13 +234,53 @@ def test_rejected_split_artifact_written_for_each_degenerate_split(trained_model
 
     payload = joblib.load(files[0])
     assert payload["num_trees"] <= 1
+    assert payload["status"] == "FAILED"
+    assert payload["current_iteration"] == payload["num_trees"]
     assert set(payload["reproducibility"]) == {"code_hash", "random_seed", "cls_params", "feature_cols"}
     assert payload["reproducibility"]["random_seed"] == config.RANDOM_SEED
     assert payload["reproducibility"]["feature_cols"] == FEATURE_COLS
+    assert payload["sample_weights"] is None
     assert isinstance(payload["X_tr"], np.ndarray)
     assert isinstance(payload["y_cls_tr"], np.ndarray)
+    assert isinstance(payload["y_reg_tr"], np.ndarray)
     assert payload["X_tr"].shape[1] == len(FEATURE_COLS)
     assert payload["train_date_range"][0] < payload["train_date_range"][1]
+
+    # Träningsindex: Date+ticker per rad, en rad per rad i X_tr/X_va.
+    assert list(payload["train_index"].columns) == ["Date", "ticker"]
+    assert len(payload["train_index"]) == len(payload["X_tr"])
+    assert len(payload["val_index"]) == len(payload["X_va"])
+
+    # eval_history: en lista per mätt metrik, en post per FÖRSÖKT boosting-
+    # runda - inte bara de som blev kvar i den slutliga (early-stopping-
+    # trunkerade) modellen. num_trees()==1 betyder att runda 1 var bäst och
+    # ALDRIG slogs - det kan mycket väl betyda att ytterligare
+    # early_stopping_rounds därefter faktiskt kördes (och finns i
+    # eval_history) utan att förbättra, INTE att bara en enda runda någonsin
+    # försöktes (se test_lgbm_diagnostics.py:s upptäckt 2026-07-26 - en
+    # tidigare hypotes om "ingen ytterligare runda kördes alls" visade sig
+    # motsägas av just denna logg).
+    assert payload["eval_history"]
+    for metric_values in payload["eval_history"].values():
+        assert len(metric_values) >= payload["current_iteration"]
+
+    # Datahashar: en per bevarad array, deterministiska (samma array -> samma hash).
+    expected_hash_keys = {"X_tr", "y_cls_tr", "y_reg_tr", "X_va", "y_cls_va", "y_reg_va"}
+    assert set(payload["data_hashes"]) == expected_hash_keys
+    import hashlib
+    assert payload["data_hashes"]["X_tr"] == hashlib.sha1(
+        np.ascontiguousarray(payload["X_tr"]).tobytes()).hexdigest()[:16]
+
+
+def test_fold_diagnostics_records_val_auc_current_iteration_and_score_resolution(trained_model):
+    for d in trained_model.fold_diagnostics_:
+        assert d["cls_current_iteration"] == d["cls_num_trees"]
+        # AUC kan vara None om valideringsfönstret degenererat till en enda
+        # klass (sällsynt men möjligt på ren slumpdata) - annars 0..1.
+        if d["cls_val_auc"] is not None:
+            assert 0.0 <= d["cls_val_auc"] <= 1.0
+        assert d["cls_val_score_n_unique"] >= 1
+        assert 0.0 <= d["cls_val_score_largest_plateau_frac"] <= 1.0
 
 
 def test_rejected_split_reruns_overwrite_instead_of_accumulating(tmp_path):

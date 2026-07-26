@@ -422,6 +422,23 @@ def main():
         # ingen extra körning), rör inte det som redan sparas/returneras.
         lgbm.print_fold_diagnostics()
         lgbm.print_feature_importance_by_period()
+
+        # Bevara feature-cachen om NÅGON split underkändes denna körning
+        # (num_trees<=1, se lgbm_model.py::_preserve_rejected_split) - annars
+        # raderar orkestratorn (parent-processen, se _feature_cache_path.unlink
+        # nedan) cachen så fort alla subprocesser är klara, och den EXAKTA
+        # data som orsakade en degenererad split kan aldrig undersökas i
+        # efterhand. Sentinel-filen är det enda sättet parent-processen (som
+        # gör själva raderingen) kan veta detta - degenerationen upptäcks
+        # bara HÄR, i barn-processen.
+        failed_splits = [d for d in lgbm.fold_diagnostics_ if d.get("cls_num_trees", 99) <= 1]
+        sentinel = Path(f"{config.RESULTS_DIR}/_rejected_splits_this_run.flag")
+        if failed_splits:
+            sentinel.write_text(str(len(failed_splits)))
+            print(f"  [KRITISKT] {len(failed_splits)} split(ar) underkända denna körning - "
+                  f"feature-cachen bevaras (raderas EJ) för forensisk analys.")
+        else:
+            sentinel.unlink(missing_ok=True)
         return
 
     if args.train_serving_only:
@@ -543,7 +560,20 @@ def main():
         # kollen i _load_feature_cache skyddar redan mot fel data, men
         # explicit städning är enklare att resonera om än att bara lita på
         # de skydden).
-        _feature_cache_path(args).unlink(missing_ok=True)
+        #
+        # UNDANTAG (pipeline-hälsogranskning 2026-07-26): om LGBM-barn-
+        # processen underkände minst en split (num_trees<=1) har den lämnat
+        # en sentinel-fil - bevara då feature-cachen ISTÄLLET för att radera
+        # den, så den exakta indatan som orsakade degenereringen går att
+        # undersöka i efterhand (se lgbm_model.py::_preserve_rejected_split,
+        # som redan bevarar X/y per underkänd split, men inte HELA
+        # feature-cachen för alla tickers/features).
+        rejected_sentinel = Path(f"{config.RESULTS_DIR}/_rejected_splits_this_run.flag")
+        if rejected_sentinel.exists():
+            print(f"  [Main] Minst en split underkändes denna körning - bevarar feature-cachen "
+                  f"({_feature_cache_path(args).name}) för forensisk analys, raderar den INTE.")
+        else:
+            _feature_cache_path(args).unlink(missing_ok=True)
         sys.exit(result.returncode)
 
     # ── Prediktion (laddar sparade modeller) ─────────────────────────────────
