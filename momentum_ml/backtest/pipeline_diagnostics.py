@@ -209,7 +209,22 @@ def rank_gap_and_turnover_report(
         för varje par i rank_pairs.
       - turnover_rank_{n}: andel rebalanseringar (var
         config.REBALANCE_WEEKS:e vecka) där tickern på rank n bytte
-        identitet mot föregående rebalansering, n i 1..max_turnover_rank.
+        identitet mot föregående rebalansering, n i 1..max_turnover_rank
+        (= universe_exit + filter_exit + score_reorder nedan).
+      - turnover_rank_{n}_universe_exit_frac: andel av dessa övergångar där
+        föregångaren helt lämnat universumet (ingen rad alls nästa
+        rebalansering - avnoterad, likviditets-/historikfiltrerad, etc.).
+      - turnover_rank_{n}_filter_exit_frac: andel där föregångaren
+        fortfarande finns i universumet men blivit ineligible
+        (selection_eligible=0 - momentumgrind, förv.avk-golv, etc.).
+      - turnover_rank_{n}_score_reorder_frac: andel där föregångaren
+        fortfarande finns OCH är eligible, men helt enkelt blivit omrankad
+        av ändrade poäng.
+      - turnover_rank_{n}_common_universe_turnover: bytesfrekvens BEGRÄNSAD
+        till fall där föregångaren fanns kvar i universumet nästa gång (dvs
+        universe_exit-fallen exkluderade helt ur nämnaren) - #1 i ordern:
+        "rankstabilitet endast för aktier som finns i universum vid båda
+        rebalanseringarna". NaN om inga sådana övergångar finns.
       - own_score_weekly_median/_std: hur mycket EN akties egen prob_raw
         normalt rör sig vecka till vecka (brus-referens).
       - signal_to_noise_{a}_{b}: gap_prob_raw_{a}_{b} / own_score_weekly_median
@@ -222,30 +237,36 @@ def rank_gap_and_turnover_report(
     result: dict = {"n_weeks_checked": 0}
     if signals_df.empty or not isinstance(signals_df.index, pd.DatetimeIndex):
         return result
+    if "ticker" not in signals_df.columns or "selection_eligible" not in signals_df.columns:
+        return result
 
     all_dates = signals_df.index.unique().sort_values()
     cutoff = all_dates[-recent_weeks] if len(all_dates) > recent_weeks else all_dates[0]
     recent = signals_df[signals_df.index >= cutoff]
 
-    elig = recent[recent["selection_eligible"] == 1] if "selection_eligible" in recent.columns else recent
-    sort_cols = [c for c in ("selection_rank", "prob_up", "prob_raw") if c in elig.columns]
-    if not sort_cols or "prob_raw" not in elig.columns:
+    sort_cols = [c for c in ("selection_rank", "prob_up", "prob_raw") if c in recent.columns]
+    if not sort_cols or "prob_raw" not in recent.columns:
         return result
 
     max_rank_needed = max([max_turnover_rank] + [b for _, b in rank_pairs])
+    universe_by_date: Dict[pd.Timestamp, set] = {}
+    eligible_by_date: Dict[pd.Timestamp, set] = {}
     ticker_at_rank: Dict[pd.Timestamp, Dict[int, str]] = {}
     gap_samples: Dict[tuple, list] = {pair: [] for pair in rank_pairs}
 
-    for date, g in elig.groupby(level=0):
-        if len(g) < max_rank_needed:
+    for date, g in recent.groupby(level=0):
+        universe_by_date[date] = set(g["ticker"])
+        elig_g = g[g["selection_eligible"] == 1]
+        eligible_by_date[date] = set(elig_g["ticker"])
+        if len(elig_g) < max_rank_needed:
             continue
-        g = g.sort_values(sort_cols, ascending=False).reset_index(drop=True)
+        elig_sorted = elig_g.sort_values(sort_cols, ascending=False).reset_index(drop=True)
         ticker_at_rank[date] = {
-            n: g.iloc[n - 1]["ticker"] for n in range(1, max_turnover_rank + 1)
+            n: elig_sorted.iloc[n - 1]["ticker"] for n in range(1, max_turnover_rank + 1)
         }
         for a, b in rank_pairs:
             gap_samples[(a, b)].append(
-                float(g.iloc[a - 1]["prob_raw"]) - float(g.iloc[b - 1]["prob_raw"]))
+                float(elig_sorted.iloc[a - 1]["prob_raw"]) - float(elig_sorted.iloc[b - 1]["prob_raw"]))
 
     result["n_weeks_checked"] = len(ticker_at_rank)
     for (a, b), samples in gap_samples.items():
@@ -253,10 +274,33 @@ def rank_gap_and_turnover_report(
 
     rebal_dates = sorted(ticker_at_rank)[::rebalance_weeks] if ticker_at_rank else []
     for n in range(1, max_turnover_rank + 1):
-        seq = [ticker_at_rank[d][n] for d in rebal_dates]
-        pairs = list(zip(seq, seq[1:]))
-        if pairs:
-            result[f"turnover_rank_{n}"] = sum(1 for a, b in pairs if a != b) / len(pairs)
+        causes = {"stable": 0, "universe_exit": 0, "filter_exit": 0, "score_reorder": 0}
+        total = 0
+        for t, t1 in zip(rebal_dates, rebal_dates[1:]):
+            ticker_t = ticker_at_rank[t].get(n)
+            ticker_t1 = ticker_at_rank[t1].get(n)
+            if ticker_t is None or ticker_t1 is None:
+                continue
+            total += 1
+            if ticker_t1 == ticker_t:
+                causes["stable"] += 1
+            elif ticker_t not in universe_by_date.get(t1, set()):
+                causes["universe_exit"] += 1
+            elif ticker_t not in eligible_by_date.get(t1, set()):
+                causes["filter_exit"] += 1
+            else:
+                causes["score_reorder"] += 1
+        if not total:
+            continue
+        result[f"turnover_rank_{n}"] = 1.0 - causes["stable"] / total
+        result[f"turnover_rank_{n}_universe_exit_frac"] = causes["universe_exit"] / total
+        result[f"turnover_rank_{n}_filter_exit_frac"] = causes["filter_exit"] / total
+        result[f"turnover_rank_{n}_score_reorder_frac"] = causes["score_reorder"] / total
+        common_denom = causes["stable"] + causes["filter_exit"] + causes["score_reorder"]
+        result[f"turnover_rank_{n}_common_universe_turnover"] = (
+            (causes["filter_exit"] + causes["score_reorder"]) / common_denom
+            if common_denom else float("nan")
+        )
 
     idx_name = recent.index.name or "Date"
     diffs = (
@@ -471,6 +515,10 @@ def build_and_write_report(
         "own_score_weekly_std": rank_gap_turnover.get("own_score_weekly_std"),
         "signal_to_noise_10_11": rank_gap_turnover.get("signal_to_noise_10_11"),
         "turnover_rank_10": rank_gap_turnover.get("turnover_rank_10"),
+        "turnover_rank_10_universe_exit_frac": rank_gap_turnover.get("turnover_rank_10_universe_exit_frac"),
+        "turnover_rank_10_filter_exit_frac": rank_gap_turnover.get("turnover_rank_10_filter_exit_frac"),
+        "turnover_rank_10_score_reorder_frac": rank_gap_turnover.get("turnover_rank_10_score_reorder_frac"),
+        "turnover_rank_10_common_universe_turnover": rank_gap_turnover.get("turnover_rank_10_common_universe_turnover"),
     }
     write_header = not history_path.exists()
     pd.DataFrame([history_row]).to_csv(history_path, mode="a", header=write_header, index=False)
@@ -480,7 +528,14 @@ def build_and_write_report(
     if funnel:
         pd.DataFrame(funnel).to_csv(funnel_path, index=False)
     turnover_rows = [
-        {"rank": n, "turnover_frac": rank_gap_turnover.get(f"turnover_rank_{n}")}
+        {
+            "rank": n,
+            "turnover_frac": rank_gap_turnover.get(f"turnover_rank_{n}"),
+            "universe_exit_frac": rank_gap_turnover.get(f"turnover_rank_{n}_universe_exit_frac"),
+            "filter_exit_frac": rank_gap_turnover.get(f"turnover_rank_{n}_filter_exit_frac"),
+            "score_reorder_frac": rank_gap_turnover.get(f"turnover_rank_{n}_score_reorder_frac"),
+            "common_universe_turnover": rank_gap_turnover.get(f"turnover_rank_{n}_common_universe_turnover"),
+        }
         for n in range(1, _TURNOVER_MAX_RANK + 1)
         if f"turnover_rank_{n}" in rank_gap_turnover
     ]

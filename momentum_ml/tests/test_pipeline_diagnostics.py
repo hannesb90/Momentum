@@ -292,6 +292,92 @@ def test_rank_gap_report_skips_weeks_with_too_few_candidates():
     assert report["n_weeks_checked"] == 0
 
 
+def _two_week_decomposition_df():
+    """Ett enda övergångstillfälle (2020-01-06 -> 2020-01-13) konstruerat så
+    att rank 1-4 var för sig visar upp precis en av de fyra möjliga orsakerna:
+      rank 1 (A): stabil - samma ticker, samma rank, båda veckorna.
+      rank 2 (B): universe_exit - B har INGEN rad alls vecka 2 (avnoterad/
+        filtrerad ur universumet, inte bara ur urvalet).
+      rank 3 (C): filter_exit - C har en rad vecka 2 men selection_eligible=0.
+      rank 4 (D): score_reorder - D finns kvar OCH är eligible vecka 2, men
+        har fått en så mycket bättre poäng att det klättrar till rank 2 i
+        stället (F tar över rank 4).
+    """
+    w1 = pd.Timestamp("2020-01-06")
+    w2 = pd.Timestamp("2020-01-13")
+    rows = [
+        # Vecka 1: A=1.0(1) B=0.9(2) C=0.8(3) D=0.7(4) E=0.6(5) F=0.5(6)
+        {"Date": w1, "ticker": "A", "prob_raw": 1.0, "prob_up": 1.0, "selection_rank": 1.0, "selection_eligible": 1},
+        {"Date": w1, "ticker": "B", "prob_raw": 0.9, "prob_up": 0.9, "selection_rank": 0.9, "selection_eligible": 1},
+        {"Date": w1, "ticker": "C", "prob_raw": 0.8, "prob_up": 0.8, "selection_rank": 0.8, "selection_eligible": 1},
+        {"Date": w1, "ticker": "D", "prob_raw": 0.7, "prob_up": 0.7, "selection_rank": 0.7, "selection_eligible": 1},
+        {"Date": w1, "ticker": "E", "prob_raw": 0.6, "prob_up": 0.6, "selection_rank": 0.6, "selection_eligible": 1},
+        {"Date": w1, "ticker": "F", "prob_raw": 0.5, "prob_up": 0.5, "selection_rank": 0.5, "selection_eligible": 1},
+        # Vecka 2: A stabil(1.0); B saknas helt; C finns men ej eligible;
+        # D:s poäng hoppar upp (score_reorder); E/F fyller ut resten.
+        {"Date": w2, "ticker": "A", "prob_raw": 1.0, "prob_up": 1.0, "selection_rank": 1.0, "selection_eligible": 1},
+        {"Date": w2, "ticker": "C", "prob_raw": 0.8, "prob_up": 0.8, "selection_rank": 0.8, "selection_eligible": 0},
+        {"Date": w2, "ticker": "D", "prob_raw": 0.85, "prob_up": 0.85, "selection_rank": 0.85, "selection_eligible": 1},
+        {"Date": w2, "ticker": "E", "prob_raw": 0.75, "prob_up": 0.75, "selection_rank": 0.75, "selection_eligible": 1},
+        {"Date": w2, "ticker": "F", "prob_raw": 0.65, "prob_up": 0.65, "selection_rank": 0.65, "selection_eligible": 1},
+    ]
+    return pd.DataFrame(rows).set_index("Date")
+
+
+def test_turnover_decomposition_identifies_stable_rank():
+    df = _two_week_decomposition_df()
+    report = diag.rank_gap_and_turnover_report(
+        df, rank_pairs=((1, 2),), max_turnover_rank=4, recent_weeks=2, rebalance_weeks=1)
+    assert report["turnover_rank_1"] == pytest.approx(0.0)
+    assert report["turnover_rank_1_universe_exit_frac"] == pytest.approx(0.0)
+    assert report["turnover_rank_1_filter_exit_frac"] == pytest.approx(0.0)
+    assert report["turnover_rank_1_score_reorder_frac"] == pytest.approx(0.0)
+    assert report["turnover_rank_1_common_universe_turnover"] == pytest.approx(0.0)
+
+
+def test_turnover_decomposition_identifies_universe_exit():
+    df = _two_week_decomposition_df()
+    report = diag.rank_gap_and_turnover_report(
+        df, rank_pairs=((1, 2),), max_turnover_rank=4, recent_weeks=2, rebalance_weeks=1)
+    assert report["turnover_rank_2"] == pytest.approx(1.0)
+    assert report["turnover_rank_2_universe_exit_frac"] == pytest.approx(1.0)
+    assert report["turnover_rank_2_filter_exit_frac"] == pytest.approx(0.0)
+    assert report["turnover_rank_2_score_reorder_frac"] == pytest.approx(0.0)
+
+
+def test_turnover_decomposition_identifies_filter_exit():
+    df = _two_week_decomposition_df()
+    report = diag.rank_gap_and_turnover_report(
+        df, rank_pairs=((1, 2),), max_turnover_rank=4, recent_weeks=2, rebalance_weeks=1)
+    assert report["turnover_rank_3"] == pytest.approx(1.0)
+    assert report["turnover_rank_3_filter_exit_frac"] == pytest.approx(1.0)
+    assert report["turnover_rank_3_universe_exit_frac"] == pytest.approx(0.0)
+    assert report["turnover_rank_3_score_reorder_frac"] == pytest.approx(0.0)
+
+
+def test_turnover_decomposition_identifies_score_reorder():
+    df = _two_week_decomposition_df()
+    report = diag.rank_gap_and_turnover_report(
+        df, rank_pairs=((1, 2),), max_turnover_rank=4, recent_weeks=2, rebalance_weeks=1)
+    assert report["turnover_rank_4"] == pytest.approx(1.0)
+    assert report["turnover_rank_4_score_reorder_frac"] == pytest.approx(1.0)
+    assert report["turnover_rank_4_universe_exit_frac"] == pytest.approx(0.0)
+    assert report["turnover_rank_4_filter_exit_frac"] == pytest.approx(0.0)
+
+
+def test_common_universe_turnover_excludes_universe_exit_from_denominator():
+    """#1 i uppföljningsfrågan: rankstabilitet bara för aktier kvar i
+    universumet - universe_exit-fallet (rank 2) ska INTE räknas alls i det
+    här måttet, medan filter_exit (rank 3) och score_reorder (rank 4)
+    fortfarande räknas som "byte" eftersom tickern fanns kvar i universumet."""
+    df = _two_week_decomposition_df()
+    report = diag.rank_gap_and_turnover_report(
+        df, rank_pairs=((1, 2),), max_turnover_rank=4, recent_weeks=2, rebalance_weeks=1)
+    assert report["turnover_rank_1_common_universe_turnover"] == pytest.approx(0.0)
+    assert report["turnover_rank_3_common_universe_turnover"] == pytest.approx(1.0)
+    assert report["turnover_rank_4_common_universe_turnover"] == pytest.approx(1.0)
+
+
 def test_build_and_write_report_includes_rank_gap_turnover(tmp_path):
     feature_drift = pd.DataFrame(columns=["feature", "drift_flag"])
     target_balance = {"n": 10, "positive_share": 0.5, "median_forward_return": 0.01}
