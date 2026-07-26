@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
+from backtest import pipeline_diagnostics as _diag
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -402,6 +403,7 @@ def build_all_features(data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]
 
     print(f"[Features] Klar. {len(all_feat)} tickers ({n_cached} från cache), "
           f"{next(iter(all_feat.values())).shape[1]} features.")
+    _diag.record_universe_stage("build_all_features", list(all_feat.keys()))
     return all_feat
 
 
@@ -579,7 +581,10 @@ def _load_fundamentals_growth(
     else:
         df["report_reaction_abn"] = np.nan
 
-    out = df[cols].dropna(subset=["rev_growth_yoy", "eps_growth_yoy", "div_growth_yoy"], how="all")
+    before = df[cols]
+    out = before.dropna(subset=["rev_growth_yoy", "eps_growth_yoy", "div_growth_yoy"], how="all")
+    _diag.record_nan("load_fundamentals_growth:dropna_all_growth_nan", before, out,
+                      cols=["rev_growth_yoy", "eps_growth_yoy", "div_growth_yoy", "report_reaction_abn"])
     return out.sort_values(["ticker", "published"])
 
 
@@ -624,6 +629,7 @@ def attach_fundamentals_features(
     fund = _load_fundamentals_growth(segment, prices=prices)
     by_ticker = ({tk: g.drop(columns="ticker") for tk, g in fund.groupby("ticker")}
                  if len(fund) else {})
+    _alignment_totals = {"n": 0, "non_monday_dates": 0, "future_published_rows": 0}
 
     # days_since_report: dagar sedan senast kända rapport (PEAD-driftens
     # tidsaxel – den mest evidensbackade rapportsignalen). Köp-vaktens
@@ -657,6 +663,9 @@ def attach_fundamentals_features(
         joined = pd.merge_asof(left, g,
                                 left_on="Date", right_on="published", direction="backward")
         joined = joined.set_index("Date")
+        check = _diag.assert_date_alignment(joined)
+        for key in _alignment_totals:
+            _alignment_totals[key] += check[key]
         feat["rev_growth_yoy"] = joined["rev_growth_yoy"].reindex(feat.index)
         feat["eps_growth_yoy"] = joined["eps_growth_yoy"].reindex(feat.index)
         feat["report_reaction_abn"] = joined["report_reaction_abn"].reindex(feat.index)
@@ -667,6 +676,8 @@ def attach_fundamentals_features(
                                      .reindex(feat.index)
                                      .fillna(_DAYS_SINCE_CAP)
                                      .astype(float))
+    if _alignment_totals["n"]:
+        _diag.record_date_alignment("fundamentals_merge_asof", _alignment_totals)
     return all_features
 
 
@@ -691,7 +702,10 @@ def to_model_df(all_features: Dict[str, pd.DataFrame]) -> pd.DataFrame:
         frames.append(tmp)
     df = pd.concat(frames).sort_index()
     del frames
+    before = df
     df = df.dropna(subset=["target_return", "target_signal"])
+    _diag.record_nan("to_model_df:dropna_target", before, df,
+                      cols=["target_return", "target_signal"])
     return df
 
 
