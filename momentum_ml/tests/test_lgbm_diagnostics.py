@@ -13,11 +13,13 @@ skarp träningsloop, inte bara att koden kompilerar.
 import sys
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+import config  # noqa: E402
 from features.feature_engineering import FEATURE_COLS  # noqa: E402
 from models.lgbm_model import MomentumLGBM  # noqa: E402
 
@@ -63,11 +65,21 @@ def _synthetic_df(n_weeks=60, n_tickers=8, seed=7):
 
 
 @pytest.fixture(scope="module")
-def trained_model():
-    df = _synthetic_df()
-    model = MomentumLGBM(params=_SMALL_PARAMS)
-    model.fit_walk_forward(df, train_weeks=20, val_weeks=6, step_weeks=6, embargo_weeks=2)
-    return model
+def trained_model(tmp_path_factory):
+    # RESULTS_DIR omdirigeras till en tmp-katalog under träningen (inte bara
+    # monkeypatch, som är funktions- inte modul-scopad): fit_walk_forward
+    # kan nu skriva results/rejected_splits/-artefakter för underkända
+    # splits (se _preserve_rejected_split) - den riktiga projekt-resultat-
+    # mappen ska aldrig smutsas ner av testkörningar.
+    original_results_dir = config.RESULTS_DIR
+    config.RESULTS_DIR = str(tmp_path_factory.mktemp("lgbm_results"))
+    try:
+        df = _synthetic_df()
+        model = MomentumLGBM(params=_SMALL_PARAMS)
+        model.fit_walk_forward(df, train_weeks=20, val_weeks=6, step_weeks=6, embargo_weeks=2)
+        return model
+    finally:
+        config.RESULTS_DIR = original_results_dir
 
 
 def test_fit_walk_forward_runs_multiple_splits(trained_model):
@@ -174,3 +186,78 @@ def test_predict_succeeds_when_feature_cols_unchanged(trained_model):
     df = _synthetic_df(n_weeks=10, n_tickers=4, seed=99)
     result = trained_model.predict(df)
     assert len(result) == len(df)
+
+
+# ── Trädhälsa / bevarande av underkända splits (pipeline-granskning 2026-07-26)
+# Uppföljning på rank-gap-fyndet: identiska rå LGBM-poäng mellan olika bolag
+# spårades till splits med num_trees()<=1 (LightGBM:s egen "no further splits
+# with positive gain"-terminering). trained_model tränas på ren slumpdata
+# (inget verkligt momentum-mönster) - på den datan degenererar MERPARTEN av
+# splittarna till exakt 1 träd, vilket gör den till ett bekvämt, redan
+# existerande sätt att testa mekanismen utan att konstruera ett särskilt
+# scenario.
+
+def test_fold_diagnostics_records_num_trees_matching_actual_model(trained_model):
+    for i, d in enumerate(trained_model.fold_diagnostics_):
+        assert d["cls_num_trees"] == trained_model.cls_models[i].num_trees()
+
+
+def test_degenerate_splits_exist_on_pure_noise_data(trained_model):
+    """Sanity-check av testdatan självt: om INGEN split degenererar på ren
+    slumpdata (inget momentum-mönster) täcker resten av testerna nedan noll
+    verkligt scenario - trained_model MÅSTE innehålla minst en degenererad
+    split för att vara meningsfull som fixture här."""
+    num_trees = [d["cls_num_trees"] for d in trained_model.fold_diagnostics_]
+    assert any(n <= 1 for n in num_trees)
+
+
+def test_rejected_split_artifact_written_for_each_degenerate_split(trained_model, tmp_path):
+    # trained_model-fixturen pekade om config.RESULTS_DIR under sin egen
+    # körning (och återställde den efteråt) - kör en EGEN liten träning här,
+    # riktad mot tmp_path, för att kunna inspektera de skrivna filerna direkt.
+    original = config.RESULTS_DIR
+    config.RESULTS_DIR = str(tmp_path)
+    try:
+        df = _synthetic_df(seed=7)
+        model = MomentumLGBM(params=_SMALL_PARAMS)
+        model.fit_walk_forward(df, train_weeks=20, val_weeks=6, step_weeks=6, embargo_weeks=2)
+    finally:
+        config.RESULTS_DIR = original
+
+    degenerate_splits = [d for d in model.fold_diagnostics_ if d["cls_num_trees"] <= 1]
+    assert degenerate_splits, "testdatan gav ingen degenererad split - se test ovan"
+
+    rejected_dir = tmp_path / "rejected_splits"
+    assert rejected_dir.exists()
+    files = list(rejected_dir.glob("rejected_split_*.pkl"))
+    assert len(files) == len(degenerate_splits)
+
+    payload = joblib.load(files[0])
+    assert payload["num_trees"] <= 1
+    assert set(payload["reproducibility"]) == {"code_hash", "random_seed", "cls_params", "feature_cols"}
+    assert payload["reproducibility"]["random_seed"] == config.RANDOM_SEED
+    assert payload["reproducibility"]["feature_cols"] == FEATURE_COLS
+    assert isinstance(payload["X_tr"], np.ndarray)
+    assert isinstance(payload["y_cls_tr"], np.ndarray)
+    assert payload["X_tr"].shape[1] == len(FEATURE_COLS)
+    assert payload["train_date_range"][0] < payload["train_date_range"][1]
+
+
+def test_rejected_split_reruns_overwrite_instead_of_accumulating(tmp_path):
+    # Filnamnet nyckelas på val-startdatumet (deterministiskt givet samma
+    # historik+config), inte t.ex. en körningstidsstämpel - en förnyad natts
+    # körning ska skriva ÖVER en fortsatt underkänd splits fil, inte
+    # ackumulera en ny fil per natt i all evighet.
+    original = config.RESULTS_DIR
+    config.RESULTS_DIR = str(tmp_path)
+    try:
+        df = _synthetic_df(seed=7)
+        for _ in range(2):
+            model = MomentumLGBM(params=_SMALL_PARAMS)
+            model.fit_walk_forward(df, train_weeks=20, val_weeks=6, step_weeks=6, embargo_weeks=2)
+    finally:
+        config.RESULTS_DIR = original
+
+    degenerate_splits = [d for d in model.fold_diagnostics_ if d["cls_num_trees"] <= 1]
+    files = list((tmp_path / "rejected_splits").glob("rejected_split_*.pkl"))
+    assert len(files) == len(degenerate_splits)   # inte dubbelt så många efter två körningar

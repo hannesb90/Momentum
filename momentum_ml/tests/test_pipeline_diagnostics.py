@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+import config  # noqa: E402
 from backtest import pipeline_diagnostics as diag  # noqa: E402
 
 
@@ -418,3 +419,106 @@ def test_build_and_write_report_computes_change_vs_previous(tmp_path):
 
     assert report2["change_vs_previous"]["universe_n"] == pytest.approx(-1.0)
     assert report2["change_vs_previous"]["positive_share"] == pytest.approx(-0.1)
+
+
+# ── Modell-trädhälsa ("varför blir score identiska?" - uppföljning) ──────────
+
+class _FakeBooster:
+    def __init__(self, num_trees, best_iteration=None):
+        self._num_trees = num_trees
+        self.best_iteration = num_trees if best_iteration is None else best_iteration
+
+    def num_trees(self):
+        return self._num_trees
+
+
+class _FakeLGBMModel:
+    """Minimal stub som replikerar MomentumLGBM:s kontrakt för
+    model_tree_health_report: .cls_models, .split_starts, ._select_model_idx
+    (samma searchsorted-logik som den riktiga modellklassen)."""
+
+    def __init__(self, cls_models, split_starts):
+        self.cls_models = cls_models
+        self.split_starts = split_starts
+
+    def _select_model_idx(self, dates):
+        starts = pd.DatetimeIndex(self.split_starts)
+        idx = starts.searchsorted(dates, side="right") - 1
+        return np.clip(idx, 0, len(self.split_starts) - 1)
+
+
+def test_model_tree_health_report_marks_active_split():
+    starts = pd.to_datetime(["2020-01-01", "2020-04-01", "2020-07-01"])
+    fake = _FakeLGBMModel([_FakeBooster(20), _FakeBooster(15), _FakeBooster(30)], list(starts))
+    report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2020-05-01"))
+    assert report["active_split_index"] == 1
+    assert report["active_num_trees"] == 15
+    assert report["critical"] is False
+    assert report["degenerate_split_count"] == 0
+    assert [s["active"] for s in report["splits"]] == [False, True, False]
+
+
+def test_model_tree_health_report_flags_critical_when_active_split_degenerate():
+    starts = pd.to_datetime(["2020-01-01", "2020-04-01", "2020-07-01"])
+    fake = _FakeLGBMModel([_FakeBooster(20), _FakeBooster(1), _FakeBooster(30)], list(starts))
+    report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2020-05-01"))
+    assert report["critical"] is True
+    assert report["active_num_trees"] == 1
+    assert report["degenerate_split_count"] == 1
+
+
+def test_model_tree_health_report_counts_all_degenerate_splits_not_just_active():
+    starts = pd.to_datetime(["2020-01-01", "2020-04-01", "2020-07-01"])
+    fake = _FakeLGBMModel([_FakeBooster(1), _FakeBooster(15), _FakeBooster(1)], list(starts))
+    report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2020-05-01"))
+    assert report["degenerate_split_count"] == 2
+    assert report["critical"] is False   # den AKTIVA splitten (index 1) är frisk
+
+
+def test_model_tree_health_report_extrapolates_to_last_split_for_future_dates():
+    starts = pd.to_datetime(["2020-01-01", "2020-04-01"])
+    fake = _FakeLGBMModel([_FakeBooster(10), _FakeBooster(20)], list(starts))
+    report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2026-01-01"))
+    assert report["active_split_index"] == 1
+
+
+def test_model_tree_health_report_empty_model_returns_no_active_split():
+    fake = _FakeLGBMModel([], [])
+    report = diag.model_tree_health_report(fake, as_of=pd.Timestamp("2020-01-01"))
+    assert report["n_splits"] == 0
+    assert report["active_split_index"] is None
+    assert report["critical"] is False
+
+
+# ── Reproducerbarhetsmetadata ─────────────────────────────────────────────────
+
+def test_reproducibility_metadata_has_expected_keys_and_is_deterministic():
+    m1 = diag.reproducibility_metadata()
+    m2 = diag.reproducibility_metadata()
+    assert set(m1) == {"code_hash", "random_seed", "lgbm_params", "feature_cols_count", "feature_cols_hash"}
+    assert m1 == m2
+    assert m1["random_seed"] == config.RANDOM_SEED
+
+
+def test_build_and_write_report_includes_tree_health_and_reproducibility(tmp_path):
+    feature_drift = pd.DataFrame(columns=["feature", "drift_flag"])
+    target_balance = {"n": 10, "positive_share": 0.5, "median_forward_return": 0.01}
+    calibration_resolution = {"n": 10, "n_unique": 3, "largest_plateau_frac": 0.5}
+    tree_health = {
+        "critical": True, "active_num_trees": 1, "active_best_iteration": 1,
+        "active_split_start": "2023-09-11", "degenerate_split_count": 10,
+        "fallback_used": True, "splits": [{"split_index": 0, "num_trees": 1}],
+    }
+    reproducibility = diag.reproducibility_metadata()
+
+    report = diag.build_and_write_report(
+        feature_drift=feature_drift, target_balance=target_balance,
+        calibration_resolution=calibration_resolution,
+        tree_health=tree_health, reproducibility=reproducibility, out_dir=str(tmp_path),
+    )
+    assert report["tree_health"]["critical"] is True
+    assert report["reproducibility"]["random_seed"] == config.RANDOM_SEED
+    hist = pd.read_csv(tmp_path / "pipeline_health_history.csv")
+    assert bool(hist.iloc[0]["tree_health_critical"]) is True
+    assert hist.iloc[0]["active_num_trees"] == 1
+    assert (tmp_path / "model_tree_health.csv").exists()
