@@ -856,7 +856,8 @@ def _latest_signals_uncached(path) -> dict:
     cols = header_line.decode("utf-8", "replace").rstrip("\r\n").split(",")
     want = [c for c in ("ticker", "name", "prob_up", "prob_rank",
                         "selection_rank", "pred_signal", "short_pct",
-                        "short_adjusted_rank") if c in cols]
+                        "short_adjusted_rank", "new_entry_allowed",
+                        "entry_action") if c in cols]
     if "ticker" not in want or not chunk:
         return {}
     try:
@@ -876,6 +877,8 @@ def _latest_signals_uncached(path) -> dict:
                        "pred_signal": row.get("pred_signal"),
                        "short_pct": row.get("short_pct"),
                        "short_adjusted_rank": row.get("short_adjusted_rank"),
+                       "new_entry_allowed": row.get("new_entry_allowed"),
+                       "entry_action": row.get("entry_action"),
                        "name": row.get("name")}
     return out
 
@@ -1249,6 +1252,10 @@ def _load_scores_uncached() -> dict:
                         r.get("selection_rank") or r.get("prob_rank")
                     )
                     e["pred_signal"] = str(r.get("pred_signal"))
+                    e["new_entry_allowed"] = str(
+                        r.get("new_entry_allowed")
+                    ).strip().lower() not in ("0", "0.0", "false")
+                    e["entry_action"] = r.get("entry_action")
 
     # Mjuka värden TOKEN-FRITT (altdata/soft_signals.py, nattligt): destillerad
     # LLM-elev (eller lexikon-läge). Används som KVALITETS-FALLBACK enbart där
@@ -1729,6 +1736,11 @@ def _hold_fund_pctl(e, roe_sorted, growth_sorted, debt_sorted):
     return sum(parts) / len(parts)
 
 
+def _new_entry_allowed(entry_allowed, is_owned: bool) -> bool:
+    """An entry veto never becomes a sell/refill veto for an existing holding."""
+    return bool(is_owned or entry_allowed is not False)
+
+
 def _unified_rank(rows, top_n=3, model=None) -> list:
     """
     'Absolut bästa nästa köp' bland svenska aktier: EN rankning som väger ihop
@@ -1791,6 +1803,8 @@ def _unified_rank(rows, top_n=3, model=None) -> list:
     # (profilerat). Bonusen läggs på lat i pass 2 nedan, bara för topp-kandidaterna.
     ranked = []
     for tk, e in scores.items():
+        if not _new_entry_allowed(e.get("new_entry_allowed"), tk in owned_frac):
+            continue
         # Dyr-uteslutning: buffett tittar på owner-earnings-zonen (value_zone),
         # övriga på quality-screenerns EBITDA/P/S-zon.
         dyr_zone = e.get("value_zone") if is_buffett else e.get("zone")
