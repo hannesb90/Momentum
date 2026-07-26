@@ -105,11 +105,17 @@ export function OverviewPage() {
   // BARA en förifylld Montrose-länk (headless Claude, se montrose_ticket.py) –
   // ingen order läggs förrän du själv bekräftar i Montrose-appen.
   const [tickets, setTickets] = useState({})
-  function createTicket(r) {
+  function reviewPurchase(r) {
     setTickets((t) => ({ ...t, [r.ticker]: { loading: true } }))
-    api.tradeTicket(r.ticker, r.kr)
-      .then((d) => setTickets((t) => ({ ...t, [r.ticker]: { url: d.url } })))
+    api.purchaseReview(r.ticker, r.kr)
+      .then((d) => setTickets((t) => ({ ...t, [r.ticker]: { review: d } })))
       .catch((e) => setTickets((t) => ({ ...t, [r.ticker]: { error: e.message } })))
+  }
+  function createTicket(r) {
+    setTickets((t) => ({ ...t, [r.ticker]: { ...t[r.ticker], loading: true } }))
+    api.tradeTicket(r.ticker, r.kr)
+      .then((d) => setTickets((t) => ({ ...t, [r.ticker]: { ...t[r.ticker], loading: false, url: d.url } })))
+      .catch((e) => setTickets((t) => ({ ...t, [r.ticker]: { ...t[r.ticker], loading: false, error: e.message } })))
   }
   const targetData = useApiData(() => api.portfolioTarget(), [reloadKey])
   const [model, setModel] = useState('balanced')
@@ -238,11 +244,28 @@ export function OverviewPage() {
                     <a className="btn" href={tickets[r.ticker].url} target="_blank" rel="noreferrer">
                       Öppna i Montrose ↗
                     </a>
-                  ) : (
+                  ) : tickets[r.ticker]?.review ? (
                     <button className="btn" disabled={tickets[r.ticker]?.loading}
                       onClick={() => createTicket(r)}>
-                      {tickets[r.ticker]?.loading ? 'Skapar…' : 'Skapa ticket'}
+                      {tickets[r.ticker]?.loading ? 'Skapar…' :
+                        tickets[r.ticker].review.verdict === 'block_new_entry'
+                          ? 'Fortsätt ändå – skapa ticket'
+                          : 'Analys klar – skapa ticket'}
                     </button>
+                  ) : (
+                    <button className="btn" disabled={tickets[r.ticker]?.loading}
+                      onClick={() => reviewPurchase(r)}>
+                      {tickets[r.ticker]?.loading ? 'Analyserar dagsläget…' : 'Granska före köp'}
+                    </button>
+                  )}
+                  {tickets[r.ticker]?.review && (
+                    <span className={`footnote ${tickets[r.ticker].review.verdict === 'clear' ? 'pos' : 'neg'}`}>
+                      {tickets[r.ticker].review.summary}
+                      {(tickets[r.ticker].review.negative_signals ?? []).map((x) => (
+                        <span key={x.source_url}> · {x.claim} <a href={x.source_url}
+                          target="_blank" rel="noreferrer">källa ↗</a></span>
+                      ))}
+                    </span>
                   )}
                   {tickets[r.ticker]?.error && (
                     <span className="footnote neg">{tickets[r.ticker].error}</span>
