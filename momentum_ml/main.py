@@ -284,6 +284,19 @@ def main():
         # men försämrade Small52 i exakt A/B; Small/Micro behåller därför rå rank.
         if "rank_ema_span" in seg:
             config.RANK_EMA_SPAN = seg["rank_ema_span"]
+        # Per-segment ATR-stopp: sweep 2026-07-29 visade att stopp klipper momentum-alfa
+        # för storbolag i alla testade multiplar (1.5–4.0x ATR). Large stänger av det;
+        # small har ännu inte testats → ärver globala default (False).
+        if "atr_stop_enabled" in seg:
+            config.ATR_STOP_ENABLED = seg["atr_stop_enabled"]
+        if "market_filter_exposure" in seg:
+            config.MARKET_FILTER_EXPOSURE = seg["market_filter_exposure"]
+        if "drop_features" in seg:
+            config.DROP_FEATURES = seg["drop_features"]
+            dropped_set = set(seg["drop_features"])
+            filtered = [c for c in FEATURE_COLS if c not in dropped_set]
+            FEATURE_COLS.clear()
+            FEATURE_COLS.extend(filtered)
         print(f"[Segment] {args.segment} ({seg['label']}): "
               f"market_cap={seg['market_cap']} -> {config.RESULTS_DIR}/ "
               f"(N={config.MAX_POSITIONS}, blend={config.CONVICTION_BLEND}, "

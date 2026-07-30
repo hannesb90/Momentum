@@ -39,7 +39,7 @@ import config
 import features.feature_engineering as fe
 import models.lgbm_model as lgbm_mod
 from features.feature_engineering import (
-    build_all_features, attach_categorical_features, to_model_df, FEATURE_COLS as FULL_COLS,
+    build_all_features, attach_categorical_features, attach_fundamentals_features, to_model_df, FEATURE_COLS as FULL_COLS,
 )
 from data.data_loader import (
     fetch_weekly_data, filter_liquid_universe, filter_active_universe, load_sweden_universe,
@@ -85,11 +85,14 @@ def _set_active(cols: list) -> None:
 def _load(seg):
     tickers, sector_map, cap_tier_map, _ = load_sweden_universe(min_market_cap=seg["market_cap"])
     config.SECTOR_MAP.update(sector_map)
+    config.CAP_TIER_MAP.update(cap_tier_map)   # buggmönster 12-fix 2026-07-30 (UTVECKLINGSLOGG #129)
     data = fetch_weekly_data(tickers, start="2010-01-01", end=None, use_cache=True)
     data = filter_active_universe(data)
     data = filter_liquid_universe(data, min_avg_turnover=config.UNIVERSE_MIN_AVG_TURNOVER)
     feats = build_all_features(data)
     feats = attach_categorical_features(feats, sector_map=config.SECTOR_MAP, cap_tier_map=cap_tier_map)
+    segment_key = "small" if "small" in seg.get("results_dir", "") else "large"
+    feats = attach_fundamentals_features(feats, segment=segment_key, prices=data)
     return data, feats
 
 
@@ -174,19 +177,42 @@ def _fmt(label, m):
 
 
 def run_logo(seg_name, seg):
+    import os
+    ckpt_path = f"{seg['results_dir']}/tune_ablation_logo_checkpoint.json"
+    ckpt = {}
+    if os.path.exists(ckpt_path):
+        with open(ckpt_path) as f:
+            ckpt = json.load(f)
+        done = [k for k, v in ckpt.items() if "error" not in v]
+        print(f"[checkpoint] {done} redan klara, hoppar over dem: {ckpt_path}")
+
+    def save_ckpt():
+        with open(ckpt_path, "w") as f:
+            json.dump(ckpt, f)
+
     groups = feature_groups()
     print("\n" + "=" * 92)
     print(f"  ABLATION (LOGO) – {seg['label']} – tar bort en grupp i taget (LGBM-only)")
     print("=" * 92)
     print(f"  {'variant':>26} {'#f':>4}  {'CAGR':>7} {'Sharpe':>7} {'alfa':>7} {'holdout':>8} {'capture':>9}")
     print("-" * 92)
-    full = _run_variant(seg_name, list(FULL_COLS))
+    if "FULL" in ckpt and "error" not in ckpt["FULL"]:
+        full = ckpt["FULL"]
+    else:
+        full = _run_variant(seg_name, list(FULL_COLS))
+        ckpt["FULL"] = full
+        save_ckpt()
     print(_fmt("FULL (alla grupper)", full)); base_cap = full.get("capture", float("nan"))
     print("-" * 92)
     results = []
     for gname, gcols in groups.items():
-        active = [c for c in FULL_COLS if c not in set(gcols)]
-        m = _run_variant(seg_name, active); m["group"] = gname
+        if gname in ckpt and "error" not in ckpt[gname]:
+            m = ckpt[gname]
+        else:
+            active = [c for c in FULL_COLS if c not in set(gcols)]
+            m = _run_variant(seg_name, active); m["group"] = gname
+            ckpt[gname] = m
+            save_ckpt()
         results.append(m)
         delta = "" if "error" in m or pd.isna(base_cap) else f"  Δcapture {(m['capture']-base_cap)*100:+.1f}pp"
         print(_fmt(f"− {gname}", m) + delta)

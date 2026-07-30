@@ -43,12 +43,20 @@ CORE_TICKER, CORE_NAME = getattr(config, "PORTFOLIO_CORE_ETF", ("IUSQ.DE", "iSha
 # egen avkastning, ett rimligt förenklat proxy för just den här frågan).
 MARKET_PROXY_TICKER = "XACT-SVERIGE.ST"
 # (ticker, namn) - körs som separata varianter mot samma kontant-baslinje.
-# XACT Bear 2 är den HÄVSTÅNGADE (-2x OMXS30) varianten av samma mekanik -
-# dagligt ombalanserad, samma volatilitetsdecay-oro men KVADRERAD (decay
-# skalar ~kvadratiskt med hävstången, inte linjärt) - relevant eftersom
-# -1x redan förlorade mot kontanter (se körningen som ledde hit).
+# RÄTTAT 2026-07-30: docstringen/etiketterna påstod tidigare -1x/-2x, men
+# empirisk regression av veckoavkastning mot XACT-SVERIGE.ST (samma metod
+# som verifierar backtest_bull_hedge.py:s +1,5x/+2x) ger beta ≈ -1,44 för
+# XACT-BEAR.ST och ≈ -1,92 för XACT-BEAR-2.ST - dvs produkterna är -1,5x/-2x,
+# symmetriska med Bull-sidan (+1,5x/+2x), INTE -1x/-2x. Ingen ändring av
+# tickrarna själva eller vilken data som hämtas - bara den felaktiga
+# leverage-etiketten i kommentarer/utskrift, siffrorna nedan byggde redan på
+# de RIKTIGA (rätt hämtade) prisserierna, bara felbeskrivna.
+# XACT Bear 2 är den HÄVSTÅNGADE (-2x) varianten av samma mekanik - dagligt
+# ombalanserad, samma volatilitetsdecay-oro men KVADRERAD (decay skalar
+# ~kvadratiskt med hävstången, inte linjärt) - relevant eftersom -1,5x redan
+# förlorade mot kontanter (se körningen som ledde hit).
 HEDGE_VARIANTS = [
-    ("XACT-BEAR.ST",   "XACT Bear (-1x OMXS30, dagligen ombalanserad)"),
+    ("XACT-BEAR.ST",   "XACT Bear (-1,5x OMXS30, dagligen ombalanserad)"),
     ("XACT-BEAR-2.ST", "XACT Bear 2 (-2x OMXS30, dagligen ombalanserad)"),
 ]
 

@@ -73,14 +73,23 @@ class MomentumEnsemble:
         # break-signal – LSTM saknar motsvarighet, så den blandas inte.
         if "prob_raw" in lg.columns:
             combined["prob_raw"] = lg["prob_raw"]
-        # Kalibrering: BÅDA benen är numera isotoniskt kalibrerade på sina
-        # respektive valideringsfönster (LGBM per walk-forward-split, LSTM på
-        # sitt val-fönster – se models/lstm_model.py). Ett viktat medel av två
-        # kalibrerade sannolikheter är inte matematiskt perfekt kalibrerat, men
-        # långt närmare än förr (då LSTM-benet var helt okalibrerat). En gammal
-        # LSTM-checkpoint utan kalibrator kör okalibrerat tills nästa nattliga
-        # träning. pred_signal nedan (>0.5) skrivs ändå ÖVER i build_full_output
-        # av den alltid-investerade topp-N-logiken, så 0.5-tröskeln är inte aktiv.
+        # Kalibrering (rättad 2026-07-29, se tune_rank_calibration.py): LGBM-benet
+        # är sedan LambdaRank-migreringen INTE längre isotoniskt kalibrerat -
+        # prob_up är en ren rankscore-normalisering, bara LSTM-benet är det
+        # fortfarande (models/lstm_model.py). prob_up_calibrated blandar LSTM:s
+        # äkta kalibrerade sannolikhet med LGBM:s empiriska decil-vinstfrekvens
+        # (lgbm_model.py:s decile_win_rates_) istället för dess råa rankscore -
+        # det är DENNA kolumn Kelly-sizing (kelly_position_size) ska använda,
+        # inte prob_up. prob_up självt lämnas orört: det används för rangordning/
+        # topp-N-urval, där bara den RELATIVA ordningen spelar roll (validerad
+        # Spearman=0.879 mot faktisk vinstfrekvens) - den absoluta skalans fel
+        # påverkar inte det.
+        if "prob_up_calibrated" in lg.columns:
+            combined["prob_up_calibrated"] = w_lg * lg["prob_up_calibrated"] + w_ls * ls["prob_up"]
+        else:
+            combined["prob_up_calibrated"] = combined["prob_up"]
+        # pred_signal nedan (>0.5) skrivs ändå ÖVER i build_full_output av den
+        # alltid-investerade topp-N-logiken, så 0.5-tröskeln är inte aktiv.
         combined["pred_signal"] = (combined["prob_up"] > 0.5).astype(int)
         return combined
 
@@ -294,7 +303,8 @@ def build_full_output(
             except Exception:
                 mom = None
 
-            raw_kelly = kelly_position_size(row["prob_up"], row["pred_return"], vol)
+            kelly_prob = row["prob_up_calibrated"] if "prob_up_calibrated" in row.index else row["prob_up"]
+            raw_kelly = kelly_position_size(kelly_prob, row["pred_return"], vol)
             # Behörig kandidat = modellen förväntar inte en nedgång (förv.avk över
             # selektivitetsgolvet, default 0.0). INGEN absolut prob_up-tröskel –
             # vi rankar RELATIVT och håller de N starkaste (oavsett absolut nivå),
@@ -374,6 +384,32 @@ def build_full_output(
             })
 
     df = pd.DataFrame(rows).set_index("Date").sort_index()
+    # Buggfix 2026-07-30 (UTVECKLINGSLOGG #132): MomentumLGBM.predict()s egen
+    # tvärsnittella min-max-normalisering av prob_up är verkningslös när den
+    # anropas per ticker (VARJE anropare i kodbasen, inklusive main.py, gör
+    # det) - varje datum-grupp innehåller då bara EN rad, så x.max()==x.min()
+    # är trivialt sant och 0.5-fallbacken triggas alltid (verifierat: prob_up
+    # var identiskt 0,5 för samtliga rader, i produktion såväl som i alla
+    # tune_*.py-skript). Räknas om HÄR i stället, där df redan är ett RIKTIGT
+    # tvärsnitt (alla tickers per datum, efter rows-konkateneringen ovan) -
+    # samma plats/logik som model_order_rank redan använder korrekt.
+    #
+    # VILLKORLIGT per datum (inte en ovillkorlig överskrivning): bara om den
+    # inkommande prob_up redan är DEGENERERAD (alla tickers knutna till samma
+    # värde den dagen - exakt buggens signatur) räknas den om från prob_raw.
+    # Om prob_up redan varierar meningsfullt (t.ex. en framtida genuint
+    # LSTM-blandad prob_up, som bär information prob_raw INTE gör - se
+    # ensemble.combine()) lämnas den ORÖRD - annars skulle en riktig
+    # ensembleblandning tystas ned till en ren LGBM-rangordning. Bekräftat
+    # med test_ensemble.py::test_neutral_short_signal_preserves_prob_then_raw_order,
+    # som injicerar en avsiktligt icke-degenererad prob_up och förväntar att
+    # den (inte prob_raw) styr urvalet.
+    degenerate = df.groupby(level=0)["prob_up"].transform("nunique") <= 1
+    if degenerate.any():
+        recomputed = df.loc[degenerate].groupby(level=0)["prob_raw"].transform(
+            lambda x: (x - x.min()) / (x.max() - x.min() + 1e-9) if x.max() > x.min() else 0.5
+        )
+        df.loc[degenerate, "prob_up"] = recomputed
     short_active = (
         bool(getattr(config, "SHORT_SIGNAL_ENABLED", False))
         and getattr(config, "ACTIVE_SEGMENT", "large") == "large"

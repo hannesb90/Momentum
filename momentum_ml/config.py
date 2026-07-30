@@ -112,7 +112,10 @@ EXIT_SMA_WEEKS     = 20
 # de förkastade genom att vara per-position OCH volatilitetsnormaliserad -
 # ger en volatil extremvinnare mer utrymme innan den triggar, i stället för
 # en generell SMA/regim-regel som klipper vinnare och förlorare lika hårt.
-ATR_STOP_ENABLED   = True
+ATR_STOP_ENABLED   = False  # Sweep 2026-07-29 (UTVECKLINGSLOGG #36b): trailing stop klipper
+                            # momentum-alfa för storbolag i ALLA multiplarna (1.5–3.5x).
+                            # Baslinjen utan stopp dominerar på CAGR, Sharpe, Sortino och
+                            # holdout. Stängs av globalt; per-segment override via SEGMENTS.
 ATR_STOP_MULT      = 2.5      # antal ATR under peak innan sälj (svep 1.5-4.0)
 ATR_WINDOW_WEEKS   = 10       # rullande fönster för True Range-snittet
 
@@ -1119,9 +1122,19 @@ SEGMENTS = {
     # och vår portfölj är totalavkastning → orättvist smickrande. Verifiera att
     # XACT Sverige spårar den breda benchmarken (OMXSB-cap GI), inte OMXS30.
     "large": {"label": "Storbolag", "market_cap": ["Large Cap", "Mid Cap"], "results_dir": "results",
-              "max_positions": 10, "conviction_blend": 0.5,
+              "max_positions": 15, "conviction_blend": 0.5,
               "index_ticker": "XACT-SVERIGE.ST",  "index_label": "OMX Sthlm bred (XACT Sverige)",
-              "gate_enabled": True,  "gate_min": 0.10, "rank_ema_span": 1},
+              "gate_enabled": True,  "gate_min": 0.10,
+              "forward_weeks": 52, "rebalance_weeks": 52, "embargo_weeks": 52,
+              "rank_ema_span": 1,
+              "atr_stop_enabled": False,  # Sweep 2026-07-29: stopp klipper alfa för large (se SEGMENTS-kommentar ovan)
+              "market_filter_exposure": {"bull": 1.0, "sideways": 1.0, "bear": 1.0},
+              "drop_features": [
+                  # Volym-features (brusiga under ablation)
+                  "vol_ratio_4w", "vol_ratio_13w", "obv_roc_4w", "obv_roc_13w", "ad_roc_4w",
+                  # Momentum-features (brusiga under ablation)
+                  "roc_4w", "roc_8w", "roc_13w", "roc_26w", "roc_52w", "mom_12_1", "ret_skew_13w", "ret_kurt_13w"
+              ]},
     # Micro Cap ingår i småbolagssegmentet (First North-namn som Acconeer/
     # Swedencare/Physitrack klassas Micro): likviditetsfiltret
     # (UNIVERSE_MIN_AVG_TURNOVER) rensar ändå de ohandlade – kategorin ensam

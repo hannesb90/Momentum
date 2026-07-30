@@ -1,12 +1,16 @@
 """
-altdata/fundamentals.py – Fundamenta-features ur BörsAPI-cachen.
+altdata/fundamentals.py – Fundamenta-features ur BörsAPI + Börsdata Pro+.
 
 Bygger per bolag/år ur årsrapporterna (RR/BR/KA):
-  · Piotroski F-score (0–1, normaliserad över TILLGÄNGLIGA signaler – BörsAPI
-    saknar t.ex. current assets/aktieantal, så vi poängsätter det som finns
-    och rapporterar antalet signaler i stället för att gissa)
+  · Piotroski F-score (0–1, normaliserad över TILLGÄNGLIGA signaler)
   · Fundamental momentum: omsättningstillväxt + ACCELERATION, marginaltrend,
     vinsttillväxt, FCF-marginal, ROA
+
+DATAKÄLLOR (sammanslagna – BörsAPI vinner där båda har data):
+  · BörsAPI  (cache/borsapi/)  – huvudlista, verifierade fält, begränsad kvot
+  · Börsdata (cache/borsdata/) – Pro+, 20 år historik, täcker First North/
+    Spotlight/micro cap som BörsAPI saknar. Fältnamn mappas via
+    BORSDATA_FIELD_MAP.
 
 Detta är den första edge-axeln som INTE är prismomentum. Ordningen är som
 alltid: bygg → IC-validera mot framåtavkastning (tune_fundamentals.py) →
@@ -33,14 +37,59 @@ def _num(v):
         return None
 
 
-def _cache_dir() -> Path:
+def _borsapi_cache_dir() -> Path:
     return Path(config.anchor(getattr(config, "BORSAPI_CACHE_DIR", "cache/borsapi")))
 
 
-def _id_to_ticker() -> dict:
+def _borsdata_cache_dir() -> Path:
+    return Path(config.anchor(getattr(config, "BORSDATA_CACHE_DIR", "cache/borsdata")))
+
+
+# ── Börsdata → kanoniskt fältnamn ────────────────────────────────────────────
+# Verifierade mot skarpa cachade svar (cache/borsdata/reports_*_max20.json).
+# Börsdata använder mixed camelCase (revenues, operating_Income, ...); vi
+# normaliserar till det snake_case-schema resten av systemet förväntar sig.
+BORSDATA_FIELD_MAP = {
+    # Resultaträkning
+    "revenues":                              "revenue",
+    "net_Sales":                             "revenue",       # alias, samma belopp
+    "gross_Income":                          "gross_profit",
+    "operating_Income":                      "operating_income",
+    "profit_Before_Tax":                     "pre_tax_income",
+    "profit_To_Equity_Holders":              "net_income",
+    "earnings_Per_Share":                    "eps",
+    "number_Of_Shares":                      "shares_outstanding",
+    "dividend":                              "dividend",
+    # Balansräkning
+    "intangible_Assets":                     "intangible_assets",
+    "tangible_Assets":                       "tangible_assets",
+    "financial_Assets":                      "financial_assets",
+    "non_Current_Assets":                    "non_current_assets",
+    "cash_And_Equivalents":                  "cash_and_equivalents",
+    "current_Assets":                        "current_assets",
+    "total_Assets":                          "total_assets",
+    "total_Equity":                          "total_equity",
+    "non_Current_Liabilities":               "long_term_debt",
+    "current_Liabilities":                   "current_liabilities",
+    "total_Liabilities_And_Equity":          "total_liabilities_and_equity",
+    "net_Debt":                              "net_debt",
+    # Kassaflöde
+    "cash_Flow_From_Operating_Activities":   "operating_cash_flow",
+    "cash_Flow_From_Investing_Activities":   "investing_cash_flow",
+    "cash_Flow_From_Financing_Activities":   "financing_cash_flow",
+    "cash_Flow_For_The_Year":                "net_cash_flow",
+    "free_Cash_Flow":                        "free_cash_flow",
+    # Metadata
+    "report_Date":                           "report_date",
+    "report_Start_Date":                     "report_start_date",
+    "report_End_Date":                       "report_end_date",
+}
+
+
+def _id_to_ticker_borsapi() -> dict:
     """company_id → vår ticker (BörsAPI:s 'INVE-A' → 'INVE-A.ST') ur bolagslist-cachen."""
     out = {}
-    for f in _cache_dir().glob("companies_all_*.json"):
+    for f in _borsapi_cache_dir().glob("companies_all_*.json"):
         try:
             for c in json.loads(f.read_text(encoding="utf-8")).get("data", []):
                 tk = (c.get("ticker") or "").strip().upper()
@@ -51,15 +100,38 @@ def _id_to_ticker() -> dict:
     return out
 
 
-def load_reports() -> dict:
+def _insid_to_ticker_borsdata() -> dict:
+    """insId → vår ticker ur Börsdatas instruments_all.json.
+    Börsdatas 'yahoo'-fält är redan 'AAK.ST', 'INVE-A.ST' etc."""
+    out = {}
+    fp = _borsdata_cache_dir() / "instruments_all.json"
+    if not fp.exists():
+        return out
+    try:
+        data = json.loads(fp.read_text(encoding="utf-8"))
+        items = data.get("instruments") or data.get("data") or []
+        for it in items:
+            ins_id = it.get("insId")
+            # yahoo-fältet har '.ST'-suffix; annars bygg det från ticker
+            yahoo = (it.get("yahoo") or "").strip()
+            ticker = (it.get("ticker") or "").strip().upper()
+            tk = yahoo.upper() if yahoo else (f"{ticker}.ST" if ticker else "")
+            if ins_id and tk:
+                out[ins_id] = tk
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
+def _load_borsapi_reports() -> dict:
     """
-    {ticker: {år: {fält: värde}}} ur alla cachade rapportsvar. Raderna kommer som
-    en per rapporttyp (RR/BR/KA) och period – vi slår ihop till ett fältset per
-    bolagsår (icke-null vinner; RR/BR/KA överlappar inte i fältnamn).
+    {ticker: {år: {fält: värde}}} ur BörsAPI-cachen (cache/borsapi/).
+    Raderna kommer som en per rapporttyp (RR/BR/KA) och period – vi slår ihop
+    till ett fältset per bolagsår (icke-null vinner).
     """
-    id2tk = _id_to_ticker()
+    id2tk = _id_to_ticker_borsapi()
     out: dict = {}
-    for f in _cache_dir().glob("reports_*.json"):
+    for f in _borsapi_cache_dir().glob("reports_*.json"):
         try:
             rows = json.loads(f.read_text(encoding="utf-8")).get("data", [])
         except Exception:  # noqa: BLE001
@@ -76,6 +148,74 @@ def load_reports() -> dict:
                 if nv is not None and slot.get(k) is None:
                     slot[k] = nv
     return out
+
+
+def _load_borsdata_reports() -> dict:
+    """
+    {ticker: {år: {fält: värde}}} ur Börsdata Pro+-cachen (cache/borsdata/).
+
+    Cachade filer har formatet:
+        {"instrument": N, "reportsYear": [...], "reportsQuarter": [...], "reportsR12": [...]}
+    Vi läser bara reportsYear och mappar fältnamn via BORSDATA_FIELD_MAP till
+    det kanoniska schemat (revenue, net_income, total_assets, ...).
+    """
+    insid2tk = _insid_to_ticker_borsdata()
+    bd_cache = _borsdata_cache_dir()
+    if not bd_cache.exists():
+        return {}
+
+    out: dict = {}
+    for fp in bd_cache.glob("reports_*_max20.json"):
+        try:
+            data = json.loads(fp.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+
+        # Hitta insId → ticker
+        ins_id = data.get("instrument")
+        tk = insid2tk.get(ins_id) if ins_id else None
+        if not tk:
+            # Försök extrahera insId ur filnamn: reports_{insId}_max20.json
+            m = re.search(r"reports_(\d+)_max20", fp.name)
+            if m:
+                tk = insid2tk.get(int(m.group(1)))
+        if not tk:
+            continue
+
+        # Extrahera årsrapporter
+        year_rows = data.get("reportsYear") or data.get("reports") or []
+        for row in year_rows:
+            year = row.get("year")
+            if not year or year < 2000:
+                continue
+            slot = out.setdefault(tk, {}).setdefault(year, {})
+            for bd_key, canon_key in BORSDATA_FIELD_MAP.items():
+                val = _num(row.get(bd_key))
+                if val is not None and slot.get(canon_key) is None:
+                    slot[canon_key] = val
+    return out
+
+
+def load_reports() -> dict:
+    """
+    {ticker: {år: {fält: värde}}} – SAMMANSLAGET från BörsAPI + Börsdata Pro+.
+
+    BörsAPI-data vinner där båda har samma fält (redan manuellt verifierat).
+    Börsdata fyller luckorna – framför allt First North/Spotlight/micro cap
+    som BörsAPI inte täcker.
+    """
+    # Börsdata först (bredd), BörsAPI ovanpå (precision)
+    merged = _load_borsdata_reports()
+    borsapi = _load_borsapi_reports()
+
+    for tk, years in borsapi.items():
+        for yr, fields in years.items():
+            slot = merged.setdefault(tk, {}).setdefault(yr, {})
+            for k, v in fields.items():
+                # BörsAPI vinner – skriver över Börsdata-värdet
+                slot[k] = v
+
+    return merged
 
 
 def _ratio(a, b):

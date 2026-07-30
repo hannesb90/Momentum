@@ -48,10 +48,24 @@ def main():
     config.RESULTS_DIR = seg["results_dir"]
     config.MAX_POSITIONS = seg.get("max_positions", config.MAX_POSITIONS)
     config.CONVICTION_BLEND = seg.get("conviction_blend", config.CONVICTION_BLEND)
-    print(f"[Segment] {segment} ({seg['label']}) – modell: {config.RESULTS_DIR}/lgbm_model.pkl")
+    if "market_filter_exposure" in seg:
+        config.MARKET_FILTER_EXPOSURE = seg["market_filter_exposure"]
+    if "forward_weeks" in seg:
+        config.FORWARD_WEEKS = seg["forward_weeks"]
+        config.REBALANCE_WEEKS = seg["rebalance_weeks"]
+    print(f"[Segment] {segment} ({seg['label']}) – modell: {config.RESULTS_DIR}/lgbm_model.pkl, "
+          f"forward_weeks={config.FORWARD_WEEKS}, rebalance_weeks={config.REBALANCE_WEEKS}")
+
+    if "drop_features" in seg:
+        config.DROP_FEATURES = seg["drop_features"]
+        dropped_set = set(seg["drop_features"])
+        filtered = [c for c in FEATURE_COLS if c not in dropped_set]
+        FEATURE_COLS.clear()
+        FEATURE_COLS.extend(filtered)
 
     tickers, sector_map, cap_tier_map, _ = load_sweden_universe(min_market_cap=seg["market_cap"])
     config.SECTOR_MAP.update(sector_map)
+    config.CAP_TIER_MAP.update(cap_tier_map)   # buggmönster 12-fix 2026-07-30 (UTVECKLINGSLOGG #129)
     # OHLCV krävs (High/Low för ATR) - fetch_weekly_data ger redan detta.
     data = fetch_weekly_data(tickers, start="2010-01-01", end=None, use_cache=True)
     data = filter_active_universe(data)
@@ -63,7 +77,7 @@ def main():
     # rapporternas hårddata - modellen förväntar sig dessa kolumner (FEATURE_COLS),
     # se main.py:s STEG 2 (samma anropsordning: EFTER kategoriska features, FÖRE
     # to_model_df/predict). Saknas underlaget blir kolumnerna bara NaN, ingen krasch.
-    feats = attach_fundamentals_features(feats, segment=segment)
+    feats = attach_fundamentals_features(feats, segment=segment, prices=data)
     feature_dfs = {t: f.assign(ticker=t) for t, f in feats.items()}
 
     lgbm = MomentumLGBM.load(f"{config.RESULTS_DIR}/lgbm_model.pkl")

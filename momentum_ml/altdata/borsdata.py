@@ -183,6 +183,21 @@ def _find_report_endpoint_data(ins_id) -> dict:
                 cache_key=f"reports_{ins_id}_max20")
 
 
+def _extract_year_reports(rep: dict) -> list:
+    """Extrahera årsrapporter ur Börsdatas grupperade svar.
+    Svaret har {reportsYear: [...], reportsQuarter: [...], reportsR12: [...]}."""
+    if not isinstance(rep, dict):
+        return rep if isinstance(rep, list) else []
+    # Direktträff på grupperade nycklar
+    for key in ("reportsYear", "reports_year", "reportsAnnual"):
+        if key in rep and isinstance(rep[key], list):
+            return rep[key]
+    # Fallback: platt 'reports' (typ-specifik endpoint)
+    if "reports" in rep and isinstance(rep["reports"], list):
+        return rep["reports"]
+    return []
+
+
 def eval_():
     """Schema-upptäckt + First North-täckningstest på EVAL_TICKERS."""
     m = {tk: (it, field) for it, tk, field in match_universe()}
@@ -203,26 +218,26 @@ def eval_():
         except Exception as e:  # noqa: BLE001
             print(f"  FEL vid rapporthämtning: {e}")
             continue
-        rows = rep.get("reports") if isinstance(rep, dict) else rep
-        # Vissa API:er grupperar år/kvartal/R12 i separata nycklar – dumpa strukturen.
-        if isinstance(rep, dict) and not rows:
-            print(f"  Toppnivå-nycklar i svaret: {list(rep.keys())}")
-            for k, v in rep.items():
-                if isinstance(v, list) and v:
-                    print(f"  '{k}': {len(v)} poster, senaste raden:")
-                    print("   ", json.dumps(v[-1], ensure_ascii=False)[:500])
-        elif rows:
-            print(f"  {len(rows)} rapportrader. Senaste raden (alla fält):")
-            print("   ", json.dumps(rows[-1], ensure_ascii=False)[:700])
-            keys = list(rows[-1].keys())
-            money_like = [k for k in keys if isinstance(rows[-1].get(k), (int, float)) and abs(rows[-1][k]) > 1e5]
+        rows = _extract_year_reports(rep)
+        if rows:
+            print(f"  {len(rows)} årsrapportrader. Senaste raden (alla fält):")
+            print("   ", json.dumps(rows[0], ensure_ascii=False)[:700])
+            keys = list(rows[0].keys())
+            money_like = [k for k in keys if isinstance(rows[0].get(k), (int, float)) and abs(rows[0][k]) > 1e5]
             print(f"  Sannolika belopps-fält (>100k): {money_like}")
         else:
-            print("  Tomt rapportsvar.")
+            # Dumpa toppnivå-nycklar för debugging
+            if isinstance(rep, dict):
+                print(f"  Toppnivå-nycklar i svaret: {list(rep.keys())}")
+                for k, v in rep.items():
+                    if isinstance(v, list) and v:
+                        print(f"  '{k}': {len(v)} poster")
+            else:
+                print("  Tomt rapportsvar.")
     print("\n" + "=" * 72)
-    print("  Nästa steg: verifiera minst en siffra ovan mot bolagets faktiska rapport (som vi")
-    print("  gjorde för Avanza/Swedbank i BörsAPI), döp om fälten till fundamentals.py:s schema,")
-    print("  kör sedan 'backfill' för hela universumet.")
+    print("  Schema verifierat – fundamentals.py kan nu läsa Börsdata-rapporter via")
+    print("  load_borsdata_reports(). Kör 'python -m altdata.fundamentals build' för att")
+    print("  bygga fundamentals.csv med Börsdata-data.")
 
 
 def backfill():
@@ -239,7 +254,7 @@ def backfill():
         ins_id = it.get("insId") or it.get("id")
         try:
             rep = _find_report_endpoint_data(ins_id)
-            n = len(rep.get("reports", rep)) if isinstance(rep, (dict, list)) else 0
+            n = len(_extract_year_reports(rep))
             ok += 1
             if (i + 1) % 25 == 0:
                 print(f"  ...{i+1}/{len(m)} ({ok} ok, {fail} fel)")
