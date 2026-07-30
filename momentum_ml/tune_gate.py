@@ -16,10 +16,18 @@ kontant som byggs; holdout/alfa avgör om det lönar sig. Kör på Pi:n efter tr
 import sys
 sys.path.insert(0, '.')
 import config
+
+_seg_arg = sys.argv[1] if len(sys.argv) > 1 else config.DEFAULT_SEGMENT
+_seg = config.SEGMENTS.get(_seg_arg) or config.SEGMENTS[config.DEFAULT_SEGMENT]
+if "drop_features" in _seg:
+    config.DROP_FEATURES = _seg["drop_features"]
+
 from data.data_loader import (
     fetch_weekly_data, filter_liquid_universe, filter_active_universe, load_sweden_universe,
 )
-from features.feature_engineering import build_all_features, attach_categorical_features, FEATURE_COLS
+from features.feature_engineering import (
+    build_all_features, attach_categorical_features, attach_fundamentals_features, FEATURE_COLS,
+)
 from models.lgbm_model import MomentumLGBM
 from models.ensemble import MomentumEnsemble, build_full_output
 from backtest.backtester import MomentumBacktester
@@ -49,12 +57,14 @@ def main():
 
     tickers, sector_map, cap_tier_map, _ = load_sweden_universe(min_market_cap=seg["market_cap"])
     config.SECTOR_MAP.update(sector_map)
+    config.CAP_TIER_MAP.update(cap_tier_map)   # buggmönster 12-fix 2026-07-30 (UTVECKLINGSLOGG #129)
     data = fetch_weekly_data(tickers, start="2010-01-01", end=None, use_cache=True)
     data = filter_active_universe(data)
     data = filter_liquid_universe(data, min_avg_turnover=config.UNIVERSE_MIN_AVG_TURNOVER)
 
     feats = build_all_features(data)
     feats = attach_categorical_features(feats, sector_map=config.SECTOR_MAP, cap_tier_map=cap_tier_map)
+    feats = attach_fundamentals_features(feats, segment=segment, prices=data)
     feature_dfs = {t: f.assign(ticker=t) for t, f in feats.items()}
 
     lgbm = MomentumLGBM.load(f"{config.RESULTS_DIR}/lgbm_model.pkl")

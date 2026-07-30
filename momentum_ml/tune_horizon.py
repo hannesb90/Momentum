@@ -34,6 +34,7 @@ def main():
 
     tickers, sector_map, cap_tier_map, _ = load_sweden_universe(min_market_cap=seg["market_cap"])
     config.SECTOR_MAP.update(sector_map)
+    config.CAP_TIER_MAP.update(cap_tier_map)   # buggmönster 12-fix 2026-07-30 (UTVECKLINGSLOGG #129)
     data = fetch_weekly_data(tickers, start="2010-01-01", end=None, use_cache=True)
     data = filter_active_universe(data)
     data = filter_liquid_universe(data, min_avg_turnover=config.UNIVERSE_MIN_AVG_TURNOVER)

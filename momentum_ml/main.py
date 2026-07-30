@@ -40,6 +40,8 @@ from backtest.theme_momentum import theme_momentum_snapshot, print_theme_momentu
 from backtest.threshold_opt import optimize_buy_threshold, print_threshold_search
 from backtest.benchmark import benchmark_report, winsorize_price_series
 from backtest.paper_trader import PaperTrader
+from backtest import pipeline_diagnostics
+from backtest.calibration_check import prob_resolution_stats
 
 
 def parse_args():
@@ -284,6 +286,19 @@ def main():
         # men försämrade Small52 i exakt A/B; Small/Micro behåller därför rå rank.
         if "rank_ema_span" in seg:
             config.RANK_EMA_SPAN = seg["rank_ema_span"]
+        # Per-segment ATR-stopp: sweep 2026-07-29 visade att stopp klipper momentum-alfa
+        # för storbolag i alla testade multiplar (1.5–4.0x ATR). Large stänger av det;
+        # small har ännu inte testats → ärver globala default (False).
+        if "atr_stop_enabled" in seg:
+            config.ATR_STOP_ENABLED = seg["atr_stop_enabled"]
+        if "market_filter_exposure" in seg:
+            config.MARKET_FILTER_EXPOSURE = seg["market_filter_exposure"]
+        if "drop_features" in seg:
+            config.DROP_FEATURES = seg["drop_features"]
+            dropped_set = set(seg["drop_features"])
+            filtered = [c for c in FEATURE_COLS if c not in dropped_set]
+            FEATURE_COLS.clear()
+            FEATURE_COLS.extend(filtered)
         print(f"[Segment] {args.segment} ({seg['label']}): "
               f"market_cap={seg['market_cap']} -> {config.RESULTS_DIR}/ "
               f"(N={config.MAX_POSITIONS}, blend={config.CONVICTION_BLEND}, "
@@ -687,6 +702,7 @@ def main():
             ta_filter=args.ta_filter, ta_strictness=args.ta_strictness,
             buy_threshold=buy_threshold,
             apply_entry_policy=True,
+            record_diagnostics=False,
         )
         serving_df = _attach_meta_and_limits(serving_df, data)
         serving_df.to_csv(f"{config.RESULTS_DIR}/signals_serving.csv")
@@ -1023,6 +1039,39 @@ def main():
         print(f"  Historik-snapshot sparad: {hist_dir}/*_{today_str}.*")
     except Exception as e:
         print(f"  Historik-snapshot misslyckades (icke-kritiskt): {e}")
+
+    # ── 9. Pipeline Health Report ─────────────────────────────────────────────
+    # Se backtest/pipeline_diagnostics.py: samlar universumskonsistens (STEG
+    # 1/1.4/1.5/2-loggning), NaN-drift, feature-drift, targetbalans,
+    # eligible-tratt och datumsync till EN rapport - #1-#9 i den externa
+    # pipeline-granskningen efter ETF-universum-läckan (value_screener.py,
+    # fixad 2026-07-19). Fingeravtryckstestet (#10) är för dyrt att köra
+    # varje natt (kräver att bygga om features för minst en ticker mot båda
+    # modellerna) och lever i stället som ett eget manuellt/pytest-verktyg,
+    # se backtest/pipeline_fingerprint.py. Icke-kritiskt, exakt samma
+    # disciplin som historik-snapshotten ovan - ett fel här får ALDRIG få
+    # nattkörningen att se ut som misslyckad.
+    try:
+        feature_drift = pd.DataFrame()
+        if holdout_start is not None:
+            recent_cutoff = (all_dates[-config.DRIFT_WINDOW_WEEKS]
+                              if len(all_dates) > config.DRIFT_WINDOW_WEEKS else all_dates[0])
+            train_mask = model_df.index < holdout_start
+            current_mask = model_df.index >= recent_cutoff
+            feature_drift = pipeline_diagnostics.feature_distribution_report(
+                model_df, FEATURE_COLS, train_mask, current_mask)
+
+        target_balance = pipeline_diagnostics.target_balance_stats(model_df)
+        calibration_resolution = prob_resolution_stats(signals_df["prob_up"].values)
+
+        pipeline_diagnostics.build_and_write_report(
+            feature_drift=feature_drift,
+            target_balance=target_balance,
+            calibration_resolution=calibration_resolution,
+            latest_drift=summary.get("drift"),
+        )
+    except Exception as e:
+        print(f"  Pipeline Health Report misslyckades (icke-kritiskt): {e}")
 
     print("\nKLAR!\n")
 

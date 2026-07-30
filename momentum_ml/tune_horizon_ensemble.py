@@ -32,7 +32,7 @@ from data.data_loader import (
     fetch_weekly_data, filter_liquid_universe, filter_active_universe, load_sweden_universe,
 )
 from features.feature_engineering import (
-    build_all_features, attach_categorical_features, to_model_df, FEATURE_COLS,
+    build_all_features, attach_categorical_features, attach_fundamentals_features, to_model_df, FEATURE_COLS,
 )
 from models.lgbm_model import MomentumLGBM
 from models.ensemble import MomentumEnsemble, build_full_output
@@ -54,6 +54,7 @@ def _train_horizon(data, cap_tier_map, fw, dev_dates, keep_feats=False):
 
     feats = build_all_features(data)
     feats = attach_categorical_features(feats, sector_map=config.SECTOR_MAP, cap_tier_map=cap_tier_map)
+    feats = attach_fundamentals_features(feats, segment="large", prices=data)
     mdf = to_model_df(feats)
     dev = mdf[mdf.index.isin(dev_dates)]
 
@@ -79,10 +80,18 @@ def main():
     seg = config.SEGMENTS["large"]
     config.RESULTS_DIR = seg["results_dir"]
     config.MAX_POSITIONS = seg.get("max_positions", config.MAX_POSITIONS)
+    config.CONVICTION_BLEND = seg.get("conviction_blend", config.CONVICTION_BLEND)
+    if "market_filter_exposure" in seg:
+        config.MARKET_FILTER_EXPOSURE = seg["market_filter_exposure"]
+    if "drop_features" in seg:
+        config.DROP_FEATURES = seg["drop_features"]
+        _dropped = set(seg["drop_features"])
+        FEATURE_COLS[:] = [c for c in FEATURE_COLS if c not in _dropped]
     n_pos = int(config.MAX_POSITIONS)
 
     tickers, sector_map, cap_tier_map, _ = load_sweden_universe(min_market_cap=seg["market_cap"])
     config.SECTOR_MAP.update(sector_map)
+    config.CAP_TIER_MAP.update(cap_tier_map)   # buggmönster 12-fix 2026-07-30 (UTVECKLINGSLOGG #129)
     data = fetch_weekly_data(tickers, start="2010-01-01", end=None, use_cache=True)
     data = filter_active_universe(data)
     data = filter_liquid_universe(data, min_avg_turnover=config.UNIVERSE_MIN_AVG_TURNOVER)
@@ -91,6 +100,7 @@ def main():
     config.FORWARD_WEEKS = SCORE_HORIZON
     feats0 = build_all_features(data)
     feats0 = attach_categorical_features(feats0, sector_map=config.SECTOR_MAP, cap_tier_map=cap_tier_map)
+    feats0 = attach_fundamentals_features(feats0, segment="large", prices=data)
     mdf0 = to_model_df(feats0)
     all_dates = mdf0.index.unique().sort_values()
     if len(all_dates) <= config.HOLDOUT_WEEKS:

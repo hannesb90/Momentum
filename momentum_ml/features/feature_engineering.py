@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
+from backtest import pipeline_diagnostics as _diag
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -402,6 +403,7 @@ def build_all_features(data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]
 
     print(f"[Features] Klar. {len(all_feat)} tickers ({n_cached} från cache), "
           f"{next(iter(all_feat.values())).shape[1]} features.")
+    _diag.record_universe_stage("build_all_features", list(all_feat.keys()))
     return all_feat
 
 
@@ -579,7 +581,10 @@ def _load_fundamentals_growth(
     else:
         df["report_reaction_abn"] = np.nan
 
-    out = df[cols].dropna(subset=["rev_growth_yoy", "eps_growth_yoy", "div_growth_yoy"], how="all")
+    before = df[cols]
+    out = before.dropna(subset=["rev_growth_yoy", "eps_growth_yoy", "div_growth_yoy"], how="all")
+    _diag.record_nan("load_fundamentals_growth:dropna_all_growth_nan", before, out,
+                      cols=["rev_growth_yoy", "eps_growth_yoy", "div_growth_yoy", "report_reaction_abn"])
     return out.sort_values(["ticker", "published"])
 
 
@@ -624,6 +629,26 @@ def attach_fundamentals_features(
     fund = _load_fundamentals_growth(segment, prices=prices)
     by_ticker = ({tk: g.drop(columns="ticker") for tk, g in fund.groupby("ticker")}
                  if len(fund) else {})
+    _alignment_totals = {"n": 0, "non_monday_dates": 0, "future_published_rows": 0}
+
+    # Ladda fundamentals.csv (Börsdata-features)
+    fund_csv_path = Path(config.anchor(config.RESULTS_DIR)) / "fundamentals.csv"
+    fund_csv_by_ticker = {}
+    csv_cols = ["f_score", "rev_growth", "rev_accel", "margin_delta", "ni_growth", "fcf_margin", "roa"]
+    if fund_csv_path.exists():
+        try:
+            fund_csv = pd.read_csv(fund_csv_path)
+            fund_csv = fund_csv.replace("None", np.nan)
+            for col in csv_cols:
+                if col in fund_csv.columns:
+                    fund_csv[col] = pd.to_numeric(fund_csv[col], errors="coerce")
+            
+            # Skapa signal_date = 1 maj året efter räkenskapsåret
+            fund_csv["signal_date"] = pd.to_datetime(fund_csv["year"].astype(int) + 1, format="%Y").map(lambda x: x.replace(month=5, day=1))
+            fund_csv["signal_date"] = fund_csv["signal_date"].astype("datetime64[us]")
+            fund_csv_by_ticker = {tk: g.sort_values("signal_date") for tk, g in fund_csv.groupby("ticker")}
+        except Exception as e:
+            print(f"[attach_fundamentals_features] Warning loading fundamentals.csv: {e}")
 
     # days_since_report: dagar sedan senast kända rapport (PEAD-driftens
     # tidsaxel – den mest evidensbackade rapportsignalen). Köp-vaktens
@@ -634,6 +659,7 @@ def attach_fundamentals_features(
     # centrala fillna(0)-hanteringen i modellerna hade annars gjort "okänd
     # rapporthistorik" till "rapporterade idag" – motsatt betydelse.
     for ticker, feat in all_features.items():
+        # ── (A) MFN/Avanza-Features ──
         g = by_ticker.get(ticker)
         if g is None or g.empty:
             feat["rev_growth_yoy"] = np.nan
@@ -641,32 +667,110 @@ def attach_fundamentals_features(
             feat["report_reaction_abn"] = np.nan
             feat["div_growth_yoy"] = np.nan
             feat["days_since_report"] = float(_DAYS_SINCE_CAP)
-            continue
-        left = feat.index.to_frame(index=False, name="Date").sort_values("Date")
-        g = g.sort_values("published")
-        # pandas 2.x kan ge OLIKA datetime64-upplösningar (s/ms/us/ns) beroende
-        # på källa: prisindexet ('Date', ur yfinance ELLER, sedan Avanza blev
-        # prisdatakälla för NGM/Spotlight, altdata.avanza.fetch_chart_ohlcv:s
-        # pd.to_datetime(ts, unit='ms')) kontra 'published' (ur pd.to_datetime
-        # på MFN-textsträngar, vars upplösning pandas härleder ur strängens
-        # egen precision). merge_asof KRÄVER numera identisk upplösning på
-        # båda nycklarna (MergeError annars) – normalisera uttryckligen till
-        # 'us' hellre än att lita på att källorna råkar matcha.
-        left["Date"] = left["Date"].astype("datetime64[us]")
-        g["published"] = g["published"].astype("datetime64[us]")
-        joined = pd.merge_asof(left, g,
-                                left_on="Date", right_on="published", direction="backward")
-        joined = joined.set_index("Date")
-        feat["rev_growth_yoy"] = joined["rev_growth_yoy"].reindex(feat.index)
-        feat["eps_growth_yoy"] = joined["eps_growth_yoy"].reindex(feat.index)
-        feat["report_reaction_abn"] = joined["report_reaction_abn"].reindex(feat.index)
-        feat["div_growth_yoy"] = joined["div_growth_yoy"].reindex(feat.index)
-        days = (joined.index.to_series() - joined["published"]).dt.days
-        feat["days_since_report"] = (days.clip(upper=_DAYS_SINCE_CAP)
-                                     .fillna(_DAYS_SINCE_CAP)
-                                     .reindex(feat.index)
-                                     .fillna(_DAYS_SINCE_CAP)
-                                     .astype(float))
+        else:
+            left = feat.index.to_frame(index=False, name="Date").sort_values("Date")
+            g = g.sort_values("published")
+            # pandas 2.x kan ge OLIKA datetime64-upplösningar (s/ms/us/ns) beroende
+            # på källa: prisindexet ('Date', ur yfinance ELLER, sedan Avanza blev
+            # prisdatakälla för NGM/Spotlight, altdata.avanza.fetch_chart_ohlcv:s
+            # pd.to_datetime(ts, unit='ms')) kontra 'published' (ur pd.to_datetime
+            # på MFN-textsträngar, vars upplösning pandas härleder ur strängens
+            # egen precision). merge_asof KRÄVER numera identisk upplösning på
+            # båda nycklarna (MergeError annars) – normalisera uttryckligen till
+            # 'us' hellre än att lita på att källorna råkar matcha.
+            left["Date"] = left["Date"].astype("datetime64[us]")
+            g["published"] = g["published"].astype("datetime64[us]")
+            joined = pd.merge_asof(left, g,
+                                    left_on="Date", right_on="published", direction="backward")
+            joined = joined.set_index("Date")
+            check = _diag.assert_date_alignment(joined)
+            for key in _alignment_totals:
+                _alignment_totals[key] += check[key]
+            feat["rev_growth_yoy"] = joined["rev_growth_yoy"].reindex(feat.index)
+            feat["eps_growth_yoy"] = joined["eps_growth_yoy"].reindex(feat.index)
+            feat["report_reaction_abn"] = joined["report_reaction_abn"].reindex(feat.index)
+            feat["div_growth_yoy"] = joined["div_growth_yoy"].reindex(feat.index)
+            days = (joined.index.to_series() - joined["published"]).dt.days
+            feat["days_since_report"] = (days.clip(upper=_DAYS_SINCE_CAP)
+                                         .fillna(_DAYS_SINCE_CAP)
+                                         .reindex(feat.index)
+                                         .fillna(_DAYS_SINCE_CAP)
+                                         .astype(float))
+
+        # ── (B) Börsdata-Features (fundamentals.csv) ──
+        g_csv = fund_csv_by_ticker.get(ticker)
+        if g_csv is not None and not g_csv.empty:
+            left_csv = feat.index.to_frame(index=False, name="Date").sort_values("Date")
+            left_csv["Date"] = left_csv["Date"].astype("datetime64[us]")
+            joined_csv = pd.merge_asof(
+                left_csv,
+                g_csv[["signal_date"] + [c for c in csv_cols if c in g_csv.columns]],
+                left_on="Date",
+                right_on="signal_date",
+                direction="backward"
+            )
+            joined_csv = joined_csv.set_index("Date")
+            for col in csv_cols:
+                if col in joined_csv.columns:
+                    feat[col] = joined_csv[col].reindex(feat.index)
+                else:
+                    feat[col] = np.nan
+        else:
+            for col in csv_cols:
+                feat[col] = np.nan
+
+    if _alignment_totals["n"]:
+        _diag.record_date_alignment("fundamentals_merge_asof", _alignment_totals)
+
+    # ── (C) Interaktionsfeatures: Attention Gap x Earnings Reaction ──
+    px = pd.DataFrame({t: d["Close"] for t, d in prices.items() if "Close" in d}).sort_index() if prices else pd.DataFrame()
+    dvol = pd.DataFrame({t: (d["Close"] * d["Volume"]) for t, d in prices.items() if "Close" in d and "Volume" in d}).sort_index() if prices else pd.DataFrame()
+    dvol_normal = dvol.rolling(13).mean().shift(1) if not dvol.empty else pd.DataFrame()
+
+    by_ticker_fund = ({tk: g.sort_values("published") for tk, g in fund.groupby("ticker")} if not fund.empty else {})
+
+    for ticker, feat in all_features.items():
+        g = by_ticker_fund.get(ticker)
+        if g is None or g.empty or px.empty or dvol.empty or ticker not in px.columns or ticker not in dvol.columns:
+            feat["attention_gap"] = 0.0
+            feat["interact_report_reaction"] = 0.0
+        else:
+            g_events = g.copy()
+            weeks = px.index
+            def _get_interact_vals(row):
+                pub = pd.Timestamp(row["published"])
+                pos = weeks.searchsorted(pub, side="left")
+                if pos >= len(weeks):
+                    return np.nan, np.nan
+                wk = weeks[pos]
+                vol_wk = dvol.at[wk, ticker]
+                vol_norm = dvol_normal.at[wk, ticker]
+                reaction = row["report_reaction_abn"]
+                if pd.isna(vol_wk) or pd.isna(vol_norm) or vol_norm == 0 or pd.isna(reaction):
+                    return np.nan, np.nan
+                vol_ratio = vol_wk / vol_norm
+                attention_gap = 1.0 / (vol_ratio + 1e-5)
+                interact = attention_gap * reaction
+                return attention_gap, interact
+
+            vals = [_get_interact_vals(row) for _, row in g_events.iterrows()]
+            g_events["attention_gap"] = [v[0] for v in vals]
+            g_events["interact"] = [v[1] for v in vals]
+            g_events = g_events.dropna(subset=["attention_gap"])
+
+            if g_events.empty:
+                feat["attention_gap"] = 0.0
+                feat["interact_report_reaction"] = 0.0
+            else:
+                left = feat.index.to_frame(index=False, name="Date").sort_values("Date")
+                left["Date"] = left["Date"].astype("datetime64[us]")
+                g_events["published"] = g_events["published"].astype("datetime64[us]")
+                joined = pd.merge_asof(left, g_events[["published", "attention_gap", "interact"]],
+                                        left_on="Date", right_on="published", direction="backward")
+                joined = joined.set_index("Date")
+                feat["attention_gap"] = joined["attention_gap"].reindex(feat.index).fillna(0.0)
+                feat["interact_report_reaction"] = joined["interact"].reindex(feat.index).fillna(0.0)
+
     return all_features
 
 
@@ -691,7 +795,10 @@ def to_model_df(all_features: Dict[str, pd.DataFrame]) -> pd.DataFrame:
         frames.append(tmp)
     df = pd.concat(frames).sort_index()
     del frames
+    before = df
     df = df.dropna(subset=["target_return", "target_signal"])
+    _diag.record_nan("to_model_df:dropna_target", before, df,
+                      cols=["target_return", "target_signal"])
     return df
 
 
@@ -744,6 +851,16 @@ FEATURE_COLS = [
     # PEAD-tidsaxeln: dagar sedan senast kända rapport (takad vid 365; saknat
     # = 365, ALDRIG NaN – fillna(0) hade betytt "rapporterade idag").
     "days_since_report",
+    # Börsdata fundamental features (validerade i tune_borsdata_fundamental_lgbm.py under LambdaRank)
+    "f_score",
+    "rev_growth",
+    "rev_accel",
+    "margin_delta",
+    "ni_growth",
+    "fcf_margin",
+    "roa",
+    "attention_gap",
+    "interact_report_reaction",
 ]
 
 # Ablation: släpp namngivna features ur modellens INDATA genom HELA pipelinen

@@ -88,6 +88,33 @@ def expected_calibration_error(probs: np.ndarray, outcomes: np.ndarray, n_bins: 
     return float((err.fillna(0.0) * weight).sum())
 
 
+def prob_resolution_stats(prob_up: np.ndarray, decimals: int = 4) -> dict:
+    """
+    Mäter om isotonic-kalibreringen har tappat UPPLÖSNING – oavsett hur bra
+    Brier/ECE ser ut kan en trappstegsfunktion kollapsa till en bred platå
+    (se lgbm_model.py:s prob_raw-kommentar: "vid svag signal kollapsar den
+    till en bred platå på basfrekvensen"), där nästan alla bolag får exakt
+    samma prob_up och rankningen inom platån blir en godtycklig tie-break.
+
+    n_unique: antal DISTINKTA prob_up-värden (avrundade till `decimals` för
+    att inte räkna flyttalsbrus som olika värden).
+    largest_plateau_frac: hur stor andel av observationerna som sitter i den
+    ENSKILT största platån – hög andel (t.ex. >50%) betyder att merparten av
+    urvalet avgörs av tie-break (prob_raw), inte den kalibrerade sannolikheten.
+    """
+    p = np.asarray(prob_up, dtype=float)
+    p = p[np.isfinite(p)]
+    if len(p) == 0:
+        return {"n": 0, "n_unique": 0, "largest_plateau_frac": float("nan")}
+    rounded = np.round(p, decimals)
+    _, counts = np.unique(rounded, return_counts=True)
+    return {
+        "n": int(len(p)),
+        "n_unique": int(len(counts)),
+        "largest_plateau_frac": float(counts.max() / len(p)),
+    }
+
+
 def calibration_report(
     cls_models: list, calibrators: list, split_starts: list,
     df: pd.DataFrame, val_windows: list, n_bins: int = 10,
@@ -215,6 +242,17 @@ if __name__ == "__main__":
 
     report = calibration_report(lgbm.cls_models, lgbm.calibrators, lgbm.split_starts, dev_df, val_windows, n_bins=args.n_bins)
     print_calibration_report(report)
+
+    if lgbm.cls_models and lgbm.calibrators:
+        from features.feature_engineering import FEATURE_COLS as _FC
+        last_val = val_windows[-1] if val_windows else dev_df.index
+        last_sub = dev_df[dev_df.index.isin(last_val)]
+        if not last_sub.empty:
+            last_raw = lgbm.cls_models[-1].predict(last_sub[_FC].fillna(0).values)
+            last_cal = lgbm.calibrators[-1].transform(last_raw)
+            res = prob_resolution_stats(last_cal)
+            print(f"\n  Upplösning (senaste splitten): {res['n_unique']} unika prob_up-värden "
+                  f"av {res['n']} observationer, största platå = {res['largest_plateau_frac']:.1%}.")
 
     if args.plot:
         from features.feature_engineering import FEATURE_COLS

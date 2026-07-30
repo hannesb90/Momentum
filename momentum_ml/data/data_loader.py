@@ -25,6 +25,7 @@ from typing import Dict, List, Optional, Tuple
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
+from backtest import pipeline_diagnostics as _diag
 
 
 def _cache_path(key: str) -> Path:
@@ -136,6 +137,8 @@ def fetch_weekly_data(
     # EN gång och använda det UPPLÖSTA värdet (inte den råa None) både i
     # cache-nyckeln och i själva yf.download-anropet, så nyckeln faktiskt
     # ändras dag för dag och en ny hämtning triggas.
+    _diag.record_universe_stage("fetch_requested", tickers)
+
     resolved_end = end or dt.date.today().isoformat()
     # min_history ingår i nyckeln: cachen lagrar data EFTER historikfiltret, så
     # en ändrad tröskel måste ge en ny cache (annars returneras gamla survivors).
@@ -145,7 +148,9 @@ def fetch_weekly_data(
     if use_cache and cp.exists():
         print(f"[DataLoader] Laddar cache: {cp}")
         with open(cp, "rb") as f:
-            return pickle.load(f)
+            cached = pickle.load(f)
+        _diag.record_universe_stage("fetch_cleaned", list(cached.keys()))
+        return cached
 
     yahoo_tickers = [t for t in tickers if not t.endswith(_AVANZA_SUFFIX)]
     ngm_tickers = [t for t in tickers if t.endswith(_AVANZA_SUFFIX)]
@@ -192,6 +197,7 @@ def fetch_weekly_data(
     print(f"[DataLoader] Laddade {len(result)} tickers, "
           f"{min(len(v) for v in result.values())}–"
           f"{max(len(v) for v in result.values())} veckor vardera.")
+    _diag.record_universe_stage("fetch_cleaned", list(result.keys()))
 
     with open(cp, "wb") as f:
         pickle.dump(result, f)
@@ -417,6 +423,7 @@ def filter_liquid_universe(
 
     print(f"[DataLoader] Kvar efter likviditetsfilter: "
           f"{len(filtered)}/{len(data)} tickers.")
+    _diag.record_universe_stage("liquidity_filter", list(filtered.keys()))
     return filtered
 
 
@@ -461,6 +468,7 @@ def filter_active_universe(
 
     print(f"[DataLoader] Aktiva kvar efter delisting-filter: "
           f"{len(active)}/{len(data)} tickers.")
+    _diag.record_universe_stage("delisting_filter", list(active.keys()))
     return active
 
 
