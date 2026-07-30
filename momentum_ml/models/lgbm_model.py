@@ -322,6 +322,28 @@ class MomentumLGBM:
         return self
 
     def predict(self, df: pd.DataFrame, strict: bool = False) -> pd.DataFrame:
+        # Featurevalidering (återställd 2026-07-30 – fanns i det committade
+        # baslinjeläget (main, fd9c0ca) men föll bort under Nivå 3:s
+        # LambdaRank-omskrivning av predict(), aldrig uppmärksammat innan
+        # origin/mains nya test_lgbm_diagnostics.py-test avslöjade det vid
+        # denna merge). Kör ALLTID, inte bara i strict-läge - en tyst kolumn-/
+        # ordningsmiss ger felaktiga prediktioner (exakt "buggmönster 1" som
+        # bitit flera tune_*.py-skript ikväll, se UTVECKLINGSLOGG #132/#144),
+        # inte extrapolering. Bakåtkompatibelt: äldre sparade modeller saknar
+        # feature_cols_ (tom lista) - då görs ingen kontroll i stället för en
+        # falsk krasch.
+        trained_cols = getattr(self, "feature_cols_", None)
+        if trained_cols and list(FEATURE_COLS) != trained_cols:
+            missing = set(trained_cols) - set(FEATURE_COLS)
+            added = set(FEATURE_COLS) - set(trained_cols)
+            raise ValueError(
+                f"predict(): FEATURE_COLS har ändrats sedan modellen tränades - "
+                f"saknas nu: {sorted(missing) or '–'}, nya: {sorted(added) or '–'}"
+                + (", ELLER ordningen har ändrats (samma mängd, annan sekvens)."
+                   if not missing and not added else ".")
+                + " Träna om modellen mot aktuell FEATURE_COLS."
+            )
+
         X = df[FEATURE_COLS].values
         model_idx = self._select_model_idx(df.index)
         self._warn_if_stale(df.index)

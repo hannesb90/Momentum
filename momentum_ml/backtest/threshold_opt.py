@@ -123,6 +123,7 @@ def optimize_buy_threshold(
             lg_is, ls_is, feature_dfs, ensemble,
             ta_filter=ta_filter, ta_strictness=ta_strictness,
             buy_threshold=thr,
+            record_diagnostics=False,   # grid-search-trial, inte den slutliga signalen
         )
         if signals.empty:
             grid_results.append({"threshold": thr, "score": float("-inf"), "invested": 0.0})

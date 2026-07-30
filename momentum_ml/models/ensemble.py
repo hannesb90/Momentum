@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 import config
 from models.ta_filter import ta_confirmation
+from backtest import pipeline_diagnostics as _diag
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -257,6 +258,7 @@ def build_full_output(
     ta_strictness: str = config.TA_FILTER_STRICTNESS,
     buy_threshold: Optional[float] = None,
     apply_entry_policy: bool = False,
+    record_diagnostics: bool = True,
 ) -> pd.DataFrame:
     """
     Returnerar ett long-format DataFrame med alla outputs:
@@ -575,5 +577,27 @@ def build_full_output(
     # medan percentilen alltid varierar och betyder något: "hur stark är aktien
     # relativt universumet just nu?" (det är också så urvalet faktiskt fungerar).
     df["prob_rank"] = df.groupby(level="Date")["prob_raw"].rank(pct=True)
+
+    # Eligible-mask-tratt (#5/#9 i pipeline-granskningen): universum ->
+    # eligible (förv.avk-golv) -> efter momentumgrind -> slutligt urval, per
+    # historiskt datum. Loggas HÄR, sist möjliga plats innan eligible/
+    # selection_eligible/position_size skrivs bort nedan - en gradvis
+    # krympande n_final/n_eligible-kvot över tid avslöjar tyst
+    # överfiltrering utan att någon enskild körning ser fel ut.
+    # record_diagnostics=False för serveringsmodellens build_full_output-
+    # anrop (main.py STEG 5.6) - annars loggas samma holdout-datum två
+    # gånger (mät- OCH serveringsmodellen), vilket skulle dubblera/
+    # motsäga varandra i eligible_funnel_history.csv:s tidsserie.
+    if record_diagnostics:
+        funnel = df.groupby(level="Date").agg(
+            n_scored=("ticker", "size"),
+            n_eligible=("eligible", "sum"),
+            n_after_gate=("selection_eligible", "sum"),
+            n_final=("position_size", lambda s: int((s > 0).sum())),
+        )
+        for date, row in funnel.iterrows():
+            _diag.record_eligible_funnel(
+                date, row["n_scored"], row["n_eligible"], row["n_after_gate"], row["n_final"])
+
     df = df.drop(columns=["raw_kelly", "vol", "mom", "eligible"])
     return df

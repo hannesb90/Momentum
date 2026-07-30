@@ -151,3 +151,26 @@ def test_fold_diagnostics_empty_before_training():
     model = MomentumLGBM(params=_SMALL_PARAMS)
     assert model.fold_diagnostics_ == []
     assert model.feature_importance_history_ is None
+
+
+# ── Featureordnings-guard (#6 i pipeline-granskningslistan) ──────────────────
+# predict() jämför redan self.feature_cols_ (satt vid träning) mot den LIVE
+# FEATURE_COLS och kastar ValueError vid avvikelse (models/lgbm_model.py,
+# se docstringen för strict=). Detta var den enda av de 10 granskade
+# kontrollerna som redan var löst i produktionskoden - men aldrig testad.
+
+def test_predict_raises_when_feature_cols_changed_since_training(trained_model):
+    df = _synthetic_df(n_weeks=10, n_tickers=4, seed=99)
+    original = trained_model.feature_cols_
+    try:
+        trained_model.feature_cols_ = original[:-1] + ["some_other_feature"]
+        with pytest.raises(ValueError, match="FEATURE_COLS har ändrats"):
+            trained_model.predict(df)
+    finally:
+        trained_model.feature_cols_ = original
+
+
+def test_predict_succeeds_when_feature_cols_unchanged(trained_model):
+    df = _synthetic_df(n_weeks=10, n_tickers=4, seed=99)
+    result = trained_model.predict(df)
+    assert len(result) == len(df)

@@ -458,6 +458,13 @@ DRIFT_WINDOW_WEEKS = 26     # rullande fönster för realiserad prestanda
 DRIFT_AUC_FLOOR    = 0.52   # under denna rullande AUC -> flagga
 DRIFT_MIN_SAMPLES  = 20     # minsta antal observationer för att räkna AUC
 
+# Feature-drift (backtest/pipeline_diagnostics.py::feature_distribution_report):
+# flagga en feature vars senaste DRIFT_WINDOW_WEEKS-fönster har ett medelvärde
+# som avviker mer än så här många TRÄNINGS-standardavvikelser från
+# träningsfönstrets medelvärde. 3.0 = tydlig avvikelse utan att flagga normalt
+# brus (en normalfördelning har <0.3% av massan bortom 3 std).
+FEATURE_DRIFT_STD_FLAG = 3.0
+
 # Extern kodgranskning 2026-07-25 (P0-fynd #2): _build_close_panel gjorde
 # tidigare OBEGRÄNSAD forward-fill - ett bolag med ett dataluckor (handels-
 # stopp, tunn omsättning i small/micro cap) fick sitt SISTA kända pris
