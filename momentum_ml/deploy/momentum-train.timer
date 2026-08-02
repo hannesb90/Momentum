@@ -1,0 +1,13 @@
+[Unit]
+Description=Kör momentum-train.service varje natt
+
+[Timer]
+# 02:00 lokal tid – lågtrafik, gott om tid innan morgonen.
+OnCalendar=*-*-* 02:00:00
+# Om Pi:n var av/sov vid 02:00, kör så snart den är uppe igen istället.
+Persistent=true
+# Sprid starten lite ifall flera Pi-instanser delar samma timer-fil.
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

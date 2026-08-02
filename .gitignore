@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+momentum_ml/cache/
+momentum_ml/results/
+/cache/
+/results/
+catboost_info/
+.venv/

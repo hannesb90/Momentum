@@ -1,0 +1,1193 @@
+"""
+config.py – Alla parametrar för momentum ML-systemet.
+Ändra här; rör inte modellkoden.
+"""
+import os as _os   # för env-styrda knoppar nedan (A/B utan filredigering)
+
+# Flyttad hit (var tidigare under "Misc" längre ner) – måste definieras FÖRE
+# LGBM_PARAMS för att kunna användas där. Var tidigare bara kopplad till
+# LLM-samplingskod (sentiment.py), ALDRIG till LGBM-träningen – en falsk
+# känsla av reproducerbarhet, se LGBM_PARAMS nedan.
+RANDOM_SEED = 42
+
+# ── Data ─────────────────────────────────────────────────────────────────────
+DEFAULT_TICKERS = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META", "JPM"]
+START_DATE      = "2010-01-01"
+END_DATE        = None          # None = idag
+INTERVAL        = "1wk"        # veckodata
+# Börsdata-adaptern finns, men dess OHLCV är prisavkastning medan den hittills
+# validerade modellen använder Yahoo auto_adjust=True (totalavkastning). Byt
+# inte default förrän historiska utdelningar har PIT-justerats och A/B-testats.
+PRICE_DATA_SOURCE = "borsdata_total_return"
+
+# Minsta historik (veckor) för att en ticker ska tas med. Modellen tränas på
+# POOLAD tvärsnittsdata, så en aktie behöver bara nog historik för sina egna
+# features (~52v ROC + FORWARD_WEEKS label + buffert) – INTE en hel egen
+# träningsperiod. Tidigare krävdes TRAIN_WINDOW_WEEKS+LSTM+FORWARD (=290v ≈
+# 5,6 år), vilket uteslöt nästan alla små-/nyintroducerade bolag och kapade
+# universumet till ~120. 78v ≈ 1,5 år släpper in dem. OBS: tickers med <36v
+# får ingen LSTM-prediktion (men väl LGBM). Sänk inte under ~60v.
+MIN_HISTORY_WEEKS = 78
+
+# ── Feature-fönster (veckor) ─────────────────────────────────────────────────
+MOMENTUM_WINDOWS   = [4, 8, 13, 26, 52]
+VOLATILITY_WINDOWS = [4, 13, 26]
+VOLUME_WINDOWS     = [4, 13]
+EMA_PAIRS          = [(8, 21), (13, 34), (21, 55)]
+ADX_PERIOD         = 14
+DONCHIAN_WEEKS     = 20         # utbrottsfönster (pris bryter N-veckors high/low)
+
+# Ablation: lista feature-namn som ska UTESLUTAS ur modellens indata genom hela
+# pipelinen (se features/feature_engineering.py). Default tom = full modell.
+# Ablationen (tune_ablation.py LOGO) visade att modellen är överbyggd – varje
+# borttagen grupp höjde capture-spreaden, och "tidig_entry" var aktivt skadlig
+# på holdouten (−5.1% → +1.5%). För att re-validera den borttagningen med FULLA
+# pipelinen (LGBM+LSTM+tröskel), avkommentera och kör en omträning:
+#   DROP_FEATURES = ["donchian_pos", "breakout_nw", "roc_accel_4w", "pullback"]
+DROP_FEATURES: list = []
+
+# Klassisk "12-1"-momentum: formation 52v, hoppa över senaste 4v (skip-month).
+# Skip-fönstret är avgörande – på 1-4 veckors sikt dominerar REVERSAL (aktier som
+# just stigit rekylerar), medan trenden 12→1 mån håller i sig (Jegadeesh-Titman).
+MOM_FORMATION_WEEKS = 52
+MOM_SKIP_WEEKS      = 4
+
+# ── Targets ──────────────────────────────────────────────────────────────────
+# Prognoshorisont. VIKTIGT: 4v låg i reversal-regimen – modellen lärde sig då att
+# undvika just de aktier som trendar (t.ex. SAAB under försvarsrusningen fick
+# aldrig prob_up över basnivån). Klassisk momentum håller 1-3 mån; 13v (≈kvartal)
+# ligger i momentum-regimen. Styr även REBALANCE_WEEKS och EMBARGO_WEEKS nedan.
+FORWARD_WEEKS      = 13         # Förutsägningshorisont (≈ kvartal, momentum-regim)
+RETURN_THRESHOLD   = 0.05       # >5% = positiv klass (endast om XS_TARGET=False)
+
+# Tvärsnitts-target (cross-sectional). Det gamla absoluta targetet ("går DENNA
+# aktie upp >RETURN_THRESHOLD på 4v?") gör att positiv klass nästan försvinner i
+# svaga perioder → prob_up kollapsar mot basfrekvensen för alla bolag (platt,
+# AUC ~0.50, ingen rangordning). Topp-N behöver i stället en RELATIV fråga:
+# "kommer aktien att SLÅ de andra bolagen?". Med XS_TARGET=True sätts positiv
+# klass = aktier vars framåtavkastning ligger i toppen (>= XS_TARGET_QUANTILE) av
+# universumets fördelning SAMMA vecka. Klassbalansen blir då ~konstant oavsett
+# marknadsregim och prob_up får verklig tvärsnitts-dispersion = meningsfull edge
+# att vikta på. (Jegadeesh-Titman-anda: relativ styrka, inte absolut nivå.)
+XS_TARGET          = True
+XS_TARGET_QUANTILE = 0.67       # topp-tertil = positiv klass
+
+# Rebalanseringsfrekvens (veckor). Modellen förutsäger FORWARD_WEEKS framåt, så
+# att rebalansera VARJE vecka på en 4-veckorssignal innebär att man ständigt
+# reagerar på brus och churnar portföljen – på en koncentrerad topp-N-portfölj
+# blir veckovis omsättning ~40%+/vecka, vilket äts upp av courtage/spread/impact
+# (mätt: ~8–20 %-enheter/år kostnadsdrag). Vi håller därför innehaven en hel
+# prognoshorisont och rebalanserar var FORWARD_WEEKS:e vecka. Marknadsfiltret
+# kan ändå de-riska däremellan (se backtester.run).
+REBALANCE_WEEKS    = FORWARD_WEEKS  # följer prognoshorisonten (13v)
+
+# Post-prediction rank smoothing. 1 = av (dagens produktionsbaslinje), 2 =
+# tvåveckors EMA. Miljöknappen gör att samma frusna modell kan A/B-testas utan
+# omträning eller källkodsbyte. Aktiveras permanent först efter ny validering
+# mot den korrigerade urvalsordningen.
+RANK_EMA_SPAN = int(_os.environ.get("MOMENTUM_RANK_EMA_SPAN", "1"))
+
+# Asymmetrisk exit: behåll de långsamma kvartals-INGÅNGARNA (rid vinnare), men
+# tillåt en SNABB utgång mellan rebalanseringar om ett innehavs trend bryts
+# (priset faller under sitt EXIT_SMA_WEEKS-glidande medel). "Sälj när bolaget är
+# klart" gjort robust – vi kallar inte toppen, vi reagerar på bruten trend.
+# Kapital som frigörs ligger i kontanter tills nästa schemalagda rebalans (då det
+# roteras in i nästa topp-N-namn). Default AV: skyddar den bevisade baslinjen –
+# slå på och A/B-testa (predict-only) innan den görs permanent. På syntetisk
+# slumpdata över-exitade den (korsar SMA hela tiden); på riktiga trender utlöses
+# den långt mer sällan, men måste mätas på riktig holdout först.
+ASYMMETRIC_EXIT    = False
+EXIT_SMA_WEEKS     = 20
+
+# ATR-baserad trailing stop (individnivå, mellan schemalagda rebalanseringar,
+# samma "sälj utan att köpa nytt"-princip som ASYMMETRIC_EXIT ovan). Skiljer
+# sig från den SMA-baserade _trend_exit genom att vara VOLATILITETSNORMALISERAD
+# och PER POSITION: sälj ett innehav om priset faller ATR_STOP_MULT × ATR
+# (Average True Range, ATR_WINDOW_WEEKS rullande) från sin HÖGSTA notering
+# SEDAN KÖP - kapar en enskild "raket" som rekylerar snabbt, oavsett om
+# bredare SMA-trend eller marknadsregim hunnit reagera än. En hög-vol-aktie
+# får automatiskt en vidare stop (i kronor) än en låg-vol-aktie - samma
+# princip som SIZING_MODE="inverse_vol" fast för EXIT i stället för sizing.
+# A/B:ad 2026-07-24 (UTVECKLINGSLOGG #36, large-segmentet, holdout+helperiod):
+# mult=2,5 höjer holdout-CAGR 4,0%->5,4% och förbättrar MaxDD (-9,5%->-8,9%)
+# UTAN att kosta helperioden (14,7% oförändrat) - enda av fyra testade
+# "täpp säljvakts-luckan"-idéer den dagen som faktiskt höll (#32/#33 gjorde
+# det sämre; en ren SMA-trendexit gjorde det också sämre). Skiljer sig från
+# de förkastade genom att vara per-position OCH volatilitetsnormaliserad -
+# ger en volatil extremvinnare mer utrymme innan den triggar, i stället för
+# en generell SMA/regim-regel som klipper vinnare och förlorare lika hårt.
+ATR_STOP_ENABLED   = False  # Sweep 2026-07-29 (UTVECKLINGSLOGG #36b): trailing stop klipper
+                            # momentum-alfa för storbolag i ALLA multiplarna (1.5–3.5x).
+                            # Baslinjen utan stopp dominerar på CAGR, Sharpe, Sortino och
+                            # holdout. Stängs av globalt; per-segment override via SEGMENTS.
+ATR_STOP_MULT      = 2.5      # antal ATR under peak innan sälj (svep 1.5-4.0)
+ATR_WINDOW_WEEKS   = 10       # rullande fönster för True Range-snittet
+
+# Rebalanseringsläge:
+#   "calendar" – rebalansera var REBALANCE_WEEKS:e vecka (bevisad baslinje).
+#   "event"    – HÄNDELSESTYRD rotation: tekniken avgör hålltiden, inte kalendern.
+#                Sälj ett innehav så snart trenden bryts (kurs < EXIT_SMA) ELLER det
+#                faller ur behåll-zonen (topp KEEP_BAND_MULT×N i prob_up-rank); fyll
+#                lediga platser samma vecka med nästa kvalificerade bolag. Stabila
+#                vinnare rids orört (no-trade-band), så omsättningen hålls nere trots
+#                veckovis utvärdering. Default calendar tills event A/B-testats.
+REBALANCE_MODE     = "calendar"
+KEEP_BAND_MULT     = 2.0    # håll ett innehav så länge det är inom topp 2N (hysteres)
+
+# No-trade-band (rebalans-buffert): vid schemalagd rebalans handlas en position
+# bara om måldiffen överstiger denna andel av portföljvärdet. Ett bredare band
+# = färre små justeringar = lägre omsättning/courtage, till priset av något
+# lösare viktning. 0.005 (0,5%) är den historiska baslinjen. Höj till t.ex.
+# 0.02–0.03 på Pi:n och A/B-testa mot holdouten om omsättningen tynger.
+REBALANCE_BUFFER_PCT = float(_os.environ.get("MOMENTUM_REBALANCE_BUFFER_PCT", 0.005))
+
+# Delisting-detektor: om en ticker saknar ny kurs i mer än så här många veckor
+# (relativt universumets senaste datum) tolkas bolaget som avnoterat och tas bort
+# – ska inte visas som aktuell signal eller störa beräkningarna. Se
+# data_loader.filter_active_universe.
+STALE_MAX_WEEKS    = 4
+
+# ── Walk-forward backtest ────────────────────────────────────────────────────
+TRAIN_WINDOW_WEEKS = 260        # ~5 år träning
+VAL_WINDOW_WEEKS   = 52         # ~1 år validering
+TEST_STEP_WEEKS    = 13         # Rulla 1 kvartal åt gången
+# Purge/embargo mot dataläckage: targets är FORWARD_WEEKS framåtavkastning, så
+# de sista veckornas labels i ett fönster överlappar nästa fönsters features.
+# Vi rensar (purgar) de sista EMBARGO_WEEKS observationerna ur varje segment
+# innan nästa börjar. Se walk_forward_splits och López de Prado (purged CV).
+EMBARGO_WEEKS      = FORWARD_WEEKS  # en hel label-horisont (13v)
+
+# ── Resursbegränsningar (för svagare hårdvara, t.ex. Raspberry Pi) ───────────
+# Antal CPU-trådar att avsätta för LightGBM/PyTorch-träning. Lämna minst en
+# kärna ledig åt API-servern om de körs på samma maskin samtidigt.
+# Sätts via env-variabeln MOMENTUM_TRAINING_THREADS (se deploy/), annars
+# None = låt biblioteken välja själva (default, använder alla kärnor).
+_env_threads = _os.environ.get("MOMENTUM_TRAINING_THREADS")
+NUM_TRAINING_THREADS = int(_env_threads) if _env_threads else None
+
+# ── Datarot: förankra cache/ och results/ under $MOMENTUM_HOME (om satt) ──────
+# Löser klon/deploy-splittringen: appen (API) körs från deploy-kopian, CLI-verktygen
+# från git-klonen – och relativa sökvägar pekar då på olika filer. Sätt
+# MOMENTUM_HOME=/opt/momentum/momentum_ml i systemd-uniten OCH i skalet
+# (~/.momentum.env) så BÅDA läser/skriver samma filer oavsett arbetskatalog.
+# Osatt → relativt CWD (oförändrat beteende, inget kan gå sönder).
+MOMENTUM_HOME = _os.environ.get("MOMENTUM_HOME", "").strip()
+
+
+def anchor(rel):
+    """Absolut sökväg under $MOMENTUM_HOME om satt (och rel är relativ), annars rel."""
+    rel = str(rel)
+    if MOMENTUM_HOME and not _os.path.isabs(rel):
+        return _os.path.join(MOMENTUM_HOME, rel)
+    return rel
+
+# ── LightGBM ─────────────────────────────────────────────────────────────────
+# seed/deterministic SAKNADES tidigare helt här – varje natts fulla omträning
+# (ALLA walk-forward-fönster sedan 2010, inte bara det senaste) gav därför en
+# genuint annorlunda modell varje gång, vilket ändrade prob_up för HELA
+# signalhistoriken och kaskaderade genom ~60 ombalanseringar till
+# miljonbelopp i "End Capital"-skillnad mellan två i övrigt identiska
+# körningar (bekräftat: subsample/colsample_bytree <1.0 gör träningen
+# stokastisk, och LightGBM är INTE bit-reproducerbart över trådar utan
+# deterministic=True även med ett fast seed – se LightGBM:s egen
+# dokumentation). RANDOM_SEED fanns redan i config men kopplades aldrig hit
+# (bara till orelaterad LLM-samplingskod i sentiment.py).
+LGBM_PARAMS = {
+    "objective":        "binary",
+    "metric":           ["binary_logloss", "auc"],
+    "learning_rate":    0.05,
+    "num_leaves":       63,
+    "min_child_samples":50,
+    "subsample":        0.8,
+    "colsample_bytree": 0.8,
+    "reg_alpha":        0.1,
+    "reg_lambda":       1.0,
+    "n_estimators":     1000,
+    "early_stopping_rounds": 50,
+    "verbose":          -1,
+    "num_threads":      NUM_TRAINING_THREADS or 0,  # 0 = LightGBM väljer själv
+    "seed":                  RANDOM_SEED,
+    "bagging_seed":          RANDOM_SEED,
+    "feature_fraction_seed": RANDOM_SEED,
+    "data_random_seed":      RANDOM_SEED,
+    "deterministic":         True,  # krävs för bit-reproducerbarhet över trådar, inte bara ett seed
+    "force_row_wise":        True,  # deterministic=True kräver detta (LightGBM-varning annars)
+}
+
+# ── LSTM ─────────────────────────────────────────────────────────────────────
+LSTM_SEQUENCE_LEN  = 26        # 26 veckors historik per sample
+LSTM_HIDDEN_SIZE   = 128
+LSTM_NUM_LAYERS    = 2
+LSTM_DROPOUT       = 0.2
+LSTM_EPOCHS        = 100
+LSTM_BATCH_SIZE    = 64
+LSTM_LR            = 1e-3
+LSTM_PATIENCE      = 15        # Early stopping
+
+# ── Ensemble ─────────────────────────────────────────────────────────────────
+# FASTA prior-vikter för LGBM/LSTM-blandningen. Dynamisk rolling-Sharpe-viktning
+# är INTE implementerad (den gamla `ROLLING_SHARPE_WINDOW` + update_weights-stub
+# var ett dött löfte och är borttagna). Se models/ensemble.py.
+ENSEMBLE_LGBM_WEIGHT = 0.6
+ENSEMBLE_LSTM_WEIGHT = 0.4
+
+# ── Köptröskel (data-driven) ─────────────────────────────────────────────────
+# pred_signal = 1 om prob_up > BUY_THRESHOLD. Istället för en hårdkodad 0.5
+# kan tröskeln sökas fram på dev-perioden (in-sample) och valideras på den
+# frusna holdouten – se backtest/threshold_opt.py och flaggan
+# --optimize-threshold (default på). Detta löser "nästan alltid i kontanter"-
+# problemet: en välkalibrerad P(>5% på 4v) passerar sällan 0.5, så portföljen
+# blir sällan investerad. Låt datan välja nivån istället för att gissa.
+BUY_THRESHOLD = 0.5   # legacy: används ej i alltid-investerad topp-N-design
+# Selektivitetsgolv: en aktie är kandidat till portföljen bara om dess
+# förväntade avkastning (över FORWARD_WEEKS) överstiger detta. Default 0.0 =
+# håll vilket bolag som helst med icke-negativ förväntan → "alltid investerad"
+# (topp-N fyller portföljen). HÖJ för färre/starkare innehav och mer kontanter
+# i svaga perioder (t.ex. 0.015 för att kräva marginal över round-trip-kostnad).
+MIN_EXPECTED_RETURN = 0.0
+# Kandidatrutnät som söks igenom. Varje testad nivå är ett "trial" som
+# deflaterar Deflated Sharpe Ratio (multipeltestning) – se --n-trials.
+BUY_THRESHOLD_GRID = [0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
+# Mål som maximeras vid sökningen: 'sharpe' (default, riskjusterat),
+# 'cagr' (rå avkastning – överanpassar lättare) eller 'calmar' (CAGR/|maxDD|).
+THRESHOLD_OBJECTIVE = "sharpe"
+
+# ── Positionssizing (Kelly) ───────────────────────────────────────────────────
+KELLY_FRACTION     = 0.25      # Fractional Kelly (25%)
+MAX_POSITION       = 0.20      # Max 20% per position
+MIN_POSITION       = 0.01      # Min 1% (annars ej handel)
+MAX_POSITIONS      = 10        # Max antal samtidiga positioner
+# Conviction-tilt vs likavikt (krympning). prob_up mäter P(+5% på 4v) och är
+# naturligt <0.5 för nästan alla bolag, så absolut Kelly blir 0 för de flesta
+# och portföljen kollapsar till de få namn som råkar ha hög prob_up – inte en
+# diversifierad topp-N. Vi krymper därför conviction-vikten mot likavikt:
+# vikt_i = (1-blend)*likavikt + blend*kelly_normaliserad. 0.0 = ren likavikt,
+# 1.0 = ren conviction. Likavikt är notoriskt svårslaget och krympning minskar
+# estimeringsbrus (Ledoit-Wolf-anda) – varje vald aktie får alltid en
+# meningsfull vikt så vi håller N diversifierade innehav.
+CONVICTION_BLEND   = 0.5
+
+# Sizing-läge: hur vikten FÖRDELAS bland de N namn som rangordnats in (urvalet
+# sker alltid på prob_up – tvärsnitts-edgen). A/B-bart i tune_sizing.py:
+#   "conviction"  – tilt ∝ Kelly-conviction (default, bevisad baslinje).
+#   "inverse_vol" – tilt ∝ 1/volatilitet (risk-paritet; lika riskbidrag per namn,
+#                   dämpar att högvolatila namn dominerar – Sortino-hygien).
+# Bägge krymps mot likavikt med CONVICTION_BLEND. Samma N, olika vikt → isolerar
+# sizing-effekten rent. A/B 2026-06 (tune_sizing.py large): inverse_vol slog
+# conviction på HELA rutnätet vid blend 0.5 – CAGR 14.0→14.3%, Sharpe 1.07→1.10,
+# alfa −1.7→−1.4%, holdout 0.0→+0.7%. Adopterat.
+SIZING_MODE = "inverse_vol"
+
+# Momentum-kvalitetsgrind + villkorad kontant (experiment, default AV). Adresserar
+# en konstruktionsmiss: alltid-investerad topp-N tvingar ~100% i N namn ÄVEN när
+# bara några få har äkta momentum → de få vinnarna späds ut av "minst dåliga"
+# namn (motsatsen till kap-viktning, som låter vinnaren bli stor). Med grinden på
+# hålls bara namn med abs. 12-1-momentum > MOMENTUM_GATE_MIN, och investerad andel
+# blir k/N (k = antal som klarar grinden) → kontanter byggs när momentum är ont om.
+# Ändrar bara sizing (ej modellen) → A/B utan omträning via tune_gate.py. Behåll
+# bara om holdout/alfa förbättras utan att kontant-draget äter mer än det räddar.
+# ADOPTERAT 2026-06-28 (tune_gate.py large, tröskel-svep): grinden vid >10% slog
+# baslinjen på VARJE mått och var en robust platå (5–10% alla bättre, topp vid 10%,
+# faller vid 15% – inte en holdout-spik): CAGR 12.4→14.3%, Sharpe 1.12→1.25, alfa
+# −3.3→−1.4%, MaxDD −19.9→−17.6%, holdout +1.3→+4.4%. (Fortfarande negativ alfa mot
+# likavikt – en reell förbättring, inte ett index-slag.) OBS: validerat LGBM-only
+# som inverse_vol/vol-target; nästa fulla träning bekräftar med LSTM.
+# PER-SEGMENT: grinden hjälpte STOR men STJÄLPTE SMÅ på holdouten → den styrs nu
+# av gate_enabled/gate_min i SEGMENTS (stor: på, små: av). Värdena här är bara
+# fallback/default om man kör utan --segment.
+MOMENTUM_GATE_ENABLED = True
+MOMENTUM_GATE_MIN     = 0.10  # kräver >10% abs. 12-1-momentum för att hållas
+# Vad gör vi när FÅ namn klarar grinden? Två filosofier (A/B i tune_gate.py):
+#   "cash"        – defensivt: investerad andel = k/N, resten kontant (mindre risk
+#                   när momentum är ont om).
+#   "concentrate" – aggressivt: satsa ~100% i de få som trendar (som kap-viktning
+#                   som låter vinnarna bli stora). Per-namn-taket höjs då till
+#                   MOMENTUM_GATE_CONCENTRATE_CAP. OBS: hög koncentration = hög
+#                   idiosynkratisk risk (en vinstvarning på ett namn slår hårt) –
+#                   för en bred publik är "cash" det ansvarsfulla default-valet;
+#                   låt Sharpe/MaxDD i svepet avgöra.
+MOMENTUM_GATE_MODE            = "cash"
+MOMENTUM_GATE_CONCENTRATE_CAP = 0.34   # per-namn-tak i concentrate (0.5 = tillåt 100% i 2 namn)
+
+# ── Target-vol-overlay (Barroso & Santa-Clara, "Managing the risk of momentum") ─
+# Skalar portföljens BRUTTOEXPONERING kontinuerligt mot en mål-volatilitet i
+# stället för det grova bull/sideways/bear-marknadsfiltret: exp = min(target_vol /
+# realiserad_vol, tak). Litteraturens mest robusta momentum-förbättring – sänker
+# drawdowns/höjer Sharpe genom att dra ner inför turbulens. Long-only & ingen
+# hävstång → taket är 1.0 (overlayn skalar bara NER mot kontanter, aldrig upp).
+# OBS: realiserad vol mäts på portföljvärdet (efter ev. nedskalning) – en
+# pragmatisk proxy med viss återkoppling; långt lookback dämpar oscillation.
+# A/B 2026-06 (tune_voltarget.py large): mål 10% var bäst – Sharpe 1.07→1.16,
+# Sortino 1.29→1.60, MaxDD −28.2→−20.6%, holdout 0.0→+0.7% (kostar CAGR
+# 14.0→13.4%). Adopterat: för en bred publik är 7,6 pp mindre drawdown värt det.
+VOL_TARGET_ENABLED        = True
+VOL_TARGET_ANNUAL         = 0.10   # mål: 10% annualiserad portföljvol
+VOL_TARGET_LOOKBACK_WEEKS = 13     # fönster för realiserad vol
+VOL_TARGET_MAX_LEVERAGE   = 1.0    # tak (1.0 = ingen hävstång, bara de-risking)
+# EWMA-skattning av realiserad vol (RiskMetrics): väg senaste veckorna tyngre än
+# ett platt fönster. Reagerar snabbare när vol skjuter i höjden (de-riskar tidigare
+# inför en sättning) och släpper greppet snabbare efteråt. lambda≈0.94 ger en
+# effektiv halveringstid på ~11 veckor. Default av → platt rullande std (baslinjen);
+# slå på och A/B-testa mot holdouten på Pi:n.
+VOL_TARGET_EWMA           = _os.environ.get("MOMENTUM_VOL_TARGET_EWMA", "0") not in ("0", "", "false", "False")
+VOL_TARGET_EWMA_LAMBDA    = 0.94
+
+# ── Backtest-kostnader ────────────────────────────────────────────────────────
+# COMMISSION/FX_FEE = Montrose faktiska avgifter (courtage 0,15%, valutaväxling
+# 0,12% - verifierat mot mäklarens prislista 2026-07-19, tidigare 0,1%-gissning
+# var för lågt räknat). FX_FEE gäller BARA icke-SEK-instrument (kärnallokeringens
+# globala UCITS-ETF:er på Xetra, EUNL.DE/IUSQ.DE/SXR8.DE/IS3N.DE/EXSA.DE m.fl. -
+# se ETF_ROT_COST_ONEWAY). Huvudmodellens svenska aktieuniversum (.ST/.NGM)
+# handlas i SEK och betalar bara COMMISSION, ingen FX.
+COMMISSION         = 0.0015    # 0.15% courtage per trade
+FX_FEE             = 0.0012    # 0.12% valutaväxling (bara icke-SEK-instrument)
+SLIPPAGE           = 0.001     # 0.1% slippage
+INITIAL_CAPITAL    = 1_000_000 # 1 MSEK startkapital
+
+# ── ISK-schablonskatt (kapitaldrag i SJÄLVA backtest-equity-kurvan) ───────────
+# Ett svenskt ISK schablonbeskattas ÅRLIGEN oavsett om något sålts - kontanter
+# urholkas alltså av skatt precis som investerat kapital, en "cash drag" som
+# annars saknas helt i run()s kapitaltillväxt (INITIAL_CAPITAL bara växer/
+# krymper av handel, aldrig av skatt). Skiljt från PORTFOLIO_ISK_LIMIT
+# (portfolio.py) - den är en KVALITATIV input till säljvakts-RÅDGIVNINGEN i
+# skarpt läge, den här är ett KVANTITATIVT avdrag i backtestens siffror.
+#
+# schablonintäkt-andel = max(SLR(30 nov FÖREGÅENDE år) + 1 %-enhet, golv 1.25%)
+# skatt = kapitalunderlag (kvartalsmedel 1/1,1/4,1/7,1/10) × andelen × 30%.
+# Formel/golv verifierat mot Skatteverket/Riksgälden (WebSearch 2026-07-18).
+#
+# ISK_SLR_BY_YEAR: KÄNDA värden (källa Riksgälden pressmeddelanden/Skatte-
+# verket, samma verifiering). 2010-2013 kunde INTE verifieras härifrån
+# (Riksgäldens historiska Excel-fil gick inte att nå från den här sessionen)
+# - lämnade MEDVETET utanför i stället för att gissa. Backtester som täcker
+# de åren faller tillbaka på lagstadgade golvet (ISK_SCHABLON_FLOOR) och
+# VARNAR en gång i loggen - komplettera tabellen om den perioden spelar roll.
+ISK_TAX_ENABLED    = False
+ISK_SLR_BY_YEAR = {
+    2014: 0.90, 2015: 0.65, 2016: 0.27, 2017: 0.49, 2018: 0.51,
+    2019: -0.09, 2020: -0.10, 2021: 0.23, 2022: 1.94, 2023: 2.62,
+    2024: 1.96, 2025: 2.55,
+}
+ISK_SCHABLON_FLOOR = 0.0125    # lagstadgat golv, 1.25% (gäller ISK sedan inkomstår 2018)
+ISK_TAX_RATE        = 0.30     # kapitalinkomstskatt på schablonintäkten
+
+# Fribelopp (skattefritt kapitalunderlag): en HELT NY regel, fanns INTE innan
+# inkomstår 2025 (då var HELA kapitalunderlaget skattepliktigt, precis vad
+# koden gjorde innan denna rad fanns). 150 000 kr för 2025, höjt till
+# 300 000 kr fr.o.m. 2026 (gäller per person, alla ISK+KF sammanräknat -
+# den här backtesten modellerar EN portfölj så hela fribeloppet tillämpas
+# rakt av). WebSearch-verifierat 2026-07-18 (Avanza/Handelsbanken/SEB).
+# Saknat år (före 2025, eller framtida år lagstiftaren ännu inte satt) →
+# 0 kr fribelopp - det är den KÄNDA, korrekta defaulten för de åren, inte
+# en gissning (till skillnad från ISK_SLR_BY_YEAR:s luckor ovan).
+ISK_FRIBELOPP_BY_YEAR = {
+    2025: 150_000,
+    2026: 300_000,
+}
+
+# ── Risk management ───────────────────────────────────────────────────────────
+DRAWDOWN_GUARD_THRESHOLD   = 0.15   # vid -15% drawdown, börja de-leverage
+DRAWDOWN_GUARD_FLOOR       = 0.30   # min kvarvarande exponering vid 2x tröskeln (-30% DD)
+MAX_PAIRWISE_CORRELATION   = 0.85   # över denna nivå räknas tickers som redundanta
+CORRELATION_LOOKBACK_WEEKS = 26
+
+# ── Robusthet (bootstrap) ─────────────────────────────────────────────────────
+BOOTSTRAP_N_SIMS     = 1000
+BOOTSTRAP_BLOCK_WEEKS = 4    # bevarar kort-sikt-autokorrelation vid resampling
+
+# ── Sektorexponering ──────────────────────────────────────────────────────────
+# OBS: statisk mappning för DEFAULT_TICKERS. Lägg till nya tickers här om
+# universet utökas, annars hamnar de i "Okänd" och begränsas inte korrekt.
+SECTOR_MAP = {
+    "AAPL":  "Technology",
+    "MSFT":  "Technology",
+    "NVDA":  "Technology",
+    "GOOGL": "Technology",
+    "META":  "Technology",
+    "TSLA":  "Consumer Discretionary",
+    "AMZN":  "Consumer Discretionary",
+    "JPM":   "Financials",
+}
+MAX_SECTOR_EXPOSURE = 0.40   # max 40% portföljvikt i en enskild sektor
+
+# Bolagsnamn per ticker. Fylls från sweden_universe.csv m.fl. i main.py
+# (config.NAME_MAP.update(...)) så signals.csv kan exportera ett namn-fält –
+# frontend visar namn + ticker i listor/aktievyn och kan söka på bolagsnamn.
+NAME_MAP: dict = {}
+
+# Cap-tier per ticker (Large/Mid/Small/Micro Cap ELLER "Fond" för ETF:er/
+# indexfonder). Fylls från load_sweden_universe() i main.py, samma mönster
+# som SECTOR_MAP/NAME_MAP. Används av ensemble.build_full_output för att
+# UTESLUTA fonder från köpkandidat-urvalet (2026-07-24: XACT-fonder och
+# tyska iShares/Xtrackers-ETF:er som medvetet laddas in för sektor-
+# momentum-signaler, se load_sweden_universe():s docstring, läckte in som
+# faktiska KÖPSIGNALER - 85 ggr i large, 448 ggr i small, inkl. att
+# XACT-SVERIGE.ST/XACT-OMXS30.ST rekommenderades som "småbolagsköp" 17
+# gånger. Fonder ska ge sektor-signaler, aldrig vara en portföljkandidat).
+CAP_TIER_MAP: dict = {}
+
+# FI:s historiska blankningsregister. Validerad endast för Large/Mid:
+# 0,03 percentilenheter i avdrag per blankad procentenhet. Small/Micro är
+# uttryckligen av eftersom avsaknad av blankning där ofta är ett lånebarhetsfel.
+SHORT_SIGNAL_ENABLED = True
+# Shadow tills samma förbättring syns både före och i frusen holdout. Matris
+# 2022–2024 / 2024–2026 gav motsatt tecken trots stark senaste holdout.
+SHORT_ENTRY_ENABLED = False
+SHORT_ENTRY_PENALTY_PER_PCT = 0.03
+SHORT_ENTRY_MAX_PCT = 10.0
+SHORT_EXIT_DELTA_8W_PP = 0.5
+SHORT_EXIT_LEVEL_PCT = 3.0
+SHORT_EXIT_RED_ENABLED = False  # amber-observation tills full exit är portföljvaliderad
+ACTIVE_SEGMENT = "large"  # main.py skriver över från --segment före modellbygget
+
+# Kanoniska kategorilistor för sektor/cap-tier som modell-features
+# (features/feature_engineering.py: sector_code, cap_tier_code). Fast
+# ordning krävs eftersom träning och prediktion körs i separata processer
+# (se main.py) – koderna måste vara identiska mellan de körningarna.
+# "Okänd"/"Unknown" sist fångar allt som inte matchar (t.ex. om universet
+# utökas till nya marknader senare).
+SECTOR_CATEGORIES = [
+    "Communication Services", "Consumer Discretionary", "Consumer Staples",
+    "Energy", "Financials", "Health Care", "Industrials",
+    "Information Technology", "Technology", "Materials", "Real Estate",
+    "Utilities", "Fond", "Okänd",
+]
+CAP_TIER_CATEGORIES = [
+    "Mega Cap", "Large Cap", "Mid Cap", "Small Cap", "Micro Cap", "Nano Cap",
+    "Fond", "Okänd",
+]
+
+# ── Modell-drift-monitoring ───────────────────────────────────────────────────
+DRIFT_WINDOW_WEEKS = 26     # rullande fönster för realiserad prestanda
+DRIFT_AUC_FLOOR    = 0.52   # under denna rullande AUC -> flagga
+DRIFT_MIN_SAMPLES  = 20     # minsta antal observationer för att räkna AUC
+
+# Feature-drift (backtest/pipeline_diagnostics.py::feature_distribution_report):
+# flagga en feature vars senaste DRIFT_WINDOW_WEEKS-fönster har ett medelvärde
+# som avviker mer än så här många TRÄNINGS-standardavvikelser från
+# träningsfönstrets medelvärde. 3.0 = tydlig avvikelse utan att flagga normalt
+# brus (en normalfördelning har <0.3% av massan bortom 3 std).
+FEATURE_DRIFT_STD_FLAG = 3.0
+
+# Extern kodgranskning 2026-07-25 (P0-fynd #2): _build_close_panel gjorde
+# tidigare OBEGRÄNSAD forward-fill - ett bolag med ett dataluckor (handels-
+# stopp, tunn omsättning i small/micro cap) fick sitt SISTA kända pris
+# återanvänt i all evighet i stället för att flaggas som stale. Ren
+# survivorship-filtrerade (helt avnoterade, se filter_active_universe())
+# bolag berörs inte - de utesluts redan helt ur universumet - men ett
+# TILLFÄLLIGT dataglapp mitt i en annars aktiv akties historik dolde
+# tidigare portföljvärdet som stabilt under glappet i stället för okänt.
+MAX_PRICE_FFILL_WEEKS      = 8      # cap på hur länge ett pris återanvänds
+
+# ── Likviditet & marknadsimpact ───────────────────────────────────────────────
+LIQUIDITY_LOOKBACK_WEEKS   = 13     # fönster för genomsnittlig dollarvolym
+LIQUIDITY_MAX_ADV_FRACTION = 0.10   # max andel av ADV som handlas per vecka
+MARKET_IMPACT_COEF         = 0.10   # skala på sqrt(trade_value/ADV)-termen
+MARKET_IMPACT_MAX          = 0.05   # tak för impact-kostnad per trade (5%)
+
+# Likviditetsberoende halv-spread (bid/ask). Fast courtage+slippage (0.15%+0.1%)
+# är rimligt för Large Cap men optimistiskt för tunt handlade små-/microbolag
+# där spreaden lätt är 1-3%. Vi lägger på en halv-spread som växer när en
+# akties omsättning (ADV) ligger under en referensnivå, klippt till ett tak.
+# Detta gör att den utökade småbolagsavkastningen inte blir illusorisk.
+SPREAD_ADV_REF = 5_000_000   # ADV (lokal valuta/vecka) där spreaden är "normal"
+SPREAD_MIN     = 0.0005      # 0.05% halv-spread för mycket likvida bolag
+SPREAD_MAX     = 0.020       # 2% tak för de tunnaste namnen
+
+# VIX-driven dynamisk spread/slippage: ovanstående _half_spread fångar TVÄR-
+# SNITTS-variation (småbolag dyrare att handla än storbolag, via ADV) men
+# INTE TIDSVARIATION - implicit spread vidgas historiskt kraftigt när
+# marknaden panikar, oavsett ett enskilt bolags egen likviditet. Multiplicerar
+# slippage+halv-spread (INTE courtage, INTE impact-termen - se docstring i
+# _execution_cost_rate) med SLIPPAGE_VIX_STRESS_MULT under samma stress-flagga
+# etf_rotation.py:s regim-gate redan använder (macro_data.stress_series: VIX +
+# kreditspread, ingen ny datakälla). Eftersom _half_spread redan är störst för
+# småbolag blir den ABSOLUTA ökningen automatiskt störst där också - ingen
+# separat småbolags-term behövs. Default AV: måste A/B:as innan adoption.
+SLIPPAGE_VIX_ENABLED     = False
+SLIPPAGE_VIX_STRESS_MULT = 2.0   # multiplikator under stress (svep 1.5-3.0)
+
+# ── Universumfilter (förfilter innan feature engineering/träning) ────────────
+# Tunt handlade bolag drar ner datakvalitet och ökar beräkningstid utan att
+# tillföra mycket – filtreras bort innan resten av pipelinen körs. Tröskeln
+# är i lokal valuta (t.ex. SEK för .ST-tickers, USD för US-tickers).
+UNIVERSE_MIN_AVG_TURNOVER       = 100_000     # min genomsnittlig omsättning/vecka
+UNIVERSE_LIQUIDITY_LOOKBACK_WEEKS = 26         # fönster för det måttet
+
+# ── Index-benchmark (visuell jämförelse i appen) ──────────────────────────────
+# OMXS30 = vad en bred publik faktiskt köper passivt (kap-viktat, 30 största).
+# Vi använder XACT-OMXS30-ETF:en (finns i universumet) som kursproxy och visar
+# den som en linje mot strategins portfölj. OBS: detta är en ANNAN, oftast mildare
+# ribba än vårt likaviktade köp-och-behåll-benchmark (som alfa/beta räknas mot).
+INDEX_BENCHMARK_TICKER = "XACT-OMXS30.ST"
+INDEX_BENCHMARK_LABEL  = "OMXS30 (XACT)"
+
+# ── Orderläggning (limit för köpsignaler) ─────────────────────────────────────
+# En köpsignal ska inte jagas hur högt som helst – gapar aktien upp innan du
+# hinner köpa är edgen delvis borta. Varje aktuell köpsignal får därför en
+# inköpsgräns = referenskurs × (1 + BUY_LIMIT_TOLERANCE). Lägg en LIMITORDER på
+# den nivån; fyller priset inte ≤ gränsen avstår du (nästa rebalans fångar den
+# annars). Litet tal eftersom edgen sitter på kvartalshorisont, inte intradag.
+BUY_LIMIT_TOLERANCE = 0.015   # köp: max 1.5% över referenskurs
+# Symmetrisk sälj-limit: dumpa inte ett innehav du vill ut ur in i ett tillfälligt
+# gap-ned – lägg en sälj-LIMITORDER på minst referenskurs × (1 - SELL_LIMIT_TOLERANCE).
+SELL_LIMIT_TOLERANCE = 0.015  # sälj: minst 1.5% under referenskurs
+
+# ── Corporate actions / datakvalitet ──────────────────────────────────────────
+SUSPICIOUS_JUMP_THRESHOLD = 0.60    # flagga veckoavkastning över denna magnitud
+
+# ── Teknisk-analys-filter (valbart, slås på med --ta-filter gate|score) ───────
+# Ett bekräftelselager ovanpå modellens köpsignaler, byggt på TA-features som
+# redan beräknas i feature_engineering.py (ingen extra datahämtning). Två lägen:
+#   gate  – hård grind: köpsignalen nollas om villkoren inte uppfylls
+#   score – mjuk viktning: position_size skalas med andelen uppfyllda villkor
+# Stränghet (--ta-strictness) väljer vilka villkor som krävs:
+#   loose    – bara pris > SMA52
+#   moderate – trend (ADX) + riktning upp + pris > SMA52   (default)
+#   strict   – alla ovan + nära 52v-högsta + ej överköpt
+TA_FILTER_STRICTNESS = "moderate"
+TA_FILTER_ADX_MIN    = 20.0   # minsta ADX för att räkna trenden som "riktig"
+TA_FILTER_HIGH52_MIN = 0.90   # high52_ratio: hur nära 52v-högsta (1.0 = vid högsta)
+TA_FILTER_BB_MAX     = 1.0    # bb_position-tak: över detta = för överköpt
+
+# ── Marknadsregimer ───────────────────────────────────────────────────────────
+# 26v var för trögt (lagg) - i en snabb återhämtning hann klassificeraren
+# fortfarande läsa "björn/sidledes" flera veckor efter att uppgången redan
+# återupptagits, vilket kostade avkastning UTAN att ge mer skydd (se
+# UTVECKLINGSLOGG.md #28: svep 8/13/17/26/39/52v, large-segmentet). 13v gav
+# bäst balans - holdout-CAGR −1,8%→+0,4%, och dessutom klart BÄTTRE
+# helperiod-MaxDD (−19,5%→−13,9%) än 26v, inte en avvägning åt något håll.
+REGIME_SMA_WEEKS = 13       # trend-proxy för bull/bear/sidledes-klassificering
+
+# ── Marknadsfilter (long-only exponerings-overlay) ────────────────────────────
+# Long-only momentum bär full marknadsrisk. I stället för att blanka (som vi
+# medvetet INTE gör) drar vi ner portföljens bruttoexponering mot kontanter när
+# den breda marknaden är svag, och kör fullt i stark trend. Detta är klassisk
+# trendfilter-/dual-momentum-logik (Faber; Antonacci) och sänker både beta och
+# björnmarknads-drawdowns utan blankning. Faktorn multipliceras på målvikterna;
+# resten hamnar i kontanter automatiskt. Använder samma bull/bear/sidledes-
+# klassificering som regim-fliken (backtest/regime.py).
+# Sidledes-dämpningen borttagen (var 0.6 → 1.0): inget kontant-drag i sidledes-
+# marknad. Björn-skyddet BEHÅLLS (0.25) → skalar ner i tydliga kraschregimer.
+MARKET_FILTER_EXPOSURE = {"bull": 1.0, "sideways": 1.0, "bear": 0.25}
+# A/B: dämpa exponeringen i sidledes-regim (holdouten tappar mest just där).
+# MOMENTUM_SIDEWAYS_EXP=0.5 skalar sidledes-vikterna till 50%; default oförändrat.
+_sideways_exp = _os.environ.get("MOMENTUM_SIDEWAYS_EXP")
+if _sideways_exp:
+    MARKET_FILTER_EXPOSURE["sideways"] = float(_sideways_exp)
+
+# Pappershandeln: innehav vars ticker saknar pris så här många KÖRNINGAR i rad
+# tvångssäljs på senast kända pris (avnotering/namnbyte = tvingad exit i verkligheten).
+PAPER_MISSING_LIQUIDATE_STEPS = 4
+
+# ── Frusen holdout ────────────────────────────────────────────────────────────
+HOLDOUT_WEEKS = 104         # ~2 år som modellen aldrig tränas på
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+CACHE_DIR          = "cache"
+RESULTS_DIR        = "results"
+
+# ── Alt-data: MFN-pressmeddelanden + LLM-sentiment (validate-first) ────────────
+# Hypotes: tvärsnittsmomentum på enbart pris har tappat sin edge i algo-eran
+# (era_analysis.py visade att försprånget mot OMXS30 var uppvärmnings-artefakt).
+# En durabel edge kräver alt-data som algon inte trivialt arbitrerar bort:
+# TONEN i bolagens egna regulatoriska pressmeddelanden (PEAD-anda – marknaden
+# under-reagerar på nyhetston och driften håller i sig veckor framåt).
+#
+# MFN.se (Modular Finance) distribuerar nordiska regulatoriska PM och har ett
+# ARKIV med publiceringstidsstämpel → point-in-time text utan look-ahead, vilket
+# är exakt vad en ärlig backtest kräver. Vi poängsätter varje PM med Claude
+# (sentiment + materialitet) och testar OOS (2016+) om signalens capture-spread
+# är positiv INNAN vi bygger in den i modellen. Engångskostnad ~hundralapp
+# (Haiku 4.5 + Batch-API), löpande drift ~ören/vecka.
+#
+# OBS: körs på Pi:n (molncontainern når varken mfn.se eller Yahoo). MFN:s exakta
+# endpoint/JSON-form ska verifieras med `mfn_fetch.py probe <query>` på Pi:n
+# innan massiv hämtning – se altdata/README.md.
+MFN_BASE_URL        = "https://mfn.se"
+MFN_LANG            = "sv"          # hämta svenska PM (MFN har även "en")
+MFN_REQUEST_PAUSE_S = 0.5          # paus mellan anrop (snäll mot MFN)
+MFN_MAX_PAGES       = 20           # max feed-sidor per bolag (500 PM/sida; stoppar vid START_DATE)
+# LLM-klipp (token-kostnad): appliceras vid LÄSNING i sentiment._prompt –
+# INTE längre vid cache-tillfället (se MFN_CACHE_MAX_BODY_CHARS nedan).
+MFN_MAX_BODY_CHARS  = 8000
+# Cache-klipp: hur mycket av PM-texten som SPARAS. Var tidigare samma 8000
+# som LLM-klippet – men svenska rapport-PM klistrar in resultat-/balans-
+# räkningen I SLUTET av texten, efter narrativet, så exakt tabellerna med
+# equity/net_profit/skulder (de vanligaste dataluckorna) klipptes bort
+# INNAN regex-extraktionen någonsin såg dem. 40k rymmer sammandrags-
+# tabellerna; token-fria konsumenter (mfn_fundamentals/soft_signals) läser
+# gärna allt, LLM-vägarna klipper själva (sentiment 8k, quality 24k).
+# OBS: redan cachade PM är klippta vid 8k – kräver omhämtning (schema-bump
+# i mfn_fetch) för att historiken ska få fulltexten.
+MFN_CACHE_MAX_BODY_CHARS = 40000
+# PDF-backfill: max antal rapport-PM per bolag (nyaste först) som får sin
+# PDF hämtad när NYCKELFÄLT saknas i textextraktionen. Modellen använder
+# senaste + upp till 4 historiska rapporter → 6 täcker behovet utan att
+# ladda ner decennier av PDF:er per bolag.
+MFN_PDF_BACKFILL_PER_TICKER = 6
+MFN_CACHE_DIR       = "cache/mfn"   # rå-PM cachas här (JSON per ticker)
+# Tröskel för "fryst" MFN-cache (mfn_fetch.refresh_universe() Avanza-
+# fallback) – 18 månader. VERIFIERAT 2026-07-21: en full-universum-audit
+# (696 bolag) visade 57 med senaste PM äldre än detta + 13 helt utan cache
+# (~10%), bl.a. Lundin Gold/-Mining/Lucara (Lundin-familjebolag, utländsk
+# primärnotering) som bytt till Cision men fortfarande handlas/rapporterar
+# aktivt – se altdata/avanza.py:s avanza_news_as_mfn_items(). 18 mån ger
+# marginal mot bolag som bara haft en lugn period (kvartalsvis rapportering
+# ≈90 dagars intervall; 548 dagar ≈ 6 uteblivna kvartal innan vi ens
+# försöker Avanza-fallbacken).
+MFN_STALE_DAYS      = 548
+BORSAPI_CACHE_DIR   = "cache/borsapi"  # BörsAPI-svar cachas för alltid (kvot = engångspott)
+BORSAPI_DAILY_BUDGET = 90              # krediter/dygn för backfill (gratis engångspott: kör "backfill 70"; Hobby: 90; Pro: 480)
+BORSAPI_BACKFILL_YEARS = 4             # hämta bara senaste N årens rapporter (F-score 2, fund-momentum 3, +1 buffert)
+BORSDATA_CACHE_DIR  = "cache/borsdata"  # Börsdata-svar cachas för alltid (rate limit är per sekund, inte en pott)
+
+# LLM-sentiment (Anthropic). API-NYCKELN läses ur miljövariabeln ANTHROPIC_API_KEY
+# – lägg ALDRIG nyckeln i koden/repot. Haiku räcker för klassificering; höj till
+# Sonnet bara om A/B på ~200 PM visar att Haiku missar nyanser i svensk PM-text.
+SENTIMENT_MODEL     = "claude-haiku-4-5"
+SENTIMENT_BACKEND   = "claude"   # "claude" (API, batch -50%) | "ollama" (lokal/hyrd GPU, token-fri). Env: MOMENTUM_SENTIMENT_BACKEND
+OLLAMA_URL          = "http://127.0.0.1:11434"
+OLLAMA_MODEL        = "qwen2.5:14b"
+SENTIMENT_USE_BATCH = True          # Batch-API = -50% för historisk massa-poängsättning
+SENTIMENT_CACHE_DIR = "cache/sentiment"  # poäng cachas per PM-id (kör aldrig om samma PM)
+SENTIMENT_MAX_TOKENS = 400
+
+# Backtest av sentiment-signalen: aggregera ett innehavs PM-ton i ett bakåtfönster
+# och mät framåtavkastning (capture-spread, mirror av capture_analysis.py).
+# Kvalitativ fundamental sållning (quality_screener.py) – diskretionär tratt, EJ
+# backtestbar. Läser bolagens MFN-rapporter/PM och låter Claude poängsätta en
+# kvalitativ checklista (10-årings-test, global ambition, moat, ledning/skin-in-
+# the-game, säljkultur, adresserbar marknad, IR). Sonnet för djupare omdöme än
+# Haiku (klassificering vs bedömning). ~$0.02/bolag → hela microcap-universumet
+# några dollar. Hård regel i prompten: bedöm ENBART det som står i texten.
+QUALITY_MODEL          = "claude-sonnet-4-6"
+QUALITY_CACHE_DIR      = "cache/quality"
+QUALITY_MAX_CHARS      = 24000      # underlag/bolag (senaste rapport + några PM) – rymmer resultaträkningen
+# BUGG (fixad, 2026-07-23): uteslöt tidigare HELA sektorn "Health Care" blankt
+# (motiv: medtech/pharma = binärt kliniskt lotteri) - men samma träffsäkra
+# fix som quant_screener.py fick (se dess kommentar) gäller här: sektorn i
+# sig säger inget om binärt-lotteri-risken, och LLM:en läser ändå bolagets
+# EGNA rapporter/PM - en genuin pre-revenue-chansning (Sprint Bioscience-typ)
+# ska den kunna se och nedgradera själv via textbedömningen, medan ett
+# etablerat konsumenthälsobolag (Swedencare) eller säljande medtech
+# (Bonesupport, Senzime) inte längre exkluderas innan LLM:en ens fått läsa.
+QUALITY_EXCLUDE_SECTORS: list = []
+QUALITY_MARKET_CAP     = ["Small Cap", "Micro Cap", "Nano Cap"]   # tidiga, oupptäckta bolag
+# Värderingströsklar. Lönsamma bolag zonas på vinstmultipel (börsvärde/vinst):
+QUALITY_MULT_CHEAP     = 12        # <= billig, <= FAIR rimlig, över = dyr (EV/EBITDA-stil)
+QUALITY_MULT_FAIR      = 18
+# Förlustbolag (negativ vinst) kan inte zonas på vinst → använd P/S (börsvärde/
+# omsättning), precis som OT/EV-S gör för bolag i utvecklingsfas. Trösklar för
+# svenska småbolag (mjukvara tål högre P/S; justera vid behov):
+QUALITY_PS_CHEAP       = 1.5       # P/S <= billig
+QUALITY_PS_FAIR        = 4.0       # P/S <= rimlig, över = dyr
+
+# ── Buffett-inspirerad värdeskreener (altdata/value_screener.py) ──────────────
+# Token-fri, ur EGEN MFN-hårddata (mfn_fundamentals.py/mfn_pdf.py) – till
+# skillnad från quality_screener (LLM) och quant_screener (TradingView).
+# Trösklar grundade i väldokumenterade, publikt citerade Buffett-kriterier
+# (inte gissade): ROE > 15% konsekvent, Debt/Equity < 0.5 konservativt.
+VALUE_ROE_GOOD         = 0.15      # ROE-tröskel (15%) – ANVÄNDS EJ längre för meets_roe_bar
+                                    # (se VALUE_ROE_RANK_SAFE nedan), kvar för dokumentationssyfte.
+VALUE_DEBT_EQUITY_SAFE = 0.5       # Debt/Equity under detta = konservativt skuldsatt (ANVÄNDS EJ
+                                    # längre för meets_debt_bar, se VALUE_DEBT_RANK_SAFE nedan –
+                                    # kvar bara för print-texten/dokumentationssyfte).
+# Sektor-blandad percentil (roe_bar_rank) krävs vara ≥ detta för att klara
+# ROE-barren. BUGG (fixad 2026-07-xx): meets_roe_bar jämförde tidigare ROE
+# mot EN global absolut tröskel (VALUE_ROE_GOOD=15%) – banker/finansbolag
+# har strukturellt dämpad ROE (Basel-kapitalkrav begränsar hävstången som
+# annars boostar ROE, till skillnad från olevererade tillväxtbolag), så
+# välskötta banker kunde ändå falla på en tröskel satt för industri-/
+# konsumentbolag. Samma fix-princip som VALUE_DEBT_RANK_SAFE: jämför
+# banker mot ANDRA banker, inte mot hela börsen.
+VALUE_ROE_RANK_SAFE = 0.5
+# Sektor-blandad percentil (debt_rank, se value_screener._sector_blend_ranks)
+# krävs vara ≥ detta för att klara skuld-barren. BUGG (fixad 2026-07-xx):
+# meets_debt_bar jämförde tidigare debt_equity mot EN global absolut tröskel
+# (VALUE_DEBT_EQUITY_SAFE), kalibrerad för industri-/konsumentbolag. Banker
+# har strukturellt mycket högre D/E (inlåning bokförs som skuld) – varje
+# bank i universumet föll ALLTID på den barren oavsett faktisk hälsa
+# (verkligt fall: Swedbank/Avanza Bank Holding flaggade "skuld över barren"
+# trots att de är väletablerade, lönsamma banker). 0.5 = kräver bättre än
+# medianen inom sin SEKTOR-jämförelse (redan beräknad, samma logik som
+# värderings-percentilen) – inte back-testad mot holdouten separat, bara en
+# rimlig startpunkt som ersätter en bar som var strukturellt omöjlig för en
+# hel sektor att klara.
+VALUE_DEBT_RANK_SAFE = 0.5
+# "Owner earnings"-multipel (börsvärde/owner earnings) – EGNA trösklar, inte
+# samma som QUALITY_MULT_* (owner earnings är lägre än EBITDA eftersom
+# avskrivningar redan är kvar i det, så samma multipel motsvarar INTE samma
+# verkliga värdering) – en första, justerbar gissning tills selftest/verklig
+# data visar var trösklarna faktiskt bör ligga.
+VALUE_MULT_CHEAP       = 15
+VALUE_MULT_FAIR        = 22
+
+# ── OT-inspirerade köpvärdes-spärrar (Buffett-grinden) ────────────────────────
+# Fyra komponenter ur OT Analytics beskrivna metodik ("peer-analys, finansiellt
+# läge, värderingsmultiplar, volatilitet, tidigare uppvärdering i relation till
+# resultat och riskanalys ... uppsida med marginal när jag köper"):
+#
+# 1. SÄKERHETSMARGINAL: Buffett-grinden godtar bara dessa zoner. Tidigare
+#    släpptes både 'billig' och 'rimlig' igenom – "uppsida med marginal" är
+#    hårdare: köp bara med rabatt. ("rimlig",) kan läggas tillbaka här om
+#    grinden visar sig för snål i praktiken.
+BUFFETT_BUY_ZONES = ("billig",)
+# 2. UPPVÄRDERING vs RESULTAT: dekomponera kursutvecklingen över ~2,5 år i
+#    vinsttillväxt × multipelexpansion. En aktie vars uppgång främst är
+#    EXPANSION (dyrare per vinstkrona, inte mer vinst) är uppvärderad på
+#    hopp/cykel – generella versionen av Lundin Gold-fallet (guldpristopp
+#    lyfte kursen långt före vinsten). Flaggas när kursen stigit minst
+#    MIN_PRICE_CHG över fönstret OCH multipeln expanderat ≥ MAX_EXPANSION.
+VALUE_RERATING_MIN_PRICE_CHG  = 0.50    # bry dig bara om aktier som rusat ≥ +50%
+VALUE_RERATING_MAX_EXPANSION  = 1.5     # multipeln ≥1,5x dyrare per vinstkrona = uppvärderad
+VALUE_RERATING_WINDOW_MONTHS  = (20, 40)  # jämförelserapport söks i detta fönster bakåt
+# 3. VOLATILITET: årsvolatilitet (veckoavkastningar × √52) över denna nivå
+#    diskvalificerar från Buffett-grinden – binära/hypedrivna kursförlopp är
+#    inte "köpvärt med marginal" oavsett multipel. 60% är högt satt med flit:
+#    ska bara fånga de extrema, inte straffa normala småbolag.
+VALUE_VOL_MAX = 0.60
+# 4. FYLLA PÅ-REGELN (portfolio._refill_candidates): efter ett "ta hem
+#    vinsten"-råd (säljvaktens nivå ≥2, kursen loggas i en liggare) föreslås
+#    påfyllnad först när kursen fallit minst så här mycket under rådets nivå
+#    OCH caset fortfarande klarar köpkraven.
+REFILL_DISCOUNT = 0.10
+
+# ── Sektor-relativ rankning (edge-granskning 3) ───────────────────────────────
+# Värderings- och skuld-percentiler räknade mot HELA universumet är strukturellt
+# skeva: en bank ser alltid "billig" (låg multipel) och "farligt skuldsatt"
+# (hög D/E) ut mot ett SaaS-bolag – det är sektorns natur, inte bolagets
+# egenskap. Blandar därför global percentil med SEKTOR-percentil för de
+# sektor-strukturella faktorerna (värdering + skuld) i value-/quant-screenern.
+# Kvalitet (ROE) och tillväxt förblir GLOBALA – Buffett-kravet är absolut hög
+# avkastning, inte "bra för att vara en bank". 0 = av (exakt gamla beteendet).
+SECTOR_RANK_BLEND     = 0.5   # andel sektor-percentil i blandningen [0..1]
+SECTOR_RANK_MIN_PEERS = 5     # kräv minst så många bolag med värdet i sektorn
+
+# Kursdata-cachens nycklar innehåller dagens datum (medvetet – annars frös
+# kursdatan) → gårdagens pkl:er träffas aldrig mer och måste städas, annars
+# växer cache/ obegränsat (en full universum-pickle per dag/segment) på Pi:ns
+# SD-kort. 0 = städning av.
+PRICE_CACHE_MAX_AGE_DAYS = 10
+
+# ── ETF/sektor-rotation (D-spåret: dual momentum – "trend, inte bolag") ───────
+# Rankar sektor-ETF:ernas EGNA kurser (inte svenska aktier per sektor). Håller de
+# hetaste K (relativ momentum) MEN bara om de har egen positiv trend (absolut
+# momentum) – annars går den slotten till ett defensivt ben. Backtestbart (rena
+# ETF-kurser, ingen survivorship på sektornivå), till skillnad från screenern.
+# Universum: kurerat globalt tema/region/sektor-set (bredare än EU-sektorerna,
+# US med – många trender kommer därifrån). Tom → fall tillbaka på sector_etfs.csv.
+ETF_ROT_UNIVERSE_FILE = "data/rotation_universe.csv"
+ETF_ROT_REGION      = "EU"         # (används bara om UNIVERSE_FILE saknas)
+ETF_ROT_TOP_K       = 3            # antal heta teman/sektorer att hålla samtidigt
+# ETF:er är trögare än aktier → LÅNGSAM momentum (6–12 mån), inte 13v-whipsaw.
+ETF_ROT_MOM_WINDOWS = [26, 52]     # veckor – sammanvägd RELATIV momentum-rank
+# Bull/björn-regim: gå risk-off (defensivt) när breda marknaden bryter sin långa
+# trend. Fångar björnmarknader/kriser mekaniskt utan att läsa nyheter.
+ETF_ROT_REGIME_ENABLED = True
+ETF_ROT_REGIME_TICKER  = "EUNL.DE"  # bred marknad (MSCI World) för trend-regimen
+ETF_ROT_REGIME_MA      = 40         # veckor (~200 dagar / 10 mån) glidande medel
+# Makro-stress-overlay (token-fritt): tvinga risk-off ÄVEN om trenden håller, när
+# BÅDE VIX är i stress OCH kreditspreadar vidgas (två bekräftande = få falsklarm).
+# Fångar snabba krascher innan World bryter 40v-trenden (rapportens flight-to-safety).
+ETF_ROT_MACRO_REGIME   = True
+MACRO_VIX_STRESS       = 28.0       # VIX-nivå för "stress"
+MACRO_CREDIT_STRESS    = -0.01      # HYG−IEF 13v under detta = kreditstress
+
+# ── Lead-lag-upptäckt (datadriven, token-fri "if-then"-tabell ur pris) ────────
+# Granger-liknande: hittar vilka sektorer/teman som LEDER andra, med vilken lag,
+# ur historiska dagsdata. Empirisk motsvarighet till världsträdet – backtestbar.
+LEADLAG_LAGS_DAYS  = [5, 20, 60]   # ledtider (dagsdata) ~1v, 1mån, 1kvartal
+LEADLAG_LAGS_WEEKS = [1, 4, 13]    # ledtider (veckodata) ~1v, 1mån, 1kvartal
+LEADLAG_MIN_T      = 3.5           # t-statistik-tröskel (strikt pga multipeltestning)
+LEADLAG_MIN_CORR   = 0.15          # min korrelation för att räknas
+
+# ── Portfölj-medveten allokering (nytt kapital fyller mot en diversifierad mål) ──
+# Innehav läses från cache/portfolio_holdings.csv (gitignorerad – personlig data).
+# Hink-mål (sensibelt default utifrån evidensen: bred kärna dominerar). Justerbart.
+PORTFOLIO_HOLDINGS_FILE = "cache/portfolio_holdings.csv"
+# Framåt-logg av din portföljs totala värde (en punkt per dag, upsert vid varje
+# spar). Bygger en ÄKTA personlig utvecklingskurva från och med nu (gitignorerad).
+PORTFOLIO_VALUE_LOG = "cache/portfolio_value_log.csv"
+PORTFOLIO_TARGET = {"broad": 0.65, "sweden": 0.15, "theme": 0.20, "leverage": 0.0}  # summerar till 1.0
+# Användarens egen målfördelning (justeras via reglaget i appen) sparas här och
+# åsidosätter default ovan. GITIGNORERAD (personlig, som innehaven). Saknas den
+# används PORTFOLIO_TARGET. leverage hålls alltid 0 (evidens: hävstång = ruinrisk).
+PORTFOLIO_TARGET_FILE = "cache/portfolio_target.json"
+# "Nästa köp"-Coret (hemvyns huvudkort): fallback/enkel-ticker-kärnan om
+# PORTFOLIO_CORE_SPLIT nedan är tom. Bredast+billigast vann varje netto-
+# jämförelse vi kört mot AKTIVA varianter (ACWI slog rotationens alla
+# varianter OOS och aktiemodellens holdout) - den jämförelsen står fast.
+# Används också som den EXAKTA, odelade kärnan av backtest_bear_hedge.py/
+# backtest_bull_hedge.py (regim-hedge-frågan gäller EN kärninstrument, inte
+# uppdelningen nedan - en annan fråga). Beloppet är bara default för vyn;
+# frontend kan skicka valfritt belopp.
+PORTFOLIO_CORE_ETF = ("IUSQ.DE", "iShares MSCI ACWI (hela världen)")
+# Kärnans FAKTISKA uppdelning i next_buy() (Nästa köp-kortet), om satt.
+# World+EM (~88/12, samma kapvikt-exponering som ACWI fast i två fonder)
+# slog EN enda ACWI-fond på VARJE mått i ett matchat fönster (samma start-
+# datum för båda, se backtest_core_allocation.py): NAV-CAGR 11,8% vs 11,6%,
+# Sharpe 0,82 vs 0,81, slutvärde +120,6% vs +119,0% (2011-10-17→idag,
+# köp-och-behåll-ackumulering, ingen försäljning - se
+# backtest/accumulation.py:simulate_accumulation). Andra granulära splittar
+# (EM+Europa 50/50, World+USA+EM+Europa 25/25/25/25, World+EM+Kina+Indien)
+# förlorade klart mot ACWI i samma test - BARA World+EM-kapvikten hade
+# evidens, inte "fler innehav" i allmänhet. Tom lista/None → faller tillbaka
+# på PORTFOLIO_CORE_ETF (en enda ticker). Ben under NEXT_BUY_MIN_TRADE_SEK
+# viks in i det största benet i stället för att handlas för en struntsumma.
+PORTFOLIO_CORE_SPLIT = [
+    ("EUNL.DE", "iShares Core MSCI World", 0.88),
+    ("IS3N.DE", "iShares Core MSCI EM IMI", 0.12),
+]
+NEXT_BUY_DEFAULT_AMOUNT = 10000   # månadsinsättningen (kr)
+
+# ── Montrose trade-ticket-knapp (headless Claude Code, se montrose_ticket.py) ──
+# Headless `claude -p`, inloggad med Claude-prenumerationen (claude login) på
+# Pi:n – ingen separat Anthropic-API-nyckel. --allowedTools + --permission-mode
+# dontAsk låser anropet till EXAKT search_instruments + create_trade_ticket.
+# Skapar bara en förifylld länk, lägger aldrig en order. BARA köp (side=Buy) –
+# säljvakten/takeprofit i appen är rådgivande, ingen knapp säljer härifrån.
+# Alltid ISK-kontot, ALDRIG kreditkontot (hävstång/marginal är uttryckligen
+# uteslutet ur modellen, se PORTFOLIO_TARGET leverage=0).
+#
+# KONTOBUNDET, INTE KOD: sätts via env var (samma mönster som MOMENTUM_HOME
+# ovan), INTE hårdkodat – detta repo delas/är publikt, och kontots UUID hör
+# inte hemma i git-historiken. Sätt MONTROSE_ACCOUNT_ID=<ditt-konto-id> i
+# systemd-uniterna på Pi:n (momentum-api.service +
+# momentum-montrose-holdings.service), ALDRIG i en committad fil. Ta reda på
+# ditt konto-ID via Montrose-MCP:ns get_holdings, t.ex.
+# `python montrose_ticket.py fetch_holdings`.
+MONTROSE_ACCOUNT_ID = _os.environ.get("MONTROSE_ACCOUNT_ID", "").strip() or None
+CLAUDE_BIN = _os.environ.get("CLAUDE_BIN", _os.path.expanduser("~/.local/bin/claude"))
+# Kontobunden connector (inte lokalt .mcp.json) hinner inte alltid ansluta
+# inom Claude Codes default MCP-timeout (30s) i en färsk headless-process.
+MONTROSE_MCP_TIMEOUT_MS = 60000
+
+# ── Modellval för headless Claude-anrop (claude_headless.py) – tidigare
+# opinnat (körde bara CLI:ts kontodefault för alla scripts), vilket gjorde
+# quality_screener.py:s 528 ENSKILDA anrop onödigt kvot-dyra (två avbrutna
+# körningar pga användningsgräns mitt i, se claude_headless.py:s
+# felhantering). "sonnet"/"haiku" är CLI:ts egna alias för senaste versionen
+# i respektive familj (inte en låst versionssträng) – följer automatiskt med
+# om Anthropic släpper en ny Sonnet/Haiku utan att den här filen behöver
+# ändras. FAST = billig/snabb, för enkel klassificering i hög volym
+# (quality_screener). DEFAULT = starkare, för narrativ text/WebSearch-
+# resonemang (insight_report/portfolio_commentary) och verktygsanrop där
+# precision spelar roll (montrose_ticket/watchlist_sync – riktiga
+# trade-ticket-/watchlist-anrop, ska INTE nedgraderas för att spara kvot).
+CLAUDE_MODEL_FAST = _os.environ.get("CLAUDE_MODEL_FAST", "haiku")
+CLAUDE_MODEL_DEFAULT = _os.environ.get("CLAUDE_MODEL_DEFAULT", "sonnet")
+
+# ── Nattlig narrativ-rapport (insight_report.py) – REN NARRATIV, ALDRIG SIGNAL,
+# se dev-loggens #18 (PM-/rapport-/VD-ton bär ingen OOS-alfa) och §10 (social
+# buzz = brusig återvändsgränd). Kostnadstak: max MAX_TICKERS bolag, BATCH_SIZE
+# st per headless-anrop (innehav prioriteras framför kandidater vid kapning).
+INSIGHT_BATCH_SIZE = 5
+INSIGHT_MAX_TICKERS = 20
+
+# ── Fond-nischtema-klassificering (altdata/fund_theme_classifier.py) – inom
+# ett nischtema väljs den PRIMÄRA fonden som lägst totalavgift bland fonder
+# med minst så här många ägare (likviditets-/förtroende-proxy, inte en
+# handelsvolymsiffra vi faktiskt har) – annars billigast av alla oavsett.
+FUND_THEME_MIN_OWNERS = 200
+
+# ── Watchlist-synk (watchlist_sync.py, idé 7) – speglar modellens topplista +
+# säljvaktens flaggor som två Montrose-watchlists. Rör bara watchlists,
+# create_trade_ticket ingår ALDRIG i dess --allowedTools.
+MONTROSE_WATCHLIST_TOP = "Momentum - Topplista"
+MONTROSE_WATCHLIST_SELL = "Momentum - Säljvakt"
+# Aktiv rank-modell för "nästa köp" (köp-vakten). Väljer bara viktprofilen i
+# _unified_rank() – ALL underliggande data (kvalitet/kvant/value/momentum)
+# laddas alltid, så man kan växla fram och tillbaka utan omkörning. Sätts av
+# frontend via GET/POST /api/portfolio-model, persisteras i cache/.
+#   "balanced" – köp-och-behåll-mixen som gällde innan modellvalet fanns
+#                (kvalitet 45% tyngst, momentum bara timing-tiebreak)
+#   "buffett"  – långsiktigt ägande: value_screener + kvalitet dominerar,
+#                momentum nedviktat, hård grind på ROE/skuld-barren
+#   "momentum" – momentum-modellens P(upp) tyngst (den ursprungliga andan)
+PORTFOLIO_MODEL_DEFAULT = "balanced"
+PORTFOLIO_MODEL_FILE = "cache/portfolio_model.json"
+# ── Dynamisk, framåtblickande fördelning ─────────────────────────────────────
+# Fyll-mot-mål är basen (framåtblickande MOT målvikten). Ovanpå den läggs en
+# BUNDEN tilt: när en satellit har ett genuint attraktivt läge (mer attraktivt
+# än kärnans baslinje) får den dra en TAKAD andel av insättningen från kärnan –
+# men ett KÄRNGOLV skyddar mot att svälta den evidensbackade kärnan. Är alla
+# lägen likvärdiga gör tilten ingenting → målvikten avgör (tiebreaker).
+#   STRENGTH 0 = ren mål-ifyllnad (exakt tidigare beteende, bevisat identiskt).
+DYNAMIC_ALLOC_TILT_STRENGTH = 0.40   # hur hårt attraktivitet får böja fördelningen (0..1)
+DYNAMIC_ALLOC_MAX_SHARE     = 0.40   # tak: max andel av insättningen som får tiltas från kärnan
+DYNAMIC_ALLOC_CORE_FLOOR    = 0.30   # kärngolv: kärnan behåller minst denna andel när den är underviktad
+# Sverige-hinkens attraktivitet: 70% AKTIV modells rank-score, 30% övrigt
+# (snitt av de ANDRA modellernas rank + TA-timing) – så andra modeller och
+# teknisk timing ges lite inflytande, inte bara den valda modellen.
+DYNAMIC_ALLOC_MODEL_WEIGHT  = 0.70
+# ── Insynshandel + PEAD (altdata/mfn_events.py, nattlig skanning) ────────────
+# Kluster av insynsköp visas som bekräftelse men ger tills vidare ingen additiv
+# rank-bonus: marginaltestet ovanpå den samlade modellen sänkte holdout-resultatet.
+# 0 stänger av påverkan utan att ta bort signalen från appen.
+PORTFOLIO_INSIDER_BONUS = 0.0
+# Härdighets-signalen ("3-års-fundamenta", analyserad 2026-07-22, se
+# tune_hold_forever.py + tune_hold_forever_fundamentals.py): momentum-signalens
+# edge klingar av med innehavstiden (median-excess +1.4% @13v → −24% @156v),
+# men köp med TOPP-TERCIL fundamenta-komposit (ROE + omsättningstillväxt +
+# inverterad skuldsättning, ≥2 av 3) vid köptillfället var enda gruppen som
+# höll mot index på 104/156v (win 51%/47% mot 28–35% för resten) och fångade
+# 156v-dubblare 2,4x oftare. Additiv bonus för topp-tercilen / lika stort
+# avdrag för botten-tercilen i köp-vaktens rank (bara köp-och-behåll-
+# profilerna, se _MODEL_WEIGHTS "holdfund" i portfolio.py). Den breda
+# marginaltesten ovanpå nuvarande modell var negativ, så påverkan är 0 medan
+# datapunkten fortsatt visas och kan följas i shadow.
+# OBS: skyddar INTE vänstersvansen (topp-tercilen hade lika många halverare) –
+# nedsidan är säljvaktens jobb, inte köpanalysens.
+PORTFOLIO_HOLD_FUND_BONUS = 0.0
+# PEAD-fönster: rapport ≤ FRESH dagar sedan + bekräftade flöden = köp driften.
+# BLACKOUT: ~kvartalsrytm (91d) sedan senaste rapporten → nästa väntas strax →
+# köp-vakten blockar ("köp inte ryktet före en rapport").
+PEAD_FRESH_DAYS = 42
+PEAD_BLACKOUT_MIN_DAYS = 77
+PEAD_BLACKOUT_MAX_DAYS = 104
+# Mjuka modellens utfalls-blandning: vikt för den BAKÅTVALIDERADE utfalls-
+# modellen (mjuk text i rapport N → hårt utfall i rapport N+1, tränad mot
+# facit av soft_signals validate) i soft_score. 0 = enbart lärar-destillatet.
+# Modellen sparas över huvud taget bara om den slår majoritets-baselinen i CV.
+SOFT_OUTCOME_BLEND = 0.30
+# Min-köp: en enskild post under detta är inte värd courtage/spread. Sådana
+# satellit-poster viks in i kärnan denna månad och byggs nästa månad när gapet
+# blivit stort nog för en vettig affär (fyll-mot-mål ackumulerar ändå).
+NEXT_BUY_MIN_TRADE_SEK = 500
+# Antagande: portföljer upp till denna nivå ligger på ISK. På ISK utlöser en
+# försäljning INGEN reavinstskatt (bara schablonskatt på hela kontot, oberoende
+# av enskilda affärer) → säljvaktens house-money-råd är i praktiken skattefritt,
+# bara courtage/spread. Under gränsen väger därför "ta hem vinsten" tyngre; över
+# den (vanlig depå/AF) väger "behåll" tyngre pga reavinstskatt vid försäljning.
+PORTFOLIO_ISK_LIMIT = 300000
+# Opportunistiskt köp: max andel av EN månadsinsättning som får front-loadas i
+# den bästa BEKRÄFTADE satelliten (kärnan hämtas ikapp nästa månad via fyll-mot-
+# mål). 0.5 = upp till halva insättningen; taktiskt tak, inte bet-the-farm.
+OPPORTUNITY_MAX_SHARE = 0.5
+# Säljvakten – ENDA sälj-regeln i köp-och-behåll-disciplinen.
+# ARMERAS på DIN faktiska orealiserade vinst (value/cost − 1 ≥ TAKEPROFIT_GAIN),
+# INTE på aktiens marknadsavkastning – annars kunde vakten flagga "ta hem vinsten"
+# på ett innehav du köpt dyrt och står back i. Kräver alltså att inköpspris
+# (cost) är angivet och att du faktiskt är i vinst. Styrka i sig är inte säljskäl
+# (momentum-vinnare fortsätter oftare än de rekylerar) → gainen ARMERAR bara;
+# bekräftelser (melt-up, zon 'dyr', CMF-distribution, modell-släpp, trendbrott)
+# eskalerar rådet: bevaka → ta hem vinsten (house money) → sälj.
+# OBS: 0.50 är startvärde, inte facit – kalibrera med tune_takeprofit.py.
+TAKEPROFIT_GAIN        = 0.50   # DIN orealiserade vinst som armerar vakten
+TAKEPROFIT_GAP_PP      = 0.50   # bekräftelse: aktien sprungit ≥ så här ifrån index (froth-kontext)
+TAKEPROFIT_WEEKS       = 26     # fönster för marknads-froth-kontexten
+TAKEPROFIT_ACCEL_SHARE = 0.5    # ≥50% av uppgången på senaste 4v = melt-up
+# Föreslagna breda ETF:er för kärnan (nytt kapital riktas hit när 'broad' är låg):
+PORTFOLIO_BROAD_ETFS = {"World (MSCI)": "EUNL.DE", "USA (S&P 500)": "SXR8.DE",
+                        "Emerging Markets": "IS3N.DE", "Europa": "EXSA.DE"}
+ETF_ROT_ABS_WINDOW  = 52           # veckor – ABSOLUT momentum-filter (trend på/av)
+ETF_ROT_ABS_MIN     = 0.0          # håll bara om ETF:ens egen 52v-avk > detta, annars defensivt
+ETF_ROT_DEFENSIVE   = ""           # defensivt ben när trend saknas ("" = kontanter/risk-fritt)
+ETF_ROT_REBAL_WEEKS = 4            # ombalanseringsintervall (veckor)
+ETF_ROT_FLOW_LOOKBACK = 4          # veckor för rank-change (flödesproxy)
+
+# ── ETF-rotation: kostnader + edge-knoppar (env-styrbara, default = baslinje) ──
+# KOSTNAD: backtesten var tidigare kostnadsfri – varje innehavsbyte är gratis och
+# hög omsättning ser bättre ut än den är (samma fälla som fällde aktiemodellens
+# horisont-ensemble: brutto-vinst, netto-förlust). Enkelriktad kostnad per handlad
+# krona: courtage + valutaväxling (alla ETF:erna här är EUR-denominerade Xetra-
+# UCITS, se PORTFOLIO_BROAD_ETFS/SECTOR_ETF_MAP - FX_FEE är INTE valfri här,
+# till skillnad från huvudmodellens SEK-universum). Tidigare 0,0015 saknade
+# FX-komponenten helt (0% modellerad valutakostnad på en 100% icke-SEK-korg).
+ETF_ROT_COST_ONEWAY = float(_os.environ.get("MOMENTUM_ETF_COST_ONEWAY", COMMISSION + FX_FEE))
+# VOL-JUSTERAD RANK: ranka på momentum/vol i stället för rå avkastning. I ett
+# blandat universum (lågvol World vs högvol uran/semis) väljer rå rank systematiskt
+# de stökigaste temana nära deras toppar; per-enhet-risk jämför rättvist.
+ETF_ROT_VOL_ADJ     = _os.environ.get("MOMENTUM_ETF_VOL_ADJ", "0") not in ("0", "", "false", "False")
+# HYSTERES i absolut-filtret: NYA innehav kräver 52v-avk > ABS_ENTER; BEFINTLIGA
+# säljs först under ABS_EXIT. Utan gapet flippar en ETF nära 0% in/ut varje
+# ombalansering (churn utan information). None = av (enter=exit=ABS_MIN).
+ETF_ROT_ABS_ENTER   = float(_os.environ.get("MOMENTUM_ETF_ABS_ENTER", "nan"))
+ETF_ROT_ABS_EXIT    = float(_os.environ.get("MOMENTUM_ETF_ABS_EXIT", "nan"))
+# KEEP-BAND (rank-hysteres): behåll ett innehav tills det faller ur topp
+# K×KEEP_MULT (samma idé som aktiemodellens KEEP_BAND_MULT). 1.0 = av (strikt topp-K).
+ETF_ROT_KEEP_MULT   = float(_os.environ.get("MOMENTUM_ETF_KEEP_MULT", 1.0))
+# KORRELATIONSSPÄRR: hoppa över en kandidat vars 52v-korrelation mot ett redan
+# valt innehav överstiger taket (topp-3 = tre olika bet, inte samma bet ×3).
+# 1.0 = av.
+ETF_ROT_CORR_MAX    = float(_os.environ.get("MOMENTUM_ETF_CORR_MAX", 1.0))
+# Rätt neutral måttstock för ett globalt universum = hela världen (MSCI ACWI).
+# US-referenser visas också. OMX var fel (svenskt index mot global rotation).
+ETF_ROT_BENCHMARK   = "IUSQ.DE"           # iShares MSCI ACWI (global)
+ETF_ROT_BENCHMARKS_EXTRA = ["SXR8.DE", "SXRV.DE"]   # S&P 500 + Nasdaq 100 som US-referens
+
+# ETF-/tema-rotation visas fortsatt i appen som research och portföljkontext,
+# men får inte styra modellens kapital eller "Nästa köp" innan den slagit sin
+# passiva benchmark OOS. Befintliga ETF-innehav påverkas inte.
+ETF_ADVISORY_ONLY = True
+
+# ── Makro-/bakgrundsdata (räntor, obligationer, index, VIX, FX, råvaror) ──────
+# Fria Yahoo-serier att räkna på (regim, ränte-/kreditstress, flight-to-safety).
+# Rate-tickers (^IRX/^TNX/^TYX) är RÄNTOR i procent; övriga är priser. Cachas.
+MACRO_CACHE_DIR = "cache/macro"
+MACRO_SERIES = {
+    # Räntor / statspappersyield (%)
+    "UST3M":  "^IRX",        # 13v T-bill
+    "UST10Y": "^TNX",        # 10-årig
+    "UST30Y": "^TYX",        # 30-årig
+    # Obligations-ETF:er (pris)
+    "TLT":    "TLT",         # US 20y+ statsobligationer
+    "IEF":    "IEF",         # US 7-10y statsobligationer
+    "LQD":    "LQD",         # US investment grade-företag
+    "HYG":    "HYG",         # US high yield (kreditrisk-proxy)
+    "TIP":    "TIP",         # US inflationsskyddat
+    # Aktieindex
+    "SP500":  "^GSPC",
+    "NASDAQ": "^IXIC",
+    "OMXS30": "^OMX",
+    "STOXX50": "^STOXX50E",
+    "VIX":    "^VIX",        # volatilitet / rädsloindex
+    # Valutor
+    "DXY":    "DX-Y.NYB",    # dollarindex
+    "EURUSD": "EURUSD=X",
+    "USDSEK": "SEK=X",
+    # Råvaror
+    "GOLD":   "GC=F",
+    "OIL":    "CL=F",
+    "COPPER": "HG=F",
+    "SILVER": "SI=F",
+}
+
+# ── Nasdaq Nordic (gratis, auktoritativt börsvärde – kompletterar Yahoo) ──────
+# Yahoo saknar aktieantal/börsvärde för många microcaps → screenerns "okänd"-hink.
+# Nasdaqs egen datafeed har det gratis. Vi hämtar hela Stockholmsbörsen i några
+# anrop och fyller BARA de börsvärden Yahoo missade (Yahoo har företräde).
+# XML-datafeed (reverse-engineerad, körs på Pi:n – molncontainern når den ej).
+NASDAQ_ENDPOINT     = "http://www.nasdaqomxnordic.com/webproxy/DataFeedProxy.aspx"
+NASDAQ_EXCHANGE     = "NMF"
+# Stockholmsmarknader att svepa (Large/Mid/Small/First North). Verifiera/utöka
+# via `probe` – varje id ger en delmängd. Kända start-id:n från publika klienter.
+NASDAQ_MARKETS      = ["L:3303", "L:10214"]
+# Vilka instrument-attribut som begärs (numeriska koder → namngivna XML-attribut).
+NASDAQ_INST_FIELDS  = "0,87,1,2,5,37,4,20,21,23,24,33,34,97,129,98,72"
+# Attributnamn i <inst>-svaret. SÄTTS KORREKT EFTER `probe` (då ser vi de riktiga
+# namnen/värdena). Tomt mcap → räkna börsvärde som aktieantal × senaste kurs.
+NASDAQ_ATTR_MCAP    = ""            # direkt börsvärde om feeden ger det
+NASDAQ_ATTR_SHARES  = ""            # antal aktier
+NASDAQ_ATTR_PRICE   = ""            # senaste kurs
+NASDAQ_ATTR_SYMBOL  = "nm"         # kortnamn/symbol att matcha mot vår ticker
+NASDAQ_ATTR_ISIN    = "isin"
+NASDAQ_REQUEST_PAUSE_S = 0.5
+
+# ── EODHD (fundamentals-API: börsvärde + EBITDA + aktier i ETT anrop) ─────────
+# Bättre än Yahoo/textutvinning: en pålitlig källa ger både börsvärde OCH EBITDA
+# per bolag. Prioriteras över Yahoo och Claude-extraheringen i report().
+# Kräver en betald fundamentals-plan. Nyckeln läses från miljövariabeln
+# EODHD_API_TOKEN (lägg i ~/.momentum.env, chmod 600 – ALDRIG i repot/commits).
+# Våra tickers har redan '.ST'-suffix (EODHD:s Stockholm-format) → 1:1-mappning.
+EODHD_BASE_URL        = "https://eodhd.com/api"
+EODHD_CACHE_DIR       = "cache/eodhd"
+EODHD_REQUEST_PAUSE_S = 0.2
+
+# ── TradingView (gratis, inofficiell scanner: börsvärde + EBITDA + omsättning) ─
+# Kompletterande fundamenta-källa UTAN nyckel/token: TradingViews publika scanner-
+# endpoint tar en batch tickers och svarar med JSON. Fyller luckor där Yahoo saknar
+# data för svenska små-/First North-bolag. Prioritet i report(): EODHD → TradingView
+# → Yahoo → Claude-textutvinning. Inofficiellt API → kan ändras utan förvarning;
+# behandla som "best effort", inte en garanterad källa. Körs på Pi:n (molnet saknar nät).
+# Ticker-mappning: 'VOLV-B.ST' → 'OMXSTO:VOLV_B' (strip .ST, '-'→'_', prefixa börs).
+TRADINGVIEW_SCAN_URL     = "https://scanner.tradingview.com/sweden/scan"
+TRADINGVIEW_EXCHANGE     = "OMXSTO"     # Nasdaq Stockholm (även First North i TV:s sverige-scan)
+TRADINGVIEW_BATCH        = 100          # tickers per POST
+TRADINGVIEW_REQUEST_PAUSE_S = 1.0       # var snäll mot en gratis, inofficiell endpoint
+TRADINGVIEW_SYMBOL_BASE  = "https://www.tradingview.com/symbols"   # {BÖRS}-{SYMBOL} chart/översikt
+
+SENTIMENT_LOOKBACK_DAYS = 7         # PM publicerade senaste veckan räknas in i veckans signal
+SENTIMENT_OOS_START     = "2016"    # rent OOS-fönster (samma som era_analysis.py)
+BENCHMARK_CACHE_DIR     = "cache/sentiment_benchmark"  # separat cache – rör aldrig skarp sentiment-data
+# Poängsätt bara PM från detta datum (en buffert före OOS-start). Vi backtestar
+# enbart 2016+, så att betala för 2010-2015 års PM är bortkastat. Sänk vid behov.
+SENTIMENT_SCORE_FROM    = "2015-09-01"
+
+# ── Segment (separata modeller per storleksklass) ─────────────────────────────
+# Två SEPARATA modeller, en per storleksgrupp, så att tvärsnitts-rangordningen
+# sker inom jämförbara bolag (en stabil storbolagstrend drunknar annars i
+# småbolagens större kast – uppmätt: SAAB föll från prob_up 1.0 till 0.35 när
+# universumet blandades). Varje segment tränas/backtestas för sig och skrivs till
+# egen results-mapp; frontend togglar mellan dem som två identiska vyer.
+# market_cap = nivåer som tas med, results_dir = var output hamnar.
+# max_positions/conviction_blend per segment (sizing-svep 2026-06, tune_sizing.py):
+#   large – fler innehav/högre conviction försämrade (alfa -1.7% -> -3.2%); 10
+#           namn @ blend 0.5 var optimum (= globala default). Redan maxad skörd.
+#   small – fler innehav (20) diversierar småbolagens högre idiosynkratiska risk
+#           och lyfter alfan från -0.6% till ~+0.6-1.0% (in-sample). OBS: holdout
+#           fortfarande negativ + survivorship-flattrad → ej pålitlig än.
+# index_ticker/index_label per segment: storbolag jämförs mot OMXS30, men SMÅBOLAG
+# ska jämföras mot ett SMÅBOLAGSINDEX (XACT Svenska Småbolag, finns i universumet)
+# – inte mot OMXS30 (storbolag). Båda ETF:erna återinvesterar utdelning och hämtas
+# auto_adjust=True → totalavkastning på BÅDA sidor (rättvis jämförelse, se nedan).
+SEGMENTS = {
+    # gate_enabled/gate_min per segment: momentum-kvalitetsgrinden hjälpte STORBOLAG
+    # på holdouten (#17: holdout +1.3→+4.4%) men STJÄLPTE SMÅBOLAG på holdouten
+    # (−2.3→−3.8%, trots bättre helperiod – sannolikt småbolagsmomentum-reversal i
+    # holdout-fönstret). Domaren = holdouten → grind PÅ för stor, AV för små.
+    # Stor-segmentet = Large+Mid → jämför mot en BRED Stockholms-ribba, inte top-30
+    # (OMXS30). XACT Sverige (totalavkastning, utdelnings­återinvesterande ETF) är
+    # apples-to-apples. INTE OMXSPI rakt av – det är ett KURSINDEX (utan utdelning)
+    # och vår portfölj är totalavkastning → orättvist smickrande. Verifiera att
+    # XACT Sverige spårar den breda benchmarken (OMXSB-cap GI), inte OMXS30.
+    "large": {"label": "Storbolag", "market_cap": ["Large Cap", "Mid Cap"], "results_dir": "results",
+              "max_positions": 15, "conviction_blend": 0.5,
+              "index_ticker": "XACT-SVERIGE.ST",  "index_label": "OMX Sthlm bred (XACT Sverige)",
+              "gate_enabled": True,  "gate_min": 0.10,
+              # Efter LambdaRank-migreringen vann 52v hela horisontsvepet #124:
+              # dev CAGR/Sharpe 14,8%/1,25 och holdout 12,9%/1,08, mot
+              # 13v:s 14,1%/1,14 respektive 5,5%/0,50.
+              "forward_weeks": 52, "rebalance_weeks": 52, "embargo_weeks": 52,
+              "rank_ema_span": 1,
+              "atr_stop_enabled": False,  # Sweep 2026-07-29: stopp klipper alfa för large (se SEGMENTS-kommentar ovan)
+              "market_filter_exposure": {"bull": 1.0, "sideways": 1.0, "bear": 1.0},
+              "drop_features": [
+                  # Volym-features (brusiga under ablation)
+                  "vol_ratio_4w", "vol_ratio_13w", "obv_roc_4w", "obv_roc_13w", "ad_roc_4w",
+                  # Momentum-features (brusiga under ablation)
+                  "roc_4w", "roc_8w", "roc_13w", "roc_26w", "roc_52w", "mom_12_1", "ret_skew_13w", "ret_kurt_13w"
+              ]},
+    # Micro Cap ingår i småbolagssegmentet (First North-namn som Acconeer/
+    # Swedencare/Physitrack klassas Micro): likviditetsfiltret
+    # (UNIVERSE_MIN_AVG_TURNOVER) rensar ändå de ohandlade – kategorin ensam
+    # ska inte utesluta bolag ur signaler/kurser. Nano exkluderas fortsatt
+    # (klassningen är opålitlig i botten och spread/likviditet oftast otjänlig).
+    # forward_weeks/rebalance_weeks/embargo_weeks = 52 (mot large-segmentets
+    # 13v-default): UTVECKLINGSLOGG #30/#31, en riktig 1-års-etikett (inte den
+    # första, cache-korrumperade #30-mätningen - se #31) slår index i BÅDA
+    # fönstren för small (holdout +8,6% CAGR mot index +1,8%, gap −14,3pp;
+    # helperiod +2,6pp/år) och krymper drawdowen (helperiod-MaxDD 35,5%→19,7%
+    # mot dagens 13v). Motsatsen för large (52v gav 36pp EFTER index i
+    # holdout, sämre än 13v) - large behåller därför 13v. #19:s "momentum är
+    # en entry-edge, inte en ägar-edge" håller alltså bara för small i denna
+    # mätning; large-segmentets 2022-regimbrott adresseras separat (#28/#29).
+    "small": {"label": "Småbolag",  "market_cap": ["Small Cap", "Micro Cap"], "results_dir": "results/small",
+              "max_positions": 20, "conviction_blend": 0.5,
+              "index_ticker": "XACT-SMABOLAG.ST", "index_label": "Svenska Småbolag (XACT)",
+              "gate_enabled": False, "gate_min": 0.10,
+              "forward_weeks": 52, "rebalance_weeks": 52, "embargo_weeks": 52,
+              "rank_ema_span": 1},
+}
+DEFAULT_SEGMENT = "large"
+
+
+# ── Förankra ALLA data-sökvägar under $MOMENTUM_HOME (om satt) ────────────────
+# SIST i filen (refererar konstanterna ovan). Löser klon/deploy-splittringen helt:
+# sätt MOMENTUM_HOME=/opt/momentum/momentum_ml i systemd-uniten OCH i skalet, så
+# läser/skriver API:t och ALLA CLI-verktyg samma cache/ + results/ oavsett vilken
+# katalog de startas ifrån. Osatt → relativt CWD (oförändrat, inget kan gå sönder).
+RESULTS_DIR = anchor(RESULTS_DIR)
+QUALITY_CACHE_DIR = anchor(QUALITY_CACHE_DIR)
+MFN_CACHE_DIR = anchor(MFN_CACHE_DIR)
+BORSAPI_CACHE_DIR = anchor(BORSAPI_CACHE_DIR)
+BORSDATA_CACHE_DIR = anchor(BORSDATA_CACHE_DIR)
+SENTIMENT_CACHE_DIR = anchor(SENTIMENT_CACHE_DIR)
+BENCHMARK_CACHE_DIR = anchor(BENCHMARK_CACHE_DIR)
+MACRO_CACHE_DIR = anchor(MACRO_CACHE_DIR)
+EODHD_CACHE_DIR = anchor(EODHD_CACHE_DIR)
+PORTFOLIO_HOLDINGS_FILE = anchor(PORTFOLIO_HOLDINGS_FILE)
+PORTFOLIO_VALUE_LOG = anchor(PORTFOLIO_VALUE_LOG)
+for _seg in SEGMENTS.values():
+    _seg["results_dir"] = anchor(_seg["results_dir"])

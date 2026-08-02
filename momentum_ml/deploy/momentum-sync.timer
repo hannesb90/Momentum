@@ -1,0 +1,9 @@
+[Unit]
+Description=Kör momentum-sync.service var 15:e minut
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+
+[Install]
+WantedBy=timers.target

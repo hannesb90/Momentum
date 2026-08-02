@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Momentum Small/Micro 13-week shadow weekly
+
+[Timer]
+OnCalendar=Mon *-*-* 04:30:00 Europe/Stockholm
+Persistent=true
+RandomizedDelaySec=120
+Unit=momentum-small13-shadow.service
+
+[Install]
+WantedBy=timers.target

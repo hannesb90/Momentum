@@ -1,0 +1,26 @@
+[Unit]
+Description=Momentum ML API (FastAPI/uvicorn)
+After=network.target
+# Ge aldrig upp omstarter (ingen "start-limit hit, entering failed state").
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=PATH=/opt/momentum/venv/bin
+ExecStart=/opt/momentum/venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 8001
+# always (inte bara on-failure): starta om även vid ren exit, så processen alltid lever.
+Restart=always
+RestartSec=5
+
+# Alltid på, men låg footprint – ingen särskild nice/io-prioritet behövs
+# eftersom API:t bara läser redan genererade CSV/JSON-filer.
+
+# Skydda mot earlyoom/kernel-OOM: --avoid/--prefer i earlyoom matchar bara
+# comm-namnet ("python3"), vilket inte skiljer uvicorn från t.ex. ett manuellt
+# tune_*.py-jobb. OOMScoreAdjust är per-process och träffsäker oavsett namn.
+OOMScoreAdjust=-500
+
+[Install]
+WantedBy=multi-user.target

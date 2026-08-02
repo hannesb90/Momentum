@@ -1,0 +1,61 @@
+[Unit]
+Description=Momentum ML – nattlig pipeline-körning (data, träning, backtest)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+# BUGG (fixad 2026-07-22, verkligt fall): PATH satt till ENBART venv/bin
+# (ingen /usr/bin:/bin) gjorde att ExecStart-radernas run_watched.sh aldrig
+# kunde köras alls - dess shebang (#!/usr/bin/env bash) letar upp bash via
+# PROCESSENS PATH, som inte innehöll den. Felet syntes bara som "env: 'bash':
+# No such file or directory" i journalen, och "-" framför ExecStart gjorde
+# att systemd ändå rapporterade tjänsten som lyckad ("Deactivated
+# successfully") - ingen nattlig träning har alltså faktiskt kört sedan
+# buggen introducerades (results/stats.json låg kvar på 21 juli när detta
+# upptäcktes 22 juli). /usr/bin:/bin krävs även FÖR run_watched.sh:s egna
+# interna anrop (awk/sleep/kill är externa program, inte bash-builtins).
+Environment=PATH=/opt/momentum/venv/bin:/usr/bin:/bin
+# Lämna en kärna åt API:t/OS – justera vid behov för din Pi-modell.
+Environment=MOMENTUM_TRAINING_THREADS=3
+# Obuffrad stdout/stderr så journalctl visar utskrifter i rätt ordning/tid -
+# annars kan parent- och subprocess-utskrifter framstå som hopklumpade.
+Environment=PYTHONUNBUFFERED=1
+# Två SEPARATA modeller per storlekssegment (--segment): "large" (Large+Mid,
+# results/) och "small" (Small Cap, results/small/). Att blanda storlekar späder
+# ut tvärsnitts-rangordningen – en stabil storbolagstrend (t.ex. SAAB) drunknar i
+# småbolagens större kast (uppmätt: prob_up 1.0 -> 0.35). Varje segment rankas
+# därför inom jämförbara bolag och får egen modell/results; frontend togglar
+# mellan dem. Type=oneshot kör ExecStart-raderna i tur och ordning (large, sedan
+# small). Behåll --skip-lstm (RAM på 2GB-Pi).
+# OBS: small-segmentets backtest överskattar fortfarande avkastningen tills
+# survivorship-fri data finns (småbolag avnoteras/kraschar oftast).
+#
+# "-" framför run_watched.sh: ett OOM-avbrott (exit 137) i large-segmentet
+# ska INTE hindra small-segmentet från att ändå försöka - separata results/
+# results/small-kataloger, ett segments krasch/avbrott ska aldrig kosta
+# BÅDA nätternas körning (verkligt fall 2026-07-20, se run_watched.sh).
+ExecStart=-/opt/momentum/momentum_ml/run_watched.sh /opt/momentum/venv/bin/python main.py --segment large --skip-lstm --ta-filter score
+ExecStart=-/opt/momentum/momentum_ml/run_watched.sh /opt/momentum/venv/bin/python main.py --segment small --skip-lstm --ta-filter score
+
+# Låg prioritet så API:t/dashboarden inte blir lidande under träningen.
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=20
+# MemoryMax/MemorySwapMax NEDAN ÄR INAKTIVA på den här Pi:n - rent
+# dekorativa, INTE ett faktiskt skydd. cgroup_disable=memory är satt i
+# /proc/cmdline, så ingen cgroup-minneskontroller finns
+# (cat /sys/fs/cgroup/cgroup.controllers listar bara cpuset cpu io pids).
+# Verkligt fall 2026-07-20: dessa gränser ingrep INTE när minnet tog slut -
+# Pi:n kraschade hårt kl 02:14 istället (se run_watched.sh:s docstring).
+# DET FAKTISKA skyddet är nu run_watched.sh ovan (pollar riktigt ledigt
+# minne). Gränserna nedan lämnas kvar ofarligt ifall en framtida kärna/
+# cmdline-ändring gör cgroup-kontrollern tillgänglig igen - blir de då en
+# andra skyddsnivå "på riktigt", men förlita dig INTE på dem idag.
+MemoryMax=1400M
+MemorySwapMax=512M
+
+# Tidsgräns som extra säkerhetsnät mot en hängande körning (justera vid behov).
+TimeoutStartSec=4h

@@ -1,0 +1,11 @@
+[Unit]
+Description=Kör momentum-watchlist.service varje natt efter träningen
+
+[Timer]
+# 03:00 - efter nattträningen (färsk rankning), före insight (03:30).
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=180
+
+[Install]
+WantedBy=timers.target

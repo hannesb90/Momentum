@@ -1,0 +1,51 @@
+ticker,nasdaq_symbol,member_from,member_to,source_url
+ABB.ST,ABB,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+ADDT-B.ST,ADDT B,2025-07-07,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+ALFA.ST,ALFA,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+ALIV-SDB.ST,ALIV SDB,2017-01-02,2024-06-24,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+ASSA-B.ST,ASSA B,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+ATCO-A.ST,ATCO A,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+ATCO-B.ST,ATCO B,2010-12-27,2025-06-30,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+AZN.ST,AZN,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+BOL.ST,BOL,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+ELUX-B.ST,ELUX B,2010-12-27,2025-06-30,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+EPI-A.ST,EPI A,2025-07-07,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+EQT.ST,EQT,2025-07-07,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+ERIC-B.ST,ERIC B,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+ESSITY-B.ST,ESSITY B,2017-06-12,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+EVO.ST,EVO,2021-01-04,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+FING-B.ST,FING B,2016-01-04,2018-06-25,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+GETI-B.ST,GETI B,2010-12-27,2025-06-30,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+HEXA-B.ST,HEXA B,2018-07-02,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+HM-B.ST,HM B,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+INDU-C.ST,INDU C,2025-07-07,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+INVE-B.ST,INVE B,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+KINV-B.ST,KINV B,2014-07-07,2025-06-30,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+LIFCO-B.ST,LIFCO B,2025-07-07,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+LUNE.ST,LUPE,2010-12-27,2018-01-01,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+MTG-B.ST,MTG B,2010-12-27,2015-12-28,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+NDA-SE.ST,NDA SE,2018-10-01,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+NDA-SE.ST,NDA SEK,2010-12-27,2018-09-24,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+NIBE-B.ST,NIBE B,2023-01-02,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+NOKIA-SEK.ST,NOKI SEK,2010-12-27,2015-08-03,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+NOKIA-SEK.ST,NOKIA SEK,2015-08-10,2016-12-26,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+OCTV-SDB.ST,OCTV SDB,2026-05-25,2026-05-25,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SAAB-B.ST,SAAB B,2024-07-01,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SAND.ST,SAND,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SBB-B.ST,SBB B,2022-07-04,2025-06-30,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SCA-B.ST,SCA B,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SCV-B.ST,SCV B,2010-12-27,2014-05-12,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SEB-A.ST,SEB A,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SECU-B.ST,SECU B,2010-12-27,2021-06-28,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SHB-A.ST,SHB A,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SINCH.ST,SINCH,2021-07-05,2025-06-30,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SKA-B.ST,SKA B,2010-12-27,2022-06-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SKA-B.ST,SKA B,2025-07-07,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SKF-B.ST,SKF B,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SSAB-A.ST,SSAB A,2010-12-27,2020-12-28,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SWED-A.ST,SWED A,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+SWMA.ST,SWMA,2010-12-27,2022-11-14,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+TEL2-B.ST,TEL2 B,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+TELIA.ST,TELIA,2016-04-18,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+TELIA.ST,TLSN,2010-12-27,2016-04-11,https://indexes.nasdaqomx.com/index/Weighting/OMXS30
+VOLV-B.ST,VOLV B,2010-12-27,2026-07-27,https://indexes.nasdaqomx.com/index/Weighting/OMXS30

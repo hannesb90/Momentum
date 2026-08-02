@@ -1,0 +1,14 @@
+[Unit]
+Description=Kör momentum-train-verify.service varje natt kl 03:00
+
+[Timer]
+# momentum-train.timer startar 02:01 (large, sedan small) - ikvällens
+# mätningar visade 20-44 min för hela körningen. 02:50 ger ~49 min marginal
+# och ligger mellan momentum-global-theme (02:45) och momentum-watchlist
+# (03:01) för att inte krocka med dem i onödan.
+OnCalendar=*-*-* 02:50:00
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

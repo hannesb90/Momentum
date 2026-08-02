@@ -1,0 +1,35 @@
+[Unit]
+Description=Momentum ML – nattlig PDF-backfill (balansräkningsfält ur rapport-PDF:er)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=hannesb
+WorkingDirectory=/opt/momentum/momentum_ml
+Environment=PATH=/opt/momentum/venv/bin
+Environment=MOMENTUM_HOME=/opt/momentum/momentum_ml
+Environment=PYTHONUNBUFFERED=1
+# EGEN enhet, MEDVETET skild från momentum-mfn.service: den initiala
+# ikapp-hämtningen (tusentals PDF:er à nedladdning+parsning) hade sprängt
+# huvudkedjans TimeoutStartSec och stoppat resten av dess steg. Här: max
+# 400 PDF:er per segment och natt (~20-40 min) – ikapp på ~1-2 veckor,
+# därefter bara nattens nya rapporter (PDF-texten cachas för alltid, redan
+# hämtade omprocessas gratis). value_screener score körs EFTERÅT så de nya
+# fälten (equity/liabilities/aktieantal ur tabellerna) når modellen direkt.
+# "-"-prefix: ett stegs fel stoppar inte nästa (samma princip som mfn-kedjan).
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.mfn_pdf backfill large 400
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.mfn_pdf backfill small 400
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.value_screener score large
+ExecStart=-/opt/momentum/venv/bin/python -m altdata.value_screener score small
+
+# Låg prioritet – API:t/dashboarden får inte bli lidande.
+Nice=15
+IOSchedulingClass=idle
+CPUWeight=20
+# pdfplumber på stora årsredovisningar är minneshungrigt – samma tak som
+# mfn-kedjan; backfillens subprocess-isolering skyddar redan mot runaway.
+MemoryMax=900M
+MemorySwapMax=256M
+
+TimeoutStartSec=2h

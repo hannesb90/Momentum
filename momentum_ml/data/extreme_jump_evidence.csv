@@ -1,0 +1,10 @@
+ticker,event_date,classification,source_url,note
+BONEX.ST,2021-09-09,genuine_news,https://www.bonesupport.com/en-us/press-release-category/press-release/page/2/,FORTIFY study results announced inconclusive
+BONEX.ST,2022-05-18,genuine_news,https://www.bonesupport.com/en-us/media/press-releases/bonesupport-receives-market-authorization-for-cerament-g-in-the-us,FDA market authorization for CERAMENT G
+LUMI.ST,2022-08-01,genuine_news,https://lundinmining.com/news/2022/,Company confirmed sinkhole near Ojos del Salado operation
+SINCH.ST,2022-10-20,genuine_news,https://investors.sinch.com/news-releases/news-release-details/year-end-report-january-december-2022,Preliminary Q3 results and SEK 5bn goodwill impairment
+SINCH.ST,2022-11-02,genuine_news,https://www.group.sinch.com/investors/reports-and-presentations/?year=2022,Q3 report publication
+TRUE-B.ST,2021-10-29,genuine_news,https://corporate.truecaller.com/newsroom/press-release/395E5E3BEC983004,Q3 report after IPO showed strong growth and profitability
+VPLAY-B.ST,2023-06-05,genuine_news,https://uk.investing.com/news/stock-market-news/viaplay-names-new-ceo-cuts-outlook-as-business-environment-deteriorates-3041468,Reuters reports 60 percent plunge after profit warning and CEO replacement
+VPLAY-B.ST,2023-12-01,genuine_news,https://uk.investing.com/news/stock-market-news/swedens-viaplay-to-raise-equity-restructure-debt-3255372,Reuters reports recapitalisation debt restructuring and shareholder dilution
+VPLAY-B.ST,2024-01-16,corporate_action,https://www.viaplaygroup.com/sv/node/1055,Rights issue recapitalisation

@@ -1,0 +1,434 @@
+# Deploy på Raspberry Pi
+
+Mål: API + dashboard alltid på, pipelinen (datahämtning → träning → backtest)
+körs lågprioriterat en gång per natt så att Pi:n inte blir överbelastad och
+dashboarden förblir responsiv under körningen.
+
+## 1. Förberedelser
+
+```bash
+sudo mkdir -p /opt/momentum
+sudo chown $USER:$USER /opt/momentum
+git clone <repo-url> /opt/momentum/src
+cp -r /opt/momentum/src/momentum_ml /opt/momentum/src/frontend /opt/momentum/
+
+cd /opt/momentum/momentum_ml
+python3 -m venv /opt/momentum/venv
+/opt/momentum/venv/bin/pip install -r requirements.txt
+
+cd /opt/momentum/frontend
+npm ci
+npm run build   # bygger dist/ som nginx servar
+```
+
+## 1b. Kontobundna hemligheter (ALDRIG i git)
+
+Repot är delat/publikt – inget kontobundet ska någonsin committas. `MONTROSE_ACCOUNT_ID`
+(används av `/api/trade-ticket` och den nattliga innehavssynken, steg 7) läses ur en
+miljövariabel (`config.py`), aldrig hårdkodad. Sätt den PER TJÄNST via en systemd
+drop-in i stället för att redigera de committade `.service`-filerna – då hamnar
+värdet bara i `/etc/systemd/system/…`, aldrig i arbetskopian git ser:
+
+```bash
+sudo systemctl edit momentum-api.service
+# klistra in i redigeraren som öppnas:
+#   [Service]
+#   Environment=MONTROSE_ACCOUNT_ID=<ditt-konto-id>
+
+sudo systemctl edit momentum-montrose-holdings.service
+# samma [Service]/Environment-rad här också
+```
+
+Ta reda på ditt konto-ID via Montrose-MCP:n: `python montrose_ticket.py fetch_holdings`
+(kräver att `montrose`-servern redan är lokalt registrerad, se steg 7). Kör
+`sudo systemctl daemon-reload && sudo systemctl restart momentum-api` efter ändringen.
+
+## 2. API som alltid-på-tjänst
+
+Kräver `MONTROSE_ACCOUNT_ID` satt (se 1b) för att köp-biljett-knappen ska fungera –
+resten av API:t funkar utan den.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-api.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-api.service
+```
+
+Tjänsten har `Restart=always` + `StartLimitIntervalSec=0` – dör processen
+startar systemd den direkt, hur ofta som helst. **Men** systemd fångar bara när
+själva processen dör. Ett 500/hängt uvicorn-tillstånd (t.ex. en läsning som
+träffar en halvskriven CSV under natt-träningen) håller processen vid liv men
+servar fel – då startar inget om av sig självt. Två skydd mot det:
+
+1. **Robust läsning i API:t** – alla CSV-läsningar försöker om några gånger med
+   kort paus (`_read_csv` i `api/main.py`), och ett oväntat fel returnerar ett
+   vänligt `503 "Resultat uppdateras..."` som frontend kan försöka om, i stället
+   för en ogenomskinlig 500. Detta ensamt tar bort det återkommande felet.
+2. **Hälso-vakthund** (steg 2b) – mäter faktisk hälsa och startar om vid behov.
+
+### 2b. Hälso-vakthund (startar om vid ohälsa, inte bara vid krasch)
+
+`momentum-api-watchdog.timer` kör var 30:e sekund, gör en `curl` mot
+`/api/health` och startar om `momentum-api` om den är ohälsosam två gånger i rad
+(en enstaka miss ignoreras så den inte flaxar). Vakthunden körs som root för att
+få `systemctl restart`-behörighet.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-api-watchdog.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-api-watchdog.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-api-watchdog.timer
+
+# Se vakthundens beslut i journalen:
+journalctl -t momentum-api-watchdog -f
+```
+
+> Efter en uppdatering av `momentum-api.service` (t.ex. till `Restart=always`):
+> `sudo cp` filen på nytt, `sudo systemctl daemon-reload`, sedan
+> `sudo systemctl restart momentum-api`.
+
+## 3. Nattlig träning (lågprioriterad)
+
+`momentum-train.service` körs som `Type=oneshot` med:
+- `Nice=15` + `IOSchedulingClass=idle` – stjäl inte CPU/disk från API:t.
+- `CPUWeight=20` – cgroup-baserad mjuk prioritering (systemd ≥ 240).
+- `MemoryMax=1400M`/`MemorySwapMax=512M` – **INAKTIVA på den här Pi:n**
+  (`cgroup_disable=memory` i `/proc/cmdline`, ingen minneskontroller finns).
+  Lämnade kvar ofarligt ifall det ändras, men förlita dig inte på dem.
+- **`run_watched.sh`** – det FAKTISKA OOM-skyddet: en bash-wrapper som pollar
+  `/proc/meminfo` MemAvailable var 5:e sekund och avbryter (SIGTERM→SIGKILL,
+  hela processgruppen) om det går under 250MB, innan Pi:n kraschar hårt (se
+  skriptets docstring för verkligt fall 2026-07-20). `-` framför ExecStart
+  gör att ett OOM-avbrott i `large`-segmentet inte hindrar `small` från att
+  ändå försöka.
+- `MOMENTUM_TRAINING_THREADS=3` – lämnar en kärna åt API/OS på en 4-kärnig Pi.
+  Justera till antal kärnor − 1 för din modell (Pi 5 har också 4 kärnor).
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-train.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-train.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-train.timer
+
+# Testköra direkt utan att vänta till 02:00:
+sudo systemctl start momentum-train.service
+journalctl -u momentum-train.service -f
+```
+
+### 3a. Features-cache mellan nätter (2026-07-22)
+
+`build_all_features()` byggde tidigare om HELA feature-matrisen (2010→idag,
+alla bolag) från grunden **varje natt** – trots att en enskild tickers
+features är en REN funktion av dess prisserie, som sällan ändras (ny bar en
+gång/vecka). `features/feature_engineering.py` cachar nu varje tickers
+resultat i `cache/features_by_ticker/<ticker>.pkl`, nyckel = hash(prisdata) +
+hash(hela feature_engineering.py + config.py). Ändras EN rad prisdata (ny
+vecka, eller en sällsynt Yahoo-revidering) eller EN rad kod/config byggs den
+tickern om från grunden – aldrig en delvis/inkrementell uppdatering, så
+korrekthet kräver bara att `build_features()` verkligen är en ren funktion
+(verifierat med `pd.testing.assert_frame_equal(..., check_exact=True)` –
+bit-för-bit identiskt resultat andra körningen). Ingen manuell installation
+krävs – katalogen skapas automatiskt vid första körningen.
+
+### 3b. Verifiera + kör om vid misslyckad natt (2026-07-22)
+
+`momentum-train.service` kan misslyckas TYST: minnesvakten (`run_watched.sh`)
+avbryter ett segment, och `-` framför `ExecStart` gör att systemd ändå
+rapporterar tjänsten som lyckad ("Deactivated successfully") – se
+`run_watched.sh`:s docstring för de tre kvällarna (2026-07-19/20/22) det
+hänt. `momentum-train-verify.service` kollar varje natt kl 02:50 (49 min
+marginal efter 02:01, se timer-filen) om `results/stats.json` OCH
+`results/small/stats.json` faktiskt fick dagens datum – kör om
+`momentum-train.service` EN gång om inte, och loggar utfallet till journalen
+oavsett.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-train-verify.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-train-verify.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-train-verify.timer
+
+# Testköra direkt:
+sudo systemctl start momentum-train-verify.service
+journalctl -u momentum-train-verify.service -f
+```
+
+## 4. Frontend + reverse proxy
+
+```bash
+sudo apt install nginx
+sudo cp /opt/momentum/momentum_ml/deploy/nginx-momentum.conf /etc/nginx/sites-available/momentum
+sudo ln -s /etc/nginx/sites-available/momentum /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Lägg på HTTPS (t.ex. `certbot --nginx`) – krävs för att PWA:n ska gå att
+installera och för att service workern ska aktiveras utanför `localhost`.
+
+## 5. Auto-sync (git pull + redeploy automatiskt)
+
+`momentum-sync.timer` kör var 15:e minut: hämtar nya commits, kopierar
+ändrad `momentum_ml/`- eller `frontend/`-kod till deploy-katalogerna, bygger
+om frontend och/eller startar om API:t vid behov. `requirements.txt`-ändringar
+flaggas men installeras *inte* automatiskt (för att inte riskera diskutrymmet
+vid en oövervakad `pip install`) – kör då steg 1:s pip-kommando manuellt.
+
+Kräver en avgränsad sudo-rättighet för att kunna starta om API-tjänsten utan
+lösenord (bara den exakta kommandot, inget annat):
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-sync.sudoers /etc/sudoers.d/momentum-sync
+sudo chmod 440 /etc/sudoers.d/momentum-sync
+sudo visudo -c   # validera syntaxen
+```
+
+Installera och starta timern:
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-sync.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-sync.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-sync.timer
+
+# Testköra direkt:
+systemctl start momentum-sync.service
+journalctl -u momentum-sync.service -f
+```
+
+Ändringar i `momentum_ml/deploy/` (systemd-units etc) synkas medvetet inte
+automatiskt – skriptet skriver bara ut en påminnelse om vad som ska köras
+manuellt, eftersom sådana ändringar kan kräva `daemon-reload`/sudo.
+
+## 6. Avanza-revision + rapportkalender
+
+Två fristående timers ovanpå Avanza-datakällan (`altdata/avanza.py`):
+
+- **`momentum-avanza-audit`** (månadsvis, 1:a kl 06:30): re-verifierar varje
+  bekräftad ticker-mappning mot Avanza, flaggar nya avnoteringar/uppköp med
+  MFN-styrkt orsak (`results/avanza_delisting_audit.csv`, ackumulerande) och
+  underhåller överlevnadsliggaren (`results/universe_survival.csv` med
+  first_seen/last_ok per ticker – bygger point-in-time-universumhistorik
+  för framtida survivorship-fri backtest).
+- **`momentum-avanza-calendar`** (veckovis, måndag 06:15): hämtar kommande
+  rapportdatum (keyIndicators.nextReport) för large+small och skriver
+  `results*/report_calendar.csv` – data MFN aldrig kan ge (bara publicerade
+  PM). Endast framåtblickande användning; får aldrig bli en tränings-feature
+  bakåt (lookahead).
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-avanza-audit.service    /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-avanza-audit.timer      /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-avanza-calendar.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-avanza-calendar.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-avanza-audit.timer momentum-avanza-calendar.timer
+```
+
+## 7. Nattlig innehavssynk från Montrose (midnatt)
+
+`momentum-montrose-holdings.timer` kör `sync_montrose_holdings.py
+--from-montrose` vid 00:00 – hämtar innehaven (läs-läge, headless Claude låst
+till `get_holdings`) och skriver `cache/portfolio_holdings.csv`, samma fil
+appen använder. `MONTROSE_ACCOUNT_ID` (se 1b) är inte hårt krävt här – utan
+den hittas bara inte ISK-kontots tillgängliga köpkraft, resten av synken
+funkar ändå. Körs FÖRE nattträningen (02:00) så portfölj-uppdateringen
+värderar färska innehav. Vägrar skriva vid tomt/trasigt svar (rör aldrig
+befintlig fil då). Befintliga hinkar bevaras; bara nya tickers hink-gissas.
+
+Kräver på Pi:n (engångs, som samma användare som tjänsten kör):
+Claude Code installerad + inloggad (`claude login`, prenumeration – ingen
+API-nyckel) och Montrose-servern LOKALT registrerad:
+
+```bash
+claude mcp add --transport http montrose https://mcp.montrose.io
+claude mcp login montrose   # OAuth – klistra in callback-URL:en SNABBT (~1 min giltighet)
+```
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-montrose-holdings.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-montrose-holdings.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-montrose-holdings.timer
+
+# Testköra direkt:
+sudo systemctl start momentum-montrose-holdings.service
+journalctl -u momentum-montrose-holdings.service -f
+```
+
+## 7a2. Nattlig watchlist-synk till Montrose (03:00)
+
+`momentum-watchlist.timer` kör `watchlist_sync.py` – speglar modellens
+topp-10 sammanvägda rankning + säljvaktens flaggade innehav som två
+Montrose-watchlists (`config.MONTROSE_WATCHLIST_TOP/_SELL`), så de syns
+direkt i mäklarappen. Rör ALDRIG en order (`create_trade_ticket` ingår inte
+i dess `--allowedTools`). Skriver om listorna helt varje körning (tar bort
+gamla poster, lägger till nya) – ackumulerar aldrig.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-watchlist.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-watchlist.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-watchlist.timer
+
+# Testköra direkt:
+cd /opt/momentum/momentum_ml && python watchlist_sync.py
+```
+
+## 7b. Nattlig narrativ-rapport (PM/VD-ord + nyheter/social, 03:30)
+
+`momentum-insight.timer` kör `insight_report.py` – ren narrativ, ALDRIG en
+signal (se `docs/UTVECKLINGSLOGG.md` §10 om varför social/nyhets-alt-data
+inte får bli en tränings-feature). Läser redan cachad MFN/poängkarte-data
+lokalt och använder headless Claudes inbyggda **WebSearch** (ingen extra
+API-nyckel) för färska nyheter/social ton, för dina innehav + modellens
+topp-10 sammanvägda rankning. Skriver `results/insight_report.json`.
+
+Kostnadstak i `config.py`: `INSIGHT_MAX_TICKERS` (default 20) och
+`INSIGHT_BATCH_SIZE` (default 5, ~4 headless-anrop/natt). Kräver bara
+`claude login` (prenumerationen) – ingen extra MCP-registrering, WebSearch
+är ett inbyggt verktyg.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-insight.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-insight.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-insight.timer
+
+# Testköra direkt (använd --limit vid första testet, snabbare):
+cd /opt/momentum/momentum_ml && python insight_report.py --limit 4
+```
+
+## 7c. Daglig förvaltarkommentar (23:00)
+
+`momentum-commentary.timer` kör `portfolio_commentary.py` – EN headless-
+körning, INGA verktyg (ren textsyntes av redan beräknad data: hink-drift,
+varningar, exit-alarm, säljvakt, Nästa köp-planen + insight_report.json).
+Skriver `results/portfolio_commentary.json`, visas överst på Bedömning-
+fliken.
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-commentary.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-commentary.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-commentary.timer
+
+# Testköra direkt:
+cd /opt/momentum/momentum_ml && python portfolio_commentary.py
+```
+
+## 7d. Ombokning vid Claude-kvotstopp (var 2:a minut)
+
+Om ett schemalagt jobb ovan (7/7a2/7b/7c) misslyckas pga prenumerationens
+kvot-/tidsgräns skriver `claude_headless.queue_retry()` en post i
+`cache/claude_retry_queue.json` med den "resets HH:MM"-tid claude-cli själv
+angav. `momentum-retry.timer` kör `retry_dispatcher.py` var 2:a minut och
+kör om exakt det skriptet (med samma argument) så snart den tiden passerat
+– i stället för att jobbet bara tappas till nästa ordinarie natt-timer
+(kan vara >20h bort om felet inträffar tidigt på natten).
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-retry.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-retry.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-retry.timer
+
+# Se ombokade/omkörda jobb:
+journalctl -u momentum-retry.service -f
+```
+
+## 8. Hälsokontroll på Pi:n
+
+```bash
+vcgencmd measure_temp        # håll under ~80°C, sätt kylfläns/fläkt annars
+vcgencmd get_throttled       # 0x0 = ingen throttling/undervoltage hittills
+free -h                      # kontrollera att MemoryMax=2G inte är för snålt
+systemctl status momentum-api.service momentum-train.timer
+```
+
+Om träningen behöver mer tid är det ofarligt att låta den ta längre – den
+körs ändå på natten utan deadline. Justera istället `MOMENTUM_TRAINING_THREADS`
+nedåt eller minska universumet (`--market-cap "Large Cap" "Mid Cap"` istället
+för hela Sverige-listan) om Pi:n fortfarande är på gränsen (hög temp,
+swap-användning, throttling-flaggor).
+
+### Kontinuerlig övervakning (temperatur/spänning/minne)
+
+En Pi 4B kan starta om helt vid sammanhållen hög CPU-belastning om
+strömadaptern/kabeln är undermålig (undervoltage) eller kylningen är
+otillräcklig (thermal throttling/shutdown). **`MemoryMax=2G` i
+`momentum-train.service` gör faktiskt ingenting på den här Pi:n** –
+`cgroup_disable=memory` är satt i `/proc/cmdline` (`cat
+/sys/fs/cgroup/cgroup.controllers` saknar `memory`), så systemd:s
+cgroup-baserade minnesgränser är tysta no-ops här. `momentum-health.timer`
+loggar temperatur, `vcgencmd
+get_throttled`-bitmask, ledigt minne och swap-användning varje minut till
+`results/health.log`, och skriver en `[VARNING]`-rad till journalen vid hög
+temp (≥78°C), aktiv undervoltage/throttling, eller lågt ledigt minne
+(<200MB).
+
+```bash
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-health.service /etc/systemd/system/
+sudo cp /opt/momentum/momentum_ml/deploy/momentum-health.timer   /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now momentum-health.timer
+
+# Följ varningar live:
+journalctl -u momentum-health.service -f -p warning
+
+# Hela historiken:
+tail -f /opt/momentum/momentum_ml/results/health.log
+```
+
+### Kapacitetsvakt (agerar, inte bara loggar) – earlyoom
+
+`momentum-health.timer` ovan är passiv: den bara loggar/varnar en gång i
+minuten. Krasch 2026-07-22 09:01 visade att det inte räcker – ledigt minne
+gick från 706MB till 156MB (swap 695MB→1574MB av 1.8GB zram-cap) på under
+en minut, snabbare än health-timerns 1-minuters upplösning och snabbare än
+att någon hinner reagera manuellt, vilket stallade boxen tillräckligt länge
+för att trigga hårdvaru-watchdogen (`bcm2835-wdt`, 1 min timeout) → hård
+reboot. Eftersom `cgroup_disable=memory` gör `systemd-run -p MemoryMax` och
+`MemoryMax=` i units verkningslösa (se ovan), går det inte att lösa med
+cgroups – lösningen är en riktig OOM-vakt i userspace: `earlyoom` (pollar
+`/proc/meminfo` och SIGTERM/SIGKILL:ar innan minnet helt tar slut, oberoende
+av cgroups).
+
+```bash
+sudo apt-get install -y earlyoom
+```
+
+Konfiguration i `/etc/default/earlyoom` (inte git-styrd – ren
+maskinkonfiguration, ligger utanför `sync.sh`s scope):
+
+```
+EARLYOOM_ARGS="-r 300 -m 20 -s 25 \
+  --avoid '(^|/)(sshd|systemd|dbus-daemon|tailscaled|cloudflared|postgres|Xorg|labwc)$' \
+  --prefer '(^|/)(node|vite|esbuild|pnpm)$'"
+```
+
+`-m 20 -s 25`: agerar när *både* ledigt minne <20% (~360MB) *och* ledig
+swap <25% samtidigt (earlyoom kräver båda) – det ger marginal innan
+kollapspunkten ovan (8.6%/13%). `--prefer` styr mot Node/Vite/esbuild
+(dev-serverprocesserna som delar boxen med momentum, se `ps aux` – de är
+inte produktionskritiska). `--avoid` matchar bara `comm`-namnet (15 tecken,
+ingen cmdline), vilket INTE räcker för att skydda `momentum-api` – dess
+uvicorn-process heter `python3` i `comm`, samma som vilket manuellt
+`tune_*.py`/`backtest_*.py`-jobb som helst. Den skyddas istället
+per-process, träffsäkert, via `OOMScoreAdjust=-500` i
+`momentum-api.service` (se avsnitt 2 ovan).
+
+```bash
+sudo systemctl enable --now earlyoom.service
+systemctl status earlyoom.service          # ska vara active (running)
+journalctl -u earlyoom -f                  # minnesrapport var 5:e minut (-r 300)
+```
+
+Efter en oväntad omstart, kontrollera **föregående boot** för att avgöra
+grundorsak (kraschar tyst utan ren shutdown-sekvens = troligen
+strömbortfall/undervoltage, inte en mjuk OOM-kill):
+
+```bash
+vcgencmd get_throttled                       # bit 16/18 satt = har hänt sedan boot
+journalctl -b -1 -p err --since "-2h"
+dmesg -T 2>/dev/null | grep -iE "oom|under|throttl|temp"
+```
