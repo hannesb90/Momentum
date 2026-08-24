@@ -1,0 +1,3115 @@
+{
+ "per_ar": {
+  "2010": {
+   "avnoterade": 30,
+   "med_serie": 3,
+   "utan_serie": 27
+  },
+  "2011": {
+   "avnoterade": 32,
+   "med_serie": 3,
+   "utan_serie": 29
+  },
+  "2012": {
+   "avnoterade": 40,
+   "med_serie": 3,
+   "utan_serie": 37
+  },
+  "2013": {
+   "avnoterade": 22,
+   "med_serie": 0,
+   "utan_serie": 22
+  },
+  "2014": {
+   "avnoterade": 25,
+   "med_serie": 6,
+   "utan_serie": 19
+  },
+  "2015": {
+   "avnoterade": 23,
+   "med_serie": 12,
+   "utan_serie": 11
+  },
+  "2016": {
+   "avnoterade": 14,
+   "med_serie": 6,
+   "utan_serie": 8
+  },
+  "2017": {
+   "avnoterade": 18,
+   "med_serie": 10,
+   "utan_serie": 8
+  },
+  "2018": {
+   "avnoterade": 30,
+   "med_serie": 15,
+   "utan_serie": 15
+  },
+  "2019": {
+   "avnoterade": 20,
+   "med_serie": 8,
+   "utan_serie": 12
+  },
+  "2020": {
+   "avnoterade": 36,
+   "med_serie": 14,
+   "utan_serie": 22
+  },
+  "2021": {
+   "avnoterade": 27,
+   "med_serie": 17,
+   "utan_serie": 10
+  },
+  "2022": {
+   "avnoterade": 42,
+   "med_serie": 39,
+   "utan_serie": 3
+  },
+  "2023": {
+   "avnoterade": 38,
+   "med_serie": 24,
+   "utan_serie": 14
+  },
+  "2024": {
+   "avnoterade": 59,
+   "med_serie": 48,
+   "utan_serie": 11
+  },
+  "2025": {
+   "avnoterade": 65,
+   "med_serie": 54,
+   "utan_serie": 11
+  },
+  "2026": {
+   "avnoterade": 28,
+   "med_serie": 26,
+   "utan_serie": 2
+  }
+ },
+ "bolag": [
+  {
+   "slug": "ascienceholding",
+   "namn": "A+ Science Holding AB",
+   "orgnr": "556652-6835",
+   "avnoterad_datum": "2012-02-29",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 29 februari. Aktien kommer dock att handlas på Alternativa listan.",
+   "metod": null
+  },
+  {
+   "slug": "acom",
+   "namn": "A-Com AB",
+   "orgnr": "556291-2807",
+   "avnoterad_datum": "2013-01-31",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 31 januari. Aktien kommer att handlas på Mangoldlistan från och med den 1 februari.",
+   "metod": null
+  },
+  {
+   "slug": "acconomy",
+   "namn": "Acconomy AB",
+   "orgnr": "556217-5157",
+   "avnoterad_datum": "2020-02-14",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market den 14 februari, senast betalt denna dag var 0,32 kr",
+   "metod": null
+  },
+  {
+   "slug": "acscallcardsservicecenter",
+   "namn": "ACSC AB",
+   "orgnr": "556272-6546",
+   "avnoterad_datum": "2007-12-28",
+   "avnoterad_ar": 2007,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 28 december",
+   "metod": null
+  },
+  {
+   "slug": "adcitymedia",
+   "namn": "AdCityMedia AB",
+   "orgnr": "556584-8354",
+   "avnoterad_datum": "2020-01-24",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från First North den 24 januari, senast betalt denna dag var 164,50 kr",
+   "metod": null
+  },
+  {
+   "slug": "adoperator",
+   "namn": "Adoperator AB",
+   "orgnr": "556733-9410",
+   "avnoterad_datum": "2012-10-19",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 19 oktober",
+   "metod": null
+  },
+  {
+   "slug": "adtail",
+   "namn": "AdTail AB",
+   "orgnr": "556754-8549",
+   "avnoterad_datum": "2012-06-15",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 15 juni",
+   "metod": null
+  },
+  {
+   "slug": "aerocrine",
+   "namn": "Aerocrine AB",
+   "orgnr": "556549-1056",
+   "avnoterad_datum": "2015-07-13",
+   "avnoterad_ar": 2015,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm ( Nordiska listan ) 13 juli, senast betalt denna dag var 2,52 kr",
+   "metod": null
+  },
+  {
+   "slug": "affarsstrategerna",
+   "namn": "Affärsstrategerna AB",
+   "orgnr": "556321-4096",
+   "avnoterad_datum": "2010-01-29",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 29 januari",
+   "metod": null
+  },
+  {
+   "slug": "aikemedia",
+   "namn": "Aike Media AB",
+   "orgnr": "556658-5054",
+   "avnoterad_datum": "2026-05-20",
+   "avnoterad_ar": 2026,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 20 maj",
+   "metod": null
+  },
+  {
+   "slug": "akeliusresidentialproperty",
+   "namn": "Akelius Residential AB",
+   "orgnr": "556156-0383",
+   "avnoterad_datum": "2025-04-07",
+   "avnoterad_ar": 2025,
+   "avnoterad_orsak": "D-aktien avnoterad från First North den 7 april",
+   "metod": null
+  },
+  {
+   "slug": "aligera",
+   "namn": "Aligera AB",
+   "orgnr": "559026-8024",
+   "avnoterad_datum": "2018-02-16",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från First North den 16 februari. Aktien har varit handelsstoppad sedan den 25 januari. Senast betalt denna dag var 4,30 kr.",
+   "metod": null
+  },
+  {
+   "slug": "aligroplanetacquisitioncompany",
+   "namn": "Aligro Planet Acquisition Company AB",
+   "orgnr": "559301-7261",
+   "avnoterad_datum": "2023-08-23",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm den 23 augusti",
+   "metod": null
+  },
+  {
+   "slug": "allgon",
+   "namn": "ALLGON AB",
+   "orgnr": "556387-9955",
+   "avnoterad_datum": "2021-03-02",
+   "avnoterad_ar": 2021,
+   "avnoterad_orsak": "B-aktien är avnoterad från First North den 2 mars, senast betalt denna dag var 13,45 kr",
+   "metod": null
+  },
+  {
+   "slug": "allokton",
+   "namn": "Allokton AB",
+   "orgnr": "556676-8726",
+   "avnoterad_datum": "2011-09-07",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från First North 7 september",
+   "metod": null
+  },
+  {
+   "slug": "alstradoab",
+   "namn": "Alstrado AB",
+   "orgnr": "556556-0207",
+   "avnoterad_datum": "2008-02-12",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från First North 12 februari",
+   "metod": null
+  },
+  {
+   "slug": "altero",
+   "namn": "Altero AB",
+   "orgnr": "556524-2343",
+   "avnoterad_datum": "2013-03-28",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 28 mars",
+   "metod": null
+  },
+  {
+   "slug": "ambiatradinggroup",
+   "namn": "Ambia Trading Group AB",
+   "orgnr": "556834-7339",
+   "avnoterad_datum": "2020-06-30",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från  Spotlight Stock Market (tidigare Aktietorget) den 30 juni, senast betalt denna dag var 0,95 kr",
+   "metod": null
+  },
+  {
+   "slug": "animagroup",
+   "namn": "Anima Group AB",
+   "orgnr": "559048-8697",
+   "avnoterad_datum": "2023-12-08",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från Nordic SME (tidigare Nordic MTF) den 8 december",
+   "metod": null
+  },
+  {
+   "slug": "aquaterrenainternational",
+   "namn": "Aqua Terrena International AB",
+   "orgnr": "556502-6563",
+   "avnoterad_datum": "2013-09-05",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 5 september",
+   "metod": null
+  },
+  {
+   "slug": "arcam",
+   "namn": "Arcam AB",
+   "orgnr": "556539-5356",
+   "avnoterad_datum": "2018-01-26",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm den 26 januari. Senast betalt denna dag var 345 kr.",
+   "metod": null
+  },
+  {
+   "slug": "arcaroma",
+   "namn": "ArcAroma AB",
+   "orgnr": "556586-1985",
+   "avnoterad_datum": "2021-05-18",
+   "avnoterad_ar": 2021,
+   "avnoterad_orsak": "Avnoterad från First North den 18 maj, senast betalt denna dag var 28 kr",
+   "metod": null
+  },
+  {
+   "slug": "arenapersonal",
+   "namn": "Arena Personal AB",
+   "orgnr": "556325-0223",
+   "avnoterad_datum": "2009-02-04",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 4 februari",
+   "metod": null
+  },
+  {
+   "slug": "artimplant",
+   "namn": "Artimplant AB",
+   "orgnr": "556404-8394",
+   "avnoterad_datum": "2013-08-02",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från  Nordiska listan 2 augusti",
+   "metod": null
+  },
+  {
+   "slug": "audiodev",
+   "namn": "Audiodev AB",
+   "orgnr": "556196-2035",
+   "avnoterad_datum": "2009-06-17",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 17 juni",
+   "metod": null
+  },
+  {
+   "slug": "auholding",
+   "namn": "AU Holding AB",
+   "orgnr": "556660-7247",
+   "avnoterad_datum": "2013-02-15",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 15 februari",
+   "metod": null
+  },
+  {
+   "slug": "auragenrealty",
+   "namn": "Auragen Realty AB",
+   "orgnr": "556605-4259",
+   "avnoterad_datum": "2015-04-17",
+   "avnoterad_ar": 2015,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 17 april.",
+   "metod": null
+  },
+  {
+   "slug": "availo",
+   "namn": "Availo AB",
+   "orgnr": "556330-3055",
+   "avnoterad_datum": "2014-07-04",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 4 juli",
+   "metod": null
+  },
+  {
+   "slug": "avaloninnovation",
+   "namn": "Avalon Innovation AB",
+   "orgnr": "556448-8194",
+   "avnoterad_datum": "2011-02-04",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 4 februari.",
+   "metod": null
+  },
+  {
+   "slug": "avegagroup",
+   "namn": "Avega Group AB",
+   "orgnr": "556601-1887",
+   "avnoterad_datum": "2018-01-03",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm den 3 januari, senast betalt denna dag var 39,80 kr",
+   "metod": null
+  },
+  {
+   "slug": "aventuragroup",
+   "namn": "Aventura Group AB",
+   "orgnr": "559236-2593",
+   "avnoterad_datum": "2024-01-31",
+   "avnoterad_ar": 2024,
+   "avnoterad_orsak": "Avnoterad från First North den 31 januari",
+   "metod": null
+  },
+  {
+   "slug": "avonovasverige",
+   "namn": "Avonova Sverige AB",
+   "orgnr": "556560-6018",
+   "avnoterad_datum": "2012-12-06",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 6 december",
+   "metod": null
+  },
+  {
+   "slug": "axlongroup",
+   "namn": "Axlon Group AB",
+   "orgnr": "556585-5946",
+   "avnoterad_datum": "2012-07-06",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från  First North  6 juli",
+   "metod": null
+  },
+  {
+   "slug": "ayimagroup",
+   "namn": "Ayima Group AB",
+   "orgnr": "559095-9291",
+   "avnoterad_datum": "2024-06-18",
+   "avnoterad_ar": 2024,
+   "avnoterad_orsak": "Avnoterad från First North den 18 juni",
+   "metod": null
+  },
+  {
+   "slug": "ballingslovinternational",
+   "namn": "Ballingslöv International AB",
+   "orgnr": "556556-2807",
+   "avnoterad_datum": "2008-12-12",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 12 december",
+   "metod": null
+  },
+  {
+   "slug": "bellpalholding",
+   "namn": "Bellpal Holding AB",
+   "orgnr": "559274-9997",
+   "avnoterad_datum": "2024-07-02",
+   "avnoterad_ar": 2024,
+   "avnoterad_orsak": "Avnoterad från Nordic SME den 2 juli",
+   "metod": null
+  },
+  {
+   "slug": "bestinprepackagedservicesoftware",
+   "namn": "Bestin Prepackaged Service Software AB",
+   "orgnr": "556671-7756",
+   "avnoterad_datum": "2010-03-15",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 15 mars",
+   "metod": null
+  },
+  {
+   "slug": "biacoreinternational",
+   "namn": "Biacore International AB",
+   "orgnr": "556534-5211",
+   "avnoterad_datum": "2006-09-06",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från O-listan 6 september",
+   "metod": null
+  },
+  {
+   "slug": "biolinscientific",
+   "namn": "Biolin Scientific AB",
+   "orgnr": "556249-4293",
+   "avnoterad_datum": "2011-02-22",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 22 februari",
+   "metod": null
+  },
+  {
+   "slug": "biotechiggequity",
+   "namn": "Biotech-IgG Equity AB",
+   "orgnr": "556529-6224",
+   "avnoterad_datum": "2017-10-06",
+   "avnoterad_ar": 2017,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 6 oktober, senast betalt denna dag var 0,045 kr",
+   "metod": null
+  },
+  {
+   "slug": "bmimpex",
+   "namn": "BM Impex AB",
+   "orgnr": "556660-9359",
+   "avnoterad_datum": "2010-12-01",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget och Göteborgslistan 1 december",
+   "metod": null
+  },
+  {
+   "slug": "bogiotechnologies",
+   "namn": "Bogio Technologies AB",
+   "orgnr": "556666-6466",
+   "avnoterad_datum": "2024-04-30",
+   "avnoterad_ar": 2024,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 30 april",
+   "metod": null
+  },
+  {
+   "slug": "boretech",
+   "namn": "Bore Tech AB",
+   "orgnr": "556578-2637",
+   "avnoterad_datum": "2013-01-31",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från First North 31 januari",
+   "metod": null
+  },
+  {
+   "slug": "boraswafveri",
+   "namn": "Borås Wäfveri AB",
+   "orgnr": "556108-9052",
+   "avnoterad_datum": "2010-11-03",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 3 november",
+   "metod": null
+  },
+  {
+   "slug": "bossmedia",
+   "namn": "Boss Media AB",
+   "orgnr": "556400-0353",
+   "avnoterad_datum": "2008-04-18",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 18 april",
+   "metod": null
+  },
+  {
+   "slug": "brandworldsverige",
+   "namn": "Brandworld Sverige AB",
+   "orgnr": "556660-3550",
+   "avnoterad_datum": "2012-06-20",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 20 juni",
+   "metod": null
+  },
+  {
+   "slug": "brio",
+   "namn": "Brio AB",
+   "orgnr": "556201-9686",
+   "avnoterad_datum": "2011-06-10",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 10 juni",
+   "metod": null
+  },
+  {
+   "slug": "brostrom",
+   "namn": "Broström AB",
+   "orgnr": "556005-1467",
+   "avnoterad_datum": "2009-02-27",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 27 februari",
+   "metod": null
+  },
+  {
+   "slug": "bravikenlogistikab",
+   "namn": "Bråviken Logistik AB",
+   "orgnr": "559020-2353",
+   "avnoterad_datum": "2020-03-16",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 16 mars",
+   "metod": null
+  },
+  {
+   "slug": "capilon",
+   "namn": "Capilon AB",
+   "orgnr": "556709-1714",
+   "avnoterad_datum": "2012-04-27",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från First North 27 april",
+   "metod": null
+  },
+  {
+   "slug": "carbiotix",
+   "namn": "Carbiotix AB",
+   "orgnr": "556983-5019",
+   "avnoterad_datum": "2025-12-15",
+   "avnoterad_ar": 2025,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market den 15 december",
+   "metod": null
+  },
+  {
+   "slug": "cardo",
+   "namn": "Cardo AB",
+   "orgnr": "556026-8517",
+   "avnoterad_datum": "2011-04-21",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan den 21 april",
+   "metod": null
+  },
+  {
+   "slug": "carllamm",
+   "namn": "Carl Lamm AB",
+   "orgnr": "556228-8851",
+   "avnoterad_datum": "2008-08-15",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 15 augusti",
+   "metod": null
+  },
+  {
+   "slug": "carllammholding",
+   "namn": "Carl Lamm Holding AB",
+   "orgnr": "556734-5987",
+   "avnoterad_datum": "2009-06-30",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 30 juni",
+   "metod": null
+  },
+  {
+   "slug": "cashguard",
+   "namn": "CashGuard AB",
+   "orgnr": "556422-8327",
+   "avnoterad_datum": "2008-08-21",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 21 augusti",
+   "metod": null
+  },
+  {
+   "slug": "catech",
+   "namn": "Catech AB",
+   "orgnr": "556247-4386",
+   "avnoterad_datum": "2010-10-26",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från First North 26 oktober",
+   "metod": null
+  },
+  {
+   "slug": "cateringpleaseiskandinavien",
+   "namn": "Catering Please i Skandinavien AB",
+   "orgnr": "556552-3221",
+   "avnoterad_datum": "2012-05-04",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 4 maj",
+   "metod": null
+  },
+  {
+   "slug": "cinnoberfinancialtechnologyab",
+   "namn": "Cinnober Financial Technology AB",
+   "orgnr": "556548-9654",
+   "avnoterad_datum": "2019-02-08",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Avnoterad från First North den 8 februari, senast betalt denna dag var 86,10 kr",
+   "metod": null
+  },
+  {
+   "slug": "coastalcontactsinc",
+   "namn": "Coastal Contacts Inc.",
+   "orgnr": null,
+   "avnoterad_datum": "2013-02-28",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 28 februari",
+   "metod": null
+  },
+  {
+   "slug": "colabitoilsweden",
+   "namn": "Colabitoil Sweden AB",
+   "orgnr": "556478-4485",
+   "avnoterad_datum": "2021-03-22",
+   "avnoterad_ar": 2021,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 22 mars, senast betalt denna dag var 9,14 kr",
+   "metod": null
+  },
+  {
+   "slug": "computerinnovationivaxjo",
+   "namn": "Computer Innovation i Växjö AB",
+   "orgnr": "556245-1269",
+   "avnoterad_datum": "2018-06-21",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF den 21 juni",
+   "metod": null
+  },
+  {
+   "slug": "condonordicholding",
+   "namn": "Condo Nordic Holding AB",
+   "orgnr": "559432-1571",
+   "avnoterad_datum": "2025-10-14",
+   "avnoterad_ar": 2025,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market den 14 oktober",
+   "metod": null
+  },
+  {
+   "slug": "cotcleanoiltechnologyab",
+   "namn": "COT-Clean Oil Technology AB",
+   "orgnr": "556598-5362",
+   "avnoterad_datum": "2014-03-31",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF 31 mars, handel kommer dock att ske på Alternativa aktiemarknaden",
+   "metod": null
+  },
+  {
+   "slug": "counterminetechnologies",
+   "namn": "Countermine Technologies AB",
+   "orgnr": "556541-8794",
+   "avnoterad_datum": "2010-11-26",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 26 november",
+   "metod": null
+  },
+  {
+   "slug": "creativeantibioticssweden",
+   "namn": "Creative Antibiotics Sweden AB",
+   "orgnr": "556585-7785",
+   "avnoterad_datum": "2013-06-25",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 25 juni",
+   "metod": null
+  },
+  {
+   "slug": "cryptzonegroup",
+   "namn": "Cryptzone Group AB",
+   "orgnr": "556646-3013",
+   "avnoterad_datum": "2014-04-17",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från First North 17 april",
+   "metod": null
+  },
+  {
+   "slug": "curira",
+   "namn": "Curira AB",
+   "orgnr": "556979-1477",
+   "avnoterad_datum": "2022-08-02",
+   "avnoterad_ar": 2022,
+   "avnoterad_orsak": "Avnoterad från Nordic SME (tidigare Nordic MTF) den 2 augusti",
+   "metod": null
+  },
+  {
+   "slug": "cwscomfortwindowsystem",
+   "namn": "CWS Comfort Window System AB",
+   "orgnr": "556574-9826",
+   "avnoterad_datum": "2015-06-08",
+   "avnoterad_ar": 2015,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 8 juni, senast betalt denna dag var 0,35 kr.",
+   "metod": null
+  },
+  {
+   "slug": "dackegroupnordic",
+   "namn": "Dacke Group Nordic AB",
+   "orgnr": "556606-9323",
+   "avnoterad_datum": "2009-12-30",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från First North 30 december",
+   "metod": null
+  },
+  {
+   "slug": "dannemoramineral",
+   "namn": "Dannemora Mineral AB",
+   "orgnr": "556678-3329",
+   "avnoterad_datum": "2015-03-26",
+   "avnoterad_ar": 2015,
+   "avnoterad_orsak": "Avnoterad från First North 26 mars",
+   "metod": null
+  },
+  {
+   "slug": "delarkaholding",
+   "namn": "Delarka Holding AB",
+   "orgnr": "556944-5843",
+   "avnoterad_datum": "2020-10-16",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från First North den 16 oktober, senast betalt denna dag var 63 kr",
+   "metod": null
+  },
+  {
+   "slug": "deltaenvironmentalprojects",
+   "namn": "Delta Environmental Projects AB",
+   "orgnr": "556935-5711",
+   "avnoterad_datum": "2016-11-28",
+   "avnoterad_ar": 2016,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 28 november. Bolaget har varit handelstoppad sedan den 22 september. Senast betalt den 21 september var 0,372 kr. Bolaget kommer ",
+   "metod": null
+  },
+  {
+   "slug": "devicom",
+   "namn": "Devicom AB",
+   "orgnr": "556635-1325",
+   "avnoterad_datum": "2011-04-28",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 28 april",
+   "metod": null
+  },
+  {
+   "slug": "dignitasystems",
+   "namn": "Dignita Systems AB",
+   "orgnr": "556582-5964",
+   "avnoterad_datum": "2017-07-07",
+   "avnoterad_ar": 2017,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 7 juli, senast betalt denna dag var 11,25 kr",
+   "metod": null
+  },
+  {
+   "slug": "ecobyggolit",
+   "namn": "ECO Byggolit AB",
+   "orgnr": "556736-8948",
+   "avnoterad_datum": "2014-04-29",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 29 april",
+   "metod": null
+  },
+  {
+   "slug": "edierikssondevelopmentandinnovationcompany",
+   "namn": "EDI - Eriksson Development and Innovation Company AB",
+   "orgnr": "556662-0570",
+   "avnoterad_datum": "2011-12-05",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 5 december",
+   "metod": null
+  },
+  {
+   "slug": "eeviahealth",
+   "namn": "Eevia Health Oy",
+   "orgnr": null,
+   "avnoterad_datum": "2025-09-05",
+   "avnoterad_ar": 2025,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market den 5 september",
+   "metod": null
+  },
+  {
+   "slug": "ekomarine",
+   "namn": "Ekomarine AB",
+   "orgnr": "556676-8254",
+   "avnoterad_datum": "2011-11-14",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 14 november",
+   "metod": null
+  },
+  {
+   "slug": "elektronikgruppenbk",
+   "namn": "ElektronikGruppen BK AB",
+   "orgnr": "556072-2547",
+   "avnoterad_datum": "2011-09-27",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 27 september",
+   "metod": null
+  },
+  {
+   "slug": "elverketvallentuna",
+   "namn": "Elverket Vallentuna AB",
+   "orgnr": "556577-2141",
+   "avnoterad_datum": "2017-10-20",
+   "avnoterad_ar": 2017,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 20 oktober, senast betalt denna dag var 94,25 kr",
+   "metod": null
+  },
+  {
+   "slug": "emotra",
+   "namn": "Emotra AB",
+   "orgnr": "556612-1579",
+   "avnoterad_datum": "2022-03-18",
+   "avnoterad_ar": 2022,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 18 mars. Handel kommer ske via Mangoldlistan.",
+   "metod": null
+  },
+  {
+   "slug": "enaco",
+   "namn": "Enaco AB",
+   "orgnr": "556526-6243",
+   "avnoterad_datum": "2009-02-13",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 13 februari",
+   "metod": null
+  },
+  {
+   "slug": "energyosolutionsinvest",
+   "namn": "EnergyO Solutions Russia AB",
+   "orgnr": "556694-7684",
+   "avnoterad_datum": "2023-10-11",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från First North den 11 oktober",
+   "metod": null
+  },
+  {
+   "slug": "entractionholding",
+   "namn": "Entraction Holding AB",
+   "orgnr": "556367-2913",
+   "avnoterad_datum": "2011-07-29",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från First North 29 juli",
+   "metod": null
+  },
+  {
+   "slug": "euroconconsulting",
+   "namn": "Eurocon Consulting AB",
+   "orgnr": "556736-3188",
+   "avnoterad_datum": "2023-04-28",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 28 april",
+   "metod": null
+  },
+  {
+   "slug": "europeaninstituteofscience",
+   "namn": "European Institute of Science AB",
+   "orgnr": "556404-2769",
+   "avnoterad_datum": "2025-01-22",
+   "avnoterad_ar": 2025,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 22 januari",
+   "metod": null
+  },
+  {
+   "slug": "evendo",
+   "namn": "Evendo AB",
+   "orgnr": "556927-9242",
+   "avnoterad_datum": "2018-10-01",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market den 1 oktober. Aktien har varit handelsstoppad sedan den 27 september, senast betalt denna dag var 0,02 kr.",
+   "metod": null
+  },
+  {
+   "slug": "exeotechinvest",
+   "namn": "ExeoTech Invest AB",
+   "orgnr": "556536-0954",
+   "avnoterad_datum": "2019-12-23",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF den 23 december, aktien har varit handelsstoppad sedan den 22 november",
+   "metod": null
+  },
+  {
+   "slug": "exinidiagnostics",
+   "namn": "EXINI Diagnostics AB",
+   "orgnr": "556576-1995",
+   "avnoterad_datum": "2015-12-04",
+   "avnoterad_ar": 2015,
+   "avnoterad_orsak": "Avnoterad från  First North 4 december, senast betalt denna dag var 3,14 kr",
+   "metod": null
+  },
+  {
+   "slug": "fasttvnet",
+   "namn": "FastTV net AB",
+   "orgnr": "556640-0411",
+   "avnoterad_datum": "2010-02-25",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 25 februari. Handel kommer att ske på Mangoldlistan från den 5 mars. Försatt i konkurs 21 maj.",
+   "metod": null
+  },
+  {
+   "slug": "fdtsystemholding",
+   "namn": "FDT System Holding AB",
+   "orgnr": "556770-0793",
+   "avnoterad_datum": "2014-06-05",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 5 juni",
+   "metod": null
+  },
+  {
+   "slug": "finnveden",
+   "namn": "Finnveden AB",
+   "orgnr": "556224-0894",
+   "avnoterad_datum": "2005-02-18",
+   "avnoterad_ar": 2005,
+   "avnoterad_orsak": "Avnoterad från A-listan 18 februari",
+   "metod": null
+  },
+  {
+   "slug": "fmeeurope",
+   "namn": "FME Europe AB (Fly Me)",
+   "orgnr": "556306-9847",
+   "avnoterad_datum": "2007-11-09",
+   "avnoterad_ar": 2007,
+   "avnoterad_orsak": "Avnoterad från First North 9 november. Bolaget har innan dess varit handelsstoppat i drygt åtta månader.",
+   "metod": null
+  },
+  {
+   "slug": "forsstromhighfrequency",
+   "namn": "Forsstrom High Frequency",
+   "orgnr": "556461-7529",
+   "avnoterad_datum": "2014-10-31",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 31 oktober, bolaget uppger att dom avser att ansöka om handel på Alternativa aktiemarknaden",
+   "metod": null
+  },
+  {
+   "slug": "fundior",
+   "namn": "Fundior AB",
+   "orgnr": "556695-0100",
+   "avnoterad_datum": "2013-07-05",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 5 juli",
+   "metod": null
+  },
+  {
+   "slug": "fundiorfastigheter",
+   "namn": "Fundior Fastigheter AB",
+   "orgnr": "556711-9069",
+   "avnoterad_datum": "2012-12-14",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 14 december",
+   "metod": null
+  },
+  {
+   "slug": "gantcompany",
+   "namn": "Gant Company AB",
+   "orgnr": "556600-4486",
+   "avnoterad_datum": "2008-03-20",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 20 mars",
+   "metod": null
+  },
+  {
+   "slug": "genesisit",
+   "namn": "Genesis IT AB",
+   "orgnr": "556552-1670",
+   "avnoterad_datum": "2023-10-31",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 31 oktober",
+   "metod": null
+  },
+  {
+   "slug": "geveko",
+   "namn": "Geveko AB",
+   "orgnr": "556024-6844",
+   "avnoterad_datum": "2015-09-15",
+   "avnoterad_ar": 2015,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan)15 september, för mer information se nedan",
+   "metod": null
+  },
+  {
+   "slug": "gifttodaysweden",
+   "namn": "GiftToday Sweden AB",
+   "orgnr": "556680-2145",
+   "avnoterad_datum": "2010-07-27",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 27 juli",
+   "metod": null
+  },
+  {
+   "slug": "globalfun",
+   "namn": "GlobalFun AB",
+   "orgnr": "556583-7431",
+   "avnoterad_datum": "2010-09-14",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 14 september",
+   "metod": null
+  },
+  {
+   "slug": "globalgaming555",
+   "namn": "Global Gaming 555 AB",
+   "orgnr": "556721-0520",
+   "avnoterad_datum": "2020-12-11",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från First North den 11 december, senast betalt denna dag var 10,90 kr",
+   "metod": null
+  },
+  {
+   "slug": "glocalnet",
+   "namn": "Glocalnet AB",
+   "orgnr": "556542-2382",
+   "avnoterad_datum": "2006-04-28",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från O-listan 28 april",
+   "metod": null
+  },
+  {
+   "slug": "gorthonlines",
+   "namn": "Gorthon Lines AB",
+   "orgnr": "556112-6953",
+   "avnoterad_datum": "2005-03-21",
+   "avnoterad_ar": 2005,
+   "avnoterad_orsak": "Avnoterad från O-listan 21 mars",
+   "metod": null
+  },
+  {
+   "slug": "guldadamholding",
+   "namn": "GuldAdam Holding AB",
+   "orgnr": "556916-1416",
+   "avnoterad_datum": "2014-08-28",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 28 augusti, senast betalt denna dag var 0,036 kr.",
+   "metod": null
+  },
+  {
+   "slug": "h1communication",
+   "namn": "H1 Communication AB",
+   "orgnr": "556730-0610",
+   "avnoterad_datum": "2015-05-08",
+   "avnoterad_ar": 2015,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 8 maj",
+   "metod": null
+  },
+  {
+   "slug": "hammarbybandy",
+   "namn": "Hammarby Bandy AB",
+   "orgnr": "556745-0639",
+   "avnoterad_datum": "2012-03-30",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 30 mars",
+   "metod": null
+  },
+  {
+   "slug": "hammarinvest",
+   "namn": "Hammar Invest AB",
+   "orgnr": "556224-4300",
+   "avnoterad_datum": "2012-12-27",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 27 december",
+   "metod": null
+  },
+  {
+   "slug": "hancap",
+   "namn": "Hancap AB",
+   "orgnr": "556789-7144",
+   "avnoterad_datum": "2019-03-19",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Preferensaktie A avnoterad från First North den 19 mars, aktien handelsstoppades den 6 februari. Senast betalt den 5 februari var 5,78 kr.",
+   "metod": null
+  },
+  {
+   "slug": "hartelex",
+   "namn": "Hartelex AB",
+   "orgnr": "556449-3129",
+   "avnoterad_datum": "2012-10-01",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 1 oktober",
+   "metod": null
+  },
+  {
+   "slug": "heartofbrands",
+   "namn": "Heart of Brands AB",
+   "orgnr": "556712-4176",
+   "avnoterad_datum": "2010-05-11",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 11 maj",
+   "metod": null
+  },
+  {
+   "slug": "hebihealthcare",
+   "namn": "Hebi Health Care AB",
+   "orgnr": "556285-0098",
+   "avnoterad_datum": "2009-09-10",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 10 september",
+   "metod": null
+  },
+  {
+   "slug": "hldisplay",
+   "namn": "HL Display AB",
+   "orgnr": "556286-9957",
+   "avnoterad_datum": "2010-09-17",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 17 september",
+   "metod": null
+  },
+  {
+   "slug": "homeproperties",
+   "namn": "Home Properties AB",
+   "orgnr": "556547-6073",
+   "avnoterad_datum": "2009-05-08",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 8 maj",
+   "metod": null
+  },
+  {
+   "slug": "hqfonder",
+   "namn": "HQ Fonder AB",
+   "orgnr": "556602-2777",
+   "avnoterad_datum": "2005-10-25",
+   "avnoterad_ar": 2005,
+   "avnoterad_orsak": "Avnoterad från O-listan 25 oktober",
+   "metod": null
+  },
+  {
+   "slug": "hubbstergroup",
+   "namn": "Hubbster Group AB",
+   "orgnr": "559238-4571",
+   "avnoterad_datum": "2025-11-27",
+   "avnoterad_ar": 2025,
+   "avnoterad_orsak": "Avnoterad från Nordic SME den 27 november",
+   "metod": null
+  },
+  {
+   "slug": "hubsogroup",
+   "namn": "HUBSO GROUP AB",
+   "orgnr": "556850-3675",
+   "avnoterad_datum": "2025-11-14",
+   "avnoterad_ar": 2025,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market den 14 november",
+   "metod": null
+  },
+  {
+   "slug": "humancare",
+   "namn": "Human Care H C AB",
+   "orgnr": "556494-6332",
+   "avnoterad_datum": "2012-01-31",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från First North 31 januari. Aktien kommer att handlas på Mangoldlistan.",
+   "metod": null
+  },
+  {
+   "slug": "hyresfastighetsfondenmanagementsweden",
+   "namn": "Hyresfastighetsfonden Management Sweden AB",
+   "orgnr": "556817-1812",
+   "avnoterad_datum": "2015-06-26",
+   "avnoterad_ar": 2015,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF 26 juni",
+   "metod": null
+  },
+  {
+   "slug": "hoganas",
+   "namn": "Höganäs AB",
+   "orgnr": "556005-0121",
+   "avnoterad_datum": "2013-10-18",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från  Nordiska listan 18 oktober",
+   "metod": null
+  },
+  {
+   "slug": "hogkullen",
+   "namn": "Högkullen",
+   "orgnr": "559002-5465",
+   "avnoterad_datum": "2018-07-18",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnotering av preferensaktie av serie A från First North den 18 juli. Senast betalt denna dag var 33,70 kr.",
+   "metod": null
+  },
+  {
+   "slug": "iapotekint",
+   "namn": "iApotek Int AB",
+   "orgnr": "559048-9638",
+   "avnoterad_datum": "2021-05-26",
+   "avnoterad_ar": 2021,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 26 maj, senast betalt denna dag var 0,50 kr.",
+   "metod": null
+  },
+  {
+   "slug": "ibs",
+   "namn": "IBS AB",
+   "orgnr": "556198-7289",
+   "avnoterad_datum": "2011-08-31",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från First North 31 augusti",
+   "metod": null
+  },
+  {
+   "slug": "icmkungsholms",
+   "namn": "ICM Kungsholms AB",
+   "orgnr": "556257-2189",
+   "avnoterad_datum": "2010-12-30",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 30 december",
+   "metod": null
+  },
+  {
+   "slug": "idlbiotech",
+   "namn": "IDL Biotech AB",
+   "orgnr": "556339-4203",
+   "avnoterad_datum": "2021-08-04",
+   "avnoterad_ar": 2021,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 4 augusti.",
+   "metod": null
+  },
+  {
+   "slug": "ifoxinvestments",
+   "namn": "IFOX Investments AB",
+   "orgnr": "556658-6797",
+   "avnoterad_datum": "2017-06-12",
+   "avnoterad_ar": 2017,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 12 juni, senast betalt denna dag var 1,92 kr. Aktien handlas via Mangold under tiden för utdelningarna.",
+   "metod": null
+  },
+  {
+   "slug": "implementasol",
+   "namn": "Implementa Sol AB",
+   "orgnr": "556581-9272",
+   "avnoterad_datum": "2024-06-11",
+   "avnoterad_ar": 2024,
+   "avnoterad_orsak": "Avnoterad från Nordic SME (tidigare Nordic MTF) den 11 juni",
+   "metod": null
+  },
+  {
+   "slug": "imsys",
+   "namn": "Imsys AB",
+   "orgnr": "556213-1614",
+   "avnoterad_datum": "2024-05-03",
+   "avnoterad_ar": 2024,
+   "avnoterad_orsak": "Avnoterad från Nordic SME den 3 maj",
+   "metod": null
+  },
+  {
+   "slug": "intentiainternational",
+   "namn": "Intentia International AB",
+   "orgnr": "556387-8148",
+   "avnoterad_datum": "2006-05-26",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från O-listan 26 maj",
+   "metod": null
+  },
+  {
+   "slug": "invikco",
+   "namn": "Invik & Co. AB",
+   "orgnr": "556594-1787",
+   "avnoterad_datum": "2007-08-17",
+   "avnoterad_ar": 2007,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 17 augusti",
+   "metod": null
+  },
+  {
+   "slug": "isconova",
+   "namn": "Isconova AB",
+   "orgnr": "556549-4019",
+   "avnoterad_datum": "2013-09-06",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från First North 6 september",
+   "metod": null
+  },
+  {
+   "slug": "iterata",
+   "namn": "ITERATA AB",
+   "orgnr": "556376-6814",
+   "avnoterad_datum": "2013-08-30",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 30 augusti. Aktien kommer att kunna handlas via Aqurat FK AB:s inofficiella lista (se BeQuoted).",
+   "metod": null
+  },
+  {
+   "slug": "jc",
+   "namn": "JC AB",
+   "orgnr": "556468-8991",
+   "avnoterad_datum": "2006-09-01",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från O-listan 1 september",
+   "metod": null
+  },
+  {
+   "slug": "jeevesinformationsystems",
+   "namn": "Jeeves Information Systems AB",
+   "orgnr": "556343-4215",
+   "avnoterad_datum": "2012-06-21",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 21 juni",
+   "metod": null
+  },
+  {
+   "slug": "jello",
+   "namn": "Jello AB",
+   "orgnr": "556381-0422",
+   "avnoterad_datum": "2010-06-30",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 30 juni",
+   "metod": null
+  },
+  {
+   "slug": "josabwatersolutions",
+   "namn": "Josab Water Solutions AB",
+   "orgnr": "556549-1114",
+   "avnoterad_datum": "2022-03-15",
+   "avnoterad_ar": 2022,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 15 mars. Bolaget uppger att handel kommer ske via Mangold.",
+   "metod": null
+  },
+  {
+   "slug": "jpnordiska",
+   "namn": "JP Nordiska AB",
+   "orgnr": null,
+   "avnoterad_datum": "2003-03-14",
+   "avnoterad_ar": 2003,
+   "avnoterad_orsak": "Avnoterad från O-listan 14 mars",
+   "metod": null
+  },
+  {
+   "slug": "junebud",
+   "namn": "Junebud AB",
+   "orgnr": "556768-8675",
+   "avnoterad_datum": "2012-08-01",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 1 augusti",
+   "metod": null
+  },
+  {
+   "slug": "karessapharmaholding",
+   "namn": "Karessa Pharma Holding AB",
+   "orgnr": "556942-1596",
+   "avnoterad_datum": "2020-03-02",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från First North den 2 mars, senast betalt denna dag var 2,44 kr.",
+   "metod": null
+  },
+  {
+   "slug": "karlbergsvagen77fastighets",
+   "namn": "Karlbergsvägen 77 Fastighets AB",
+   "orgnr": "559084-4353",
+   "avnoterad_datum": "2019-01-25",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Avnoterad från First North den 25 januari, senast betalt denna dag var 90 kr",
+   "metod": null
+  },
+  {
+   "slug": "karlshamns",
+   "namn": "Karlshamns AB",
+   "orgnr": "556478-1796",
+   "avnoterad_datum": "2005-11-11",
+   "avnoterad_ar": 2005,
+   "avnoterad_orsak": "Avnoterad från O-listan 11 november",
+   "metod": null
+  },
+  {
+   "slug": "kaupthingbankhf",
+   "namn": "Kaupthing Bank hf",
+   "orgnr": null,
+   "avnoterad_datum": "2008-12-09",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 9 december",
+   "metod": null
+  },
+  {
+   "slug": "keynotemediagroup",
+   "namn": "Keynote Media Group AB",
+   "orgnr": "556506-7302",
+   "avnoterad_datum": "2012-08-03",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från First North 3 augusti",
+   "metod": null
+  },
+  {
+   "slug": "klickdata",
+   "namn": "Klick Data AB",
+   "orgnr": "556345-7315",
+   "avnoterad_datum": "2020-01-15",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 15 januari, senast betalt denna dag vara 3,70 kr",
+   "metod": null
+  },
+  {
+   "slug": "klimax",
+   "namn": "Klimax AS",
+   "orgnr": null,
+   "avnoterad_datum": "2010-08-27",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 27 augusti",
+   "metod": null
+  },
+  {
+   "slug": "klippan",
+   "namn": "Klippan AB",
+   "orgnr": "556360-1821",
+   "avnoterad_datum": "2006-05-05",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från O-listan 5 maj",
+   "metod": null
+  },
+  {
+   "slug": "karolinmachinetools",
+   "namn": "KMT - Karolin Machine Tools AB",
+   "orgnr": "556241-6775",
+   "avnoterad_datum": "2008-02-01",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 1 februari",
+   "metod": null
+  },
+  {
+   "slug": "labs2group",
+   "namn": "Labs2 Group AB",
+   "orgnr": "556423-7716",
+   "avnoterad_datum": "2011-12-30",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från First North 30 december",
+   "metod": null
+  },
+  {
+   "slug": "lapplandgoldminers",
+   "namn": "Lappland Goldminers AB",
+   "orgnr": "556544-3339",
+   "avnoterad_datum": "2014-04-03",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från First North 3 april",
+   "metod": null
+  },
+  {
+   "slug": "lawsonsoftwareinc",
+   "namn": "Lawson Software Inc.",
+   "orgnr": null,
+   "avnoterad_datum": "2011-07-05",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från First North 5 juli",
+   "metod": null
+  },
+  {
+   "slug": "layerlab",
+   "namn": "Layerlab AB",
+   "orgnr": "556650-0566",
+   "avnoterad_datum": "2012-04-04",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 4 april",
+   "metod": null
+  },
+  {
+   "slug": "lbicon",
+   "namn": "LB Icon AB",
+   "orgnr": "556284-0917",
+   "avnoterad_datum": "2006-07-26",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från O-listan 26 juli",
+   "metod": null
+  },
+  {
+   "slug": "lbiinternational",
+   "namn": "LBI International AB",
+   "orgnr": "556528-6886",
+   "avnoterad_datum": "2010-07-26",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 26 juli",
+   "metod": null
+  },
+  {
+   "slug": "lifeassays",
+   "namn": "LifeAssays AB",
+   "orgnr": "556595-3725",
+   "avnoterad_datum": "2021-06-04",
+   "avnoterad_ar": 2021,
+   "avnoterad_orsak": "Avnoterad från Nordic SME den 4 juni, senast betalt denna dag var 5,06 kr",
+   "metod": null
+  },
+  {
+   "slug": "lightlabsweden",
+   "namn": "Lightlab Sweden AB",
+   "orgnr": "556585-8981",
+   "avnoterad_datum": "2020-03-12",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "B-aktien avnoterad från First North den 12 mars, senast betalt denna dag var 4,80 kr",
+   "metod": null
+  },
+  {
+   "slug": "lindex",
+   "namn": "Lindex AB",
+   "orgnr": "556452-6514",
+   "avnoterad_datum": "2008-01-18",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 18 januari",
+   "metod": null
+  },
+  {
+   "slug": "linkfire",
+   "namn": "Linkfire A/S",
+   "orgnr": null,
+   "avnoterad_datum": "2024-01-18",
+   "avnoterad_ar": 2024,
+   "avnoterad_orsak": "Avnoterad från First North den 18 januari",
+   "metod": null
+  },
+  {
+   "slug": "logicacmgplc",
+   "namn": "LogicaCMG Plc.",
+   "orgnr": null,
+   "avnoterad_datum": "2008-06-30",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Xterna listan 30 juni.",
+   "metod": null
+  },
+  {
+   "slug": "lunchexpressisverige",
+   "namn": "LunchExpress i Sverige AB",
+   "orgnr": "556663-9075",
+   "avnoterad_datum": "2012-06-29",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 29 juni",
+   "metod": null
+  },
+  {
+   "slug": "lyyn",
+   "namn": "LYYN AB",
+   "orgnr": "556637-0945",
+   "avnoterad_datum": "2014-06-05",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från  Aktietorget  5 juni",
+   "metod": null
+  },
+  {
+   "slug": "mabirent",
+   "namn": "Mabi Rent AB",
+   "orgnr": "556675-9394",
+   "avnoterad_datum": "2014-05-30",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 30 maj",
+   "metod": null
+  },
+  {
+   "slug": "mandator",
+   "namn": "Mandator AB",
+   "orgnr": "556216-0357",
+   "avnoterad_datum": "2007-12-21",
+   "avnoterad_ar": 2007,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 21 december",
+   "metod": null
+  },
+  {
+   "slug": "matrapetroleum",
+   "namn": "Matra Petroleum AB",
+   "orgnr": "559082-2689",
+   "avnoterad_datum": "2019-10-08",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Avnoterad från First North den 8 oktober. Aktien har varit handelsstoppad sedan den 13 juni, senast betalt var 0,20 kr.",
+   "metod": null
+  },
+  {
+   "slug": "matseholding",
+   "namn": "Matse Holding AB",
+   "orgnr": "556942-1620",
+   "avnoterad_datum": "2017-02-17",
+   "avnoterad_ar": 2017,
+   "avnoterad_orsak": "Avnoterad från First North den 17 februari, senast betalt denna dag var 17 kr",
+   "metod": null
+  },
+  {
+   "slug": "maximpharmaceuticalsinc",
+   "namn": "Maxim Pharmaceuticals Inc.",
+   "orgnr": null,
+   "avnoterad_datum": "2005-12-30",
+   "avnoterad_ar": 2005,
+   "avnoterad_orsak": "Avnoterad från O-listan 30 december",
+   "metod": null
+  },
+  {
+   "slug": "mbrsgroup",
+   "namn": "MBRS Group AB",
+   "orgnr": "556961-6815",
+   "avnoterad_datum": "2023-12-27",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från Nordic SME den 27 december",
+   "metod": null
+  },
+  {
+   "slug": "maxequity",
+   "namn": "MaxEquity AB",
+   "orgnr": "556672-9074",
+   "avnoterad_datum": "2014-03-24",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Bolaget har efter avnoteringen  bytt namn från Maxpeak AB till MaxEquity AB, nytt namn registrerades den 24 mars.",
+   "metod": null
+  },
+  {
+   "slug": "meda",
+   "namn": "Meda AB",
+   "orgnr": "556427-2812",
+   "avnoterad_datum": "2016-08-23",
+   "avnoterad_ar": 2016,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm den 23 augusti, senast betalt denna dag var 156 kr.",
+   "metod": null
+  },
+  {
+   "slug": "medclairinternational",
+   "namn": "MedClair International AB",
+   "orgnr": "556611-6934",
+   "avnoterad_datum": "2016-11-30",
+   "avnoterad_ar": 2016,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 30 november, bolagets aktie kommer att handlas på Mangoldlistan från och med den 1 december. Bolaget har varit handelsstoppad sed",
+   "metod": null
+  },
+  {
+   "slug": "medcore",
+   "namn": "Medcore AB",
+   "orgnr": "556470-2065",
+   "avnoterad_datum": "2014-09-19",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad fån First North  19 september. Aktien kommer att handlas via Alternativa aktiemarknaden.",
+   "metod": null
+  },
+  {
+   "slug": "medfielddiagnostics",
+   "namn": "Medfield Diagnostics AB",
+   "orgnr": "556677-9871",
+   "avnoterad_datum": "2024-06-19",
+   "avnoterad_ar": 2024,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 19 juni",
+   "metod": null
+  },
+  {
+   "slug": "megacon",
+   "namn": "Megacon AB",
+   "orgnr": "556221-2281",
+   "avnoterad_datum": "2009-12-23",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 23 december",
+   "metod": null
+  },
+  {
+   "slug": "melkerschorling",
+   "namn": "Melker Schörling AB",
+   "orgnr": "556560-5309",
+   "avnoterad_datum": "2018-01-19",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm den 19 januari, senast betalt denna dag var 569,50 kr",
+   "metod": null
+  },
+  {
+   "slug": "meltron",
+   "namn": "Meltron AB",
+   "orgnr": "556988-9834",
+   "avnoterad_datum": "2023-07-03",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från Nordic SME (tidigare Nordic MTF) den 3 juli",
+   "metod": null
+  },
+  {
+   "slug": "menupay",
+   "namn": "MenuPay AB",
+   "orgnr": "559046-2759",
+   "avnoterad_datum": "2020-07-31",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 31 juli, senast betalt denna dag var 0,15 kr",
+   "metod": null
+  },
+  {
+   "slug": "metromarkhospitalitygroup",
+   "namn": "Metromark Hospitality Group AB",
+   "orgnr": "556702-2636",
+   "avnoterad_datum": "2011-01-14",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF 14 januari",
+   "metod": null
+  },
+  {
+   "slug": "microholding",
+   "namn": "Micro Holding AB",
+   "orgnr": "556022-6606",
+   "avnoterad_datum": "2009-05-29",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från First North 29 maj. Handel kommer dock att ske inofficiellt på Mangoldlistan.",
+   "metod": null
+  },
+  {
+   "slug": "micus",
+   "namn": "Micus AB",
+   "orgnr": "556798-3316",
+   "avnoterad_datum": "2010-11-04",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 4 november",
+   "metod": null
+  },
+  {
+   "slug": "mineralinvestinternationalmii",
+   "namn": "Mineral Invest International MII AB",
+   "orgnr": "556737-6974",
+   "avnoterad_datum": "2014-01-02",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 2 januari.",
+   "metod": null
+  },
+  {
+   "slug": "mobiplus",
+   "namn": "MobiPlus AB",
+   "orgnr": "556823-2465",
+   "avnoterad_datum": "2020-07-14",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 14 juli",
+   "metod": null
+  },
+  {
+   "slug": "modernekonomisverigeholding",
+   "namn": "Modern Ekonomi Sverige Holding AB",
+   "orgnr": "556638-1934",
+   "avnoterad_datum": "2023-05-02",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från First North den 2 maj",
+   "metod": null
+  },
+  {
+   "slug": "modul1data",
+   "namn": "Modul 1 Data AB",
+   "orgnr": "556419-0006",
+   "avnoterad_datum": "2011-03-09",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 9 mars",
+   "metod": null
+  },
+  {
+   "slug": "moretimeprofessionalservices",
+   "namn": "Moretime Professional Services AB",
+   "orgnr": "556654-5835",
+   "avnoterad_datum": "2016-05-27",
+   "avnoterad_ar": 2016,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 27 maj. Bolaget har varit handelsstoppad sedan den 24 maj. Senast betalt var 0,219 kr.",
+   "metod": null
+  },
+  {
+   "slug": "moxietechgroup",
+   "namn": "MoxieTech Group AB",
+   "orgnr": "556647-6957",
+   "avnoterad_datum": "2020-01-31",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från First North den 31 januari, senast betalt denna dag vara 1,30 kr",
+   "metod": null
+  },
+  {
+   "slug": "multidockercargohandling",
+   "namn": "MultiDocker Cargo Handling AB",
+   "orgnr": "556149-1860",
+   "avnoterad_datum": "2021-03-05",
+   "avnoterad_ar": 2021,
+   "avnoterad_orsak": "Avnoterad från Nordic SME (tidigare Nordic MTF) den 5 mars, aktierna har varit handelsstoppade sedan den 2 mars.",
+   "metod": null
+  },
+  {
+   "slug": "mvvholding",
+   "namn": "MVV Holding AB",
+   "orgnr": "556557-8142",
+   "avnoterad_datum": "2020-02-21",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "B-aktien är avnoterad från Nordic SME (tidigare Nordic MTF) den 21 februari, senast betalt denna dag var 1,30 kr",
+   "metod": null
+  },
+  {
+   "slug": "mahlerinternational",
+   "namn": "Mähler International AB",
+   "orgnr": "556213-8353",
+   "avnoterad_datum": "2011-07-15",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 15 juli",
+   "metod": null
+  },
+  {
+   "slug": "malarvarmeholding",
+   "namn": "Mälarvärme Holding AB",
+   "orgnr": "556684-9393",
+   "avnoterad_datum": "2011-02-18",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från First North 18 februari",
+   "metod": null
+  },
+  {
+   "slug": "malarasen",
+   "namn": "Mälaråsen AB",
+   "orgnr": "559059-8594",
+   "avnoterad_datum": "2023-03-31",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 31 mars",
+   "metod": null
+  },
+  {
+   "slug": "nannorthatlanticnaturalresources",
+   "namn": "NAN - North Atlantic Natural Resources AB",
+   "orgnr": null,
+   "avnoterad_datum": "2005-04-29",
+   "avnoterad_ar": 2005,
+   "avnoterad_orsak": "Avnoterad från O-listan 29 april",
+   "metod": null
+  },
+  {
+   "slug": "nattopharma",
+   "namn": "NattoPharma ASA",
+   "orgnr": null,
+   "avnoterad_datum": "2018-09-25",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från First North den 25 september, senast betalt denna dag var 8,60 kr",
+   "metod": null
+  },
+  {
+   "slug": "neanarkeselektriska",
+   "namn": "NEA - Närkes Elektriska AB",
+   "orgnr": "556029-9835",
+   "avnoterad_datum": "2006-11-02",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 2 november",
+   "metod": null
+  },
+  {
+   "slug": "nefab",
+   "namn": "Nefab AB",
+   "orgnr": "556226-8143",
+   "avnoterad_datum": "2007-11-30",
+   "avnoterad_ar": 2007,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 30 november",
+   "metod": null
+  },
+  {
+   "slug": "neonet",
+   "namn": "NeoNet AB",
+   "orgnr": "556530-1263",
+   "avnoterad_datum": "2010-06-07",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 7 juni",
+   "metod": null
+  },
+  {
+   "slug": "nexstim",
+   "namn": "Nexstim Oyj",
+   "orgnr": null,
+   "avnoterad_datum": "2023-04-15",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnotering av parallellnoterade aktier på Nasdaq First North Growth Market Sweden den 15 april. Handel med Nexstim Abp:s aktier fortsätter endast på Nasdaq Firs",
+   "metod": null
+  },
+  {
+   "slug": "nexustechnology",
+   "namn": "Nexus - Technology AB",
+   "orgnr": "556410-9758",
+   "avnoterad_datum": "2009-09-25",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 25 september",
+   "metod": null
+  },
+  {
+   "slug": "nimutan",
+   "namn": "Nimutan AB",
+   "orgnr": "556692-9690",
+   "avnoterad_datum": "2023-05-15",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad frå Nordic SME (tidigare Nordic MTF) den 15 maj.",
+   "metod": null
+  },
+  {
+   "slug": "niscayahgroup",
+   "namn": "Niscayah Group AB",
+   "orgnr": "556436-6267",
+   "avnoterad_datum": "2011-10-12",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 12 oktober",
+   "metod": null
+  },
+  {
+   "slug": "nobelbiocare",
+   "namn": "Nobel Biocare AB",
+   "orgnr": null,
+   "avnoterad_datum": "2002-07-18",
+   "avnoterad_ar": 2002,
+   "avnoterad_orsak": "Avnoterad från A-listan 18 juli",
+   "metod": null
+  },
+  {
+   "slug": "nobelbiocareholding",
+   "namn": "Nobel Biocare Holding AG",
+   "orgnr": null,
+   "avnoterad_datum": "2008-05-09",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 9 maj",
+   "metod": null
+  },
+  {
+   "slug": "nordiccampingochresort",
+   "namn": "Nordic Camping & Resort AB",
+   "orgnr": "556618-9873",
+   "avnoterad_datum": "2017-01-09",
+   "avnoterad_ar": 2017,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 9 januari. Senast betalt denna dag var 30 kr.",
+   "metod": null
+  },
+  {
+   "slug": "nordicelectronicprocurementsystems",
+   "namn": "Nordic Electronic Procurement Systems AB",
+   "orgnr": "556435-4693",
+   "avnoterad_datum": "2012-12-28",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget  28 december.",
+   "metod": null
+  },
+  {
+   "slug": "nordicservicepartnersholding",
+   "namn": "Nordic Service Partners Holding AB",
+   "orgnr": "556534-1970",
+   "avnoterad_datum": "2016-07-20",
+   "avnoterad_ar": 2016,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm den 20 juli. Senast betalt denna dag var 20,70 kr.",
+   "metod": null
+  },
+  {
+   "slug": "nordiqgoteborg",
+   "namn": "NordIQ Göteborg AB",
+   "orgnr": "556576-6622",
+   "avnoterad_datum": "2014-07-31",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 31 juli",
+   "metod": null
+  },
+  {
+   "slug": "norinvent",
+   "namn": "NorInvent AB",
+   "orgnr": "556982-7107",
+   "avnoterad_datum": "2018-05-16",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 16 maj. Senast betalt denna dag var 0,18 kr.",
+   "metod": null
+  },
+  {
+   "slug": "novacasttechnologies",
+   "namn": "NovaCast Technologies AB",
+   "orgnr": "556211-0790",
+   "avnoterad_datum": "2011-03-08",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 8 mars",
+   "metod": null
+  },
+  {
+   "slug": "nustay",
+   "namn": "Nustay A/S",
+   "orgnr": null,
+   "avnoterad_datum": "2020-10-08",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market den 8 oktober, Nustays aktie är sedan den 5 oktober handelsstoppad. Senast betalt var 0,26 DKK.",
+   "metod": null
+  },
+  {
+   "slug": "oboyahorticultureindustries",
+   "namn": "Oboya Horticulture Industries AB",
+   "orgnr": "556362-3197",
+   "avnoterad_datum": "2021-08-19",
+   "avnoterad_ar": 2021,
+   "avnoterad_orsak": "Avnoterad från First North den 19 augusti, aktien har varit handelstoppad sen 9 juni 2020",
+   "metod": null
+  },
+  {
+   "slug": "odencontrol",
+   "namn": "Oden Control AB",
+   "orgnr": "556529-7057",
+   "avnoterad_datum": "2018-12-28",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market den 28 december, senast betalt denna dag var 0,38 kr",
+   "metod": null
+  },
+  {
+   "slug": "omnicarholding",
+   "namn": "Omnicar Holding AB",
+   "orgnr": "559113-3987",
+   "avnoterad_datum": "2024-07-25",
+   "avnoterad_ar": 2024,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 25 juli.",
+   "metod": null
+  },
+  {
+   "slug": "omx",
+   "namn": "OMX AB",
+   "orgnr": "556243-8001",
+   "avnoterad_datum": "2008-05-02",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 2 maj",
+   "metod": null
+  },
+  {
+   "slug": "oncologyventuresweden",
+   "namn": "Oncology Venture Sweden AB",
+   "orgnr": "559016-3290",
+   "avnoterad_datum": "2018-08-31",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market den 31 augusti, senast betalt denna dag var 17,90 kr.",
+   "metod": null
+  },
+  {
+   "slug": "onemediaholding",
+   "namn": "ONE Media Holding AB",
+   "orgnr": "556621-8227",
+   "avnoterad_datum": "2012-07-24",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget  24 juli",
+   "metod": null
+  },
+  {
+   "slug": "optimail",
+   "namn": "OptiMail AB",
+   "orgnr": "556528-8197",
+   "avnoterad_datum": "2006-01-23",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från O-listan 23 januari",
+   "metod": null
+  },
+  {
+   "slug": "optimobile",
+   "namn": "OptiMobile AB",
+   "orgnr": "556637-7403",
+   "avnoterad_datum": "2023-06-07",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 7 juni",
+   "metod": null
+  },
+  {
+   "slug": "orasolv",
+   "namn": "OraSolv AB",
+   "orgnr": "556585-4394",
+   "avnoterad_datum": "2018-04-27",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 27 april, senast betalt denna dag var 0,28 kr.",
+   "metod": null
+  },
+  {
+   "slug": "orcgroup",
+   "namn": "ORC Group AB",
+   "orgnr": "556313-4583",
+   "avnoterad_datum": "2012-03-09",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 9 mars",
+   "metod": null
+  },
+  {
+   "slug": "oxigeneinc",
+   "namn": "Oxigene Inc.",
+   "orgnr": null,
+   "avnoterad_datum": "2010-06-30",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 30 juni",
+   "metod": null
+  },
+  {
+   "slug": "pallasgroup",
+   "namn": "Pallas Group AB",
+   "orgnr": "556712-3038",
+   "avnoterad_datum": "2019-11-01",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Avnoterad från First North den 1 november, senast betalt, den 28 oktober, var 0,34 kr",
+   "metod": null
+  },
+  {
+   "slug": "panalarm",
+   "namn": "Panalarm AB",
+   "orgnr": "556620-4144",
+   "avnoterad_datum": "2009-02-27",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 27 februari",
+   "metod": null
+  },
+  {
+   "slug": "panaxia",
+   "namn": "Panaxia AB",
+   "orgnr": "556696-0687",
+   "avnoterad_datum": "2012-09-05",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 5 september",
+   "metod": null
+  },
+  {
+   "slug": "paranssolarlighting",
+   "namn": "Parans Solar Lighting AB",
+   "orgnr": "556628-0649",
+   "avnoterad_datum": "2021-06-18",
+   "avnoterad_ar": 2021,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 18 juni, senast betalt denna dag var 0,66 kr. Bolaget har meddelat att handel kommer ske via be",
+   "metod": null
+  },
+  {
+   "slug": "patienttracinternationalmedicaltechnology",
+   "namn": "Patienttrac International Medical Technology AB",
+   "orgnr": "556687-1553",
+   "avnoterad_datum": "2013-08-02",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF 2 augusti.",
+   "metod": null
+  },
+  {
+   "slug": "paydrive",
+   "namn": "Paydrive AB",
+   "orgnr": "556942-1257",
+   "avnoterad_datum": "2023-07-13",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från Nordic SME den 13 juli",
+   "metod": null
+  },
+  {
+   "slug": "penconceptgroup",
+   "namn": "PEN Concept Group AB",
+   "orgnr": "556772-5667",
+   "avnoterad_datum": "2020-04-30",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 30 april",
+   "metod": null
+  },
+  {
+   "slug": "pepinsgroup",
+   "namn": "Pepins Group AB",
+   "orgnr": "556871-1823",
+   "avnoterad_datum": "2023-08-08",
+   "avnoterad_ar": 2023,
+   "avnoterad_orsak": "Avnoterad från NGM PepMarket den 8 augusti",
+   "metod": null
+  },
+  {
+   "slug": "pergo",
+   "namn": "Pergo AB",
+   "orgnr": "556563-2600",
+   "avnoterad_datum": "2007-03-30",
+   "avnoterad_ar": 2007,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 30 mars",
+   "metod": null
+  },
+  {
+   "slug": "petrosibir",
+   "namn": "Petrosibir AB",
+   "orgnr": "556468-1491",
+   "avnoterad_datum": "2016-02-04",
+   "avnoterad_ar": 2016,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm den 4 februari. Senast betalt denna dag var 3,02 kr.",
+   "metod": null
+  },
+  {
+   "slug": "phonefamily",
+   "namn": "Phone Family AB",
+   "orgnr": "556808-4528",
+   "avnoterad_datum": "2015-05-22",
+   "avnoterad_ar": 2015,
+   "avnoterad_orsak": "Avnoterad från First North 22 maj",
+   "metod": null
+  },
+  {
+   "slug": "powerwavetechnologiesinc",
+   "namn": "Powerwave Technologies Inc.",
+   "orgnr": null,
+   "avnoterad_datum": "2006-06-09",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från O-listan 9 juni",
+   "metod": null
+  },
+  {
+   "slug": "procastmedia",
+   "namn": "Procast Media AB",
+   "orgnr": "556557-5965",
+   "avnoterad_datum": "2011-02-23",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 23 februari",
+   "metod": null
+  },
+  {
+   "slug": "proffice",
+   "namn": "Proffice AB",
+   "orgnr": "556089-6572",
+   "avnoterad_datum": "2016-02-19",
+   "avnoterad_ar": 2016,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm 19 februari, senast betalt denna dag var 24,60 kr",
+   "metod": null
+  },
+  {
+   "slug": "prosolvia",
+   "namn": "Prosolvia AB",
+   "orgnr": "556435-5435",
+   "avnoterad_datum": "1999-01-13",
+   "avnoterad_ar": 1999,
+   "avnoterad_orsak": "Avnoterad från O-listan den 13 januari, se nedan för mer information",
+   "metod": null
+  },
+  {
+   "slug": "protectdata",
+   "namn": "Protect Data AB",
+   "orgnr": "556315-8541",
+   "avnoterad_datum": "2007-02-12",
+   "avnoterad_ar": 2007,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 12 februari",
+   "metod": null
+  },
+  {
+   "slug": "psigroupasa",
+   "namn": "PSI Group ASA",
+   "orgnr": null,
+   "avnoterad_datum": "2012-03-16",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 16 mars",
+   "metod": null
+  },
+  {
+   "slug": "pushdevelopment",
+   "namn": "Push Development AB",
+   "orgnr": "556529-6562",
+   "avnoterad_datum": "2008-12-30",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 30 december",
+   "metod": null
+  },
+  {
+   "slug": "pventerprisesweden",
+   "namn": "PV Enterprise Sweden AB",
+   "orgnr": "556626-3132",
+   "avnoterad_datum": "2011-10-25",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Aktien är avnoterad från First North 25 oktober",
+   "metod": null
+  },
+  {
+   "slug": "qlosrgroup",
+   "namn": "Qlosr Group AB",
+   "orgnr": "556870-4653",
+   "avnoterad_datum": "2025-11-17",
+   "avnoterad_ar": 2025,
+   "avnoterad_orsak": "Avnoterad från First North den 17 november",
+   "metod": null
+  },
+  {
+   "slug": "qmed",
+   "namn": "Q-Med AB",
+   "orgnr": "556258-6882",
+   "avnoterad_datum": "2011-03-25",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 25 mars",
+   "metod": null
+  },
+  {
+   "slug": "qpgroup",
+   "namn": "QP Group AB",
+   "orgnr": "556588-3229",
+   "avnoterad_datum": "2020-05-29",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 29 maj, senast betalt denna dag var 0,22 kr",
+   "metod": null
+  },
+  {
+   "slug": "quickcool",
+   "namn": "QuickCool AB",
+   "orgnr": "556639-3913",
+   "avnoterad_datum": "2020-04-14",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market den 14 april",
+   "metod": null
+  },
+  {
+   "slug": "radissonhospitality",
+   "namn": "Radisson Hospitality AB",
+   "orgnr": "556674-0964",
+   "avnoterad_datum": "2019-03-22",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm den 22 mars, senast betalt denna dag var 42,50 kr",
+   "metod": null
+  },
+  {
+   "slug": "rayclinic",
+   "namn": "Rayclinic AB",
+   "orgnr": "556619-6993",
+   "avnoterad_datum": "2009-05-25",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från First North 25 maj",
+   "metod": null
+  },
+  {
+   "slug": "raytelligence",
+   "namn": "Raytelligence AB",
+   "orgnr": "559039-7088",
+   "avnoterad_datum": "2025-07-24",
+   "avnoterad_ar": 2025,
+   "avnoterad_orsak": "Avnoterad från Nordic SME (tidigare Nordic MTF) den 24 juli",
+   "metod": null
+  },
+  {
+   "slug": "readsoft",
+   "namn": "Readsoft AB",
+   "orgnr": "556398-1066",
+   "avnoterad_datum": "2014-10-03",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från  Nordiska listan 3 oktober",
+   "metod": null
+  },
+  {
+   "slug": "realia",
+   "namn": "Realia AB",
+   "orgnr": "556100-0703",
+   "avnoterad_datum": "2005-04-15",
+   "avnoterad_ar": 2005,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 15 april. Aktien handlas via Mangold-listan.",
+   "metod": null
+  },
+  {
+   "slug": "realpointinvestment",
+   "namn": "Real Point Investment AB",
+   "orgnr": "556637-2636",
+   "avnoterad_datum": "2014-01-24",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 24 januari",
+   "metod": null
+  },
+  {
+   "slug": "realxstate",
+   "namn": "RealXState AB",
+   "orgnr": "556923-9063",
+   "avnoterad_datum": "2016-03-15",
+   "avnoterad_ar": 2016,
+   "avnoterad_orsak": "Avnoterad från  First North 15 mars. Bolaget har sedan den 12 februari varit handelsstoppad. Senast betalt var 380 kr.",
+   "metod": null
+  },
+  {
+   "slug": "redlandfarming",
+   "namn": "Redland Farming AB",
+   "orgnr": "556681-0346",
+   "avnoterad_datum": "2012-04-27",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF 27 april.",
+   "metod": null
+  },
+  {
+   "slug": "relationbrand",
+   "namn": "Relation&Brand AB",
+   "orgnr": "556573-6500",
+   "avnoterad_datum": "2013-06-11",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 11 juni. Aktien kommer att handlas på Alternativa aktiemarknaden.",
+   "metod": null
+  },
+  {
+   "slug": "resco",
+   "namn": "Resco AB",
+   "orgnr": "556220-8511",
+   "avnoterad_datum": "2006-04-18",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från O-listan 18 april",
+   "metod": null
+  },
+  {
+   "slug": "resursbemanningcnc",
+   "namn": "Resurs Bemanning",
+   "orgnr": "556554-6750",
+   "avnoterad_datum": "2012-05-04",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från First North 4 maj",
+   "metod": null
+  },
+  {
+   "slug": "riddarhyttanresources",
+   "namn": "Riddarhyttan Resources AB",
+   "orgnr": "556534-7639",
+   "avnoterad_datum": "2005-11-25",
+   "avnoterad_ar": 2005,
+   "avnoterad_orsak": "Avnoterad från O-listan 25 november",
+   "metod": null
+  },
+  {
+   "slug": "robertfrimaninternational",
+   "namn": "Robert Friman International AB",
+   "orgnr": "556737-4037",
+   "avnoterad_datum": "2018-02-16",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från First North den 16 februari. Aktien har varit handelsstoppad sedan den 14 december 2017. Senast betalt denna dag var 1,44 kr",
+   "metod": null
+  },
+  {
+   "slug": "rwcapital",
+   "namn": "RW Capital AB",
+   "orgnr": "556575-4537",
+   "avnoterad_datum": "2012-07-20",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 20 juli. Aktien kommer efter avlistningen kunna handlas på Mangoldlistan.",
+   "metod": null
+  },
+  {
+   "slug": "rorviktimber",
+   "namn": "Rörvik Timber AB",
+   "orgnr": "556541-2086",
+   "avnoterad_datum": "2014-12-19",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) 19 december, senast betalt denna dag var 3,84 kr.",
+   "metod": null
+  },
+  {
+   "slug": "saltangenpropertyinvest",
+   "namn": "Saltängen Property Invest AB",
+   "orgnr": "556980-6325",
+   "avnoterad_datum": "2020-06-25",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från First North den 25 juni, senast betalt denna dag var 1,60 kr",
+   "metod": null
+  },
+  {
+   "slug": "salusansvar",
+   "namn": "SalusAnsvar AB",
+   "orgnr": "556494-4154",
+   "avnoterad_datum": "2007-12-14",
+   "avnoterad_ar": 2007,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 14 december",
+   "metod": null
+  },
+  {
+   "slug": "samtrygggroup",
+   "namn": "Samtrygg Group AB",
+   "orgnr": "556942-0911",
+   "avnoterad_datum": "2026-01-30",
+   "avnoterad_ar": 2026,
+   "avnoterad_orsak": "Avnoterad från Nordic SME (tidigare Nordic MTF) den 30 januari",
+   "metod": null
+  },
+  {
+   "slug": "sanitec",
+   "namn": "Sanitec Oyj",
+   "orgnr": null,
+   "avnoterad_datum": "2015-02-27",
+   "avnoterad_ar": 2015,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) 27 februari",
+   "metod": null
+  },
+  {
+   "slug": "sardus",
+   "namn": "Sardus AB",
+   "orgnr": "556131-6711",
+   "avnoterad_datum": "2007-04-27",
+   "avnoterad_ar": 2007,
+   "avnoterad_orsak": "Avnoterad från Nordiska Listan 27 april",
+   "metod": null
+  },
+  {
+   "slug": "sbcsverigesbostadsrattscentrum",
+   "namn": "SBC - Sveriges BostadsrättsCentrum AB",
+   "orgnr": "556576-7299",
+   "avnoterad_datum": "2019-12-20",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Avnoterad från NGM Equity den 20 december, senast betalt denna dag var 21 kr",
+   "metod": null
+  },
+  {
+   "slug": "scandinavianorganics",
+   "namn": "Scandinavian Organics AB",
+   "orgnr": "556705-6741",
+   "avnoterad_datum": "2017-04-07",
+   "avnoterad_ar": 2017,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF den 7 april",
+   "metod": null
+  },
+  {
+   "slug": "scanmining",
+   "namn": "ScanMining AB",
+   "orgnr": "556445-1655",
+   "avnoterad_datum": "2007-12-07",
+   "avnoterad_ar": 2007,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 7 december",
+   "metod": null
+  },
+  {
+   "slug": "scanworldtravelpartner",
+   "namn": "Scanworld Travelpartner AB",
+   "orgnr": "556538-1265",
+   "avnoterad_datum": "2010-11-12",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från First North 12 november",
+   "metod": null
+  },
+  {
+   "slug": "scirocco",
+   "namn": "Scirocco AB",
+   "orgnr": "556547-6933",
+   "avnoterad_datum": "2012-06-12",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 12 juni",
+   "metod": null
+  },
+  {
+   "slug": "seanetmaritimecommunications",
+   "namn": "SeaNet Maritime Communications AB",
+   "orgnr": "556694-4954",
+   "avnoterad_datum": "2012-03-01",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från First North 1 mars",
+   "metod": null
+  },
+  {
+   "slug": "securitasdirect",
+   "namn": "Securitas Direct AB",
+   "orgnr": "556222-9012",
+   "avnoterad_datum": "2008-08-15",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 15 augusti",
+   "metod": null
+  },
+  {
+   "slug": "senea",
+   "namn": "Senea AB",
+   "orgnr": "556436-4890",
+   "avnoterad_datum": "2006-12-22",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 22 december",
+   "metod": null
+  },
+  {
+   "slug": "sensori",
+   "namn": "Sensori AB",
+   "orgnr": "556536-8684",
+   "avnoterad_datum": "2019-03-01",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF den 1 mars, senast betalt denna dag var 0,83 kr",
+   "metod": null
+  },
+  {
+   "slug": "servage",
+   "namn": "Servage AB",
+   "orgnr": "556605-4713",
+   "avnoterad_datum": "2013-05-10",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "B-aktien avnoterad från NGM Equity 10 maj",
+   "metod": null
+  },
+  {
+   "slug": "sharpview",
+   "namn": "Sharpview AB",
+   "orgnr": "556682-1228",
+   "avnoterad_datum": "2010-07-02",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF 2 juli",
+   "metod": null
+  },
+  {
+   "slug": "sigma",
+   "namn": "Sigma AB",
+   "orgnr": "556347-5440",
+   "avnoterad_datum": "2013-05-21",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 21  maj",
+   "metod": null
+  },
+  {
+   "slug": "skanditekindustriforvaltning",
+   "namn": "Skanditek Industriförvaltning AB",
+   "orgnr": "556235-4141",
+   "avnoterad_datum": "2010-01-22",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 22 januari",
+   "metod": null
+  },
+  {
+   "slug": "skanskaenergi",
+   "namn": "Skånska Energi AB",
+   "orgnr": "556013-6391",
+   "avnoterad_datum": "2019-08-09",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Avnoterad från First North den 9 augusti, senast betalt denna dag var 64,40 kr",
+   "metod": null
+  },
+  {
+   "slug": "sleepo",
+   "namn": "Sleepo AB",
+   "orgnr": "556857-0146",
+   "avnoterad_datum": "2020-09-11",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 11 september, senast betalt denna dag var 4,48 kr.",
+   "metod": null
+  },
+  {
+   "slug": "smartenergyswedengroup",
+   "namn": "Smart Energy Sweden Group AB",
+   "orgnr": "556756-4611",
+   "avnoterad_datum": "2020-07-17",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Nordic SME (tidigare Nordic MTF) den 17 juli, senast betalt denna dag var 0,04 kr",
+   "metod": null
+  },
+  {
+   "slug": "snowolverinegroup",
+   "namn": "SnoWolverine Group AB",
+   "orgnr": "556673-4835",
+   "avnoterad_datum": "2010-06-16",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 16 juni",
+   "metod": null
+  },
+  {
+   "slug": "songnetworksholding",
+   "namn": "Song Networks Holding AB",
+   "orgnr": "556512-7031",
+   "avnoterad_datum": "2005-01-10",
+   "avnoterad_ar": 2005,
+   "avnoterad_orsak": "Avnoterad från O-listan 10 januari",
+   "metod": null
+  },
+  {
+   "slug": "sportjohan",
+   "namn": "Sportjohan AB",
+   "orgnr": "556687-9564",
+   "avnoterad_datum": "2013-09-05",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 5 september",
+   "metod": null
+  },
+  {
+   "slug": "srabshipping",
+   "namn": "SRAB Shipping AB",
+   "orgnr": "556473-9224",
+   "avnoterad_datum": "2012-03-30",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från First North 30 mars",
+   "metod": null
+  },
+  {
+   "slug": "stormfageln",
+   "namn": "Stormfågeln AB",
+   "orgnr": "556609-2762",
+   "avnoterad_datum": "2011-04-13",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 13 april",
+   "metod": null
+  },
+  {
+   "slug": "stralfors",
+   "namn": "Strålfors AB",
+   "orgnr": "556062-0618",
+   "avnoterad_datum": "2006-06-16",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från O-listan 16 juni",
+   "metod": null
+  },
+  {
+   "slug": "stavrullenfinans",
+   "namn": "Stävrullen Finans AB",
+   "orgnr": "556125-5851",
+   "avnoterad_datum": "2011-10-06",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 6 oktober",
+   "metod": null
+  },
+  {
+   "slug": "svithoidtankers",
+   "namn": "Svithoid Tankers AB",
+   "orgnr": "556574-0064",
+   "avnoterad_datum": "2008-10-14",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 14 oktober",
+   "metod": null
+  },
+  {
+   "slug": "swedishbarsystemsholding",
+   "namn": "Swedish Bar Systems Holding AB",
+   "orgnr": "556113-5517",
+   "avnoterad_datum": "2011-06-23",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF 23 juni på bolagets egen begäran.",
+   "metod": null
+  },
+  {
+   "slug": "swemet",
+   "namn": "Swemet AB",
+   "orgnr": "556675-2142",
+   "avnoterad_datum": "2024-03-22",
+   "avnoterad_ar": 2024,
+   "avnoterad_orsak": "Avnoterad från Nordic SME (tidigare Nordic MTF) den 22 mars",
+   "metod": null
+  },
+  {
+   "slug": "systemhus",
+   "namn": "Systemhus AB",
+   "orgnr": "556606-1148",
+   "avnoterad_datum": "2011-08-15",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 15 augusti.",
+   "metod": null
+  },
+  {
+   "slug": "tatura",
+   "namn": "Tatura AB",
+   "orgnr": "556542-5856",
+   "avnoterad_datum": "2009-02-06",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 6 februari.",
+   "metod": null
+  },
+  {
+   "slug": "teleca",
+   "namn": "Teleca AB",
+   "orgnr": "556250-3515",
+   "avnoterad_datum": "2009-03-02",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 2 mars",
+   "metod": null
+  },
+  {
+   "slug": "telelogic",
+   "namn": "Telelogic AB",
+   "orgnr": "556049-9690",
+   "avnoterad_datum": "2008-04-25",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 25 april",
+   "metod": null
+  },
+  {
+   "slug": "teligent",
+   "namn": "Teligent AB",
+   "orgnr": "556398-7154",
+   "avnoterad_datum": "2008-11-04",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 4 november",
+   "metod": null
+  },
+  {
+   "slug": "themarketinggroup",
+   "namn": "The Marketing Group plc",
+   "orgnr": null,
+   "avnoterad_datum": "2019-04-05",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Avnoterad från First North den 5 april, aktien har varit handelsstoppad sedan den 14 mars. Senast betalt var 0,025 EUR.",
+   "metod": null
+  },
+  {
+   "slug": "tickettravelgroup",
+   "namn": "Ticket Travel Group AB",
+   "orgnr": "556445-4170",
+   "avnoterad_datum": "2010-04-09",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 9 april",
+   "metod": null
+  },
+  {
+   "slug": "tigrantechnologies",
+   "namn": "Tigran Technologies AB",
+   "orgnr": "556596-4417",
+   "avnoterad_datum": "2013-08-30",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Aktietorget  30 augusti.",
+   "metod": null
+  },
+  {
+   "slug": "tikspac",
+   "namn": "TiksPac AB",
+   "orgnr": "556856-0063",
+   "avnoterad_datum": "2020-06-30",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 30 juni, senast betalt denna dag var 1,53 kr",
+   "metod": null
+  },
+  {
+   "slug": "tilgin",
+   "namn": "Tilgin AB",
+   "orgnr": "556537-5812",
+   "avnoterad_datum": "2012-01-31",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från First North 31 januari.",
+   "metod": null
+  },
+  {
+   "slug": "titana",
+   "namn": "Titana AB",
+   "orgnr": "556638-2585",
+   "avnoterad_datum": "2012-02-27",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 27 februari",
+   "metod": null
+  },
+  {
+   "slug": "tivox",
+   "namn": "Tivox AB",
+   "orgnr": "556176-9596",
+   "avnoterad_datum": "2005-08-25",
+   "avnoterad_ar": 2005,
+   "avnoterad_orsak": "Avnoterad från O-listan 25 augusti",
+   "metod": null
+  },
+  {
+   "slug": "tmginternational",
+   "namn": "TMG International AB",
+   "orgnr": "556263-3098",
+   "avnoterad_datum": "2008-05-13",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 13 maj",
+   "metod": null
+  },
+  {
+   "slug": "toprightnordic",
+   "namn": "TopRight Nordic AB",
+   "orgnr": "556898-6482",
+   "avnoterad_datum": "2025-10-23",
+   "avnoterad_ar": 2025,
+   "avnoterad_orsak": "Avnoterad från Nordic SME (tidigare Nordic MTF) den 23 oktober",
+   "metod": null
+  },
+  {
+   "slug": "tractechnology",
+   "namn": "TracTechnology AB",
+   "orgnr": "556623-1030",
+   "avnoterad_datum": "2012-12-04",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 4 december.",
+   "metod": null
+  },
+  {
+   "slug": "trekronorpropertyinvestment",
+   "namn": "Tre Kronor Property Investment AB",
+   "orgnr": "559106-4760",
+   "avnoterad_datum": "2021-06-16",
+   "avnoterad_ar": 2021,
+   "avnoterad_orsak": "Avnoterad från First North den 16 juni",
+   "metod": null
+  },
+  {
+   "slug": "tretti",
+   "namn": "Tretti AB",
+   "orgnr": "556665-7606",
+   "avnoterad_datum": "2011-07-15",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från First North 15 juli",
+   "metod": null
+  },
+  {
+   "slug": "tricorona",
+   "namn": "Tricorona AB",
+   "orgnr": "556332-0240",
+   "avnoterad_datum": "2010-08-20",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 20 augusti",
+   "metod": null
+  },
+  {
+   "slug": "trigmediagroup",
+   "namn": "Trig Media Group AB",
+   "orgnr": "556654-3707",
+   "avnoterad_datum": "2014-01-27",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 27 januari",
+   "metod": null
+  },
+  {
+   "slug": "trimera",
+   "namn": "Trimera AB",
+   "orgnr": "556681-9149",
+   "avnoterad_datum": "2011-04-12",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 12 april",
+   "metod": null
+  },
+  {
+   "slug": "trio",
+   "namn": "Trio AB",
+   "orgnr": "556439-0341",
+   "avnoterad_datum": "2006-08-11",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från O-listan 11 augusti",
+   "metod": null
+  },
+  {
+   "slug": "trustbuddyinternational",
+   "namn": "TrustBuddy International AB",
+   "orgnr": "556510-9583",
+   "avnoterad_datum": "2015-02-12",
+   "avnoterad_ar": 2015,
+   "avnoterad_orsak": "Avnoterad från First North 12 februari, fusion med TrustBuddy AB se nedan för mer information.",
+   "metod": null
+  },
+  {
+   "slug": "tryggahemskandinavien",
+   "namn": "Trygga Hem Skandinavien AB",
+   "orgnr": "556602-1423",
+   "avnoterad_datum": "2013-08-12",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från First North 12 augusti",
+   "metod": null
+  },
+  {
+   "slug": "tv4",
+   "namn": "TV4 AB",
+   "orgnr": "556242-7152",
+   "avnoterad_datum": "2007-03-02",
+   "avnoterad_ar": 2007,
+   "avnoterad_orsak": "Avnoterad från First North 2 mars",
+   "metod": null
+  },
+  {
+   "slug": "twinbladetechnologiesholdingsweden",
+   "namn": "Twinblade Technologies Holding Sweden AB",
+   "orgnr": "556695-2155",
+   "avnoterad_datum": "2010-05-14",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF 14 maj",
+   "metod": null
+  },
+  {
+   "slug": "uniflex",
+   "namn": "Uniflex AB",
+   "orgnr": null,
+   "avnoterad_datum": "2018-11-01",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Avnoterad från Nasdaq Stockholm den 1 november, sista dag för handel var den 26 oktober. Senast betalt denna dag var 16,50 kr.",
+   "metod": null
+  },
+  {
+   "slug": "unwrapfinance",
+   "namn": "Unwrap Finance AB",
+   "orgnr": "556761-0307",
+   "avnoterad_datum": "2020-08-07",
+   "avnoterad_ar": 2020,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market (tidigare Aktietorget) den 7 augusti, senast betalt denna dag var 0,22 kr. Aktien kan handlas via Mangoldlistan från och m",
+   "metod": null
+  },
+  {
+   "slug": "vezzelab",
+   "namn": "Vezzel AB",
+   "orgnr": "556858-5441",
+   "avnoterad_datum": "2013-05-17",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Nordic MTF 17 maj",
+   "metod": null
+  },
+  {
+   "slug": "vlt",
+   "namn": "VLT AB",
+   "orgnr": "556032-9467",
+   "avnoterad_datum": "2008-10-31",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från First North 31 oktober",
+   "metod": null
+  },
+  {
+   "slug": "varmlandsfinanssverige",
+   "namn": "Värmlands Finans Sverige AB",
+   "orgnr": "556719-5531",
+   "avnoterad_datum": "2012-02-27",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 27 februari",
+   "metod": null
+  },
+  {
+   "slug": "witsolutionsgroupab",
+   "namn": "W & IT Solutions Group AB",
+   "orgnr": "556777-2883",
+   "avnoterad_datum": "2019-05-24",
+   "avnoterad_ar": 2019,
+   "avnoterad_orsak": "Avnoterad från Spotlight Stock Market den 24 maj, senast betalt denna dag var 0,39 kr",
+   "metod": null
+  },
+  {
+   "slug": "want",
+   "namn": "Want AB",
+   "orgnr": "556713-1056",
+   "avnoterad_datum": "2013-08-02",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 2 augusti. Förhandlingarna om ev. ny verksamhet har avbrutits.",
+   "metod": null
+  },
+  {
+   "slug": "wayfindersystems",
+   "namn": "Wayfinder Systems AB",
+   "orgnr": "556526-2929",
+   "avnoterad_datum": "2009-02-16",
+   "avnoterad_ar": 2009,
+   "avnoterad_orsak": "Avnoterad från NGM Equity 16 februari",
+   "metod": null
+  },
+  {
+   "slug": "wiema",
+   "namn": "Wiema AB",
+   "orgnr": "556872-5112",
+   "avnoterad_datum": "2017-06-29",
+   "avnoterad_ar": 2017,
+   "avnoterad_orsak": "Avnoterad från Aktietorget den 29 juni, senast betalt denna dag var 0,32 kr",
+   "metod": null
+  },
+  {
+   "slug": "wikingmineral",
+   "namn": "Wiking Mineral AB",
+   "orgnr": "556675-2068",
+   "avnoterad_datum": "2014-11-21",
+   "avnoterad_ar": 2014,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 21 november, senast betalt denna dag var 0,55 kr.",
+   "metod": null
+  },
+  {
+   "slug": "willak",
+   "namn": "WilLak AB",
+   "orgnr": "556945-5594",
+   "avnoterad_datum": "2024-03-11",
+   "avnoterad_ar": 2024,
+   "avnoterad_orsak": "Avnoterad från Nordic SME (tidigare Nordic MTF) den 11 mars",
+   "metod": null
+  },
+  {
+   "slug": "wilsontherapeutics",
+   "namn": "Wilson Therapeutics AB",
+   "orgnr": "556893-0357",
+   "avnoterad_datum": "2018-06-15",
+   "avnoterad_ar": 2018,
+   "avnoterad_orsak": "Aktien är avnoterad från Nasdaq Stockholm den 15 juni, senast betalt denna dag var 229,50 kr.",
+   "metod": null
+  },
+  {
+   "slug": "wmdata",
+   "namn": "WM-data AB",
+   "orgnr": "556124-5233",
+   "avnoterad_datum": "2006-11-24",
+   "avnoterad_ar": 2006,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 24 november",
+   "metod": null
+  },
+  {
+   "slug": "worldclassseagullinternational",
+   "namn": "World Class Seagull International AB",
+   "orgnr": "556525-8083",
+   "avnoterad_datum": "2012-08-30",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från First North 30 augusti",
+   "metod": null
+  },
+  {
+   "slug": "xcounter",
+   "namn": "XCounter AB",
+   "orgnr": "556542-8918",
+   "avnoterad_datum": "2013-05-03",
+   "avnoterad_ar": 2013,
+   "avnoterad_orsak": "Avnoterad från First North 3 maj. Handel kommer att ske på Mangoldlistan.",
+   "metod": null
+  },
+  {
+   "slug": "xezzex",
+   "namn": "Xezzex AB",
+   "orgnr": "556506-3970",
+   "avnoterad_datum": "2012-06-06",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 6 juni.",
+   "metod": null
+  },
+  {
+   "slug": "xponcardgroup",
+   "namn": "XPonCard Group AB",
+   "orgnr": "556408-3854",
+   "avnoterad_datum": "2008-06-19",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska Listan 19 juni",
+   "metod": null
+  },
+  {
+   "slug": "xrfanalytical",
+   "namn": "XRF Analytical AB",
+   "orgnr": "556632-9305",
+   "avnoterad_datum": "2011-03-29",
+   "avnoterad_ar": 2011,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 29 mars",
+   "metod": null
+  },
+  {
+   "slug": "xtracomconsultinggroup",
+   "namn": "Xtracom Consulting Group AB",
+   "orgnr": "556738-8896",
+   "avnoterad_datum": "2010-12-07",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 7 december",
+   "metod": null
+  },
+  {
+   "slug": "ycobusinesspartnersab",
+   "namn": "Y.C.O Business Partners AB",
+   "orgnr": "556713-5826",
+   "avnoterad_datum": "2010-09-22",
+   "avnoterad_ar": 2010,
+   "avnoterad_orsak": "Avnoterad från Aktietorget 22 september",
+   "metod": null
+  },
+  {
+   "slug": "zodiaktelevision",
+   "namn": "Zodiak Television AB",
+   "orgnr": "556333-4662",
+   "avnoterad_datum": "2008-08-15",
+   "avnoterad_ar": 2008,
+   "avnoterad_orsak": "Avnoterad från Nordiska listan 15 augusti",
+   "metod": null
+  },
+  {
+   "slug": "zwipe",
+   "namn": "Zwipe AS",
+   "orgnr": null,
+   "avnoterad_datum": "2025-03-06",
+   "avnoterad_ar": 2025,
+   "avnoterad_orsak": "Avnoterad från First North den 6 mars",
+   "metod": null
+  },
+  {
+   "slug": "3lsystem",
+   "namn": "3L System AB",
+   "orgnr": "556321-2546",
+   "avnoterad_datum": "2012-04-27",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från First North 27 april",
+   "metod": null
+  },
+  {
+   "slug": "5050pokerholding",
+   "namn": "5050 Poker Holding AB",
+   "orgnr": "556723-2573",
+   "avnoterad_datum": "2012-07-20",
+   "avnoterad_ar": 2012,
+   "avnoterad_orsak": "Avnoterad från First North 20 juli",
+   "metod": null
+  }
+ ]
+}

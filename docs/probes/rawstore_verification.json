@@ -1,0 +1,36 @@
+{
+  "manifest_rader": 2085,
+  "http_status": {
+    "200": 2085
+  },
+  "ok_false": 0,
+  "rader_med_fil": 2085,
+  "legacy_lases_readonly": true,
+  "hash_aterspelning": {
+    "stickprov": 60,
+    "utfall": {
+      "kompakt+ensure_ascii=False": 1,
+      "INGEN SERIALISERING MATCHAR": 59
+    }
+  },
+  "sjalvkonsistens": {
+    "saknade_filer": 0,
+    "trasiga": 0,
+    "sha_avvikelser": 0,
+    "radantal_avvikelser": 0,
+    "exempel_radantal": []
+  },
+  "fullstandighet": {
+    "filer_pa_disk": 2085,
+    "filer_i_manifest": 2085,
+    "oregistrerade": 0,
+    "saknade": 0,
+    "endpoints": 2046,
+    "instrument_i_listan": 1715,
+    "instrument_med_rapporter": 678,
+    "tackningsgap": 1037
+  },
+  "dom": {
+    "hash_aterspelbar": false
+  }
+}

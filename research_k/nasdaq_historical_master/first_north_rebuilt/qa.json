@@ -1,0 +1,10 @@
+{
+  "duplicate_instrument_month": 0,
+  "mapping_conflicts": 2161,
+  "interval_overlap": 0,
+  "future_mutation": "PASS",
+  "future_leakage_rows": 0,
+  "cross_market_contamination": "PASS",
+  "source_hash_traceability": "PASS",
+  "result": "PASS"
+}

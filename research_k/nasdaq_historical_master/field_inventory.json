@@ -1,0 +1,3368 @@
+{
+ "schema": "NASDAQ_MAIN_MARKET_SCHEMA_INVENTORY_V1",
+ "created_utc": "2026-08-18T20:11:11+00:00",
+ "n_filer": 201,
+ "manader": [
+  "2009-08",
+  "2026-07"
+ ],
+ "blad": {
+  "Contents": 201,
+  "Main Market Trading Details": 201,
+  "Company Trading": 201,
+  "Company Trading per Exchange": 201,
+  "Instrument Trading Details": 201
+ },
+ "n_unika_falt": 256,
+ "n_schemavarianter": 213,
+ "falt": [
+  {
+   "canonical_name": "april 2010",
+   "raw_names": [
+    "April 2010"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2010-04",
+   "last_month": "2010-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2011",
+   "raw_names": [
+    "April 2011"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2011-04",
+   "last_month": "2011-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2012",
+   "raw_names": [
+    "April 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-04",
+   "last_month": "2012-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2013",
+   "raw_names": [
+    "April 2013"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2013-04",
+   "last_month": "2013-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2014",
+   "raw_names": [
+    "April 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-04",
+   "last_month": "2014-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2015",
+   "raw_names": [
+    "April 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-04",
+   "last_month": "2015-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2016",
+   "raw_names": [
+    "April 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-04",
+   "last_month": "2016-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2017",
+   "raw_names": [
+    "April 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-04",
+   "last_month": "2017-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2018",
+   "raw_names": [
+    "April 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-04",
+   "last_month": "2018-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2019",
+   "raw_names": [
+    "April 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-04",
+   "last_month": "2019-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2020",
+   "raw_names": [
+    "April 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-04",
+   "last_month": "2020-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2021",
+   "raw_names": [
+    "April 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-04",
+   "last_month": "2021-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2022",
+   "raw_names": [
+    "April 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-04",
+   "last_month": "2022-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2023",
+   "raw_names": [
+    "April 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-04",
+   "last_month": "2023-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2024",
+   "raw_names": [
+    "April 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-04",
+   "last_month": "2024-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2025",
+   "raw_names": [
+    "April 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-04",
+   "last_month": "2025-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "april 2026",
+   "raw_names": [
+    "April 2026"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2026-04",
+   "last_month": "2026-04",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2009",
+   "raw_names": [
+    "August 2009"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2009-08",
+   "last_month": "2009-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2010",
+   "raw_names": [
+    "August 2010"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2010-08",
+   "last_month": "2010-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2012",
+   "raw_names": [
+    "August 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-08",
+   "last_month": "2012-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2013",
+   "raw_names": [
+    "August 2013"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2013-08",
+   "last_month": "2013-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2014",
+   "raw_names": [
+    "August 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-08",
+   "last_month": "2014-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2015",
+   "raw_names": [
+    "August 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-08",
+   "last_month": "2015-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2016",
+   "raw_names": [
+    "August 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-08",
+   "last_month": "2016-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2017",
+   "raw_names": [
+    "August 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-08",
+   "last_month": "2017-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2018",
+   "raw_names": [
+    "August 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-08",
+   "last_month": "2018-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2019",
+   "raw_names": [
+    "August 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-08",
+   "last_month": "2019-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2020",
+   "raw_names": [
+    "August 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-08",
+   "last_month": "2020-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2021",
+   "raw_names": [
+    "August 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-08",
+   "last_month": "2021-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2022",
+   "raw_names": [
+    "August 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-08",
+   "last_month": "2022-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2023",
+   "raw_names": [
+    "August 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-08",
+   "last_month": "2023-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2024",
+   "raw_names": [
+    "August 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-08",
+   "last_month": "2024-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "august 2025",
+   "raw_names": [
+    "August 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-08",
+   "last_month": "2025-08",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "average closing spread",
+   "raw_names": [
+    "Average Closing Spread"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 579,
+    "Instrument Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "average no of traded shares",
+   "raw_names": [
+    "Average No of Traded Shares"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "average no of trades",
+   "raw_names": [
+    "Average No of Trades"
+   ],
+   "sheets": {
+    "Company Trading": 579,
+    "Company Trading per Exchange": 579,
+    "Instrument Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "average nr of shares traded",
+   "raw_names": [
+    "Average Nr of Shares Traded"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "average nr of trades",
+   "raw_names": [
+    "Average Nr of Trades"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "average trade size",
+   "raw_names": [
+    "Average Trade Size"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 579,
+    "Instrument Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "average turnover",
+   "raw_names": [
+    "Average Turnover"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 579,
+    "Instrument Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "average turnover eur",
+   "raw_names": [
+    "Average Turnover EUR"
+   ],
+   "sheets": {
+    "Company Trading": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "average turnover sek",
+   "raw_names": [
+    "Average Turnover SEK"
+   ],
+   "sheets": {
+    "Company Trading per Exchange": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "company (by total turnover eur)",
+   "raw_names": [
+    "Company (by Total Turnover EUR)"
+   ],
+   "sheets": {
+    "Company Trading": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "company (by total turnover)",
+   "raw_names": [
+    "Company (by Total Turnover)"
+   ],
+   "sheets": {
+    "Company Trading per Exchange": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "company code",
+   "raw_names": [
+    "Company Code"
+   ],
+   "sheets": {
+    "Company Trading": 201,
+    "Company Trading per Exchange": 201,
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "curr- ency",
+   "raw_names": [
+    "Curr- ency"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 201,
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "december 2009",
+   "raw_names": [
+    "December 2009"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2009-12",
+   "last_month": "2009-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2010",
+   "raw_names": [
+    "December 2010"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2010-12",
+   "last_month": "2010-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2011",
+   "raw_names": [
+    "December 2011"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2011-12",
+   "last_month": "2011-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2012",
+   "raw_names": [
+    "December 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-12",
+   "last_month": "2012-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2013",
+   "raw_names": [
+    "December 2013"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2013-12",
+   "last_month": "2013-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2014",
+   "raw_names": [
+    "December 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-12",
+   "last_month": "2014-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2015",
+   "raw_names": [
+    "December 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-12",
+   "last_month": "2015-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2016",
+   "raw_names": [
+    "December 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-12",
+   "last_month": "2016-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2017",
+   "raw_names": [
+    "December 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-12",
+   "last_month": "2017-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2018",
+   "raw_names": [
+    "December 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-12",
+   "last_month": "2018-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2019",
+   "raw_names": [
+    "December 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-12",
+   "last_month": "2019-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2020",
+   "raw_names": [
+    "December 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-12",
+   "last_month": "2020-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2021",
+   "raw_names": [
+    "December 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-12",
+   "last_month": "2021-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2022",
+   "raw_names": [
+    "December 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-12",
+   "last_month": "2022-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2023",
+   "raw_names": [
+    "December 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-12",
+   "last_month": "2023-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2024",
+   "raw_names": [
+    "December 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-12",
+   "last_month": "2024-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "december 2025",
+   "raw_names": [
+    "December 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-12",
+   "last_month": "2025-12",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "delisted",
+   "raw_names": [
+    "Delisted"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "february 2010",
+   "raw_names": [
+    "February 2010"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2010-02",
+   "last_month": "2010-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2011",
+   "raw_names": [
+    "February 2011"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2011-02",
+   "last_month": "2011-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2012",
+   "raw_names": [
+    "February 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-02",
+   "last_month": "2012-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2013",
+   "raw_names": [
+    "February 2013"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2013-02",
+   "last_month": "2013-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2014",
+   "raw_names": [
+    "February 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-02",
+   "last_month": "2014-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2015",
+   "raw_names": [
+    "February 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-02",
+   "last_month": "2015-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2016",
+   "raw_names": [
+    "February 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-02",
+   "last_month": "2016-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2017",
+   "raw_names": [
+    "February 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-02",
+   "last_month": "2017-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2018",
+   "raw_names": [
+    "February 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-02",
+   "last_month": "2018-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2019",
+   "raw_names": [
+    "February 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-02",
+   "last_month": "2019-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2020",
+   "raw_names": [
+    "February 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-02",
+   "last_month": "2020-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2021",
+   "raw_names": [
+    "February 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-02",
+   "last_month": "2021-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2022",
+   "raw_names": [
+    "February 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-02",
+   "last_month": "2022-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2023",
+   "raw_names": [
+    "February 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-02",
+   "last_month": "2023-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2024",
+   "raw_names": [
+    "February 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-02",
+   "last_month": "2024-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2025",
+   "raw_names": [
+    "February 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-02",
+   "last_month": "2025-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "february 2026",
+   "raw_names": [
+    "February 2026"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2026-02",
+   "last_month": "2026-02",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "high paid",
+   "raw_names": [
+    "High Paid"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 569
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "indsutry",
+   "raw_names": [
+    "Indsutry"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 15
+   },
+   "first_month": "2012-02",
+   "last_month": "2013-05",
+   "months_present": 15,
+   "coverage_fraction": 0.0746
+  },
+  {
+   "canonical_name": "industry",
+   "raw_names": [
+    "Industry"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 158
+   },
+   "first_month": "2013-06",
+   "last_month": "2026-07",
+   "months_present": 158,
+   "coverage_fraction": 0.7861
+  },
+  {
+   "canonical_name": "instrument",
+   "raw_names": [
+    "Instrument"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "instrument type",
+   "raw_names": [
+    "Instrument Type"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "isin",
+   "raw_names": [
+    "ISIN"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "issuer code",
+   "raw_names": [
+    "Issuer Code"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "issuer country",
+   "raw_names": [
+    "Issuer Country"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 20
+   },
+   "first_month": "2024-12",
+   "last_month": "2026-07",
+   "months_present": 20,
+   "coverage_fraction": 0.0995
+  },
+  {
+   "canonical_name": "january 2010",
+   "raw_names": [
+    "January 2010"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2010-01",
+   "last_month": "2010-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2011",
+   "raw_names": [
+    "January 2011"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2011-01",
+   "last_month": "2011-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2012",
+   "raw_names": [
+    "January 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-01",
+   "last_month": "2012-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2013",
+   "raw_names": [
+    "January 2013"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2013-01",
+   "last_month": "2013-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2014",
+   "raw_names": [
+    "January 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-01",
+   "last_month": "2014-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2015",
+   "raw_names": [
+    "January 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-01",
+   "last_month": "2015-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2016",
+   "raw_names": [
+    "January 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-01",
+   "last_month": "2016-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2017",
+   "raw_names": [
+    "January 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-01",
+   "last_month": "2017-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2018",
+   "raw_names": [
+    "January 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-01",
+   "last_month": "2018-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2019",
+   "raw_names": [
+    "January 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-01",
+   "last_month": "2019-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2020",
+   "raw_names": [
+    "January 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-01",
+   "last_month": "2020-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2021",
+   "raw_names": [
+    "January 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-01",
+   "last_month": "2021-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2022",
+   "raw_names": [
+    "January 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-01",
+   "last_month": "2022-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2023",
+   "raw_names": [
+    "January 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-01",
+   "last_month": "2023-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2024",
+   "raw_names": [
+    "January 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-01",
+   "last_month": "2024-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2025",
+   "raw_names": [
+    "January 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-01",
+   "last_month": "2025-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "january 2026",
+   "raw_names": [
+    "January 2026"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2026-01",
+   "last_month": "2026-01",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2010",
+   "raw_names": [
+    "July 2010"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2010-07",
+   "last_month": "2010-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2011",
+   "raw_names": [
+    "July 2011"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2011-07",
+   "last_month": "2011-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2012",
+   "raw_names": [
+    "July 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-07",
+   "last_month": "2012-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2013",
+   "raw_names": [
+    "July 2013"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2013-07",
+   "last_month": "2013-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2014",
+   "raw_names": [
+    "July 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-07",
+   "last_month": "2014-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2015",
+   "raw_names": [
+    "July 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-07",
+   "last_month": "2015-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2016",
+   "raw_names": [
+    "July 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-07",
+   "last_month": "2016-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2017",
+   "raw_names": [
+    "July 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-07",
+   "last_month": "2017-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2018",
+   "raw_names": [
+    "July 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-07",
+   "last_month": "2018-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2019",
+   "raw_names": [
+    "July 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-07",
+   "last_month": "2019-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2020",
+   "raw_names": [
+    "July 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-07",
+   "last_month": "2020-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2021",
+   "raw_names": [
+    "July 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-07",
+   "last_month": "2021-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2022",
+   "raw_names": [
+    "July 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-07",
+   "last_month": "2022-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2023",
+   "raw_names": [
+    "July 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-07",
+   "last_month": "2023-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2024",
+   "raw_names": [
+    "July 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-07",
+   "last_month": "2024-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2025",
+   "raw_names": [
+    "July 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-07",
+   "last_month": "2025-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "july 2026",
+   "raw_names": [
+    "July 2026"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2026-07",
+   "last_month": "2026-07",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2010",
+   "raw_names": [
+    "June 2010"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2010-06",
+   "last_month": "2010-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2011",
+   "raw_names": [
+    "June 2011"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2011-06",
+   "last_month": "2011-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2012",
+   "raw_names": [
+    "June 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-06",
+   "last_month": "2012-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2013",
+   "raw_names": [
+    "June 2013"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2013-06",
+   "last_month": "2013-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2014",
+   "raw_names": [
+    "June 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-06",
+   "last_month": "2014-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2015",
+   "raw_names": [
+    "June 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-06",
+   "last_month": "2015-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2016",
+   "raw_names": [
+    "June 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-06",
+   "last_month": "2016-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2017",
+   "raw_names": [
+    "June 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-06",
+   "last_month": "2017-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2018",
+   "raw_names": [
+    "June 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-06",
+   "last_month": "2018-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2019",
+   "raw_names": [
+    "June 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-06",
+   "last_month": "2019-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2020",
+   "raw_names": [
+    "June 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-06",
+   "last_month": "2020-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2021",
+   "raw_names": [
+    "June 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-06",
+   "last_month": "2021-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2022",
+   "raw_names": [
+    "June 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-06",
+   "last_month": "2022-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2023",
+   "raw_names": [
+    "June 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-06",
+   "last_month": "2023-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2024",
+   "raw_names": [
+    "June 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-06",
+   "last_month": "2024-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2025",
+   "raw_names": [
+    "June 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-06",
+   "last_month": "2025-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "june 2026",
+   "raw_names": [
+    "June 2026"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2026-06",
+   "last_month": "2026-06",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "latest paid",
+   "raw_names": [
+    "Latest Paid"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "lg",
+   "raw_names": [
+    "LG"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "listed days",
+   "raw_names": [
+    "Listed Days"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 579,
+    "Instrument Trading Details": 538
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "loc- ation",
+   "raw_names": [
+    "Loc- ation"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "loca- tion",
+   "raw_names": [
+    "Loca- tion"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "low paid",
+   "raw_names": [
+    "Low Paid"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 569
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "lp",
+   "raw_names": [
+    "LP"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 7
+   },
+   "first_month": "2009-08",
+   "last_month": "2010-02",
+   "months_present": 7,
+   "coverage_fraction": 0.0348
+  },
+  {
+   "canonical_name": "lp yes=y no=n",
+   "raw_names": [
+    "LP Yes=Y No=N"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 194
+   },
+   "first_month": "2010-03",
+   "last_month": "2026-07",
+   "months_present": 194,
+   "coverage_fraction": 0.9652
+  },
+  {
+   "canonical_name": "main market equity trading",
+   "raw_names": [
+    "Main Market Equity Trading"
+   ],
+   "sheets": {
+    "Contents": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "march 2010",
+   "raw_names": [
+    "March 2010"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2010-03",
+   "last_month": "2010-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2011",
+   "raw_names": [
+    "March 2011"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2011-03",
+   "last_month": "2011-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2012",
+   "raw_names": [
+    "March 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-03",
+   "last_month": "2012-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2014",
+   "raw_names": [
+    "March 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-03",
+   "last_month": "2014-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2015",
+   "raw_names": [
+    "March 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-03",
+   "last_month": "2015-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2016",
+   "raw_names": [
+    "March 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-03",
+   "last_month": "2016-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2017",
+   "raw_names": [
+    "March 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-03",
+   "last_month": "2017-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2018",
+   "raw_names": [
+    "March 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-03",
+   "last_month": "2018-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2019",
+   "raw_names": [
+    "March 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-03",
+   "last_month": "2019-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2020",
+   "raw_names": [
+    "March 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-03",
+   "last_month": "2020-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2021",
+   "raw_names": [
+    "March 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-03",
+   "last_month": "2021-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2022",
+   "raw_names": [
+    "March 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-03",
+   "last_month": "2022-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2023",
+   "raw_names": [
+    "March 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-03",
+   "last_month": "2023-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2024",
+   "raw_names": [
+    "March 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-03",
+   "last_month": "2024-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2025",
+   "raw_names": [
+    "March 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-03",
+   "last_month": "2025-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "march 2026",
+   "raw_names": [
+    "March 2026"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2026-03",
+   "last_month": "2026-03",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "market cap",
+   "raw_names": [
+    "Market Cap"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 201,
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "market cap eur",
+   "raw_names": [
+    "Market Cap EUR"
+   ],
+   "sheets": {
+    "Company Trading": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "market cap sek",
+   "raw_names": [
+    "Market Cap SEK"
+   ],
+   "sheets": {
+    "Company Trading per Exchange": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "may 2010",
+   "raw_names": [
+    "May 2010"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2010-05",
+   "last_month": "2010-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2011",
+   "raw_names": [
+    "May 2011"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2011-05",
+   "last_month": "2011-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2012",
+   "raw_names": [
+    "May 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-05",
+   "last_month": "2012-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2013",
+   "raw_names": [
+    "May 2013"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2013-05",
+   "last_month": "2013-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2014",
+   "raw_names": [
+    "May 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-05",
+   "last_month": "2014-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2015",
+   "raw_names": [
+    "May 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-05",
+   "last_month": "2015-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2016",
+   "raw_names": [
+    "May 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-05",
+   "last_month": "2016-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2017",
+   "raw_names": [
+    "May 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-05",
+   "last_month": "2017-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2018",
+   "raw_names": [
+    "May 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-05",
+   "last_month": "2018-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2019",
+   "raw_names": [
+    "May 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-05",
+   "last_month": "2019-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2020",
+   "raw_names": [
+    "May 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-05",
+   "last_month": "2020-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2021",
+   "raw_names": [
+    "May 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-05",
+   "last_month": "2021-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2022",
+   "raw_names": [
+    "May 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-05",
+   "last_month": "2022-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2023",
+   "raw_names": [
+    "May 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-05",
+   "last_month": "2023-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2024",
+   "raw_names": [
+    "May 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-05",
+   "last_month": "2024-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2025",
+   "raw_names": [
+    "May 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-05",
+   "last_month": "2025-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "may 2026",
+   "raw_names": [
+    "May 2026"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2026-05",
+   "last_month": "2026-05",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "nc",
+   "raw_names": [
+    "NC"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 199
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 199,
+   "coverage_fraction": 0.99
+  },
+  {
+   "canonical_name": "no of shares listed",
+   "raw_names": [
+    "No of Shares Listed"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 201,
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "november 2009",
+   "raw_names": [
+    "November 2009"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2009-11",
+   "last_month": "2009-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2010",
+   "raw_names": [
+    "November 2010"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2010-11",
+   "last_month": "2010-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2011",
+   "raw_names": [
+    "November 2011"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2011-11",
+   "last_month": "2011-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2012",
+   "raw_names": [
+    "November 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-11",
+   "last_month": "2012-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2013",
+   "raw_names": [
+    "November 2013"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2013-11",
+   "last_month": "2013-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2014",
+   "raw_names": [
+    "November 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-11",
+   "last_month": "2014-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2015",
+   "raw_names": [
+    "November 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-11",
+   "last_month": "2015-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2016",
+   "raw_names": [
+    "November 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-11",
+   "last_month": "2016-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2017",
+   "raw_names": [
+    "November 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-11",
+   "last_month": "2017-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2018",
+   "raw_names": [
+    "November 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-11",
+   "last_month": "2018-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2019",
+   "raw_names": [
+    "November 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-11",
+   "last_month": "2019-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2020",
+   "raw_names": [
+    "November 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-11",
+   "last_month": "2020-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2021",
+   "raw_names": [
+    "November 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-11",
+   "last_month": "2021-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2022",
+   "raw_names": [
+    "November 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-11",
+   "last_month": "2022-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2023",
+   "raw_names": [
+    "November 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-11",
+   "last_month": "2023-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2024",
+   "raw_names": [
+    "November 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-11",
+   "last_month": "2024-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "november 2025",
+   "raw_names": [
+    "November 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-11",
+   "last_month": "2025-11",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2009",
+   "raw_names": [
+    "October 2009"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2009-10",
+   "last_month": "2009-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2010",
+   "raw_names": [
+    "October 2010"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2010-10",
+   "last_month": "2010-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2011",
+   "raw_names": [
+    "October 2011"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2011-10",
+   "last_month": "2011-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2012",
+   "raw_names": [
+    "October 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-10",
+   "last_month": "2012-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2013",
+   "raw_names": [
+    "October 2013"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2013-10",
+   "last_month": "2013-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2014",
+   "raw_names": [
+    "October 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-10",
+   "last_month": "2014-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2015",
+   "raw_names": [
+    "October 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-10",
+   "last_month": "2015-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2016",
+   "raw_names": [
+    "October 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-10",
+   "last_month": "2016-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2017",
+   "raw_names": [
+    "October 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-10",
+   "last_month": "2017-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2018",
+   "raw_names": [
+    "October 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-10",
+   "last_month": "2018-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2019",
+   "raw_names": [
+    "October 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-10",
+   "last_month": "2019-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2020",
+   "raw_names": [
+    "October 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-10",
+   "last_month": "2020-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2021",
+   "raw_names": [
+    "October 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-10",
+   "last_month": "2021-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2022",
+   "raw_names": [
+    "October 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-10",
+   "last_month": "2022-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2023",
+   "raw_names": [
+    "October 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-10",
+   "last_month": "2023-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2024",
+   "raw_names": [
+    "October 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-10",
+   "last_month": "2024-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "october 2025",
+   "raw_names": [
+    "October 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-10",
+   "last_month": "2025-10",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "orderbook code",
+   "raw_names": [
+    "Orderbook Code"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 201,
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "otc no of trades",
+   "raw_names": [
+    "OTC No of Trades"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 456
+   },
+   "first_month": "2009-08",
+   "last_month": "2023-02",
+   "months_present": 160,
+   "coverage_fraction": 0.796
+  },
+  {
+   "canonical_name": "otc turnover",
+   "raw_names": [
+    "OTC Turnover"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 456
+   },
+   "first_month": "2009-08",
+   "last_month": "2023-02",
+   "months_present": 160,
+   "coverage_fraction": 0.796
+  },
+  {
+   "canonical_name": "plus",
+   "raw_names": [
+    "PLUS"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "round lot",
+   "raw_names": [
+    "Round Lot"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "sector",
+   "raw_names": [
+    "Sector"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 28
+   },
+   "first_month": "2009-08",
+   "last_month": "2012-01",
+   "months_present": 28,
+   "coverage_fraction": 0.1393
+  },
+  {
+   "canonical_name": "segment",
+   "raw_names": [
+    "Segment"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 201
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "september 2009",
+   "raw_names": [
+    "September 2009"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2009-09",
+   "last_month": "2009-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2011",
+   "raw_names": [
+    "September 2011"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2011-09",
+   "last_month": "2011-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2012",
+   "raw_names": [
+    "September 2012"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2012-09",
+   "last_month": "2012-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2013",
+   "raw_names": [
+    "September 2013"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2013-09",
+   "last_month": "2013-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2014",
+   "raw_names": [
+    "September 2014"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2014-09",
+   "last_month": "2014-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2015",
+   "raw_names": [
+    "September 2015"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2015-09",
+   "last_month": "2015-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2016",
+   "raw_names": [
+    "September 2016"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2016-09",
+   "last_month": "2016-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2017",
+   "raw_names": [
+    "September 2017"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2017-09",
+   "last_month": "2017-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2018",
+   "raw_names": [
+    "September 2018"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2018-09",
+   "last_month": "2018-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2019",
+   "raw_names": [
+    "September 2019"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2019-09",
+   "last_month": "2019-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2020",
+   "raw_names": [
+    "September 2020"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2020-09",
+   "last_month": "2020-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2021",
+   "raw_names": [
+    "September 2021"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2021-09",
+   "last_month": "2021-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2022",
+   "raw_names": [
+    "September 2022"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2022-09",
+   "last_month": "2022-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2023",
+   "raw_names": [
+    "September 2023"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2023-09",
+   "last_month": "2023-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2024",
+   "raw_names": [
+    "September 2024"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2024-09",
+   "last_month": "2024-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "september 2025",
+   "raw_names": [
+    "September 2025"
+   ],
+   "sheets": {
+    "Contents": 1
+   },
+   "first_month": "2025-09",
+   "last_month": "2025-09",
+   "months_present": 1,
+   "coverage_fraction": 0.005
+  },
+  {
+   "canonical_name": "sub- industry",
+   "raw_names": [
+    "Sub- Industry"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 28,
+    "Instrument Trading Details": 28
+   },
+   "first_month": "2009-08",
+   "last_month": "2012-01",
+   "months_present": 28,
+   "coverage_fraction": 0.1393
+  },
+  {
+   "canonical_name": "super sector",
+   "raw_names": [
+    "Super sector"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 173,
+    "Instrument Trading Details": 173
+   },
+   "first_month": "2012-02",
+   "last_month": "2026-07",
+   "months_present": 173,
+   "coverage_fraction": 0.8607
+  },
+  {
+   "canonical_name": "total no of traded shares",
+   "raw_names": [
+    "Total No of Traded Shares"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "total no of trades",
+   "raw_names": [
+    "Total No of Trades"
+   ],
+   "sheets": {
+    "Company Trading": 389,
+    "Company Trading per Exchange": 579,
+    "Instrument Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "total nr of shares traded",
+   "raw_names": [
+    "Total Nr of Shares Traded"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "total nr of trades",
+   "raw_names": [
+    "Total Nr of Trades"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 579,
+    "Company Trading": 190
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "total turnover",
+   "raw_names": [
+    "Total Turnover"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 579,
+    "Instrument Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "total turnover eur",
+   "raw_names": [
+    "Total Turnover EUR"
+   ],
+   "sheets": {
+    "Company Trading": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "total turnover sek",
+   "raw_names": [
+    "Total Turnover SEK"
+   ],
+   "sheets": {
+    "Company Trading per Exchange": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "traded days",
+   "raw_names": [
+    "Traded Days"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 579,
+    "Instrument Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "turnover velocity",
+   "raw_names": [
+    "Turnover Velocity"
+   ],
+   "sheets": {
+    "Main Market Trading Details": 579,
+    "Instrument Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  },
+  {
+   "canonical_name": "vwap",
+   "raw_names": [
+    "VWAP"
+   ],
+   "sheets": {
+    "Instrument Trading Details": 579
+   },
+   "first_month": "2009-08",
+   "last_month": "2026-07",
+   "months_present": 201,
+   "coverage_fraction": 1.0
+  }
+ ]
+}

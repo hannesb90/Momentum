@@ -1,0 +1,750 @@
+{
+ "ar": {
+  "n_rader_totalt": 4847,
+  "n_instrument_berorda": 40,
+  "berorda_kod": [
+   "8TRA",
+   "ABB",
+   "ALIV-SDB",
+   "ALVO-SDB",
+   "ARION-SDB",
+   "ARP",
+   "ASMDEE-B",
+   "AZN",
+   "BETCO",
+   "BETS-B",
+   "CCC",
+   "CIBUS",
+   "CINT",
+   "CTM",
+   "EAST",
+   "ELTEL",
+   "EQT",
+   "EVO",
+   "FOI-B",
+   "G2M",
+   "G5EN",
+   "HACK",
+   "HEXA-B",
+   "IPCO",
+   "LUG",
+   "LUMI",
+   "MAHA-A",
+   "MCOV-B",
+   "MORROW",
+   "NDA-SE",
+   "ORRON",
+   "PUBLI",
+   "SAMPO-SEK",
+   "SMCRT",
+   "STE-A",
+   "TIETOS",
+   "TROAX",
+   "VEFAB",
+   "VIMIAN",
+   "VNV"
+  ],
+  "berorda_valutor": {
+   "USD": [
+    "ABB",
+    "ALIV-SDB",
+    "ALVO-SDB",
+    "AZN",
+    "G5EN",
+    "IPCO",
+    "LUG",
+    "LUMI",
+    "MAHA-A",
+    "VEFAB",
+    "VNV"
+   ],
+   "EUR": [
+    "8TRA",
+    "ASMDEE-B",
+    "BETCO",
+    "BETS-B",
+    "CCC",
+    "CIBUS",
+    "CINT",
+    "CTM",
+    "EAST",
+    "ELTEL",
+    "EQT",
+    "EVO",
+    "FOI-B",
+    "G2M",
+    "HACK",
+    "HEXA-B",
+    "MCOV-B",
+    "NDA-SE",
+    "ORRON",
+    "SAMPO-SEK",
+    "STE-A",
+    "TIETOS",
+    "TROAX",
+    "VIMIAN"
+   ],
+   "ISK": [
+    "ARION-SDB"
+   ],
+   "NOK": [
+    "MORROW",
+    "PUBLI",
+    "SMCRT"
+   ],
+   "PLN": [
+    "ARP"
+   ]
+  },
+  "sek_kontroll": {
+   "testade": 104784,
+   "avvikande": 0
+  },
+  "per_falt": {
+   "revenues": {
+    "andrade_rader": 423,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.8424337,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "gross_Income": {
+    "andrade_rader": 424,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.8424337,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "operating_Income": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.462882100000002,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "profit_Before_Tax": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "profit_To_Equity_Holders": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "total_Assets": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.462882100000002,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "total_Equity": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "total_Liabilities_And_Equity": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.462882100000002,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "current_Assets": {
+    "andrade_rader": 446,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.91466751
+   },
+   "current_Liabilities": {
+    "andrade_rader": 438,
+    "max_forandringsfaktor": 11.462882100000002,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.91466751
+   },
+   "non_Current_Assets": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "non_Current_Liabilities": {
+    "andrade_rader": 444,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.8424337,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "cash_And_Equivalents": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.462882100000002,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "net_Debt": {
+    "andrade_rader": 439,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.91466751
+   },
+   "tangible_Assets": {
+    "andrade_rader": 452,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "intangible_Assets": {
+    "andrade_rader": 387,
+    "max_forandringsfaktor": 11.462882100000002,
+    "median_forandringsfaktor": 9.8424337,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "financial_Assets": {
+    "andrade_rader": 458,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "cash_Flow_From_Operating_Activities": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "cash_Flow_From_Investing_Activities": {
+    "andrade_rader": 458,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "cash_Flow_From_Financing_Activities": {
+    "andrade_rader": 467,
+    "max_forandringsfaktor": 11.462882100000002,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "cash_Flow_For_The_Year": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.462882100000002,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "free_Cash_Flow": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "earnings_Per_Share": {
+    "andrade_rader": 473,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "dividend": {
+    "andrade_rader": 299,
+    "max_forandringsfaktor": 11.4628821,
+    "median_forandringsfaktor": 9.57999369,
+    "min_forandringsfaktor": 0.06435914
+   }
+  }
+ },
+ "kvartal": {
+  "n_rader_totalt": 12280,
+  "n_instrument_berorda": 41,
+  "berorda_kod": [
+   "8TRA",
+   "ABB",
+   "ALIV-SDB",
+   "ALVO-SDB",
+   "ARION-SDB",
+   "ARP",
+   "ASMDEE-B",
+   "AZN",
+   "BETCO",
+   "BETS-B",
+   "CCC",
+   "CIBUS",
+   "CINT",
+   "CTM",
+   "EAST",
+   "ELTEL",
+   "EQT",
+   "EVO",
+   "FOI-B",
+   "G2M",
+   "G5EN",
+   "HACK",
+   "HEXA-B",
+   "IPCO",
+   "LUG",
+   "LUMI",
+   "MAHA-A",
+   "MCOV-B",
+   "MORROW",
+   "NDA-SE",
+   "OCTV-SDB",
+   "ORRON",
+   "PUBLI",
+   "SAMPO-SEK",
+   "SMCRT",
+   "STE-A",
+   "TIETOS",
+   "TROAX",
+   "VEFAB",
+   "VIMIAN",
+   "VNV"
+  ],
+  "berorda_valutor": {
+   "USD": [
+    "ABB",
+    "ALIV-SDB",
+    "ALVO-SDB",
+    "AZN",
+    "G5EN",
+    "IPCO",
+    "LUG",
+    "LUMI",
+    "MAHA-A",
+    "OCTV-SDB",
+    "VEFAB",
+    "VNV"
+   ],
+   "EUR": [
+    "8TRA",
+    "ASMDEE-B",
+    "BETCO",
+    "BETS-B",
+    "CCC",
+    "CIBUS",
+    "CINT",
+    "CTM",
+    "EAST",
+    "ELTEL",
+    "EQT",
+    "EVO",
+    "FOI-B",
+    "G2M",
+    "HACK",
+    "HEXA-B",
+    "MCOV-B",
+    "NDA-SE",
+    "ORRON",
+    "SAMPO-SEK",
+    "STE-A",
+    "TIETOS",
+    "TROAX",
+    "VIMIAN"
+   ],
+   "ISK": [
+    "ARION-SDB"
+   ],
+   "NOK": [
+    "MORROW",
+    "PUBLI",
+    "SMCRT"
+   ],
+   "PLN": [
+    "ARP"
+   ]
+  },
+  "sek_kontroll": {
+   "testade": 264000,
+   "avvikande": 0
+  },
+  "per_falt": {
+   "revenues": {
+    "andrade_rader": 1141,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3957,
+    "min_forandringsfaktor": 0.0644
+   },
+   "gross_Income": {
+    "andrade_rader": 1136,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3957,
+    "min_forandringsfaktor": 0.0644
+   },
+   "operating_Income": {
+    "andrade_rader": 1251,
+    "max_forandringsfaktor": 11.7717,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "profit_Before_Tax": {
+    "andrade_rader": 1249,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "profit_To_Equity_Holders": {
+    "andrade_rader": 1249,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "total_Assets": {
+    "andrade_rader": 1251,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "total_Equity": {
+    "andrade_rader": 1251,
+    "max_forandringsfaktor": 11.7717,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "total_Liabilities_And_Equity": {
+    "andrade_rader": 1249,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "current_Assets": {
+    "andrade_rader": 1169,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3184,
+    "min_forandringsfaktor": 0.9147
+   },
+   "current_Liabilities": {
+    "andrade_rader": 1140,
+    "max_forandringsfaktor": 11.7717,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.9147
+   },
+   "non_Current_Assets": {
+    "andrade_rader": 1251,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "non_Current_Liabilities": {
+    "andrade_rader": 1222,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3184,
+    "min_forandringsfaktor": 0.0644
+   },
+   "cash_And_Equivalents": {
+    "andrade_rader": 1250,
+    "max_forandringsfaktor": 11.7717,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "net_Debt": {
+    "andrade_rader": 1142,
+    "max_forandringsfaktor": 11.7717,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.9147
+   },
+   "tangible_Assets": {
+    "andrade_rader": 1211,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "intangible_Assets": {
+    "andrade_rader": 1025,
+    "max_forandringsfaktor": 11.7717,
+    "median_forandringsfaktor": 10.428,
+    "min_forandringsfaktor": 0.0644
+   },
+   "financial_Assets": {
+    "andrade_rader": 1220,
+    "max_forandringsfaktor": 11.7717,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "cash_Flow_From_Operating_Activities": {
+    "andrade_rader": 1248,
+    "max_forandringsfaktor": 11.7717,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "cash_Flow_From_Investing_Activities": {
+    "andrade_rader": 1191,
+    "max_forandringsfaktor": 11.7717,
+    "median_forandringsfaktor": 10.3184,
+    "min_forandringsfaktor": 0.0644
+   },
+   "cash_Flow_From_Financing_Activities": {
+    "andrade_rader": 1221,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3184,
+    "min_forandringsfaktor": 0.0648
+   },
+   "cash_Flow_For_The_Year": {
+    "andrade_rader": 1248,
+    "max_forandringsfaktor": 11.7717,
+    "median_forandringsfaktor": 10.2987,
+    "min_forandringsfaktor": 0.0644
+   },
+   "free_Cash_Flow": {
+    "andrade_rader": 1251,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   },
+   "earnings_Per_Share": {
+    "andrade_rader": 1244,
+    "max_forandringsfaktor": 11.771700000000001,
+    "median_forandringsfaktor": 10.2795,
+    "min_forandringsfaktor": 0.0644
+   },
+   "dividend": {
+    "andrade_rader": 762,
+    "max_forandringsfaktor": 11.7717,
+    "median_forandringsfaktor": 10.3179,
+    "min_forandringsfaktor": 0.0644
+   }
+  }
+ },
+ "r12": {
+  "n_rader_totalt": 12269,
+  "n_instrument_berorda": 41,
+  "berorda_kod": [
+   "8TRA",
+   "ABB",
+   "ALIV-SDB",
+   "ALVO-SDB",
+   "ARION-SDB",
+   "ARP",
+   "ASMDEE-B",
+   "AZN",
+   "BETCO",
+   "BETS-B",
+   "CCC",
+   "CIBUS",
+   "CINT",
+   "CTM",
+   "EAST",
+   "ELTEL",
+   "EQT",
+   "EVO",
+   "FOI-B",
+   "G2M",
+   "G5EN",
+   "HACK",
+   "HEXA-B",
+   "IPCO",
+   "LUG",
+   "LUMI",
+   "MAHA-A",
+   "MCOV-B",
+   "MORROW",
+   "NDA-SE",
+   "OCTV-SDB",
+   "ORRON",
+   "PUBLI",
+   "SAMPO-SEK",
+   "SMCRT",
+   "STE-A",
+   "TIETOS",
+   "TROAX",
+   "VEFAB",
+   "VIMIAN",
+   "VNV"
+  ],
+  "berorda_valutor": {
+   "USD": [
+    "ABB",
+    "ALIV-SDB",
+    "ALVO-SDB",
+    "AZN",
+    "G5EN",
+    "IPCO",
+    "LUG",
+    "LUMI",
+    "MAHA-A",
+    "OCTV-SDB",
+    "VEFAB",
+    "VNV"
+   ],
+   "EUR": [
+    "8TRA",
+    "ASMDEE-B",
+    "BETCO",
+    "BETS-B",
+    "CCC",
+    "CIBUS",
+    "CINT",
+    "CTM",
+    "EAST",
+    "ELTEL",
+    "EQT",
+    "EVO",
+    "FOI-B",
+    "G2M",
+    "HACK",
+    "HEXA-B",
+    "MCOV-B",
+    "NDA-SE",
+    "ORRON",
+    "SAMPO-SEK",
+    "STE-A",
+    "TIETOS",
+    "TROAX",
+    "VIMIAN"
+   ],
+   "ISK": [
+    "ARION-SDB"
+   ],
+   "NOK": [
+    "MORROW",
+    "PUBLI",
+    "SMCRT"
+   ],
+   "PLN": [
+    "ARP"
+   ]
+  },
+  "sek_kontroll": {
+   "testade": 263712,
+   "avvikande": 0
+  },
+  "per_falt": {
+   "revenues": {
+    "andrade_rader": 1146,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.39572725,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "gross_Income": {
+    "andrade_rader": 1137,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.39572725,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "operating_Income": {
+    "andrade_rader": 1252,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "profit_Before_Tax": {
+    "andrade_rader": 1251,
+    "max_forandringsfaktor": 11.77174032,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "profit_To_Equity_Holders": {
+    "andrade_rader": 1251,
+    "max_forandringsfaktor": 11.77174032,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "total_Assets": {
+    "andrade_rader": 1252,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "total_Equity": {
+    "andrade_rader": 1252,
+    "max_forandringsfaktor": 11.77174032,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "total_Liabilities_And_Equity": {
+    "andrade_rader": 1250,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "current_Assets": {
+    "andrade_rader": 1170,
+    "max_forandringsfaktor": 11.77174032,
+    "median_forandringsfaktor": 10.31835597,
+    "min_forandringsfaktor": 0.91466751
+   },
+   "current_Liabilities": {
+    "andrade_rader": 1141,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.91466751
+   },
+   "non_Current_Assets": {
+    "andrade_rader": 1252,
+    "max_forandringsfaktor": 11.77174032,
+    "median_forandringsfaktor": 10.317857139999997,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "non_Current_Liabilities": {
+    "andrade_rader": 1222,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31835597,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "cash_And_Equivalents": {
+    "andrade_rader": 1251,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "net_Debt": {
+    "andrade_rader": 1143,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.91466751
+   },
+   "tangible_Assets": {
+    "andrade_rader": 1211,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "intangible_Assets": {
+    "andrade_rader": 1025,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.42802648,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "financial_Assets": {
+    "andrade_rader": 1221,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "cash_Flow_From_Operating_Activities": {
+    "andrade_rader": 1251,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "cash_Flow_From_Investing_Activities": {
+    "andrade_rader": 1204,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "cash_Flow_From_Financing_Activities": {
+    "andrade_rader": 1245,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "cash_Flow_For_The_Year": {
+    "andrade_rader": 1250,
+    "max_forandringsfaktor": 11.77174032,
+    "median_forandringsfaktor": 10.317857139999997,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "free_Cash_Flow": {
+    "andrade_rader": 1251,
+    "max_forandringsfaktor": 11.77174032,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "earnings_Per_Share": {
+    "andrade_rader": 1251,
+    "max_forandringsfaktor": 11.77174032,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   },
+   "dividend": {
+    "andrade_rader": 763,
+    "max_forandringsfaktor": 11.771740320000001,
+    "median_forandringsfaktor": 10.31785714,
+    "min_forandringsfaktor": 0.06435914
+   }
+  }
+ }
+}

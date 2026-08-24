@@ -1,0 +1,145 @@
+{
+ "schema": "NASDAQ_HISTORICAL_MASTER_MANIFEST_V2",
+ "created_utc": "2026-08-18T20:29:34+00:00",
+ "provenance_kedja": "RAW (201 filer, hashade i nasdaq_segment_foundation/raw_manifest.json) -> instrument_monthly_extract -> normalized/* -> QA-artefakter",
+ "raw_manifest": "research_k/nasdaq_segment_foundation/raw_manifest.json",
+ "raw_manifest_sha256": "6044cbc71640f6a527472feaa21fd514870ea1bc87bcdfcd5338e43d11dadabb",
+ "n_artifacts": 27,
+ "artifacts": [
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/corporate_actions_discovery.json",
+   "sha256": "954dcb1f839bec9d7d234b204bbf628e35aef8876126b2b94c75eb43b570539b",
+   "bytes": 1053
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/data_consequence_audit.json",
+   "sha256": "f2dd463cdc89d6c4d96bdf891355c8315666fd08a2cc09e6c5fa0983d30b6eab",
+   "bytes": 3459
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/data_dictionary.json",
+   "sha256": "2e421a0e60672bebe7a8695b369aafec166b7a0991474262af56af4ce9f60306",
+   "bytes": 17634
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/experimental_datasets.json",
+   "sha256": "1c5f76da7f525c3ff0044851c039fe42792ab5fe2ee98fed5cfeb2fab9304e5c",
+   "bytes": 1093
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/field_inventory.json",
+   "sha256": "c852dcdbb063e7e4701e4610d4b378860009eabec75fe5f9fa06e4366db46542",
+   "bytes": 63285
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/first_north_discovery.json",
+   "sha256": "b8dc8aad93998245552762df0335392ecc6c5f644afa6bd6b572d37975fbcbb2",
+   "bytes": 2103
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/first_north_p2_spec.json",
+   "sha256": "73d19bd8afad3522c93babd35c6c04c64ab3cc81cbeba2b6e895024ad4903165",
+   "bytes": 1626
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/historical_icb_foundation.json",
+   "sha256": "483ac40227f2c8800ff3dec0eb356a6685eee3dbe928fdeba0c06dc14937cc2e",
+   "bytes": 1994
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/implementation_priority.json",
+   "sha256": "3a22a24ff60d45b55988c26579ab471ef857215682fc9aca3278f8253a3bc8f1",
+   "bytes": 2392
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/index_history_discovery.json",
+   "sha256": "32f0402e90bb983f5a63c7820f79cd733b2ba76707b85b36ef51d5d52ab3b03f",
+   "bytes": 1084
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/instrument_monthly_extract.json",
+   "sha256": "7927c9cd382455ac3beff5a5b561bcac4419fdb2a06f068c9ae0879f6e86a448",
+   "bytes": 63017927
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/liquidity_foundation.json",
+   "sha256": "a7827ba993e7d8d96cee3b483f66788f49e79d60c7734a3522ac054cc828558b",
+   "bytes": 4636
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/market_cap_validation.json",
+   "sha256": "6a061352c16912147a394bc5e62f0dc9fbd3a0a0814ad7373df02bff8a61d5f0",
+   "bytes": 1738
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/normalized/instrument_identity_history.json",
+   "sha256": "0b889f9146de98e3e1d544b5f39f2b909fa8a6ba6471f0b8087329221eff238b",
+   "bytes": 333677
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/normalized/instrument_monthly_master.json",
+   "sha256": "de561f3836b5accf9c25042b9e20e0ac6afec58243b922637dafadc3f1fcfdfc",
+   "bytes": 94679636
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/normalized/issuer_mapping.json",
+   "sha256": "5d40bfd402c062abe665204574921cabc1e27009df7bd478b034d65b65ed8d24",
+   "bytes": 35189
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/normalized/segment_intervals.json",
+   "sha256": "f673471e40be633e7c62e7479b5de085e75040bb375413bbf14bb52c7816af20",
+   "bytes": 249806
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/normalized/taxonomy_intervals.json",
+   "sha256": "38a3a4dae25258fdb30d35a10cf0561a013741a1752de20207317becec843868",
+   "bytes": 649917
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/pit_publication_qa.json",
+   "sha256": "f2b015df7df0da93e6178f3c9903f7d09d687f7591d6fadf593dad3b905c1149",
+   "bytes": 272
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/pit_semantics.json",
+   "sha256": "4c5b45ce580ed6b620e0e10bec51e8d7d2344b9c4f9f394b9b03ee2d3d7f6502",
+   "bytes": 4783
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/reference_data_discovery.json",
+   "sha256": "8a9cf5912da5a46bbe3c68b74fc061cdf04e18ac7ee68983d55b49fe59da3b51",
+   "bytes": 749
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/schema_history.json",
+   "sha256": "1dfcec8ee0ea34b2f7d31b83ea0b3c12b87d1db0bef4f3bc1d65b3414137fbfb",
+   "bytes": 837020
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/source_comparison.json",
+   "sha256": "c41912ce26533c8d6111e4f78fb9c7f5e6143c04e0fd21ce327e56a39c9b77fa",
+   "bytes": 4655
+  },
+  {
+   "path": "/home/hannesb/momentum_v2/research_k/nasdaq_historical_master/temporal_survivorship_qa.json",
+   "sha256": "d63e3e72e1241b5c66c524c7b662df4b96dafad2777ac78b0f55729c1a4bb9a7",
+   "bytes": 717
+  },
+  {
+   "path": "tools/nasdaq_master_inventory.py",
+   "sha256": "19c2797af50844c659f73fa5b71e01989a4c0808fdc40313011f00e3a0625687",
+   "bytes": 4576
+  },
+  {
+   "path": "tools/nasdaq_master_extract.py",
+   "sha256": "a8afd3db623bef0c68a0e48003ad899354df29906831c6c0b5fdb44ccf73a6da",
+   "bytes": 5329
+  },
+  {
+   "path": "tools/nasdaq_p0_build.py",
+   "sha256": "7eab8c57e1d4d8de992515495232a6ba06b432279ac662b708508f7f6ad15d1a",
+   "bytes": 6684
+  }
+ ]
+}

@@ -1,0 +1,101 @@
+[
+  {
+    "month": "2026-03",
+    "publication_url": "https://view.news.eu.nasdaq.com/view?id=bcc90c76404e448b9c373f6f4cb78be3e&lang=en",
+    "discovery_source": "NASDAQ_VIEW",
+    "local_path": "research_k/nasdaq_historical_master/first_north/alternative_discovery/sample_raw/2026-03.xlsx",
+    "sha256": "03248d8c06f4078a0bbc6bbb743ebd071210eac20472424ac34d9b9a452d00b9",
+    "status": "PASS",
+    "parser_profile": "FIRST_NORTH_MODERN_V1",
+    "sheets": [
+      "Contents",
+      "First North Trading Details",
+      "Company Trading ",
+      "Company Trading per Exchange",
+      "Instrument Trading Details"
+    ],
+    "required_fields_present": {
+      "issuer_code": true,
+      "location_absent": true,
+      "company_code_absent": true
+    }
+  },
+  {
+    "month": "2024-09",
+    "publication_url": "https://view.news.eu.nasdaq.com/view?id=b07f405d62ce82d99236f5ffb3325fc65&lang=en",
+    "discovery_source": "NASDAQ_VIEW",
+    "local_path": "research_k/nasdaq_historical_master/first_north/alternative_discovery/sample_raw/2024-09.xlsx",
+    "sha256": "3a345c1d1d3427ef8e9c364c4dc7f832d44ddbc84c9b0d3987275dec6f92c41e",
+    "status": "PASS",
+    "parser_profile": "FIRST_NORTH_MODERN_V1",
+    "sheets": [
+      "Contents",
+      "First North Trading Details",
+      "Company Trading ",
+      "Company Trading per Exchange",
+      "Instrument Trading Details"
+    ],
+    "required_fields_present": {
+      "issuer_code": true,
+      "location_absent": true,
+      "company_code_absent": true
+    }
+  },
+  {
+    "month": "2018-07",
+    "publication_url": "https://www.globenewswire.com/news-release/2018/08/02/1546022/0/en/Equity-Trading-by-Company-First-North-July-2018.html",
+    "discovery_source": "GLOBENEWSWIRE_ESR",
+    "local_path": "research_k/nasdaq_historical_master/first_north/alternative_discovery/sample_raw/2018-07.xls",
+    "sha256": "2ef5507643ffc5d385fecc2da65a45537979794815a732f158231ca8625f5a05",
+    "status": "PASS",
+    "parser_profile": "FIRST_NORTH_LEGACY_V1",
+    "sheets": [
+      "Contents",
+      "Company Trading Overview",
+      "Instrument Trading Details"
+    ],
+    "required_fields_present": {
+      "issuer_code": true,
+      "location_absent": true,
+      "company_code_absent": true
+    }
+  },
+  {
+    "month": "2012-10",
+    "publication_url": "https://www.globenewswire.com/news-release/2012/11/08/503563/0/en/Equity-Trading-by-Company-First-North-October-2012.html",
+    "discovery_source": "GLOBENEWSWIRE_ESR",
+    "local_path": "research_k/nasdaq_historical_master/first_north/alternative_discovery/sample_raw/2012-10.xls",
+    "sha256": "38fc90173d5768a85a5de7a8d6f66eeb9f3b52461e4c841340ef83b8cefa302b",
+    "status": "PASS",
+    "parser_profile": "FIRST_NORTH_LEGACY_V1",
+    "sheets": [
+      "Contents",
+      "Company Trading Overview",
+      "Instrument Trading Details"
+    ],
+    "required_fields_present": {
+      "issuer_code": true,
+      "location_absent": true,
+      "company_code_absent": true
+    }
+  },
+  {
+    "month": "2010-01",
+    "publication_url": "https://view.news.eu.nasdaq.com/view?id=bad786badca523163ffd53c8bcdf6371a&lang=en",
+    "discovery_source": "NASDAQ_VIEW",
+    "local_path": "research_k/nasdaq_historical_master/first_north/alternative_discovery/sample_raw/2010-01.xls",
+    "sha256": "f1ef37aed653ec9bed43f7fc0c91cb3bbe7bdb36ecdd803cb99d90405eb04236",
+    "status": "PASS",
+    "parser_profile": "FIRST_NORTH_LEGACY_V1",
+    "sheets": [
+      "Contents",
+      "Company Trading Overview",
+      "Instrument Trading Details"
+    ],
+    "required_fields_present": {
+      "issuer_code": true,
+      "location_absent": true,
+      "company_code_absent": true
+    }
+  }
+]

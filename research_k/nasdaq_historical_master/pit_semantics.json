@@ -1,0 +1,135 @@
+{
+  "schema": "NASDAQ_PIT_SEMANTICS_V1",
+  "created_utc": "2026-08-18T20:17:45+00:00",
+  "publiceringsmodell": {
+    "observation_month": "rapportmanad M",
+    "period_end": "sista handelsdagen i M",
+    "available_from": "forsta veckan i M+1 — verifierat: 2012-03 publicerad 2012-04-04, 2025-11 publicerad 2025-12-02",
+    "publiceringslagg": "cirka 1-4 arbetsdagar in i M+1"
+  },
+  "GRUNDREGEL": "Manadens handelsstatistik far ALDRIG anvandas vid manadens borjan. Ett falt ar PIT_SAFE_WITH_LAG, aldrig PIT_SAFE, eftersom filen for manad M publiceras i M+1. Beslutsregel: anvand senaste manad M med M < beslutsmanaden.",
+  "falt": [
+    {
+      "canonical": "market_cap",
+      "semantik": "listed shares x latest paid, INSTRUMENTNIVA, manadsslut, lokal valuta (SEK for samtliga STO-instrument). Verifierat: market_cap/(shares*latest_paid) har median 1,0000 och p10=p90=1,0000 pa 60 887 observationer.",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.9963,
+      "enhet": "SEK",
+      "niva": "instrument"
+    },
+    {
+      "canonical": "no_of_shares_listed",
+      "semantik": "antal noterade aktier per instrument vid manadsslut",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.9966,
+      "enhet": "antal",
+      "niva": "instrument"
+    },
+    {
+      "canonical": "total_turnover",
+      "semantik": "on-exchange omsattning under manaden; OTC redovisas separat i egna falt",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.999,
+      "enhet": "SEK",
+      "niva": "instrument"
+    },
+    {
+      "canonical": "total_traded_shares",
+      "semantik": "on-exchange handlade aktier under manaden",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.999,
+      "enhet": "antal",
+      "niva": "instrument"
+    },
+    {
+      "canonical": "total_trades",
+      "semantik": "antal on-exchange avslut under manaden",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.999,
+      "enhet": "antal",
+      "niva": "instrument"
+    },
+    {
+      "canonical": "vwap",
+      "semantik": "volymviktat snittpris for manaden. Exakt handelsmangd (on-exchange vs inkl OTC) framgar inte av filens egna noter.",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.838,
+      "enhet": "SEK",
+      "niva": "instrument",
+      "flagga": "SEMANTICS_UNRESOLVED — handelsmangd for VWAP ej dokumenterad i kallan"
+    },
+    {
+      "canonical": "high_paid / low_paid",
+      "semantik": "hogsta/lagsta betalkurs under manaden",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.837,
+      "enhet": "SEK",
+      "niva": "instrument"
+    },
+    {
+      "canonical": "latest_paid",
+      "semantik": "sista betalkurs i manaden",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.996,
+      "enhet": "SEK",
+      "niva": "instrument"
+    },
+    {
+      "canonical": "traded_days / listed_days",
+      "semantik": "antal dagar med handel respektive notering",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.996,
+      "enhet": "dagar",
+      "niva": "instrument"
+    },
+    {
+      "canonical": "turnover_velocity",
+      "semantik": "omsattningshastighet; exakt formel ej dokumenterad i filens noter",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.995,
+      "flagga": "SEMANTICS_UNRESOLVED — formel ej verifierad"
+    },
+    {
+      "canonical": "avg_closing_spread",
+      "semantik": "genomsnittlig stangningsspread under manaden",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.966,
+      "enhet": "procent",
+      "niva": "instrument",
+      "flagga": "SEMANTICS_UNRESOLVED — enhet (bp/procent) ej verifierad"
+    },
+    {
+      "canonical": "otc_turnover / otc_trades",
+      "semantik": "off-book-statistik. UPPHOR 2023-02.",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 0.301,
+      "period": "2009-08..2023-02",
+      "niva": "instrument"
+    },
+    {
+      "canonical": "segment",
+      "semantik": "Large/Mid/Small Cap. Satts arligen pa novembers genomsnittliga borsvarde, effektivt forsta handelsdagen i januari.",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 1.0
+    },
+    {
+      "canonical": "industry / supersector / sector / sub_industry",
+      "semantik": "branschtaxonomi. REGIMSKIFTE 2012-01 -> 2012-02: fran Sector/Sub-Industry till Industry/Supersector.",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": "158-173/201 beroende pa falt",
+      "niva": "instrument"
+    },
+    {
+      "canonical": "delisted",
+      "semantik": "avnoteringsdatum (Excel-serial). 190 av 190 ligger inom sin rapportmanad.",
+      "pit": "EVENT_DATED",
+      "coverage": "190 handelser"
+    },
+    {
+      "canonical": "isin / orderbook_code / company_code / instrument_type / currency / location",
+      "semantik": "identitets- och referensmetadata",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "coverage": 1.0
+    }
+  ]
+}

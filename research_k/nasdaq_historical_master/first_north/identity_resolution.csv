@@ -1,0 +1,5 @@
+company_names,evidence,first_seen,isin_values,last_seen,n_observations,requested,status,ticker
+Smart Eye AB,canonical First North monthly observations,2023-03,SE0009268279,2023-03,1,Smart Eye / SEYE,RESOLVED,SEYE
+Acconeer AB,canonical First North monthly observations,2023-03,SE0010546242,2023-03,1,Acconeer / ACCON,RESOLVED,ACCON
+Swedencare AB,canonical First North monthly observations,2023-03,SE0015988167,2023-03,1,Swedencare / SECARE,RESOLVED,SECARE
+Physitrack PLC,canonical First North monthly observations,2023-03,GB00BK80TJ35,2023-03,1,Physitrack / PTRK,RESOLVED,PTRK

@@ -1,0 +1,64 @@
+{
+ "schema": "DATA_CONSEQUENCE_AUDIT_V1",
+ "created_utc": "2026-08-18T20:29:34+00:00",
+ "PRINCIP": "DATA FOUNDATION VALID ar INTE detsamma som RESEARCH HYPOTHESIS LICENSED. Ingen gammal negativ forskningsdom ateroppnas for att ny data finns. Ingen ny hypotes testas har.",
+ "familjer": [
+  {
+   "familj": "T-MCAP-01 market cap / EV",
+   "tidigare": "DATA_BLOCKED — 'Historical unadjusted snapshot without daily PIT history', 'Missing historical market cap array for delisted issuers'",
+   "ny_evidens": "201 manader, 99,63 % coverage, SEK, instrumentniva, formel dokumenterad av Nasdaq sjalv, avnoterade 98,54 % mot overlevare 99,99 % (gap 1,45 pp)",
+   "dataproblem_lost": "JA for MANADSupplosning. NEJ for daglig upplosning.",
+   "forskningsstatus": "OFORANDRAD",
+   "kandidat_for_preregistrering": true
+  },
+  {
+   "familj": "historisk size (Large/Mid/Small)",
+   "tidigare": "nasdaq_market_cap_segment_pit redan ALLOWED_FOR_POPULATION_STRATIFICATION_ONLY",
+   "ny_evidens": "segment_intervals 1 133 intervall",
+   "dataproblem_lost": "JA",
+   "forskningsstatus": "OFORANDRAD — G-HET-1/G-SIZE-HET-1 forblir NOT_IDENTIFIED, G-HIER-1/2 forblir NON_COMPUTED_CLAIM",
+   "kandidat_for_preregistrering": true
+  },
+  {
+   "familj": "historisk sektor/ICB",
+   "tidigare": "K1 VERIFIED_TAXONOMY men materiell validering PARTIAL: 0 av 420 instrument med mer an ett intervall, 0 % coverage 2014-2019",
+   "ny_evidens": "756 instrument, 176 (23,3 %) byter industry, 398 (52,6 %) byter supersector, coverage 99,5 % i 2014-2019",
+   "dataproblem_lost": "JA",
+   "forskningsstatus": "OFORANDRAD",
+   "governance_consequence": "K1:s historiska representation ar otillracklig. KRAVER EXPLICIT BESLUT. K1-status ej andrad har.",
+   "kandidat_for_preregistrering": true
+  },
+  {
+   "familj": "liquidity / tradability",
+   "tidigare": "volym saknades HELT fore 2020 (G149 strukturellt enfonster); omsatt varde BLOCKERAT i vantan pa pris-QA",
+   "ny_evidens": "turnover/traded_shares/trades ~99,9 % fran 2009-08; traded_days, listed_days, turnover_velocity med dokumenterad formel",
+   "dataproblem_lost": "JA",
+   "forskningsstatus": "OFORANDRAD",
+   "kandidat_for_preregistrering": true
+  },
+  {
+   "familj": "spread / friction",
+   "tidigare": "Batch 11: hela FRIC-B-familjen DATA_BLOCKED med skalet att ingen spread- eller intradayserie finns",
+   "ny_evidens": "avg_closing_spread 96,6 % over 201 manader, enhet BEVISAD via Nasdaqs likviditetsgruppsdefinitioner",
+   "dataproblem_lost": "DELVIS — manadsvis stangningsspread finns. Intraday och orderdjup saknas fortfarande, sa market impact (#203) och participation rate (#218) forblir blockerade.",
+   "forskningsstatus": "OFORANDRAD",
+   "kandidat_for_preregistrering": true
+  },
+  {
+   "familj": "dilution / share-count",
+   "tidigare": "Borsdata number_Of_Shares ar EPS-denominator, 0/68 tackning for avnoterade, K2A-dom BLOCKERAD",
+   "ny_evidens": "no_of_shares_listed 99,66 % over 201 manader, faktiskt noterade aktier",
+   "dataproblem_lost": "JA",
+   "forskningsstatus": "OFORANDRAD",
+   "kandidat_for_preregistrering": true
+  }
+ ],
+ "legitima_kandidater_for_SEPARAT_preregistrering": [
+  "PIT size heterogeneity replication (kraver H0 V3 som baslinje)",
+  "historisk ICB som populationsstratifiering",
+  "liquidity/tradability som eligibility- eller kostnadslager",
+  "spread som friktionsmatt i kostnadsmodellen",
+  "share-count-forandring som utspadningsmatt"
+ ],
+ "INGEN_AV_DESSA_AR_LICENSIERAD": true
+}

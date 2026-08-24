@@ -1,0 +1,33 @@
+{
+  "steg": "Spår C — target (preregistrerad, byggd separat från features)",
+  "fryst_utc": "2026-08-08T00:00:00+00:00",
+  "timestamp_policy": "deterministic dataset_v1.0 release timestamp; rebuild wall-clock time is not serialized",
+  "kalla": {
+    "fil": "validated/prices/prices_validated.json",
+    "sha256": "e3ed38b8e89a25149e61b71c8e0c91b8adbd2dab22b282bc156b1214987f17b4",
+    "fält": "adj"
+  },
+  "parametrar": {
+    "target_horizon_weeks": 52,
+    "embargo_weeks": 52,
+    "rebalance_weeks": 4,
+    "universum_start": "2020-01-01",
+    "max_price_lag_calendar_days": 8,
+    "universum_filter": "rekonstruerat svenskt Nasdaq Stockholm-universum med observerbar handel; källdaterade admissions filtreras PIT, övrig historisk membership är explicit okänd i membership_main_list_pit.json"
+  },
+  "definition": "target(instrument, T) = adj[T+52v] / adj[T] - 1, adj = Spår A adjusted_close (redan split-/utdelningsjusterad, R1-R8 i manifest_sparA.json)",
+  "censurering": "target_fwd52w är null när full 52v-horisont saknas. Endast explicit verifierade terminalhändelser i validated/terminal_events.json kan skapa terminal_return; detta kortare utfall lagras separat och är inte en del av det preregistrerade 52v-targetet.",
+  "kanda_begransningar": [
+    "Large/Mid/Small-segmentet inom huvudlistan särredovisas inte; V2:s investerbara universum omfattar alla tre och membership-ledgern styr inträde på huvudlistan.",
+    "REBALANCE_WEEKS=4 ger 13x överlapp mellan konsekutiva 52-veckors etiketter — kvarvarande autokorrelation måste hanteras i en framtida train/test-splittare, inte i target-tabellen."
+  ],
+  "utfall": {
+    "n_rader": 30073,
+    "n_instrument": 420,
+    "n_target_beraknad_52v_framat": 24714,
+    "n_separata_verifierade_terminalutfall": 828,
+    "n_censurerad_okand_framtid": 5344,
+    "n_saknar_prispunkt": 15,
+    "target_table_sha256": "85fc852051995e7154f0a06beced43de77778c2eabbdcb070ec9306b4061a97e"
+  }
+}

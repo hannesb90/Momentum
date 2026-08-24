@@ -1,0 +1,418 @@
+{
+ "typer": {
+  "uppköp/fusion (via bytestabell)": 17,
+  "avnotering utan känd efterföljare": 45,
+  "bolagshändelse (handeln fortsatte)": 3,
+  "OKLAR — serien fortsatte": 3
+ },
+ "bolag": [
+  {
+   "namn": "A3 Allmänna IT- och Telekomaktiebolaget",
+   "ar": 2020,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från på Nasdaq Stockholm (Nordiska listan) den 18 december, senast betalt denna dag var 18,80 kr"
+  },
+  {
+   "namn": "Abliva AB",
+   "ar": 2025,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) den 17 mars"
+  },
+  {
+   "namn": "Adapteo Plc",
+   "ar": 2021,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 10 september, senast betalt denna dag var 163 kr."
+  },
+  {
+   "namn": "Agromino A/S",
+   "ar": 2020,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) den 30 oktober, senast betalt denna dag var 4,60 kr"
+  },
+  {
+   "namn": "Ahlstrom-Munksjö Oyj",
+   "ar": 2021,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm och Nasdaq Helsinki den 31 maj, senast betalt denna dag på Nasdaq Stockholm var 181 kr"
+  },
+  {
+   "namn": "Aligro Planet Acquisition Company AB",
+   "ar": 2023,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 23 augusti"
+  },
+  {
+   "namn": "Arise AB",
+   "ar": 2026,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 26 januari, senast betalt denna dag var 44,60 kr"
+  },
+  {
+   "namn": "Atvexa AB",
+   "ar": 2022,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 9 september"
+  },
+  {
+   "namn": "Bergs Timber AB",
+   "ar": 2023,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) den 21 december"
+  },
+  {
+   "namn": "Besqab Bostadsutveckling AB",
+   "ar": 2024,
+   "typ": "bolagshändelse (handeln fortsatte)",
+   "orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) den 11 april"
+  },
+  {
+   "namn": "Biotage AB",
+   "ar": 2025,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 21 juli"
+  },
+  {
+   "namn": "Byggfakta Group Nordic HoldCo AB",
+   "ar": 2024,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 23 maj"
+  },
+  {
+   "namn": "Calliditas Therapeutics AB",
+   "ar": 2024,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm och ADS på The Nasdaq Global Select Market den 10 oktober"
+  },
+  {
+   "namn": "Cary Group Holding AB",
+   "ar": 2022,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 18 oktober"
+  },
+  {
+   "namn": "Cavotec SA",
+   "ar": 2025,
+   "typ": "bolagshändelse (handeln fortsatte)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 30 juli"
+  },
+  {
+   "namn": "CoinShares International Ltd.",
+   "ar": 2026,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 1 april. Sista handelsdag den 20 mars, följt av handelsstopp den 23 mars och avnoter"
+  },
+  {
+   "namn": "Collector AB",
+   "ar": 2022,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) den11 augusti, se nedan"
+  },
+  {
+   "namn": "Concentric AB",
+   "ar": 2024,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 7 november"
+  },
+  {
+   "namn": "Concordia Maritime AB",
+   "ar": 2024,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 6 februari"
+  },
+  {
+   "namn": "Creaspac AB",
+   "ar": 2024,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 25 juli"
+  },
+  {
+   "namn": "Doro AB",
+   "ar": 2025,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 17 december"
+  },
+  {
+   "namn": "Edgeware AB",
+   "ar": 2021,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 7 januari, senast betalt denna dag var 9,60 kr"
+  },
+  {
+   "namn": "Elos Medtech AB",
+   "ar": 2023,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 19 december"
+  },
+  {
+   "namn": "Endomines AB",
+   "ar": 2022,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 14 december. För mer information se nedan."
+  },
+  {
+   "namn": "Etrion Corporation",
+   "ar": 2022,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 4 januari"
+  },
+  {
+   "namn": "Feelgood Svenska AB",
+   "ar": 2021,
+   "typ": "OKLAR — serien fortsatte",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 6 augusti."
+  },
+  {
+   "namn": "Fortnox AB",
+   "ar": 2025,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 24 juli"
+  },
+  {
+   "namn": "GHP Specialty Care AB",
+   "ar": 2022,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 20 maj"
+  },
+  {
+   "namn": "Gunnebo AB",
+   "ar": 2020,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 9 december, senast betalt denna dag var 25 kr"
+  },
+  {
+   "namn": "Haldex AB",
+   "ar": 2022,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 19 september"
+  },
+  {
+   "namn": "Handicare Group AB",
+   "ar": 2021,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 26 mars, senast betalt denna dag var 50 kr"
+  },
+  {
+   "namn": "Hembla AB",
+   "ar": 2020,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 10 januari, senast betalt denna dag var 217,50 kr"
+  },
+  {
+   "namn": "HiQ International AB",
+   "ar": 2020,
+   "typ": "OKLAR — serien fortsatte",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 13 november, senast betalt denna dag var 71,90 kr"
+  },
+  {
+   "namn": "I.A.R Systems Group AB",
+   "ar": 2025,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 3 november"
+  },
+  {
+   "namn": "ICA Gruppen AB",
+   "ar": 2022,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från på Nasdaq Stockholm den 13 januari."
+  },
+  {
+   "namn": "Internationella Engelska Skolan i Sverige Holdings II AB",
+   "ar": 2020,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 4 december, senast betalt denna dag var 82,20 kr."
+  },
+  {
+   "namn": "IRRAS AB",
+   "ar": 2023,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 3 november"
+  },
+  {
+   "namn": "Josemaria Resources Inc.",
+   "ar": 2022,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) den 28 april"
+  },
+  {
+   "namn": "Kungsleden AB",
+   "ar": 2021,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 3 december"
+  },
+  {
+   "namn": "LeoVegas AB",
+   "ar": 2022,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 22 september"
+  },
+  {
+   "namn": "Magnolia Bostad AB",
+   "ar": 2021,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 17 september, senast betalt denna dag var 75,70 kr."
+  },
+  {
+   "namn": "MQ Holding AB",
+   "ar": 2020,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 20 april"
+  },
+  {
+   "namn": "MultiQ International AB",
+   "ar": 2022,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 10 juni"
+  },
+  {
+   "namn": "NetEnt AB",
+   "ar": 2020,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) den 16 december, senast betalt denna dag var 86 kr"
+  },
+  {
+   "namn": "Nobina AB",
+   "ar": 2022,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 16 februari"
+  },
+  {
+   "namn": "Nordic Paper Holding AB",
+   "ar": 2025,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 23 september"
+  },
+  {
+   "namn": "Nordic Waterproofing Holding AB",
+   "ar": 2025,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 24 mars"
+  },
+  {
+   "namn": "Nordic Waterproofing Holding A/S",
+   "ar": 2020,
+   "typ": "OKLAR — serien fortsatte",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 25 november, se nedan"
+  },
+  {
+   "namn": "Norva24 Group AB",
+   "ar": 2025,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 30 maj"
+  },
+  {
+   "namn": "Opus Group AB",
+   "ar": 2020,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) den 30 oktober, senast betalt denna dag var 10,56 kr"
+  },
+  {
+   "namn": "OX2 AB",
+   "ar": 2024,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 21 oktober"
+  },
+  {
+   "namn": "Probi AB",
+   "ar": 2025,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 12 februari"
+  },
+  {
+   "namn": "Projektengagemang Sweden AB",
+   "ar": 2025,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 31 juli"
+  },
+  {
+   "namn": "Recipharm AB",
+   "ar": 2021,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "B-aktien är avnoterad från Nasdaq Stockholm den 5 mars, senast betalt denna dag var 232,60 kr"
+  },
+  {
+   "namn": "Resurs Holding AB",
+   "ar": 2025,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 27 oktober"
+  },
+  {
+   "namn": "Rizzo Group AB",
+   "ar": 2024,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) den 5 april"
+  },
+  {
+   "namn": "SAS AB",
+   "ar": 2024,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) den 13 augusti"
+  },
+  {
+   "namn": "SEMAFO Inc.",
+   "ar": 2020,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 24 juni, senast betalt denna dag var 31 kr, se nedan"
+  },
+  {
+   "namn": "Semcon AB",
+   "ar": 2022,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 22 november"
+  },
+  {
+   "namn": "Serneke Group AB",
+   "ar": 2023,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 5 juli"
+  },
+  {
+   "namn": "Sportamore AB",
+   "ar": 2020,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 8 maj, senast betalt denna dag var 44,80 kr"
+  },
+  {
+   "namn": "SSM Holding AB",
+   "ar": 2021,
+   "typ": "bolagshändelse (handeln fortsatte)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 7 januari, senast betalt denna dag var 8,98 kr"
+  },
+  {
+   "namn": "Strax AB",
+   "ar": 2025,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 8 april."
+  },
+  {
+   "namn": "Swedish Match AB",
+   "ar": 2022,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 30 december"
+  },
+  {
+   "namn": "Swedol AB",
+   "ar": 2020,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 20 april, senast betalt denna dag var 46,65 kr."
+  },
+  {
+   "namn": "Tethys Oil AB",
+   "ar": 2025,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm (Nordiska listan) den 10 januari"
+  },
+  {
+   "namn": "Trention AB",
+   "ar": 2021,
+   "typ": "uppköp/fusion (via bytestabell)",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 7 januari, senast betalt denna dag var 75,50 kr."
+  },
+  {
+   "namn": "ZetaDisplay AB",
+   "ar": 2021,
+   "typ": "avnotering utan känd efterföljare",
+   "orsak": "Avnoterad från Nasdaq Stockholm den 8 oktober, senast betalt denna dag var  27 kr."
+  }
+ ]
+}

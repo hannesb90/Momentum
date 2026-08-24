@@ -1,0 +1,390 @@
+{
+  "skapad": "2026-08-07T21:28:29.968065+00:00",
+  "legacy_lases_readonly": true,
+  "mappning": {
+    "aktiva (alla typer)": {
+      "n": 1010,
+      "med_isin": 770,
+      "isin_traff": 691,
+      "ticker_traff": 180,
+      "ingen_traff": 139
+    },
+    "aktiva Common Stock": {
+      "n": 945,
+      "med_isin": 737,
+      "isin_traff": 691,
+      "ticker_traff": 180,
+      "ingen_traff": 74
+    },
+    "avnoterade (alla)": {
+      "n": 694,
+      "med_isin": 323,
+      "isin_traff": 50,
+      "ticker_traff": 39,
+      "ingen_traff": 605
+    },
+    "avnoterade Common Stock": {
+      "n": 669,
+      "med_isin": 320,
+      "isin_traff": 50,
+      "ticker_traff": 39,
+      "ingen_traff": 580
+    }
+  },
+  "tickerbyten": {
+    "n": 268,
+    "exempel": [
+      {
+        "isin": "SE0018396947",
+        "eodhd": "ABSL-B",
+        "borsdata": "ABSLB",
+        "namn": "Absolicon Solar Collector AB Series B",
+        "bd_namn": "Absolicon"
+      },
+      {
+        "isin": "SE0015660014",
+        "eodhd": "ACRI-A",
+        "borsdata": "ACRIA",
+        "namn": "Acrinova AB",
+        "bd_namn": "Acrinova A"
+      },
+      {
+        "isin": "SE0015660030",
+        "eodhd": "ACRI-B",
+        "borsdata": "ACRIB",
+        "namn": "Acrinova AB Series B",
+        "bd_namn": "Acrinova B"
+      },
+      {
+        "isin": "SE0014781795",
+        "eodhd": "ADDT-B",
+        "borsdata": "ADDTB",
+        "namn": "Addtech AB (publ.)",
+        "bd_namn": "Addtech"
+      },
+      {
+        "isin": "SE0005799046",
+        "eodhd": "AGES-B",
+        "borsdata": "AGESB",
+        "namn": "AGES Industri AB (publ)",
+        "bd_namn": "Ages Industri"
+      },
+      {
+        "isin": "SE0008588354",
+        "eodhd": "AGTIRA-B",
+        "borsdata": "AGTIRAB",
+        "namn": "Agtira AB",
+        "bd_namn": "Agtira"
+      },
+      {
+        "isin": "SE0026876476",
+        "eodhd": "AJA-B",
+        "borsdata": "AJAB",
+        "namn": "Byggmästare Anders J Ahlström Holding AB (publ)",
+        "bd_namn": "Byggmästare AJ Ahlström"
+      },
+      {
+        "isin": "SE0014401378",
+        "eodhd": "ALIF-B",
+        "borsdata": "ALIFB",
+        "namn": "AddLife AB (publ)",
+        "bd_namn": "AddLife"
+      },
+      {
+        "isin": "SE0021309614",
+        "eodhd": "ALIV-SDB",
+        "borsdata": "ALIVSDB",
+        "namn": "Autoliv Inc",
+        "bd_namn": "Autoliv"
+      },
+      {
+        "isin": "SE0009922305",
+        "eodhd": "ALLIGO-B",
+        "borsdata": "ALLIGOB",
+        "namn": "Alligo AB Series B",
+        "bd_namn": "Alligo"
+      },
+      {
+        "isin": "SE0004109627",
+        "eodhd": "ALM-PREF",
+        "borsdata": "ALMPREF",
+        "namn": "ALM Equity AB Pfd.",
+        "bd_namn": "ALM Equity Pref"
+      },
+      {
+        "isin": "SE0016845655",
+        "eodhd": "ALPCOT-B",
+        "borsdata": "ALPCOTB",
+        "namn": "Alpcot Holding AB Series B",
+        "bd_namn": "Alpcot"
+      },
+      {
+        "isin": "SE0025011463",
+        "eodhd": "ALVO-SDB",
+        "borsdata": "ALVOSDB",
+        "namn": "Alvotech SDB",
+        "bd_namn": "Alvotech SDB"
+      },
+      {
+        "isin": "SE0015221684",
+        "eodhd": "ANNE-B",
+        "borsdata": "ANNEB",
+        "namn": "Annehem Fastigheter AB",
+        "bd_namn": "Annehem Fastigheter"
+      },
+      {
+        "isin": "SE0017885767",
+        "eodhd": "ANOD-B",
+        "borsdata": "ANODB",
+        "namn": "Addnode Group AB (publ)",
+        "bd_namn": "Addnode"
+      },
+      {
+        "isin": "SE0010413567",
+        "eodhd": "ARION-SDB",
+        "borsdata": "ARIONSDB",
+        "namn": "Arion banki hf",
+        "bd_namn": "Arion Banki"
+      },
+      {
+        "isin": "SE0010468116",
+        "eodhd": "ARJO-B",
+        "borsdata": "ARJOB",
+        "namn": "Arjo AB (publ)",
+        "bd_namn": "Arjo"
+      },
+      {
+        "isin": "SE0023615638",
+        "eodhd": "ASMDEE-B",
+        "borsdata": "ASMDEEB",
+        "namn": "Financière Amuse TopCo SAS",
+        "bd_namn": "Asmodee"
+      },
+      {
+        "isin": "SE0007100581",
+        "eodhd": "ASSA-B",
+        "borsdata": "ASSAB",
+        "namn": "ASSA ABLOY AB (publ)",
+        "bd_namn": "Assa Abloy"
+      },
+      {
+        "isin": "SE0017486889",
+        "eodhd": "ATCO-A",
+        "borsdata": "ATCOA",
+        "namn": "Atlas Copco AB Series A",
+        "bd_namn": "Atlas Copco A"
+      },
+      {
+        "isin": "SE0017486897",
+        "eodhd": "ATCO-B",
+        "borsdata": "ATCOB",
+        "namn": "Atlas Copco AB Series B",
+        "bd_namn": "Atlas Copco B"
+      },
+      {
+        "isin": "SE0024320832",
+        "eodhd": "ATRLJ-B",
+        "borsdata": "ATRLJB",
+        "namn": "Atrium Ljungberg AB (publ)",
+        "bd_namn": "Atrium Ljungberg"
+      },
+      {
+        "isin": "SE0004270445",
+        "eodhd": "AVT-B",
+        "borsdata": "AVTB",
+        "namn": "AVTECH Sweden AB Series B",
+        "bd_namn": "Avtech"
+      },
+      {
+        "isin": "SE0005250719",
+        "eodhd": "AXIC-A",
+        "borsdata": "AXICA",
+        "namn": "aXichem AB",
+        "bd_namn": "aXichem"
+      },
+      {
+        "isin": "SE0005878741",
+        "eodhd": "BACTI-B",
+        "borsdata": "BACTIB",
+        "namn": "Bactiguard Holding AB (publ)",
+        "bd_namn": "Bactiguard"
+      },
+      {
+        "isin": "SE0010442418",
+        "eodhd": "BAHN-B",
+        "borsdata": "BAHNB",
+        "namn": "Bahnhof AB Series B",
+        "bd_namn": "Bahnhof"
+      },
+      {
+        "isin": "SE0017832488",
+        "eodhd": "BALD-B",
+        "borsdata": "BALDB",
+        "namn": "Fastighets AB Balder (publ)",
+        "bd_namn": "Fast Balder"
+      },
+      {
+        "isin": "SE0016799068",
+        "eodhd": "BEAMMW-B",
+        "borsdata": "BEAMMWB",
+        "namn": "Beammwave AB B",
+        "bd_namn": "BeammWave"
+      },
+      {
+        "isin": "SE0011090547",
+        "eodhd": "BEIA-B",
+        "borsdata": "BEIAB",
+        "namn": "Beijer Alma AB (publ)",
+        "bd_namn": "Beijer Alma"
+      },
+      {
+        "isin": "SE0015949748",
+        "eodhd": "BEIJ-B",
+        "borsdata": "BEIJB",
+        "namn": "Beijer Ref AB (publ)",
+        "bd_namn": "Beijer Ref"
+      },
+      {
+        "isin": "SE0000101362",
+        "eodhd": "BERG-B",
+        "borsdata": "BERGB",
+        "namn": "Bergman & Beving AB (publ)",
+        "bd_namn": "Bergman & Beving"
+      },
+      {
+        "isin": "SE0006143129",
+        "eodhd": "BERNER-B",
+        "borsdata": "BERNERB",
+        "namn": "Berner Industrier B",
+        "bd_namn": "Berner Industrier"
+      },
+      {
+        "isin": "SE0015195706",
+        "eodhd": "BESQAB-PREF-B",
+        "borsdata": "BESQABPREFB",
+        "namn": "Besqab Pref B",
+        "bd_namn": "Besqab Pref B"
+      },
+      {
+        "isin": "DK0060952240",
+        "eodhd": "BETCO",
+        "borsdata": "BETCODKK",
+        "namn": "Better Collective",
+        "bd_namn": "Better Collective"
+      },
+      {
+        "isin": "SE0022726485",
+        "eodhd": "BETS-B",
+        "borsdata": "BETSB",
+        "namn": "Betsson AB",
+        "bd_namn": "Betsson"
+      },
+      {
+        "isin": "SE0009921588",
+        "eodhd": "BILI-A",
+        "borsdata": "BILIA",
+        "namn": "Bilia AB (publ)",
+        "bd_namn": "Bilia"
+      },
+      {
+        "isin": "SE0010323311",
+        "eodhd": "BIOA-B",
+        "borsdata": "BIOAB",
+        "namn": "BioArctic AB (publ)",
+        "bd_namn": "BioArctic"
+      },
+      {
+        "isin": "SE0017769995",
+        "eodhd": "BIOG-B",
+        "borsdata": "BIOGB",
+        "namn": "BioGaia AB (publ)",
+        "bd_namn": "BioGaia"
+      },
+      {
+        "isin": "SE0008613731",
+        "eodhd": "BIOVIC-B",
+        "borsdata": "BIOVICB",
+        "namn": "Biovica International AB (publ)",
+        "bd_namn": "Biovica"
+      },
+      {
+        "isin": "SE0008091573",
+        "eodhd": "BONAV-A",
+        "borsdata": "BONAVA",
+        "namn": "Bonava AB (publ)",
+        "bd_namn": "Bonava A"
+      }
+    ]
+  },
+  "dubbla_isin": {
+    "borsdata": 13,
+    "eodhd": 2,
+    "exempel_borsdata": {
+      "FI4000297767": [
+        "NDA SE",
+        "NDA FI",
+        "NDA DK"
+      ],
+      "SE0000171100": [
+        "SSAB A",
+        "SSABAH"
+      ],
+      "SE0000667925": [
+        "TELIA",
+        "TELIA1"
+      ],
+      "FI0009000277": [
+        "TIETOS",
+        "TIETO"
+      ],
+      "FI0009000681": [
+        "NOKIA SEK",
+        "NOKIA"
+      ],
+      "SE0001057910": [
+        "SOSI",
+        "SOSI1"
+      ],
+      "FI4000552500": [
+        "SAMPO",
+        "SAMPO SEK",
+        "SAMPO DKK"
+      ],
+      "SE0000120669": [
+        "SSABBH",
+        "SSAB B"
+      ]
+    }
+  },
+  "avnoteringar": {
+    "n_med_serie": 694,
+    "n_utan_serie": 0,
+    "sista_min": "2013-07-23",
+    "sista_max": "2026-06-12",
+    "per_ar": {
+      "2013": 2,
+      "2014": 9,
+      "2015": 20,
+      "2016": 14,
+      "2017": 25,
+      "2018": 15,
+      "2019": 9,
+      "2020": 42,
+      "2021": 46,
+      "2022": 126,
+      "2023": 92,
+      "2024": 103,
+      "2025": 92,
+      "2026": 99
+    },
+    "n_fore_2010": 0,
+    "median_dagar": 1294
+  },
+  "corporate_actions": {
+    "borsdata_splitar": 429,
+    "eodhd_splitar_aktiva": 953,
+    "eodhd_splitar_avnoterade": 480,
+    "eodhd_filer_aktiva": 1010,
+    "eodhd_filer_avnoterade": 694
+  }
+}

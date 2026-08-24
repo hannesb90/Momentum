@@ -1,0 +1,35 @@
+{
+  "schema": "EXPERIMENTAL_DATASETS_FEASIBILITY_V1",
+  "created_utc": "2026-08-18T20:18:51+00:00",
+  "notering": "Endast feasibility. Ingen ingestion, ingen forskning.",
+  "dataset": [
+    {
+      "namn": "QuoteView (bid/ask, spread, depth)",
+      "historik": "uppges ca 2017 och framat",
+      "atkomst": "ACCOUNT_REQUIRED / PAID (ej verifierat i detta uppdrag)",
+      "notering": "Main Market-filerna har redan avg_closing_spread manadsvis fran 2009-08 med 96,6 % tackning — billigare vag till spreadinformation."
+    },
+    {
+      "namn": "Retail vs Professional",
+      "atkomst": "UNKNOWN",
+      "historik": "EJ VERIFIERAD"
+    },
+    {
+      "namn": "Domicile",
+      "atkomst": "delvis GRATIS — 'Issuer Country' finns i Main Market-filerna fran 2024-12",
+      "historik": "2024-12..2026-07 i manadsserien"
+    },
+    {
+      "namn": "Concentration",
+      "atkomst": "UNKNOWN"
+    },
+    {
+      "namn": "Trading Activity Tracker (data.nasdaq.com/databases/IAIA)",
+      "atkomst": "PAID"
+    },
+    {
+      "namn": "ITCH / HistoricalView",
+      "atkomst": "PAID"
+    }
+  ]
+}

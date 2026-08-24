@@ -1,0 +1,20 @@
+{
+ "kalla_r12_sha256": "487f212237f9bdd48d159eeddd8a2da30e342c01bfb05ff8d6a0a061f391bbfd",
+ "kalla_b_extra_sha256": "48a10a53c17cbb7a2a385f2ccc36cabb28a9bdcf82c7236ccc8c7b108ad8ad0a",
+ "kalla_core_panel_sha256": "220e258669b1eed774e533065dec5ed8e5780edc0e31ec4eb3e841c128a1c974",
+ "n_rader": 30073,
+ "n_med_fundamenta": 26907,
+ "n_utan_fundamenta": 3166,
+ "materialitetstroskel": 0.01,
+ "materialitetsregel_stoppade": {
+  "gross_margin_ttm": 454,
+  "operating_margin_ttm": 467,
+  "ebitda_margin_ttm": 454,
+  "net_margin_ttm": 467,
+  "fcf_margin_ttm": 467,
+  "ocf_margin_ttm": 467,
+  "revenue_growth_yoy": 2267,
+  "eps_growth_yoy": 3655
+ },
+ "core_fundamenta_panel_sha256": "c8c18a2cadf15af323ddcee3bcf8a3c50acebe4643a33809faddfbb1440e3310"
+}

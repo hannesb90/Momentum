@@ -1,0 +1,1868 @@
+{
+ "delisted": {
+  "n_serier": 590,
+  "n_brott": 74,
+  "fall": [
+   {
+    "code": "AGRO",
+    "namn": "Agromino A/S",
+    "datum_fore": "2017-05-18",
+    "kurs_fore": 0.2,
+    "datum_efter": "2017-05-19",
+    "kurs_efter": 20.9,
+    "kvot": 104.5
+   },
+   {
+    "code": "AMAST",
+    "namn": "Amasten Fastighets AB (publ)",
+    "datum_fore": "2013-01-24",
+    "kurs_fore": 0.08,
+    "datum_efter": "2013-01-25",
+    "kurs_efter": 7.1077,
+    "kvot": 88.8462
+   },
+   {
+    "code": "APTA",
+    "namn": "Aptahem AB",
+    "datum_fore": "2022-08-23",
+    "kurs_fore": 0.55,
+    "datum_efter": "2022-08-24",
+    "kurs_efter": 40.6778,
+    "kvot": 74.2296
+   },
+   {
+    "code": "APTR",
+    "namn": "AppSpotr AB",
+    "datum_fore": "2022-06-13",
+    "kurs_fore": 0.39,
+    "datum_efter": "2022-06-14",
+    "kurs_efter": 35.4517,
+    "kvot": 89.8421
+   },
+   {
+    "code": "ASAI",
+    "namn": "Artificial Solutions Interna",
+    "datum_fore": "2019-03-11",
+    "kurs_fore": 0.24,
+    "datum_efter": "2019-03-12",
+    "kurs_efter": 7.0571,
+    "kvot": 30.0047
+   },
+   {
+    "code": "BONZUN",
+    "namn": "Bonzun AB",
+    "datum_fore": "2021-10-22",
+    "kurs_fore": 0.04,
+    "datum_efter": "2021-10-25",
+    "kurs_efter": 3.5,
+    "kvot": 88.3838
+   },
+   {
+    "code": "BRIG",
+    "namn": "Brighter publ AB",
+    "datum_fore": "2013-05-08",
+    "kurs_fore": 8.84,
+    "datum_efter": "2013-05-10",
+    "kurs_efter": 519.511,
+    "kvot": 58.7868
+   },
+   {
+    "code": "CASO",
+    "namn": "Cassandra Oil AB (publ)",
+    "datum_fore": "2010-03-31",
+    "kurs_fore": 28.05,
+    "datum_efter": "2010-04-01",
+    "kurs_efter": 4766.1299,
+    "kvot": 169.887
+   },
+   {
+    "code": "CBA",
+    "namn": "CybAero AB",
+    "datum_fore": "2012-04-05",
+    "kurs_fore": 48.22,
+    "datum_efter": "2012-04-06",
+    "kurs_efter": 0.5429,
+    "kvot": 0.0113
+   },
+   {
+    "code": "CE",
+    "namn": "Cortus Energy AB (publ)",
+    "datum_fore": "2007-12-27",
+    "kurs_fore": 0.0,
+    "datum_efter": "2007-12-28",
+    "kurs_efter": 0.2899,
+    "kvot": 724.75
+   },
+   {
+    "code": "CHRO",
+    "namn": "ChromoGenics AB",
+    "datum_fore": "2020-08-14",
+    "kurs_fore": 0.09,
+    "datum_efter": "2020-08-17",
+    "kurs_efter": 8.5753,
+    "kvot": 100.7673
+   },
+   {
+    "code": "CMH",
+    "namn": "Chordate Medical Holding AB",
+    "datum_fore": "2024-08-28",
+    "kurs_fore": 0.07,
+    "datum_efter": "2024-08-29",
+    "kurs_efter": 27.95,
+    "kvot": 411.0294
+   },
+   {
+    "code": "COALA",
+    "namn": "Coala Life Group AB",
+    "datum_fore": "2013-06-04",
+    "kurs_fore": 0.03,
+    "datum_efter": "2013-06-05",
+    "kurs_efter": 5.338,
+    "kvot": 189.2908
+   },
+   {
+    "code": "CONF",
+    "namn": "Confidence International AB",
+    "datum_fore": "2011-10-11",
+    "kurs_fore": 1.25,
+    "datum_efter": "2011-11-29",
+    "kurs_efter": 100.981,
+    "kvot": 80.9013
+   },
+   {
+    "code": "COPP-B",
+    "namn": "Copperstone Resources AB Ser",
+    "datum_fore": "2023-12-05",
+    "kurs_fore": 1.16,
+    "datum_efter": "2023-12-06",
+    "kurs_efter": 24.32,
+    "kvot": 20.9294
+   },
+   {
+    "code": "CTEC",
+    "namn": "Fastilium Property Group AB",
+    "datum_fore": "2015-09-28",
+    "kurs_fore": 0.0,
+    "datum_efter": "2015-09-29",
+    "kurs_efter": 0.4,
+    "kvot": 100.0
+   },
+   {
+    "code": "DIGN",
+    "namn": "Dignitana AB",
+    "datum_fore": "2009-12-18",
+    "kurs_fore": 0.11,
+    "datum_efter": "2009-12-21",
+    "kurs_efter": 9.6937,
+    "kvot": 88.933
+   },
+   {
+    "code": "EFFN",
+    "namn": "Effnetplattformen AB",
+    "datum_fore": "2011-01-05",
+    "kurs_fore": 0.05,
+    "datum_efter": "2014-11-12",
+    "kurs_efter": 13.1581,
+    "kvot": 278.1839
+   },
+   {
+    "code": "ELLWEE",
+    "namn": "Ellwee AB",
+    "datum_fore": "2023-07-19",
+    "kurs_fore": 0.03,
+    "datum_efter": "2023-07-20",
+    "kurs_efter": 24.12,
+    "kvot": 801.3289
+   },
+   {
+    "code": "ELN",
+    "namn": "Ellen AB (publ)",
+    "datum_fore": "2020-08-20",
+    "kurs_fore": 0.19,
+    "datum_efter": "2020-08-21",
+    "kurs_efter": 21.9699,
+    "kvot": 116.9234
+   },
+   {
+    "code": "EMPIR-B",
+    "namn": "Empir Group AB",
+    "datum_fore": "2018-01-29",
+    "kurs_fore": 2.47,
+    "datum_efter": "2018-01-30",
+    "kurs_efter": 49.3564,
+    "kvot": 20.0002
+   },
+   {
+    "code": "ENDO",
+    "namn": "Endomines AB",
+    "datum_fore": "2016-04-27",
+    "kurs_fore": 0.2,
+    "datum_efter": "2016-04-28",
+    "kurs_efter": 20.5,
+    "kvot": 100.0
+   },
+   {
+    "code": "EOID",
+    "namn": "Eyeonid Group AB",
+    "datum_fore": "2023-02-06",
+    "kurs_fore": 0.01,
+    "datum_efter": "2023-02-07",
+    "kurs_efter": 1.378,
+    "kvot": 98.4286
+   },
+   {
+    "code": "EPTI",
+    "namn": "Epti AB",
+    "datum_fore": "2023-08-11",
+    "kurs_fore": 0.19,
+    "datum_efter": "2023-08-14",
+    "kurs_efter": 8,
+    "kvot": 41.1311
+   },
+   {
+    "code": "FGG",
+    "namn": "Future Gaming Group Internat",
+    "datum_fore": "2022-05-20",
+    "kurs_fore": 0.01,
+    "datum_efter": "2022-05-23",
+    "kurs_efter": 7,
+    "kvot": 875.0
+   },
+   {
+    "code": "FPAR",
+    "namn": "FastPartner AB (publ)",
+    "datum_fore": "2013-06-20",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2013-06-24",
+    "kurs_efter": 312.5,
+    "kvot": 0.0003
+   },
+   {
+    "code": "HDW-B",
+    "namn": "Hitech & Development Wireles",
+    "datum_fore": "2025-07-09",
+    "kurs_fore": 0.0,
+    "datum_efter": "2025-07-10",
+    "kurs_efter": 1.34,
+    "kvot": 893.3333
+   },
+   {
+    "code": "HEMF",
+    "namn": "Hemfosa Fastigheter AB (publ",
+    "datum_fore": "2015-05-15",
+    "kurs_fore": 1829.71,
+    "datum_efter": "2015-05-18",
+    "kurs_efter": 55.987,
+    "kvot": 0.0306
+   },
+   {
+    "code": "HIQ",
+    "namn": "HiQ International AB (publ)",
+    "datum_fore": "2020-11-06",
+    "kurs_fore": 72.1,
+    "datum_efter": "2020-11-09",
+    "kurs_efter": 0.0945,
+    "kvot": 0.0013
+   },
+   {
+    "code": "HOTEL",
+    "namn": "LION E-Mobility AG",
+    "datum_fore": "2018-07-02",
+    "kurs_fore": 0.55,
+    "datum_efter": "2018-07-03",
+    "kurs_efter": 27.5,
+    "kvot": 50.1825
+   },
+   {
+    "code": "IMNP",
+    "namn": "Immune Pharmaceuticals Inc",
+    "datum_fore": "2010-03-31",
+    "kurs_fore": 15,
+    "datum_efter": "2010-04-01",
+    "kurs_efter": 612,
+    "kvot": 40.8
+   },
+   {
+    "code": "INDEX",
+    "namn": "InDex Pharmaceuticals Holdin",
+    "datum_fore": "2024-07-04",
+    "kurs_fore": 0.47,
+    "datum_efter": "2024-07-05",
+    "kurs_efter": 46.9,
+    "kvot": 100.0
+   },
+   {
+    "code": "KARO",
+    "namn": "Karo Pharma SA",
+    "datum_fore": "2015-08-25",
+    "kurs_fore": 1.54,
+    "datum_efter": "2015-08-26",
+    "kurs_efter": 33,
+    "kvot": 21.4286
+   },
+   {
+    "code": "LUNE",
+    "namn": "Lundin Energy AB",
+    "datum_fore": "2022-06-17",
+    "kurs_fore": 444.1,
+    "datum_efter": "2022-06-20",
+    "kurs_efter": 10.2324,
+    "kvot": 0.023
+   },
+   {
+    "code": "MACK-B",
+    "namn": "Mackmyra Svensk Whisky AB Se",
+    "datum_fore": "2013-05-08",
+    "kurs_fore": 128.49,
+    "datum_efter": "2013-05-10",
+    "kurs_efter": 3258.0951,
+    "kvot": 25.3572
+   },
+   {
+    "code": "MAGNA",
+    "namn": "Magnasense AB",
+    "datum_fore": "2025-11-21",
+    "kurs_fore": 0.01,
+    "datum_efter": "2025-11-24",
+    "kurs_efter": 15.7,
+    "kvot": 1082.7586
+   },
+   {
+    "code": "MERIS",
+    "namn": "Meriaura Group Oyj",
+    "datum_fore": "2020-04-29",
+    "kurs_fore": 0.03,
+    "datum_efter": "2020-04-30",
+    "kurs_efter": 2.6045,
+    "kvot": 98.283
+   },
+   {
+    "code": "MIDW-A",
+    "namn": "Midway Holding AB ser. A",
+    "datum_fore": "1993-12-13",
+    "kurs_fore": 14638.23,
+    "datum_efter": "1993-12-17",
+    "kurs_efter": 25.3729,
+    "kvot": 0.0017
+   },
+   {
+    "code": "MISE",
+    "namn": "Misen Energy AB",
+    "datum_fore": "2012-01-27",
+    "kurs_fore": 0.08,
+    "datum_efter": "2012-01-30",
+    "kurs_efter": 7.9,
+    "kvot": 98.75
+   },
+   {
+    "code": "MQ",
+    "namn": "MQ Holding AB",
+    "datum_fore": "2020-02-12",
+    "kurs_fore": 0.0,
+    "datum_efter": "2020-02-13",
+    "kurs_efter": 17.608,
+    "kvot": 88040.0
+   },
+   {
+    "code": "NEOD",
+    "namn": "Neodynamics AB",
+    "datum_fore": "2019-06-07",
+    "kurs_fore": 2.21,
+    "datum_efter": "2019-06-10",
+    "kurs_efter": 0.0004,
+    "kvot": 0.0002
+   },
+   {
+    "code": "NIS",
+    "namn": "Nischer AB",
+    "datum_fore": "2010-03-31",
+    "kurs_fore": 17,
+    "datum_efter": "2010-04-01",
+    "kurs_efter": 1700,
+    "kvot": 100.0
+   },
+   {
+    "code": "NOMI",
+    "namn": "Nordic Mines AB",
+    "datum_fore": "2009-12-30",
+    "kurs_fore": 315.82,
+    "datum_efter": "2010-01-01",
+    "kurs_efter": 6.9085,
+    "kvot": 0.0219
+   },
+   {
+    "code": "ONG",
+    "namn": "Oniva Online Group Europe AB",
+    "datum_fore": "2009-08-17",
+    "kurs_fore": 131.66,
+    "datum_efter": "2010-04-01",
+    "kurs_efter": 11255.9004,
+    "kvot": 85.4928
+   },
+   {
+    "code": "OP",
+    "namn": "Oscar Properties Holding AB",
+    "datum_fore": "2021-08-23",
+    "kurs_fore": 0.29,
+    "datum_efter": "2021-08-24",
+    "kurs_efter": 13.83,
+    "kvot": 47.6897
+   },
+   {
+    "code": "OP-PREFB",
+    "namn": "Oscar Properties Holding AB ",
+    "datum_fore": "2019-06-07",
+    "kurs_fore": 13300,
+    "datum_efter": "2019-06-10",
+    "kurs_efter": 320,
+    "kvot": 0.0241
+   },
+   {
+    "code": "PAPI",
+    "namn": "Papilly AB",
+    "datum_fore": "2019-06-07",
+    "kurs_fore": 5.76,
+    "datum_efter": "2019-06-10",
+    "kurs_efter": 0.0557,
+    "kvot": 0.0097
+   },
+   {
+    "code": "PAR",
+    "namn": "PA Resources AB",
+    "datum_fore": "2010-03-31",
+    "kurs_fore": 6.66,
+    "datum_efter": "2010-04-01",
+    "kurs_efter": 247.322,
+    "kvot": 37.1589
+   },
+   {
+    "code": "PETRO",
+    "namn": "Petrogrand AB",
+    "datum_fore": "2010-01-01",
+    "kurs_fore": 0.14,
+    "datum_efter": "2010-01-04",
+    "kurs_efter": 15,
+    "kvot": 107.1429
+   },
+   {
+    "code": "PIL",
+    "namn": "Pilum AB",
+    "datum_fore": "2009-08-17",
+    "kurs_fore": 4054.52,
+    "datum_efter": "2010-04-01",
+    "kurs_efter": 488738,
+    "kvot": 120.5415
+   },
+   {
+    "code": "PLUN",
+    "namn": "ProstaLund AB",
+    "datum_fore": "2024-12-20",
+    "kurs_fore": 0.23,
+    "datum_efter": "2024-12-23",
+    "kurs_efter": 9,
+    "kvot": 39.823
+   },
+   {
+    "code": "POLAR",
+    "namn": "PolarCool AB",
+    "datum_fore": "2022-08-23",
+    "kurs_fore": 2.48,
+    "datum_efter": "2022-08-24",
+    "kurs_efter": 161.3186,
+    "kvot": 65.0478
+   },
+   {
+    "code": "POLY",
+    "namn": "PolyPlank publ AB",
+    "datum_fore": "2012-03-13",
+    "kurs_fore": 0.0,
+    "datum_efter": "2012-03-26",
+    "kurs_efter": 0.4248,
+    "kvot": 472.0
+   },
+   {
+    "code": "PROMO",
+    "namn": "Promore Pharma AB",
+    "datum_fore": "2019-06-07",
+    "kurs_fore": 11.36,
+    "datum_efter": "2019-06-10",
+    "kurs_efter": 0.0008,
+    "kvot": 0.0001
+   },
+   {
+    "code": "QLOSR-B",
+    "namn": "Qlosr Group AB Series B",
+    "datum_fore": "2022-06-20",
+    "kurs_fore": 0.03,
+    "datum_efter": "2022-06-21",
+    "kurs_efter": 6.32,
+    "kvot": 201.2739
+   },
+   {
+    "code": "QUIA",
+    "namn": "QuiaPEG Pharmaceuticals Hold",
+    "datum_fore": "2023-07-31",
+    "kurs_fore": 0.01,
+    "datum_efter": "2023-08-01",
+    "kurs_efter": 0.64,
+    "kvot": 80.0
+   },
+   {
+    "code": "REDW",
+    "namn": "Redwood Pharma AB",
+    "datum_fore": "2024-01-31",
+    "kurs_fore": 0.0,
+    "datum_efter": "2024-02-01",
+    "kurs_efter": 0.0374,
+    "kvot": 93.5
+   },
+   {
+    "code": "RFAST",
+    "namn": "Randviken Fastigheter AB",
+    "datum_fore": "2021-06-28",
+    "kurs_fore": 0.8,
+    "datum_efter": "2021-06-29",
+    "kurs_efter": 79.6,
+    "kvot": 100.0
+   },
+   {
+    "code": "RIGHTB",
+    "namn": "RightBridge Ventures Group A",
+    "datum_fore": "2022-11-01",
+    "kurs_fore": 0.02,
+    "datum_efter": "2022-11-02",
+    "kurs_efter": 0.51,
+    "kvot": 24.0566
+   },
+   {
+    "code": "RIZZO-B",
+    "namn": "Rizzo Group AB (publ)",
+    "datum_fore": "2005-04-01",
+    "kurs_fore": 0.03,
+    "datum_efter": "2005-04-04",
+    "kurs_efter": 3.2261,
+    "kvot": 98.9601
+   },
+   {
+    "code": "RNBS",
+    "namn": "RNB Retail and Brands AB (pu",
+    "datum_fore": "2001-06-27",
+    "kurs_fore": 27.5,
+    "datum_efter": "2001-06-28",
+    "kurs_efter": 6288.3193,
+    "kvot": 228.6662
+   },
+   {
+    "code": "RUSF",
+    "namn": "RusForest AB",
+    "datum_fore": "2011-11-04",
+    "kurs_fore": 29117.7,
+    "datum_efter": "2011-11-24",
+    "kurs_efter": 2.0007,
+    "kvot": 0.0001
+   },
+   {
+    "code": "SAS",
+    "namn": "SAS AB",
+    "datum_fore": "2010-06-04",
+    "kurs_fore": 0.77,
+    "datum_efter": "2010-06-08",
+    "kurs_efter": 24.3,
+    "kvot": 31.5502
+   },
+   {
+    "code": "SILEON",
+    "namn": "Sileon AB",
+    "datum_fore": "2019-09-25",
+    "kurs_fore": 0.1,
+    "datum_efter": "2019-09-26",
+    "kurs_efter": 9.2975,
+    "kvot": 96.2474
+   },
+   {
+    "code": "SIOFFO",
+    "namn": "Siem Offshore Inc",
+    "datum_fore": "2015-12-23",
+    "kurs_fore": 1.63,
+    "datum_efter": "2015-12-24",
+    "kurs_efter": 51.25,
+    "kvot": 31.3974
+   },
+   {
+    "code": "SLOTT-B",
+    "namn": "Slottsviken AB Series B",
+    "datum_fore": "2022-05-13",
+    "kurs_fore": 0.96,
+    "datum_efter": "2022-05-16",
+    "kurs_efter": 19.28,
+    "kvot": 20.0
+   },
+   {
+    "code": "SOCIAL",
+    "namn": "Sociallite US AB",
+    "datum_fore": "2022-08-23",
+    "kurs_fore": 0.28,
+    "datum_efter": "2022-08-24",
+    "kurs_efter": 29,
+    "kvot": 102.8369
+   },
+   {
+    "code": "SOGH",
+    "namn": "Selena Oil & Gas Holding AB",
+    "datum_fore": "2011-03-11",
+    "kurs_fore": 0.1,
+    "datum_efter": "2011-06-03",
+    "kurs_efter": 9.9,
+    "kvot": 99.0
+   },
+   {
+    "code": "TORSAB",
+    "namn": "Torslanda Property Investmen",
+    "datum_fore": "2019-06-07",
+    "kurs_fore": 130,
+    "datum_efter": "2019-06-10",
+    "kurs_efter": 999999.9999,
+    "kvot": 7692.3077
+   },
+   {
+    "code": "TRENT",
+    "namn": "Trention AB (publ)",
+    "datum_fore": "2016-05-18",
+    "kurs_fore": 0.47,
+    "datum_efter": "2016-05-19",
+    "kurs_efter": 47.8986,
+    "kvot": 102.2164
+   },
+   {
+    "code": "TWW",
+    "namn": "Transcom WorldWide (TWW.ST",
+    "datum_fore": "2014-12-02",
+    "kurs_fore": 1.12,
+    "datum_efter": "2014-12-03",
+    "kurs_efter": 54.5,
+    "kvot": 48.6607
+   },
+   {
+    "code": "VRG-B",
+    "namn": "Venue Retail Group AB",
+    "datum_fore": "2005-04-01",
+    "kurs_fore": 0.56,
+    "datum_efter": "2005-04-04",
+    "kurs_efter": 55.5,
+    "kvot": 99.1071
+   },
+   {
+    "code": "WESC",
+    "namn": "WeSC AB (publ)",
+    "datum_fore": "2020-07-15",
+    "kurs_fore": 0.01,
+    "datum_efter": "2020-07-16",
+    "kurs_efter": 3.38,
+    "kvot": 338.0
+   },
+   {
+    "code": "ZENZIP-B",
+    "namn": "Zenergy AB Series B",
+    "datum_fore": "2022-08-23",
+    "kurs_fore": 0.31,
+    "datum_efter": "2022-08-24",
+    "kurs_efter": 42.875,
+    "kvot": 138.754
+   }
+  ]
+ },
+ "active": {
+  "n_serier": 1008,
+  "n_brott": 132,
+  "fall": [
+   {
+    "code": "AAC",
+    "namn": "AAC Clyde Space AB (publ)",
+    "datum_fore": "2023-11-10",
+    "kurs_fore": 0.69,
+    "datum_efter": "2023-11-13",
+    "kurs_efter": 34.63,
+    "kvot": 50.0434
+   },
+   {
+    "code": "ACTI",
+    "namn": "Active Biotech AB",
+    "datum_fore": "2026-05-29",
+    "kurs_fore": 0.06,
+    "datum_efter": "2026-06-01",
+    "kurs_efter": 6,
+    "kvot": 95.5414
+   },
+   {
+    "code": "AEC",
+    "namn": "Africa Energy Corp.",
+    "datum_fore": "2019-06-07",
+    "kurs_fore": 1.57,
+    "datum_efter": "2019-06-10",
+    "kurs_efter": 0.0001,
+    "kvot": 0.0001
+   },
+   {
+    "code": "AERO",
+    "namn": "Svenska Aerogel Holding AB (",
+    "datum_fore": "2024-11-25",
+    "kurs_fore": 0.13,
+    "datum_efter": "2024-11-26",
+    "kurs_efter": 10.4,
+    "kvot": 80.0
+   },
+   {
+    "code": "ANNX",
+    "namn": "Annexin Pharmaceuticals AB",
+    "datum_fore": "2025-05-27",
+    "kurs_fore": 0.37,
+    "datum_efter": "2025-05-28",
+    "kurs_efter": 37,
+    "kvot": 99.1957
+   },
+   {
+    "code": "ANOD-B",
+    "namn": "Addnode Group AB (publ)",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 0.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 635,
+    "kvot": 1587500.0
+   },
+   {
+    "code": "ANOT",
+    "namn": "Anoto Group AB",
+    "datum_fore": "2017-10-02",
+    "kurs_fore": 0.45,
+    "datum_efter": "2017-10-03",
+    "kurs_efter": 13.3572,
+    "kvot": 29.4471
+   },
+   {
+    "code": "AQ",
+    "namn": "AQ Group AB",
+    "datum_fore": "2004-10-01",
+    "kurs_fore": 14625,
+    "datum_efter": "2004-10-05",
+    "kurs_efter": 64.0005,
+    "kvot": 0.0044
+   },
+   {
+    "code": "ATIN",
+    "namn": "Athanase Innovation AB",
+    "datum_fore": "2021-03-22",
+    "kurs_fore": 13600,
+    "datum_efter": "2021-03-23",
+    "kurs_efter": 6.94,
+    "kvot": 0.0005
+   },
+   {
+    "code": "ATORX",
+    "namn": "Alligator Bioscience AB",
+    "datum_fore": "2025-04-04",
+    "kurs_fore": 0.02,
+    "datum_efter": "2025-04-07",
+    "kurs_efter": 19.2353,
+    "kvot": 981.3929
+   },
+   {
+    "code": "AVSALT",
+    "namn": "Avsalt Group",
+    "datum_fore": "2024-06-11",
+    "kurs_fore": 0.02,
+    "datum_efter": "2024-06-12",
+    "kurs_efter": 13.0811,
+    "kvot": 788.0181
+   },
+   {
+    "code": "BALD-B",
+    "namn": "Fastighets AB Balder (publ)",
+    "datum_fore": "2005-09-22",
+    "kurs_fore": 0.68,
+    "datum_efter": "2005-09-23",
+    "kurs_efter": 65.9988,
+    "kvot": 97.0
+   },
+   {
+    "code": "BEGR",
+    "namn": "BE Group AB",
+    "datum_fore": "2016-05-18",
+    "kurs_fore": 1.9,
+    "datum_efter": "2016-05-19",
+    "kurs_efter": 38.8929,
+    "kvot": 20.471
+   },
+   {
+    "code": "BEO-SDB",
+    "namn": "Beowulf Mining PLC",
+    "datum_fore": "2024-06-13",
+    "kurs_fore": 0.11,
+    "datum_efter": "2024-06-14",
+    "kurs_efter": 5.09,
+    "kvot": 46.357
+   },
+   {
+    "code": "BINERO",
+    "namn": "Binero Group AB",
+    "datum_fore": "2008-01-28",
+    "kurs_fore": 0.0,
+    "datum_efter": "2008-01-29",
+    "kurs_efter": 17.8635,
+    "kvot": 7443.125
+   },
+   {
+    "code": "BINV",
+    "namn": "BioInvent International AB",
+    "datum_fore": "2020-12-11",
+    "kurs_fore": 1.78,
+    "datum_efter": "2020-12-14",
+    "kurs_efter": 44.2,
+    "kvot": 24.8315
+   },
+   {
+    "code": "BIOSGN",
+    "namn": "Biosergen AS",
+    "datum_fore": "2025-11-28",
+    "kurs_fore": 0.47,
+    "datum_efter": "2025-12-01",
+    "kurs_efter": 45.5,
+    "kvot": 97.2222
+   },
+   {
+    "code": "BLICK",
+    "namn": "Blick Global Group AB (publ)",
+    "datum_fore": "2022-12-01",
+    "kurs_fore": 0.07,
+    "datum_efter": "2022-12-02",
+    "kurs_efter": 7.3417,
+    "kvot": 100.0232
+   },
+   {
+    "code": "BRIX",
+    "namn": "Briox",
+    "datum_fore": "2016-06-30",
+    "kurs_fore": 0.05,
+    "datum_efter": "2016-07-01",
+    "kurs_efter": 5.0636,
+    "kvot": 108.6609
+   },
+   {
+    "code": "BTS-B",
+    "namn": "BTS Group AB (publ)",
+    "datum_fore": "2001-06-06",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2001-06-07",
+    "kurs_efter": 60,
+    "kvot": 0.0001
+   },
+   {
+    "code": "BUSER",
+    "namn": "Bambuser AB",
+    "datum_fore": "2025-12-17",
+    "kurs_fore": 0.46,
+    "datum_efter": "2025-12-18",
+    "kurs_efter": 13.77,
+    "kvot": 30.2305
+   },
+   {
+    "code": "C100",
+    "namn": "C100 AB",
+    "datum_fore": "2026-07-14",
+    "kurs_fore": 0.03,
+    "datum_efter": "2026-07-15",
+    "kurs_efter": 3.82,
+    "kvot": 126.4901
+   },
+   {
+    "code": "CAPS",
+    "namn": "Northern CapSek Ventures",
+    "datum_fore": "2025-04-22",
+    "kurs_fore": 0.09,
+    "datum_efter": "2025-04-23",
+    "kurs_efter": 21.8024,
+    "kvot": 238.0175
+   },
+   {
+    "code": "CAPS-PREF",
+    "namn": "Northern CapSek Ventures PRE",
+    "datum_fore": "2025-04-22",
+    "kurs_fore": 0.26,
+    "datum_efter": "2025-04-23",
+    "kurs_efter": 64.1128,
+    "kvot": 246.3035
+   },
+   {
+    "code": "CLA-B",
+    "namn": "Cloetta AB (publ)",
+    "datum_fore": "2008-12-05",
+    "kurs_fore": 218.5,
+    "datum_efter": "2008-12-08",
+    "kurs_efter": 10.086,
+    "kvot": 0.0462
+   },
+   {
+    "code": "CLAS-B",
+    "namn": "Clas Ohlson AB (publ)",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 238.5,
+    "kvot": 0.0002
+   },
+   {
+    "code": "CLS-B",
+    "namn": "Clinical Laserthermia System",
+    "datum_fore": "2024-04-24",
+    "kurs_fore": 0.1,
+    "datum_efter": "2024-04-25",
+    "kurs_efter": 19.0271,
+    "kvot": 191.6123
+   },
+   {
+    "code": "COEGIN",
+    "namn": "Coegin Pharma",
+    "datum_fore": "2023-06-14",
+    "kurs_fore": 0.1,
+    "datum_efter": "2023-06-15",
+    "kurs_efter": 9.6959,
+    "kvot": 99.9577
+   },
+   {
+    "code": "CORE-A",
+    "namn": "Corem Property Group AB (pub",
+    "datum_fore": "2007-12-17",
+    "kurs_fore": 0.99,
+    "datum_efter": "2007-12-18",
+    "kurs_efter": 54.3675,
+    "kvot": 54.7342
+   },
+   {
+    "code": "CTT",
+    "namn": "CTT Systems AB",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 57.6196,
+    "kvot": 0.0001
+   },
+   {
+    "code": "ELUX-B",
+    "namn": "AB Electrolux (publ)",
+    "datum_fore": "1998-05-29",
+    "kurs_fore": 25087.34,
+    "datum_efter": "1998-06-03",
+    "kurs_efter": 202.6286,
+    "kvot": 0.0081
+   },
+   {
+    "code": "EMART",
+    "namn": "EmbeddedArt Group AB",
+    "datum_fore": "2022-06-09",
+    "kurs_fore": 0.0,
+    "datum_efter": "2022-06-10",
+    "kurs_efter": 0.049,
+    "kvot": 490.0
+   },
+   {
+    "code": "ENEA",
+    "namn": "Enea AB",
+    "datum_fore": "2000-06-27",
+    "kurs_fore": 866.24,
+    "datum_efter": "2000-06-28",
+    "kurs_efter": 36.695,
+    "kvot": 0.0424
+   },
+   {
+    "code": "ENRO",
+    "namn": "Eniro AB",
+    "datum_fore": "2000-10-10",
+    "kurs_fore": 0.0,
+    "datum_efter": "2000-10-11",
+    "kurs_efter": 65.7682,
+    "kvot": 73075.7778
+   },
+   {
+    "code": "EXPRS2",
+    "namn": "ExpreS2ion Biotech Holding A",
+    "datum_fore": "2024-10-29",
+    "kurs_fore": 0.85,
+    "datum_efter": "2024-10-30",
+    "kurs_efter": 31.4,
+    "kvot": 37.0283
+   },
+   {
+    "code": "F2M",
+    "namn": "Free2Move Holding",
+    "datum_fore": "2018-06-18",
+    "kurs_fore": 0.0,
+    "datum_efter": "2018-06-19",
+    "kurs_efter": 2.1395,
+    "kvot": 764.1071
+   },
+   {
+    "code": "FABLE",
+    "namn": "Fable Media Group AB",
+    "datum_fore": "2022-05-30",
+    "kurs_fore": 0.01,
+    "datum_efter": "2022-05-31",
+    "kurs_efter": 6,
+    "kvot": 1000.0
+   },
+   {
+    "code": "FAG",
+    "namn": "Fagerhult AB",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 79.0005,
+    "kvot": 0.0001
+   },
+   {
+    "code": "FING-B",
+    "namn": "Fingerprint Cards AB (publ)",
+    "datum_fore": "2025-09-02",
+    "kurs_fore": 0.01,
+    "datum_efter": "2025-09-03",
+    "kurs_efter": 17,
+    "kvot": 1827.957
+   },
+   {
+    "code": "FLERIE",
+    "namn": "Flerie",
+    "datum_fore": "2023-02-16",
+    "kurs_fore": 0.0,
+    "datum_efter": "2023-02-17",
+    "kurs_efter": 0.0047,
+    "kvot": 47.0
+   },
+   {
+    "code": "FLOWS",
+    "namn": "Flowscape Technology AB",
+    "datum_fore": "2019-06-07",
+    "kurs_fore": 0.06,
+    "datum_efter": "2019-06-10",
+    "kurs_efter": 0.0008,
+    "kvot": 0.0145
+   },
+   {
+    "code": "FLUI",
+    "namn": "Fluicell AB",
+    "datum_fore": "2025-03-25",
+    "kurs_fore": 0.05,
+    "datum_efter": "2025-03-26",
+    "kurs_efter": 17.6,
+    "kvot": 330.8271
+   },
+   {
+    "code": "FRAG",
+    "namn": "Fragbite Group AB",
+    "datum_fore": "2024-12-04",
+    "kurs_fore": 0.02,
+    "datum_efter": "2024-12-05",
+    "kurs_efter": 9.6,
+    "kvot": 457.1429
+   },
+   {
+    "code": "GATE",
+    "namn": "Jumpgate",
+    "datum_fore": "2024-10-01",
+    "kurs_fore": 0.06,
+    "datum_efter": "2024-10-02",
+    "kurs_efter": 5.2,
+    "kvot": 89.6552
+   },
+   {
+    "code": "GBK",
+    "namn": "Goodbye Kansas Group AB (pub",
+    "datum_fore": "2023-05-05",
+    "kurs_fore": 0.03,
+    "datum_efter": "2023-05-08",
+    "kurs_efter": 6.95,
+    "kvot": 208.0838
+   },
+   {
+    "code": "GGEO",
+    "namn": "Guideline Geo AB (publ)",
+    "datum_fore": "2012-11-29",
+    "kurs_fore": 0.07,
+    "datum_efter": "2020-08-24",
+    "kurs_efter": 5.2,
+    "kvot": 74.2857
+   },
+   {
+    "code": "GRANGX",
+    "namn": "GRANGEX AB",
+    "datum_fore": "2015-12-07",
+    "kurs_fore": 0.01,
+    "datum_efter": "2015-12-08",
+    "kurs_efter": 1.3235,
+    "kvot": 108.4836
+   },
+   {
+    "code": "GUARD",
+    "namn": "Guard Therapeutics Internati",
+    "datum_fore": "2023-12-14",
+    "kurs_fore": 0.59,
+    "datum_efter": "2023-12-15",
+    "kurs_efter": 32,
+    "kvot": 54.2373
+   },
+   {
+    "code": "HAV-B",
+    "namn": "Havsfrun Investment AB (publ",
+    "datum_fore": "1999-12-29",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 102,
+    "kvot": 0.0001
+   },
+   {
+    "code": "HEART",
+    "namn": "Real Heart",
+    "datum_fore": "2024-11-20",
+    "kurs_fore": 0.18,
+    "datum_efter": "2024-11-21",
+    "kurs_efter": 18.3,
+    "kvot": 100.0
+   },
+   {
+    "code": "HEXA-B",
+    "namn": "Hexagon AB (publ)",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 10579.19,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 140.0791,
+    "kvot": 0.0132
+   },
+   {
+    "code": "HOLM-A",
+    "namn": "Holmen AB (publ)",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 315,
+    "kvot": 0.0003
+   },
+   {
+    "code": "HUNTER",
+    "namn": "Hunter Capital AB",
+    "datum_fore": "2024-05-15",
+    "kurs_fore": 0.04,
+    "datum_efter": "2024-05-16",
+    "kurs_efter": 3.05,
+    "kvot": 78.2051
+   },
+   {
+    "code": "IMMNOV",
+    "namn": "Immunovia publ AB",
+    "datum_fore": "2026-01-30",
+    "kurs_fore": 0.0,
+    "datum_efter": "2026-02-02",
+    "kurs_efter": 0.1946,
+    "kvot": 97.3
+   },
+   {
+    "code": "INDU-A",
+    "namn": "Industrivarden AB ser. A",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 189440,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 189.5,
+    "kvot": 0.001
+   },
+   {
+    "code": "INVE-A",
+    "namn": "Investor AB ser. A",
+    "datum_fore": "1999-05-06",
+    "kurs_fore": 97792,
+    "datum_efter": "1999-05-07",
+    "kurs_efter": 1504,
+    "kvot": 0.0154
+   },
+   {
+    "code": "IS",
+    "namn": "Image Systems AB",
+    "datum_fore": "1999-10-21",
+    "kurs_fore": 0.0,
+    "datum_efter": "1999-10-22",
+    "kurs_efter": 0.0616,
+    "kvot": 616.0
+   },
+   {
+    "code": "K33",
+    "namn": "K33 AB (publ)",
+    "datum_fore": "2009-09-30",
+    "kurs_fore": 0.35,
+    "datum_efter": "2009-10-01",
+    "kurs_efter": 16.1588,
+    "kvot": 45.5562
+   },
+   {
+    "code": "KAKEL",
+    "namn": "Kakel Max AB (publ)",
+    "datum_fore": "2017-03-06",
+    "kurs_fore": 0.06,
+    "datum_efter": "2017-03-07",
+    "kurs_efter": 12.85,
+    "kvot": 207.2581
+   },
+   {
+    "code": "KOBR-B",
+    "namn": "Kopparbergs Bryggeri AB",
+    "datum_fore": "2000-04-04",
+    "kurs_fore": 19,
+    "datum_efter": "2000-04-05",
+    "kurs_efter": 517.5,
+    "kvot": 27.2368
+   },
+   {
+    "code": "KVIX",
+    "namn": "Kvix AB (Publ)",
+    "datum_fore": "2024-10-16",
+    "kurs_fore": 0.32,
+    "datum_efter": "2024-10-24",
+    "kurs_efter": 0.001,
+    "kvot": 0.0031
+   },
+   {
+    "code": "LAIR",
+    "namn": "LightAir",
+    "datum_fore": "2016-08-29",
+    "kurs_fore": 0.02,
+    "datum_efter": "2016-08-30",
+    "kurs_efter": 2.1677,
+    "kvot": 98.5318
+   },
+   {
+    "code": "LEVEL",
+    "namn": "Nordic LEVEL Group AB",
+    "datum_fore": "2019-02-14",
+    "kurs_fore": 0.02,
+    "datum_efter": "2019-02-15",
+    "kurs_efter": 2.4151,
+    "kvot": 99.7975
+   },
+   {
+    "code": "LIGR",
+    "namn": "Lightning Group AB",
+    "datum_fore": "2016-05-02",
+    "kurs_fore": 0.11,
+    "datum_efter": "2016-05-03",
+    "kurs_efter": 3.496,
+    "kvot": 31.7818
+   },
+   {
+    "code": "LUMI",
+    "namn": "Lundin Mining Corporation",
+    "datum_fore": "2007-01-31",
+    "kurs_fore": 2133.0,
+    "datum_efter": "2007-02-01",
+    "kurs_efter": 79.5,
+    "kvot": 0.0373
+   },
+   {
+    "code": "MANTEX",
+    "namn": "Mantex AB",
+    "datum_fore": "2025-02-13",
+    "kurs_fore": 0.04,
+    "datum_efter": "2025-02-14",
+    "kurs_efter": 13.5,
+    "kvot": 347.9381
+   },
+   {
+    "code": "MAV",
+    "namn": "Mavshack publ AB",
+    "datum_fore": "2010-07-12",
+    "kurs_fore": 0.0,
+    "datum_efter": "2010-07-13",
+    "kurs_efter": 0.09,
+    "kvot": 900.0
+   },
+   {
+    "code": "MBBAB",
+    "namn": "Movebybike Europe Ab",
+    "datum_fore": "2026-07-03",
+    "kurs_fore": 0.01,
+    "datum_efter": "2026-07-06",
+    "kurs_efter": 13,
+    "kvot": 909.0909
+   },
+   {
+    "code": "MEAB-B",
+    "namn": "Malmbergs Elektriska AB (pub",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 47,
+    "kvot": 0.0
+   },
+   {
+    "code": "MIR",
+    "namn": "Miris Holding AB",
+    "datum_fore": "2021-03-04",
+    "kurs_fore": 0.01,
+    "datum_efter": "2021-03-05",
+    "kurs_efter": 3.992,
+    "kvot": 380.1905
+   },
+   {
+    "code": "MSON-A",
+    "namn": "Midsona AB (publ)",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 0.0,
+    "datum_efter": "2000-01-07",
+    "kurs_efter": 9.7039,
+    "kvot": 97039.0
+   },
+   {
+    "code": "MSON-B",
+    "namn": "Midsona AB (publ)",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 0.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 7.7682,
+    "kvot": 77682.0
+   },
+   {
+    "code": "MYCR",
+    "namn": "Mycronic publ AB",
+    "datum_fore": "2000-03-09",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-03-10",
+    "kurs_efter": 462.0002,
+    "kvot": 0.0005
+   },
+   {
+    "code": "NFGAB",
+    "namn": "Nordic Flanges Group AB",
+    "datum_fore": "2025-01-13",
+    "kurs_fore": 0.13,
+    "datum_efter": "2025-01-14",
+    "kurs_efter": 13.2,
+    "kvot": 98.8764
+   },
+   {
+    "code": "NIDHOG",
+    "namn": "Nidhogg Resources Holding AB",
+    "datum_fore": "2021-01-07",
+    "kurs_fore": 0.03,
+    "datum_efter": "2021-01-08",
+    "kurs_efter": 2.4032,
+    "kvot": 96.128
+   },
+   {
+    "code": "NOSIUM-B",
+    "namn": "NOSIUM B",
+    "datum_fore": "2024-09-23",
+    "kurs_fore": 0.04,
+    "datum_efter": "2024-09-24",
+    "kurs_efter": 12.5,
+    "kvot": 357.1429
+   },
+   {
+    "code": "NYAB",
+    "namn": "NYAB AB",
+    "datum_fore": "2020-02-26",
+    "kurs_fore": 0.38,
+    "datum_efter": "2024-06-28",
+    "kurs_efter": 10.298,
+    "kvot": 27.3883
+   },
+   {
+    "code": "OBAB",
+    "namn": "Online Brands Nordic AB",
+    "datum_fore": "2007-12-27",
+    "kurs_fore": 0.01,
+    "datum_efter": "2007-12-28",
+    "kurs_efter": 0.7429,
+    "kvot": 119.8226
+   },
+   {
+    "code": "OODA",
+    "namn": "oodash Group AB (publ)",
+    "datum_fore": "2023-08-15",
+    "kurs_fore": 0.18,
+    "datum_efter": "2023-08-16",
+    "kurs_efter": 7.226,
+    "kvot": 39.0595
+   },
+   {
+    "code": "OPSYH",
+    "namn": "Opsy Holding AB",
+    "datum_fore": "2024-05-27",
+    "kurs_fore": 0.1,
+    "datum_efter": "2024-05-28",
+    "kurs_efter": 10.43,
+    "kvot": 105.3535
+   },
+   {
+    "code": "ORRON",
+    "namn": "Orrön Energy AB (publ)",
+    "datum_fore": "2022-06-22",
+    "kurs_fore": 406.5,
+    "datum_efter": "2022-06-23",
+    "kurs_efter": 7.3,
+    "kvot": 0.018
+   },
+   {
+    "code": "ORTIN",
+    "namn": "Ortelius International AB",
+    "datum_fore": "2023-07-19",
+    "kurs_fore": 0.03,
+    "datum_efter": "2023-07-20",
+    "kurs_efter": 24.12,
+    "kvot": 801.3289
+   },
+   {
+    "code": "PACT",
+    "namn": "Proact IT Group AB",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 273.8478,
+    "kvot": 0.0003
+   },
+   {
+    "code": "PADEL",
+    "namn": "Acenta Group AB",
+    "datum_fore": "2021-10-22",
+    "kurs_fore": 0.03,
+    "datum_efter": "2021-10-25",
+    "kurs_efter": 2.69,
+    "kvot": 88.4868
+   },
+   {
+    "code": "PERP-B",
+    "namn": "BrightBid Group AB (publ)",
+    "datum_fore": "2024-09-26",
+    "kurs_fore": 0.17,
+    "datum_efter": "2024-09-27",
+    "kurs_efter": 4.4,
+    "kvot": 26.1905
+   },
+   {
+    "code": "PRCO-B",
+    "namn": "Precio Fishbone AB (publ)",
+    "datum_fore": "2009-12-17",
+    "kurs_fore": 0.21,
+    "datum_efter": "2009-12-18",
+    "kurs_efter": 5.25,
+    "kvot": 25.0
+   },
+   {
+    "code": "PRLD",
+    "namn": "Prolight Diagnostics",
+    "datum_fore": "2025-12-09",
+    "kurs_fore": 0.21,
+    "datum_efter": "2025-12-10",
+    "kurs_efter": 20.5,
+    "kvot": 97.619
+   },
+   {
+    "code": "PROGEN",
+    "namn": "Prostatype Genomics AB",
+    "datum_fore": "2024-10-30",
+    "kurs_fore": 0.06,
+    "datum_efter": "2024-10-31",
+    "kurs_efter": 55.7793,
+    "kvot": 960.0568
+   },
+   {
+    "code": "QLIFE",
+    "namn": "Qlife Holding AB",
+    "datum_fore": "2024-07-29",
+    "kurs_fore": 0.0,
+    "datum_efter": "2024-07-30",
+    "kurs_efter": 1.3926,
+    "kvot": 1266.0
+   },
+   {
+    "code": "QLINEA",
+    "namn": "Q linea AB",
+    "datum_fore": "2025-07-11",
+    "kurs_fore": 0.06,
+    "datum_efter": "2025-07-14",
+    "kurs_efter": 59.6,
+    "kvot": 1008.4602
+   },
+   {
+    "code": "RAIL",
+    "namn": "Railcare Group AB (publ)",
+    "datum_fore": "2009-04-16",
+    "kurs_fore": 0.08,
+    "datum_efter": "2009-04-17",
+    "kurs_efter": 15,
+    "kvot": 187.5
+   },
+   {
+    "code": "RAY-B",
+    "namn": "RaySearch Laboratories AB (p",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 0.1,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 2.7867,
+    "kvot": 28.7585
+   },
+   {
+    "code": "REAL",
+    "namn": "Real Fastigheter",
+    "datum_fore": "2023-08-24",
+    "kurs_fore": 0.02,
+    "datum_efter": "2023-08-25",
+    "kurs_efter": 11,
+    "kvot": 500.0
+   },
+   {
+    "code": "RESP",
+    "namn": "Respiratorius AB",
+    "datum_fore": "2024-11-26",
+    "kurs_fore": 0.05,
+    "datum_efter": "2024-11-27",
+    "kurs_efter": 4.8,
+    "kvot": 94.1176
+   },
+   {
+    "code": "RROS",
+    "namn": "Rottneros AB",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 0.14,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 12.8654,
+    "kvot": 90.2202
+   },
+   {
+    "code": "SAFE",
+    "namn": "Safe at Sea AB",
+    "datum_fore": "2013-07-22",
+    "kurs_fore": 0.26,
+    "datum_efter": "2013-07-23",
+    "kurs_efter": 12.6824,
+    "kvot": 48.5358
+   },
+   {
+    "code": "SAFETY-B",
+    "namn": "mySafety Group B",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 0.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 9.1322,
+    "kvot": 45661.0
+   },
+   {
+    "code": "SAXG",
+    "namn": "Saxlund Group AB",
+    "datum_fore": "2014-09-29",
+    "kurs_fore": 0.12,
+    "datum_efter": "2014-09-30",
+    "kurs_efter": 12.2,
+    "kvot": 97.6
+   },
+   {
+    "code": "SCIB",
+    "namn": "Scibase AB",
+    "datum_fore": "2026-06-02",
+    "kurs_fore": 0.45,
+    "datum_efter": "2026-06-03",
+    "kurs_efter": 44.5,
+    "kvot": 98.8889
+   },
+   {
+    "code": "SENS",
+    "namn": "Sensys Traffic AB",
+    "datum_fore": "2023-06-08",
+    "kurs_fore": 0.97,
+    "datum_efter": "2023-06-09",
+    "kurs_efter": 83.2,
+    "kvot": 85.5967
+   },
+   {
+    "code": "SGG",
+    "namn": "Sensys Gatso Group AB",
+    "datum_fore": "2013-05-08",
+    "kurs_fore": 1.15,
+    "datum_efter": "2013-05-10",
+    "kurs_efter": 0.0144,
+    "kvot": 0.0126
+   },
+   {
+    "code": "SIN",
+    "namn": "Solution International Nordi",
+    "datum_fore": "2023-07-05",
+    "kurs_fore": 0.08,
+    "datum_efter": "2023-07-06",
+    "kurs_efter": 7.6,
+    "kvot": 100.0
+   },
+   {
+    "code": "SKIS-B",
+    "namn": "SkiStar AB (publ)",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 85,
+    "kvot": 0.0001
+   },
+   {
+    "code": "SKMO",
+    "namn": "Skane mollan AB",
+    "datum_fore": "2004-09-14",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2004-10-07",
+    "kurs_efter": 180,
+    "kvot": 0.0002
+   },
+   {
+    "code": "SLG-B",
+    "namn": "Safe Lane Gaming B",
+    "datum_fore": "2023-07-11",
+    "kurs_fore": 0.01,
+    "datum_efter": "2023-07-13",
+    "kurs_efter": 6.5,
+    "kvot": 1083.3333
+   },
+   {
+    "code": "SOF-B",
+    "namn": "Softronic AB",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 183.9444,
+    "kvot": 0.0002
+   },
+   {
+    "code": "SPOTR",
+    "namn": "Spotr Group AB",
+    "datum_fore": "2019-06-07",
+    "kurs_fore": 0.25,
+    "datum_efter": "2019-06-10",
+    "kurs_efter": 0.0003,
+    "kvot": 0.0012
+   },
+   {
+    "code": "STIL",
+    "namn": "Stille AB",
+    "datum_fore": "2008-06-23",
+    "kurs_fore": 0.31,
+    "datum_efter": "2008-06-24",
+    "kurs_efter": 31,
+    "kvot": 100.0
+   },
+   {
+    "code": "STORY-B",
+    "namn": "Storytel AB (publ)",
+    "datum_fore": "2006-11-28",
+    "kurs_fore": 0.0,
+    "datum_efter": "2006-11-29",
+    "kurs_efter": 0.0111,
+    "kvot": 111.0
+   },
+   {
+    "code": "STUDBO",
+    "namn": "Studentbostader I Sverige AB",
+    "datum_fore": "2021-03-15",
+    "kurs_fore": 0.08,
+    "datum_efter": "2021-03-16",
+    "kurs_efter": 8.5548,
+    "kvot": 104.7099
+   },
+   {
+    "code": "STWK",
+    "namn": "Stockwik Forvaltning AB",
+    "datum_fore": "2006-06-01",
+    "kurs_fore": 0.12,
+    "datum_efter": "2006-06-02",
+    "kurs_efter": 2.87,
+    "kvot": 23.9167
+   },
+   {
+    "code": "SUBGEN",
+    "namn": "Subgen AI",
+    "datum_fore": "2025-11-24",
+    "kurs_fore": 0.01,
+    "datum_efter": "2025-11-25",
+    "kurs_efter": 12.3,
+    "kvot": 1000.0
+   },
+   {
+    "code": "SUMMAS",
+    "namn": "Summa Defence Oyj",
+    "datum_fore": "2019-06-07",
+    "kurs_fore": 0.07,
+    "datum_efter": "2019-06-10",
+    "kurs_efter": 0.0007,
+    "kvot": 0.0103
+   },
+   {
+    "code": "SVOL-A",
+    "namn": "Svolder AB (publ)",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 150,
+    "kvot": 0.0002
+   },
+   {
+    "code": "SVOL-B",
+    "namn": "Svolder AB (publ)",
+    "datum_fore": "1999-12-30",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-03",
+    "kurs_efter": 146.5008,
+    "kvot": 0.0001
+   },
+   {
+    "code": "SWEC-A",
+    "namn": "Sweco AB (publ)",
+    "datum_fore": "1999-12-15",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-01-04",
+    "kurs_efter": 63.9495,
+    "kvot": 0.0001
+   },
+   {
+    "code": "TAGM-B",
+    "namn": "TagMaster AB Series B",
+    "datum_fore": "2021-05-05",
+    "kurs_fore": 1.27,
+    "datum_efter": "2021-05-06",
+    "kurs_efter": 31.8,
+    "kvot": 25.0394
+   },
+   {
+    "code": "TENEO",
+    "namn": "Calviks AB (publ)",
+    "datum_fore": "2019-03-11",
+    "kurs_fore": 0.24,
+    "datum_efter": "2019-03-12",
+    "kurs_efter": 7.0571,
+    "kvot": 30.0047
+   },
+   {
+    "code": "TESSIN",
+    "namn": "Tessin Nordic Holding AB",
+    "datum_fore": "2026-01-13",
+    "kurs_fore": 0.07,
+    "datum_efter": "2026-01-14",
+    "kurs_efter": 6.8,
+    "kvot": 103.0303
+   },
+   {
+    "code": "TRAC-B",
+    "namn": "AB Traction",
+    "datum_fore": "2000-05-23",
+    "kurs_fore": 1000000.0,
+    "datum_efter": "2000-05-24",
+    "kurs_efter": 125.0001,
+    "kvot": 0.0001
+   },
+   {
+    "code": "VAXXA",
+    "namn": "Vaxxa AB",
+    "datum_fore": "2024-03-13",
+    "kurs_fore": 0.01,
+    "datum_efter": "2024-03-14",
+    "kurs_efter": 0.8613,
+    "kvot": 100.1512
+   },
+   {
+    "code": "VESTUM",
+    "namn": "Vestum AB (publ)",
+    "datum_fore": "2020-07-15",
+    "kurs_fore": 0.01,
+    "datum_efter": "2020-07-16",
+    "kurs_efter": 3.3801,
+    "kvot": 489.8696
+   },
+   {
+    "code": "VETT",
+    "namn": "Vetted Assets AB",
+    "datum_fore": "2023-11-16",
+    "kurs_fore": 0.01,
+    "datum_efter": "2023-11-17",
+    "kurs_efter": 2.6995,
+    "kvot": 195.6159
+   },
+   {
+    "code": "VISC",
+    "namn": "Gruvaktiebolaget Viscaria",
+    "datum_fore": "2010-06-18",
+    "kurs_fore": 0.02,
+    "datum_efter": "2010-06-21",
+    "kurs_efter": 1.6882,
+    "kvot": 98.1512
+   },
+   {
+    "code": "VIVE",
+    "namn": "Vivesto AB",
+    "datum_fore": "2026-05-19",
+    "kurs_fore": 0.08,
+    "datum_efter": "2026-05-20",
+    "kurs_efter": 8.4,
+    "kvot": 100.0
+   },
+   {
+    "code": "VO2",
+    "namn": "Vo2 Cap Holding AB",
+    "datum_fore": "2021-09-17",
+    "kurs_fore": 0.63,
+    "datum_efter": "2021-09-20",
+    "kurs_efter": 28.0819,
+    "kvot": 44.6879
+   },
+   {
+    "code": "VSSAB-B",
+    "namn": "Viking Supply Ships AB (publ",
+    "datum_fore": "2018-01-24",
+    "kurs_fore": 0.27,
+    "datum_efter": "2018-01-25",
+    "kurs_efter": 26.6851,
+    "kvot": 100.3577
+   },
+   {
+    "code": "WISE",
+    "namn": "Wise Group AB",
+    "datum_fore": "2015-06-22",
+    "kurs_fore": 1.83,
+    "datum_efter": "2015-06-23",
+    "kurs_efter": 37,
+    "kvot": 20.2186
+   },
+   {
+    "code": "WTG",
+    "namn": "Wonderful Times Group AB",
+    "datum_fore": "2014-06-16",
+    "kurs_fore": 0.2,
+    "datum_efter": "2014-06-17",
+    "kurs_efter": 17.1,
+    "kvot": 85.5
+   },
+   {
+    "code": "WYLD",
+    "namn": "Wyld Networks AB",
+    "datum_fore": "2024-11-15",
+    "kurs_fore": 0.0,
+    "datum_efter": "2024-11-18",
+    "kurs_efter": 0.0212,
+    "kvot": 70.6667
+   },
+   {
+    "code": "XBRANE",
+    "namn": "Xbrane Biopharma AB",
+    "datum_fore": "2025-10-15",
+    "kurs_fore": 0.25,
+    "datum_efter": "2025-10-16",
+    "kurs_efter": 31.15,
+    "kvot": 123.6111
+   },
+   {
+    "code": "ZAPLOX",
+    "namn": "Zaplox AB",
+    "datum_fore": "2023-06-19",
+    "kurs_fore": 0.02,
+    "datum_efter": "2023-06-20",
+    "kurs_efter": 2.0984,
+    "kvot": 102.8627
+   }
+  ]
+ }
+}

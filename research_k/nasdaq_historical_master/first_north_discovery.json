@@ -1,0 +1,48 @@
+{
+  "schema": "FIRST_NORTH_DISCOVERY_V1",
+  "created_utc": "2026-08-18T20:18:51+00:00",
+  "finns": true,
+  "filnamn": "Equity Trading by Company and Instrument - First North YYMM.xlsx",
+  "aggregatvariant": "Total Equity Trading - First North YYMM.xlsx (Contents, First North Trading, Index Development — INTE instrumentniva)",
+  "discovery_status": "EJ UTTOMMANDE — 4 manader (2026-04..2026-07) natta i denna sokning. Historikens djup ar INTE faststallt. Kraver samma paginerade discovery som Main Market.",
+  "hamtat_sample": {
+    "fil": "raw/nasdaq_segment/first_north/first_north_instrument_2026-07.xlsx",
+    "sha256": "bc2833669bc807135e1de074c05d56c8cf035900ef944dfccffafd406763d9b3",
+    "bytes": 1038859
+  },
+  "workbookstruktur": [
+    "Contents",
+    "First North Trading Details",
+    "Company Trading",
+    "Company Trading per Exchange",
+    "Instrument Trading Details"
+  ],
+  "header_verbatim": "Instrument | Issuer Code | Orderbook Code | ISIN | Instrument Type | Industry | Supersector | Round Lot | LP Yes=Y | Currency | Issuer Country | Delisted | No of Shares Listed | Market Cap | Latest Paid",
+  "faltjamforelse_mot_main_market": {
+    "identiska": [
+      "Instrument",
+      "Orderbook Code",
+      "ISIN",
+      "Instrument Type",
+      "Industry",
+      "Supersector",
+      "Round Lot",
+      "Currency",
+      "Delisted",
+      "No of Shares Listed",
+      "Market Cap",
+      "Latest Paid"
+    ],
+    "saknas": [
+      "Location"
+    ],
+    "skiljer": [
+      "Issuer Code i st f Company Code",
+      "segmentband ar First North-nivaer (t.ex. 'First North Premier') i st f Large/Mid/Small Cap"
+    ]
+  },
+  "parser_kompatibilitet": "HOG men EJ direkt. Main Market-parsern faller pa saknad Location-kolumn. Kraver en First North-profil: Location defaultas till STO/marknadsplats, segmentvokabularen utokas, och filtret 'segment in {Large,Mid,Small} Cap' byts mot First North-nivaer.",
+  "market_cap_finns": true,
+  "turnover_finns": "ja, samma kolumnfamilj som Main Market",
+  "nasta_atgard": "Paginerad discovery av hela First North-serien innan ingestion planeras."
+}

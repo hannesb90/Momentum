@@ -1,0 +1,91 @@
+{
+ "schema": "HISTORICAL_ICB_FOUNDATION_V1",
+ "created_utc": "2026-08-18T20:28:42+00:00",
+ "instrument": 756,
+ "intervall_per_niva": {
+  "industry": 939,
+  "supersector": 1217,
+  "sector": 366,
+  "sub_industry": 380
+ },
+ "instrument_med_byte": {
+  "industry": 176,
+  "supersector": 398,
+  "sector": 3,
+  "sub_industry": 17
+ },
+ "andel_med_byte": {
+  "industry": 0.2328,
+  "supersector": 0.5265,
+  "sector": 0.004,
+  "sub_industry": 0.0225
+ },
+ "coverage": {
+  "industry": {
+   "2014_2019": 0.9954,
+   "2020_2026": 1.0,
+   "hela": 0.8752
+  },
+  "supersector": {
+   "2014_2019": 0.9954,
+   "2020_2026": 1.0,
+   "hela": 0.8752
+  },
+  "sector": {
+   "2014_2019": 0.0,
+   "2020_2026": 0.0,
+   "hela": 0.1217
+  },
+  "sub_industry": {
+   "2014_2019": 0.0,
+   "2020_2026": 0.0,
+   "hela": 0.1217
+  }
+ },
+ "taxonomiregim": {
+  "2009-08..2012-01": "sector + sub_industry",
+  "2012-02..2013-05": "indsutry(sic) + supersector",
+  "2013-06..2026-07": "industry + supersector"
+ },
+ "qa_fall": [
+  {
+   "kod": "AAK",
+   "industry_varden": [
+    "Consumer Goods",
+    "Consumer Staples"
+   ]
+  },
+  {
+   "kod": "AXFO",
+   "industry_varden": [
+    "Consumer Discretionary",
+    "Consumer Services",
+    "Consumer Staples"
+   ]
+  },
+  {
+   "kod": "ALIV SDB",
+   "industry_varden": [
+    "Consumer Discretionary",
+    "Consumer Goods"
+   ]
+  },
+  {
+   "kod": "BEIA B",
+   "industry_varden": [
+    "Basic Materials",
+    "Industrials"
+   ]
+  }
+ ],
+ "jamforelse_K1": {
+  "K1_instrument": 420,
+  "K1_med_fler_an_ett_intervall": 0,
+  "K1_coverage_2014_2019": 0.0,
+  "K1_valid_from_2020_01_02_andel": 0.829,
+  "nasdaq_med_fler_an_ett_industry": 176,
+  "slutsats": "Nasdaq-lagret representerar sektorbyten som K1 strukturellt inte kan uttrycka, och har tackning i 2014-2019 dar K1 har 0 %."
+ },
+ "governance_consequence": "K1:s historiska representation ar otillracklig for 2014-2019 och kan inte uttrycka sektorbyten. DETTA KRAVER ETT EXPLICIT BESLUT. K1:s status ar INTE andrad har.",
+ "ingen_bakatprojektion": true
+}

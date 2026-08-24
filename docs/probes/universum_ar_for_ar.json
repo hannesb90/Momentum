@@ -1,0 +1,327 @@
+{
+  "skatteverket_bolag": 1639,
+  "eodhd_aktiva": 1010,
+  "eodhd_avnoterade": 694,
+  "ar": {
+    "2010": {
+      "skv_avnoteringar": 30,
+      "i_eodhd": 2,
+      "saknas": 28,
+      "med_prisserie": 0,
+      "serie_tacker_avnoteringsdag": 0,
+      "exempel_saknade": [
+        "Affärsstrategerna AB",
+        "Bestin Prepackaged Service Software AB",
+        "BM Impex AB",
+        "Borås Wäfveri AB",
+        "Catech AB",
+        "Countermine Technologies AB",
+        "FastTV net AB",
+        "GiftToday Sweden AB"
+      ],
+      "skv_noterade": 554,
+      "noterade_i_eodhd": 282
+    },
+    "2011": {
+      "skv_avnoteringar": 31,
+      "i_eodhd": 0,
+      "saknas": 31,
+      "med_prisserie": 0,
+      "serie_tacker_avnoteringsdag": 0,
+      "exempel_saknade": [
+        "Allokton AB",
+        "Avalon Innovation AB",
+        "Biolin Scientific AB",
+        "BioPhausia AB",
+        "Brio AB",
+        "Devicom AB",
+        "EDI - Eriksson Development and Innovation Company AB",
+        "Ekomarine AB"
+      ],
+      "skv_noterade": 560,
+      "noterade_i_eodhd": 304
+    },
+    "2012": {
+      "skv_avnoteringar": 40,
+      "i_eodhd": 0,
+      "saknas": 40,
+      "med_prisserie": 0,
+      "serie_tacker_avnoteringsdag": 0,
+      "exempel_saknade": [
+        "A+ Science Holding AB",
+        "Adoperator AB",
+        "AdTail AB",
+        "Avonova Sverige AB",
+        "Axlon Group AB",
+        "Brandworld Sverige AB",
+        "Brinova Fastigheter AB (gamla)",
+        "Capilon AB"
+      ],
+      "skv_noterade": 550,
+      "noterade_i_eodhd": 318
+    },
+    "2013": {
+      "skv_avnoteringar": 22,
+      "i_eodhd": 0,
+      "saknas": 22,
+      "med_prisserie": 0,
+      "serie_tacker_avnoteringsdag": 0,
+      "exempel_saknade": [
+        "A-Com AB",
+        "Altero AB",
+        "Aqua Terrena International AB",
+        "Artimplant AB",
+        "AU Holding AB",
+        "Bore Tech AB",
+        "Coastal Contacts Inc.",
+        "Creative Antibiotics Sweden AB"
+      ],
+      "skv_noterade": 540,
+      "noterade_i_eodhd": 339
+    },
+    "2014": {
+      "skv_avnoteringar": 25,
+      "i_eodhd": 3,
+      "saknas": 22,
+      "med_prisserie": 3,
+      "serie_tacker_avnoteringsdag": 0,
+      "exempel_saknade": [
+        "Availo AB",
+        "COT-Clean Oil Technology AB",
+        "Cryptzone Group AB",
+        "ECO Byggolit AB",
+        "FDT System Holding AB",
+        "Fenix Outdoor AB",
+        "Forsstrom High Frequency",
+        "GuldAdam Holding AB"
+      ],
+      "skv_noterade": 605,
+      "noterade_i_eodhd": 395
+    },
+    "2015": {
+      "skv_avnoteringar": 23,
+      "i_eodhd": 10,
+      "saknas": 13,
+      "med_prisserie": 10,
+      "serie_tacker_avnoteringsdag": 5,
+      "exempel_saknade": [
+        "Accelerator Nordic AB",
+        "Aerocrine AB",
+        "Auragen Realty AB",
+        "Betting Promotion AB",
+        "CWS Comfort Window System AB",
+        "Dannemora Mineral AB",
+        "EXINI Diagnostics AB",
+        "Geveko AB"
+      ],
+      "skv_noterade": 681,
+      "noterade_i_eodhd": 460
+    },
+    "2016": {
+      "skv_avnoteringar": 14,
+      "i_eodhd": 6,
+      "saknas": 8,
+      "med_prisserie": 6,
+      "serie_tacker_avnoteringsdag": 6,
+      "exempel_saknade": [
+        "Delta Environmental Projects AB",
+        "Meda AB",
+        "MedClair International AB",
+        "Moretime Professional Services AB",
+        "Nordic Service Partners Holding AB",
+        "Petrosibir AB",
+        "Proffice AB",
+        "RealXState AB"
+      ],
+      "skv_noterade": 757,
+      "noterade_i_eodhd": 525
+    },
+    "2017": {
+      "skv_avnoteringar": 18,
+      "i_eodhd": 7,
+      "saknas": 11,
+      "med_prisserie": 7,
+      "serie_tacker_avnoteringsdag": 6,
+      "exempel_saknade": [
+        "Biotech-IgG Equity AB",
+        "Dignita Systems AB",
+        "Elverket Vallentuna AB",
+        "HQ AB",
+        "IFOX Investments AB",
+        "Matse Holding AB",
+        "Nordic Camping & Resort AB",
+        "Nordnet AB (gamla)"
+      ],
+      "skv_noterade": 865,
+      "noterade_i_eodhd": 606
+    },
+    "2018": {
+      "skv_avnoteringar": 30,
+      "i_eodhd": 12,
+      "saknas": 18,
+      "med_prisserie": 12,
+      "serie_tacker_avnoteringsdag": 9,
+      "exempel_saknade": [
+        "Aligera AB",
+        "Arcam AB",
+        "Avega Group AB",
+        "Com Hem Holding AB",
+        "Computer Innovation i Växjö AB",
+        "Evendo AB",
+        "House Of Friends AB",
+        "Högkullen"
+      ],
+      "skv_noterade": 917,
+      "noterade_i_eodhd": 660
+    },
+    "2019": {
+      "skv_avnoteringar": 20,
+      "i_eodhd": 6,
+      "saknas": 14,
+      "med_prisserie": 6,
+      "serie_tacker_avnoteringsdag": 6,
+      "exempel_saknade": [
+        "Cinnober Financial Technology AB",
+        "ExeoTech Invest AB",
+        "Hancap AB",
+        "Karlbergsvägen 77 Fastighets AB",
+        "Matra Petroleum AB",
+        "Mr Green & Co AB",
+        "Pallas Group AB",
+        "Panion Animal Health AB"
+      ],
+      "skv_noterade": 938,
+      "noterade_i_eodhd": 683
+    },
+    "2020": {
+      "skv_avnoteringar": 36,
+      "i_eodhd": 13,
+      "saknas": 23,
+      "med_prisserie": 13,
+      "serie_tacker_avnoteringsdag": 13,
+      "exempel_saknade": [
+        "Acconomy AB",
+        "AdCityMedia AB",
+        "Ambia Trading Group AB",
+        "Bråviken Logistik AB",
+        "Delarka Holding AB",
+        "Global Gaming 555 AB",
+        "Karessa Pharma Holding AB",
+        "Klick Data AB"
+      ],
+      "skv_noterade": 970,
+      "noterade_i_eodhd": 717
+    },
+    "2021": {
+      "skv_avnoteringar": 27,
+      "i_eodhd": 15,
+      "saknas": 12,
+      "med_prisserie": 15,
+      "serie_tacker_avnoteringsdag": 12,
+      "exempel_saknade": [
+        "ALLGON AB",
+        "ArcAroma AB",
+        "Colabitoil Sweden AB",
+        "iApotek Int AB",
+        "IDL Biotech AB",
+        "LifeAssays AB",
+        "MultiDocker Cargo Handling AB",
+        "Oboya Horticulture Industries AB"
+      ],
+      "skv_noterade": 1098,
+      "noterade_i_eodhd": 832
+    },
+    "2022": {
+      "skv_avnoteringar": 42,
+      "i_eodhd": 32,
+      "saknas": 10,
+      "med_prisserie": 32,
+      "serie_tacker_avnoteringsdag": 29,
+      "exempel_saknade": [
+        "Bosjö Fastigheter AB",
+        "Curira AB",
+        "Emotra AB",
+        "Halmslätten Fastighets AB",
+        "Hövding Sverige AB",
+        "Josab Water Solutions AB",
+        "Karo Healthcare AB",
+        "Lexington Company AB"
+      ],
+      "skv_noterade": 1124,
+      "noterade_i_eodhd": 855
+    },
+    "2023": {
+      "skv_avnoteringar": 38,
+      "i_eodhd": 23,
+      "saknas": 15,
+      "med_prisserie": 23,
+      "serie_tacker_avnoteringsdag": 18,
+      "exempel_saknade": [
+        "Aligro Planet Acquisition Company AB",
+        "Anima Group AB",
+        "EnergyO Solutions Russia AB",
+        "Eurocon Consulting AB",
+        "Genesis IT AB",
+        "MBRS Group AB",
+        "Meltron AB",
+        "Modern Ekonomi Sverige Holding AB"
+      ],
+      "skv_noterade": 1091,
+      "noterade_i_eodhd": 831
+    },
+    "2024": {
+      "skv_avnoteringar": 59,
+      "i_eodhd": 40,
+      "saknas": 19,
+      "med_prisserie": 40,
+      "serie_tacker_avnoteringsdag": 33,
+      "exempel_saknade": [
+        "Aventura Group AB",
+        "Ayima Group AB",
+        "Bellpal Holding AB",
+        "Besqab Bostadsutveckling AB",
+        "Biokraft International AB",
+        "Bogio Technologies AB",
+        "Cline Scientific AB",
+        "Deversify Health AB"
+      ],
+      "skv_noterade": 1078,
+      "noterade_i_eodhd": 823
+    },
+    "2025": {
+      "skv_avnoteringar": 65,
+      "i_eodhd": 44,
+      "saknas": 21,
+      "med_prisserie": 43,
+      "serie_tacker_avnoteringsdag": 33,
+      "exempel_saknade": [
+        "Akelius Residential AB",
+        "Bio Vitos Pharma AB",
+        "Carbiotix AB",
+        "Circle Energy Sweden AB",
+        "Condo Nordic Holding AB",
+        "DUG Foodtech AB",
+        "Eevia Health Oy",
+        "European Institute of Science AB"
+      ],
+      "skv_noterade": 1052,
+      "noterade_i_eodhd": 803
+    },
+    "2026": {
+      "skv_avnoteringar": 28,
+      "i_eodhd": 23,
+      "saknas": 5,
+      "med_prisserie": 20,
+      "serie_tacker_avnoteringsdag": 13,
+      "exempel_saknade": [
+        "Aike Media AB",
+        "Arise AB",
+        "Cinis Fertilizers AB",
+        "Niutech Group AB",
+        "Samtrygg Group AB"
+      ],
+      "skv_noterade": 1003,
+      "noterade_i_eodhd": 771
+    }
+  }
+}

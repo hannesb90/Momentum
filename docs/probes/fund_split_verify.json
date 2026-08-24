@@ -1,0 +1,2636 @@
+{
+ "n_instrument_med_split": 187,
+ "split_reflekterad_i_shares": 72,
+ "split_ej_reflekterad": 201,
+ "detaljer_ej_reflekterade": [
+  {
+   "insid": 1015,
+   "kod": "ALIF-B",
+   "år": 2020,
+   "splitdatum": [
+    "2020-05-27"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 110.468,
+   "shares_efter": 112.127,
+   "faktisk_kvot": 1.0150179237426222,
+   "reflekterad": false
+  },
+  {
+   "insid": 101,
+   "kod": "HMS",
+   "år": 2017,
+   "splitdatum": [
+    "2017-06-01"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 46.816,
+   "shares_efter": 46.816,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 102,
+   "kod": "HOLM-B",
+   "år": 2018,
+   "splitdatum": [
+    "2018-04-30"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 167.992,
+   "shares_efter": 167.992,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 108,
+   "kod": "IS",
+   "år": 2010,
+   "splitdatum": [
+    "2010-05-10"
+   ],
+   "splitfaktor": 1.3076923076923077,
+   "shares_fore": 0.0226,
+   "shares_efter": 0.0489,
+   "faktisk_kvot": 2.163716814159292,
+   "reflekterad": false
+  },
+  {
+   "insid": 108,
+   "kod": "IS",
+   "år": 2011,
+   "splitdatum": [
+    "2011-02-14",
+    "2011-03-11"
+   ],
+   "splitfaktor": 0.012158273381294965,
+   "shares_fore": 0.0489,
+   "shares_efter": 0.312,
+   "faktisk_kvot": 6.38036809815951,
+   "reflekterad": false
+  },
+  {
+   "insid": 108,
+   "kod": "IS",
+   "år": 2012,
+   "splitdatum": [
+    "2012-02-20"
+   ],
+   "splitfaktor": 1.6287425149700598,
+   "shares_fore": 0.312,
+   "shares_efter": 1.7646,
+   "faktisk_kvot": 5.655769230769231,
+   "reflekterad": false
+  },
+  {
+   "insid": 108,
+   "kod": "IS",
+   "år": 2014,
+   "splitdatum": [
+    "2014-10-17"
+   ],
+   "splitfaktor": 0.01,
+   "shares_fore": 8.8228,
+   "shares_efter": 8.8228,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 108,
+   "kod": "IS",
+   "år": 2015,
+   "splitdatum": [
+    "2015-04-01"
+   ],
+   "splitfaktor": 1.3706377858002408,
+   "shares_fore": 8.8228,
+   "shares_efter": 25.978,
+   "faktisk_kvot": 2.9444167384503785,
+   "reflekterad": false
+  },
+  {
+   "insid": 10,
+   "kod": "ALFA",
+   "år": 2008,
+   "splitdatum": [
+    "2008-06-05"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 440.61,
+   "shares_efter": 427.5,
+   "faktisk_kvot": 0.9702457956015523,
+   "reflekterad": false
+  },
+  {
+   "insid": 110,
+   "kod": "INDT",
+   "år": 2016,
+   "splitdatum": [
+    "2016-05-26"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 360.3604,
+   "shares_efter": 360.3604,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 110,
+   "kod": "INDT",
+   "år": 2020,
+   "splitdatum": [
+    "2020-12-17"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 362.7147,
+   "shares_efter": 363.615,
+   "faktisk_kvot": 1.0024821161094382,
+   "reflekterad": false
+  },
+  {
+   "insid": 1127,
+   "kod": "CARA",
+   "år": 2019,
+   "splitdatum": [
+    "2019-05-23"
+   ],
+   "splitfaktor": 0.25,
+   "shares_fore": 40.6338,
+   "shares_efter": 40.6338,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 114,
+   "kod": "ITAB",
+   "år": 2007,
+   "splitdatum": [
+    "2007-06-04"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 82.74,
+   "shares_efter": 83.94,
+   "faktisk_kvot": 1.0145032632342277,
+   "reflekterad": false
+  },
+  {
+   "insid": 114,
+   "kod": "ITAB",
+   "år": 2014,
+   "splitdatum": [
+    "2014-05-21"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 101.7,
+   "shares_efter": 101.718,
+   "faktisk_kvot": 1.0001769911504426,
+   "reflekterad": false
+  },
+  {
+   "insid": 114,
+   "kod": "ITAB",
+   "år": 2016,
+   "splitdatum": [
+    "2016-05-26"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 101.718,
+   "shares_efter": 102.077,
+   "faktisk_kvot": 1.003529365500698,
+   "reflekterad": false
+  },
+  {
+   "insid": 124,
+   "kod": "LAGR-B",
+   "år": 2016,
+   "splitdatum": [
+    "2015-10-05"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 203.321,
+   "shares_efter": 203.669,
+   "faktisk_kvot": 1.0017115792269369,
+   "reflekterad": false
+  },
+  {
+   "insid": 124,
+   "kod": "LAGR-B",
+   "år": 2021,
+   "splitdatum": [
+    "2020-10-07"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 203.144,
+   "shares_efter": 203.22,
+   "faktisk_kvot": 1.000374118851652,
+   "reflekterad": false
+  },
+  {
+   "insid": 126,
+   "kod": "LATO-B",
+   "år": 2007,
+   "splitdatum": [
+    "2007-06-01"
+   ],
+   "splitfaktor": 3.0,
+   "shares_fore": 524.4,
+   "shares_efter": 524.0,
+   "faktisk_kvot": 0.9992372234935164,
+   "reflekterad": false
+  },
+  {
+   "insid": 126,
+   "kod": "LATO-B",
+   "år": 2017,
+   "splitdatum": [
+    "2017-06-20"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 638.368,
+   "shares_efter": 638.672,
+   "faktisk_kvot": 1.0004762143465837,
+   "reflekterad": false
+  },
+  {
+   "insid": 1321,
+   "kod": "AVARDA",
+   "år": 2025,
+   "splitdatum": [
+    "2025-06-24",
+    "2025-07-18"
+   ],
+   "splitfaktor": 9.0,
+   "shares_fore": 64.5646,
+   "shares_efter": 64.65,
+   "faktisk_kvot": 1.001322706250794,
+   "reflekterad": false
+  },
+  {
+   "insid": 134,
+   "kod": "MEAB-B",
+   "år": 2007,
+   "splitdatum": [
+    "2007-06-12"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 8.0,
+   "shares_efter": 8.0,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 1374,
+   "kod": "EMBRAC-B",
+   "år": 2022,
+   "splitdatum": [
+    "2021-09-29"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 165.0,
+   "shares_efter": 171.3,
+   "faktisk_kvot": 1.0381818181818183,
+   "reflekterad": false
+  },
+  {
+   "insid": 1374,
+   "kod": "EMBRAC-B",
+   "år": 2025,
+   "splitdatum": [
+    "2025-01-15"
+   ],
+   "splitfaktor": 0.16666666666666666,
+   "shares_fore": 223.3333,
+   "shares_efter": 225.119,
+   "faktisk_kvot": 1.007995672835175,
+   "reflekterad": false
+  },
+  {
+   "insid": 1384,
+   "kod": "FLERIE",
+   "år": 2024,
+   "splitdatum": [
+    "2024-07-12"
+   ],
+   "splitfaktor": 0.01,
+   "shares_fore": 5.3269,
+   "shares_efter": 78.066,
+   "faktisk_kvot": 14.655052657267829,
+   "reflekterad": false
+  },
+  {
+   "insid": 1385,
+   "kod": "ATORX",
+   "år": 2021,
+   "splitdatum": [
+    "2021-01-04",
+    "2021-11-09"
+   ],
+   "splitfaktor": 1.1380743477256985,
+   "shares_fore": 0.0714,
+   "shares_efter": 0.2206,
+   "faktisk_kvot": 3.0896358543417364,
+   "reflekterad": false
+  },
+  {
+   "insid": 1385,
+   "kod": "ATORX",
+   "år": 2023,
+   "splitdatum": [
+    "2023-04-25"
+   ],
+   "splitfaktor": 1.65,
+   "shares_fore": 0.2206,
+   "shares_efter": 0.658,
+   "faktisk_kvot": 2.9827742520398917,
+   "reflekterad": false
+  },
+  {
+   "insid": 1385,
+   "kod": "ATORX",
+   "år": 2025,
+   "splitdatum": [
+    "2025-01-24",
+    "2025-04-07",
+    "2025-12-01"
+   ],
+   "splitfaktor": 0.04212999460952766,
+   "shares_fore": 0.759,
+   "shares_efter": 43.813,
+   "faktisk_kvot": 57.72463768115942,
+   "reflekterad": false
+  },
+  {
+   "insid": 13,
+   "kod": "ANOT",
+   "år": 2014,
+   "splitdatum": [
+    "2014-10-23"
+   ],
+   "splitfaktor": 1.0029850746268656,
+   "shares_fore": 7.3893,
+   "shares_efter": 15.7896,
+   "faktisk_kvot": 2.136819455158134,
+   "reflekterad": false
+  },
+  {
+   "insid": 13,
+   "kod": "ANOT",
+   "år": 2017,
+   "splitdatum": [
+    "2017-10-03"
+   ],
+   "splitfaktor": 0.03333333333333333,
+   "shares_fore": 59.757,
+   "shares_efter": 89.117,
+   "faktisk_kvot": 1.4913231922619945,
+   "reflekterad": false
+  },
+  {
+   "insid": 13,
+   "kod": "ANOT",
+   "år": 2024,
+   "splitdatum": [
+    "2024-11-27"
+   ],
+   "splitfaktor": 1.0862068965517242,
+   "shares_fore": 331.859,
+   "shares_efter": 1102.362,
+   "faktisk_kvot": 3.3217782250895715,
+   "reflekterad": false
+  },
+  {
+   "insid": 1406,
+   "kod": "ONCO",
+   "år": 2024,
+   "splitdatum": [
+    "2024-04-16"
+   ],
+   "splitfaktor": 1.4032191498142799,
+   "shares_fore": 90.368,
+   "shares_efter": 225.758,
+   "faktisk_kvot": 2.498207330028329,
+   "reflekterad": false
+  },
+  {
+   "insid": 140,
+   "kod": "MYCR",
+   "år": 2025,
+   "splitdatum": [
+    "2025-06-03"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 195.162,
+   "shares_efter": 195.201,
+   "faktisk_kvot": 1.0001998339840747,
+   "reflekterad": false
+  },
+  {
+   "insid": 1410,
+   "kod": "IRLAB-A",
+   "år": 2019,
+   "splitdatum": [
+    "2019-05-28"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 38.235,
+   "shares_efter": 40.495,
+   "faktisk_kvot": 1.059108146985746,
+   "reflekterad": false
+  },
+  {
+   "insid": 141,
+   "kod": "MSON-B",
+   "år": 2010,
+   "splitdatum": [
+    "2010-06-09"
+   ],
+   "splitfaktor": 0.25,
+   "shares_fore": 14.34,
+   "shares_efter": 22.74,
+   "faktisk_kvot": 1.5857740585774058,
+   "reflekterad": false
+  },
+  {
+   "insid": 1425,
+   "kod": "FMM-B",
+   "år": 2022,
+   "splitdatum": [
+    "2022-06-08"
+   ],
+   "splitfaktor": 3.0,
+   "shares_fore": 42.2553,
+   "shares_efter": 42.31,
+   "faktisk_kvot": 1.0012945121677046,
+   "reflekterad": false
+  },
+  {
+   "insid": 1437,
+   "kod": "INSTAL",
+   "år": 2022,
+   "splitdatum": [
+    "2022-01-27"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 260.1,
+   "shares_efter": 260.564,
+   "faktisk_kvot": 1.0017839292579778,
+   "reflekterad": false
+  },
+  {
+   "insid": 144,
+   "kod": "STWK",
+   "år": 2019,
+   "splitdatum": [
+    "2019-02-21"
+   ],
+   "splitfaktor": 0.002,
+   "shares_fore": 3.9972,
+   "shares_efter": 4.116,
+   "faktisk_kvot": 1.0297208045631943,
+   "reflekterad": false
+  },
+  {
+   "insid": 147,
+   "kod": "SAFETY-B",
+   "år": 2018,
+   "splitdatum": [
+    "2018-01-30"
+   ],
+   "splitfaktor": 0.05,
+   "shares_fore": 3.357,
+   "shares_efter": 3.773,
+   "faktisk_kvot": 1.1239201668156091,
+   "reflekterad": false
+  },
+  {
+   "insid": 147,
+   "kod": "SAFETY-B",
+   "år": 2022,
+   "splitdatum": [
+    "2022-11-16"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 5.536,
+   "shares_efter": 5.536,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 1487,
+   "kod": "SEDANA",
+   "år": 2021,
+   "splitdatum": [
+    "2021-05-26"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 92.184,
+   "shares_efter": 92.184,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 1490,
+   "kod": "TRIAN-B",
+   "år": 2022,
+   "splitdatum": [
+    "2022-05-25"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 150.108,
+   "shares_efter": 157.506,
+   "faktisk_kvot": 1.0492845151490926,
+   "reflekterad": false
+  },
+  {
+   "insid": 152,
+   "kod": "NMAN",
+   "år": 2018,
+   "splitdatum": [
+    "2018-05-16"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 35.073,
+   "shares_efter": 35.073,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 155,
+   "kod": "NEWA-B",
+   "år": 2023,
+   "splitdatum": [
+    "2023-06-12"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 132.688,
+   "shares_efter": 132.688,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 156,
+   "kod": "NIBE-B",
+   "år": 2016,
+   "splitdatum": [
+    "2016-05-27",
+    "2016-10-04"
+   ],
+   "splitfaktor": 4.194470924690181,
+   "shares_fore": 1764.064,
+   "shares_efter": 1878.5,
+   "faktisk_kvot": 1.0648706622888966,
+   "reflekterad": false
+  },
+  {
+   "insid": 156,
+   "kod": "NIBE-B",
+   "år": 2021,
+   "splitdatum": [
+    "2021-05-25"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 2016.064,
+   "shares_efter": 2016.064,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 158,
+   "kod": "NOLA-B",
+   "år": 2021,
+   "splitdatum": [
+    "2021-05-12"
+   ],
+   "splitfaktor": 10.0,
+   "shares_fore": 266.31,
+   "shares_efter": 268.491,
+   "faktisk_kvot": 1.008189703728737,
+   "reflekterad": false
+  },
+  {
+   "insid": 1610,
+   "kod": "ERIC-A",
+   "år": 2008,
+   "splitdatum": [
+    "2008-06-02"
+   ],
+   "splitfaktor": 0.2,
+   "shares_fore": 3180.0,
+   "shares_efter": 3185.0,
+   "faktisk_kvot": 1.001572327044025,
+   "reflekterad": false
+  },
+  {
+   "insid": 1616,
+   "kod": "INDU-A",
+   "år": 2007,
+   "splitdatum": [
+    "2007-04-25"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 386.208,
+   "shares_efter": 386.0834,
+   "faktisk_kvot": 0.999677375921783,
+   "reflekterad": false
+  },
+  {
+   "insid": 1617,
+   "kod": "INVE-A",
+   "år": 2021,
+   "splitdatum": [
+    "2021-05-19"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 3058.788,
+   "shares_efter": 3058.788,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 1626,
+   "kod": "SAGA-B",
+   "år": 2019,
+   "splitdatum": [
+    "2019-05-31"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 316.6,
+   "shares_efter": 317.1,
+   "faktisk_kvot": 1.0015792798483891,
+   "reflekterad": false
+  },
+  {
+   "insid": 1636,
+   "kod": "SWEC-A",
+   "år": 2007,
+   "splitdatum": [
+    "2007-05-08"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 253.003,
+   "shares_efter": 253.033,
+   "faktisk_kvot": 1.0001185756690631,
+   "reflekterad": false
+  },
+  {
+   "insid": 1636,
+   "kod": "SWEC-A",
+   "år": 2020,
+   "splitdatum": [
+    "2020-11-10"
+   ],
+   "splitfaktor": 3.0,
+   "shares_fore": 353.0631,
+   "shares_efter": 354.626,
+   "faktisk_kvot": 1.004426687467481,
+   "reflekterad": false
+  },
+  {
+   "insid": 168,
+   "kod": "OEM-B",
+   "år": 2007,
+   "splitdatum": [
+    "2007-05-15"
+   ],
+   "splitfaktor": 3.0,
+   "shares_fore": 139.1592,
+   "shares_efter": 139.1592,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 168,
+   "kod": "OEM-B",
+   "år": 2021,
+   "splitdatum": [
+    "2021-05-03"
+   ],
+   "splitfaktor": 3.0,
+   "shares_fore": 139.1532,
+   "shares_efter": 139.014,
+   "faktisk_kvot": 0.9989996636800305,
+   "reflekterad": false
+  },
+  {
+   "insid": 168,
+   "kod": "OEM-B",
+   "år": 2022,
+   "splitdatum": [
+    "2022-05-06"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 139.014,
+   "shares_efter": 138.644,
+   "faktisk_kvot": 0.9973383975714676,
+   "reflekterad": false
+  },
+  {
+   "insid": 1695,
+   "kod": "NCAB",
+   "år": 2021,
+   "splitdatum": [
+    "2021-12-28"
+   ],
+   "splitfaktor": 10.0,
+   "shares_fore": 181.15,
+   "shares_efter": 186.97,
+   "faktisk_kvot": 1.0321280706596743,
+   "reflekterad": false
+  },
+  {
+   "insid": 1698,
+   "kod": "OVZON",
+   "år": 2019,
+   "splitdatum": [
+    "2019-01-04"
+   ],
+   "splitfaktor": 1.77375,
+   "shares_fore": 8.396,
+   "shares_efter": 33.585,
+   "faktisk_kvot": 4.000119104335398,
+   "reflekterad": false
+  },
+  {
+   "insid": 175,
+   "kod": "PEAB-B",
+   "år": 2007,
+   "splitdatum": [
+    "2007-09-25"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 159.8,
+   "shares_efter": 168.8,
+   "faktisk_kvot": 1.0563204005006257,
+   "reflekterad": false
+  },
+  {
+   "insid": 1774,
+   "kod": "QLINEA",
+   "år": 2025,
+   "splitdatum": [
+    "2025-01-13",
+    "2025-07-14",
+    "2025-10-22"
+   ],
+   "splitfaktor": 0.007569411206077873,
+   "shares_fore": 0.1172,
+   "shares_efter": 18.949,
+   "faktisk_kvot": 161.68088737201367,
+   "reflekterad": false
+  },
+  {
+   "insid": 178,
+   "kod": "PREC",
+   "år": 2012,
+   "splitdatum": [
+    "2012-09-13"
+   ],
+   "splitfaktor": 1.1361256544502618,
+   "shares_fore": 16.645,
+   "shares_efter": 26.452,
+   "faktisk_kvot": 1.5891859417242418,
+   "reflekterad": false
+  },
+  {
+   "insid": 178,
+   "kod": "PREC",
+   "år": 2022,
+   "splitdatum": [
+    "2022-06-09"
+   ],
+   "splitfaktor": 0.1,
+   "shares_fore": 36.0231,
+   "shares_efter": 47.513,
+   "faktisk_kvot": 1.3189592233872154,
+   "reflekterad": false
+  },
+  {
+   "insid": 178,
+   "kod": "PREC",
+   "år": 2023,
+   "splitdatum": [
+    "2023-05-11"
+   ],
+   "splitfaktor": 1.146341463414634,
+   "shares_fore": 47.513,
+   "shares_efter": 78.464,
+   "faktisk_kvot": 1.6514217161618925,
+   "reflekterad": false
+  },
+  {
+   "insid": 17,
+   "kod": "ASSA-B",
+   "år": 2015,
+   "splitdatum": [
+    "2015-06-02"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 1110.777,
+   "shares_efter": 1110.776,
+   "faktisk_kvot": 0.9999990997292886,
+   "reflekterad": false
+  },
+  {
+   "insid": 180,
+   "kod": "PRIC-B",
+   "år": 2011,
+   "splitdatum": [
+    "2011-05-19"
+   ],
+   "splitfaktor": 0.1,
+   "shares_fore": 103.58,
+   "shares_efter": 107.26,
+   "faktisk_kvot": 1.0355280942266847,
+   "reflekterad": false
+  },
+  {
+   "insid": 181,
+   "kod": "PACT",
+   "år": 2021,
+   "splitdatum": [
+    "2021-05-19"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 27.4805,
+   "shares_efter": 27.453,
+   "faktisk_kvot": 0.9989992904059242,
+   "reflekterad": false
+  },
+  {
+   "insid": 186,
+   "kod": "RAY-B",
+   "år": 2008,
+   "splitdatum": [
+    "2008-06-25"
+   ],
+   "splitfaktor": 3.0,
+   "shares_fore": 34.28,
+   "shares_efter": 34.28,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 1887,
+   "kod": "KFAST-B",
+   "år": 2021,
+   "splitdatum": [
+    "2021-06-07"
+   ],
+   "splitfaktor": 6.0,
+   "shares_fore": 203.4093,
+   "shares_efter": 215.331,
+   "faktisk_kvot": 1.058609414613786,
+   "reflekterad": false
+  },
+  {
+   "insid": 191,
+   "kod": "RROS",
+   "år": 2009,
+   "splitdatum": [
+    "2009-11-16"
+   ],
+   "splitfaktor": 4.125004193645788,
+   "shares_fore": 18.02,
+   "shares_efter": 26.88,
+   "faktisk_kvot": 1.4916759156492785,
+   "reflekterad": false
+  },
+  {
+   "insid": 191,
+   "kod": "RROS",
+   "år": 2010,
+   "splitdatum": [
+    "2010-05-05"
+   ],
+   "splitfaktor": 0.1,
+   "shares_fore": 26.88,
+   "shares_efter": 152.57,
+   "faktisk_kvot": 5.675967261904762,
+   "reflekterad": false
+  },
+  {
+   "insid": 191,
+   "kod": "RROS",
+   "år": 2025,
+   "splitdatum": [
+    "2025-06-13"
+   ],
+   "splitfaktor": 1.1695859872611465,
+   "shares_fore": 152.572,
+   "shares_efter": 267.001,
+   "faktisk_kvot": 1.7499999999999998,
+   "reflekterad": false
+  },
+  {
+   "insid": 193,
+   "kod": "SAAB-B",
+   "år": 2024,
+   "splitdatum": [
+    "2024-05-07"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 531.536,
+   "shares_efter": 533.576,
+   "faktisk_kvot": 1.003837933837031,
+   "reflekterad": false
+  },
+  {
+   "insid": 197,
+   "kod": "SCA-B",
+   "år": 2007,
+   "splitdatum": [
+    "2007-05-07"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 3525.5,
+   "shares_efter": 3525.5,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 19,
+   "kod": "ATCO-A",
+   "år": 2007,
+   "splitdatum": [
+    "2007-05-18"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 5024.0,
+   "shares_efter": 4888.0,
+   "faktisk_kvot": 0.9729299363057324,
+   "reflekterad": false
+  },
+  {
+   "insid": 19,
+   "kod": "ATCO-A",
+   "år": 2022,
+   "splitdatum": [
+    "2022-05-13"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 4870.8,
+   "shares_efter": 4870.0,
+   "faktisk_kvot": 0.9998357559333169,
+   "reflekterad": false
+  },
+  {
+   "insid": 200,
+   "kod": "SECT-B",
+   "år": 2022,
+   "splitdatum": [
+    "2021-09-24"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 192.55,
+   "shares_efter": 192.662,
+   "faktisk_kvot": 1.0005816670994547,
+   "reflekterad": false
+  },
+  {
+   "insid": 203,
+   "kod": "SGG",
+   "år": 2023,
+   "splitdatum": [
+    "2023-06-15"
+   ],
+   "splitfaktor": 0.0125,
+   "shares_fore": 11.5222,
+   "shares_efter": 11.53,
+   "faktisk_kvot": 1.0006769540539133,
+   "reflekterad": false
+  },
+  {
+   "insid": 209,
+   "kod": "SKIS-B",
+   "år": 2019,
+   "splitdatum": [
+    "2019-01-16"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 78.376,
+   "shares_efter": 78.376,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 20,
+   "kod": "ATRLJ-B",
+   "år": 2007,
+   "splitdatum": [
+    "2007-04-17"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 367.8677,
+   "shares_efter": 650.8,
+   "faktisk_kvot": 1.769114276681535,
+   "reflekterad": false
+  },
+  {
+   "insid": 20,
+   "kod": "ATRLJ-B",
+   "år": 2025,
+   "splitdatum": [
+    "2025-04-09"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 630.53,
+   "shares_efter": 666.103,
+   "faktisk_kvot": 1.0564176169254436,
+   "reflekterad": false
+  },
+  {
+   "insid": 2104,
+   "kod": "ACRI-B",
+   "år": 2021,
+   "splitdatum": [
+    "2021-05-06"
+   ],
+   "splitfaktor": 1.0465116279069768,
+   "shares_fore": 20.647,
+   "shares_efter": 42.664,
+   "faktisk_kvot": 2.0663534653944886,
+   "reflekterad": false
+  },
+  {
+   "insid": 2109,
+   "kod": "PIERCE",
+   "år": 2022,
+   "splitdatum": [
+    "2022-06-09"
+   ],
+   "splitfaktor": 1.2294151050539466,
+   "shares_fore": 39.687,
+   "shares_efter": 79.374,
+   "faktisk_kvot": 2.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 215,
+   "kod": "SVOL-B",
+   "år": 2018,
+   "splitdatum": [
+    "2017-12-14"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 102.4,
+   "shares_efter": 102.4,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 215,
+   "kod": "SVOL-B",
+   "år": 2022,
+   "splitdatum": [
+    "2022-01-14"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 102.4,
+   "shares_efter": 102.4,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 219,
+   "kod": "SOBI",
+   "år": 2009,
+   "splitdatum": [
+    "2009-12-07"
+   ],
+   "splitfaktor": 1.9972144846796658,
+   "shares_fore": 48.36,
+   "shares_efter": 50.79,
+   "faktisk_kvot": 1.0502481389578164,
+   "reflekterad": false
+  },
+  {
+   "insid": 221,
+   "kod": "SYSR",
+   "år": 2022,
+   "splitdatum": [
+    "2021-09-06"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 208.0,
+   "shares_efter": 208.0,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 226,
+   "kod": "TRAD",
+   "år": 2024,
+   "splitdatum": [
+    "2024-09-09"
+   ],
+   "splitfaktor": 1.008130081300813,
+   "shares_fore": 45.136,
+   "shares_efter": 59.425,
+   "faktisk_kvot": 1.3165765685926976,
+   "reflekterad": false
+  },
+  {
+   "insid": 22,
+   "kod": "AZA",
+   "år": 2019,
+   "splitdatum": [
+    "2019-04-15"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 150.43,
+   "shares_efter": 152.115,
+   "faktisk_kvot": 1.0112012231602738,
+   "reflekterad": false
+  },
+  {
+   "insid": 2314,
+   "kod": "LOGI-B",
+   "år": 2021,
+   "splitdatum": [
+    "2021-11-23"
+   ],
+   "splitfaktor": 0.1,
+   "shares_fore": 36.259,
+   "shares_efter": 96.777,
+   "faktisk_kvot": 2.669047684712761,
+   "reflekterad": false
+  },
+  {
+   "insid": 235,
+   "kod": "VITR",
+   "år": 2018,
+   "splitdatum": [
+    "2018-05-17"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 108.55,
+   "shares_efter": 108.55,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 236,
+   "kod": "VOLV-B",
+   "år": 2007,
+   "splitdatum": [
+    "2007-04-26"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 2025.9029,
+   "shares_efter": 2025.0,
+   "faktisk_kvot": 0.9995543221740785,
+   "reflekterad": false
+  },
+  {
+   "insid": 238,
+   "kod": "WALL-B",
+   "år": 2011,
+   "splitdatum": [
+    "2011-05-23"
+   ],
+   "splitfaktor": 3.0,
+   "shares_fore": 689.12,
+   "shares_efter": 687.2,
+   "faktisk_kvot": 0.9972138379382401,
+   "reflekterad": false
+  },
+  {
+   "insid": 238,
+   "kod": "WALL-B",
+   "år": 2015,
+   "splitdatum": [
+    "2015-05-25"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 672.8,
+   "shares_efter": 667.072,
+   "faktisk_kvot": 0.991486325802616,
+   "reflekterad": false
+  },
+  {
+   "insid": 238,
+   "kod": "WALL-B",
+   "år": 2022,
+   "splitdatum": [
+    "2022-05-23"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 653.778,
+   "shares_efter": 660.0,
+   "faktisk_kvot": 1.0095169920064608,
+   "reflekterad": false
+  },
+  {
+   "insid": 239,
+   "kod": "WIHL",
+   "år": 2011,
+   "splitdatum": [
+    "2011-05-23"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 305.96,
+   "shares_efter": 307.44,
+   "faktisk_kvot": 1.0048372336253106,
+   "reflekterad": false
+  },
+  {
+   "insid": 239,
+   "kod": "WIHL",
+   "år": 2018,
+   "splitdatum": [
+    "2018-05-23"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 307.428,
+   "shares_efter": 307.428,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 239,
+   "kod": "WIHL",
+   "år": 2022,
+   "splitdatum": [
+    "2022-05-23"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 307.428,
+   "shares_efter": 307.428,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 240,
+   "kod": "XANO-B",
+   "år": 2017,
+   "splitdatum": [
+    "2017-06-08"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 54.664,
+   "shares_efter": 55.252,
+   "faktisk_kvot": 1.0107566222742572,
+   "reflekterad": false
+  },
+  {
+   "insid": 240,
+   "kod": "XANO-B",
+   "år": 2019,
+   "splitdatum": [
+    "2019-06-11"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 55.784,
+   "shares_efter": 55.79,
+   "faktisk_kvot": 1.0001075577226446,
+   "reflekterad": false
+  },
+  {
+   "insid": 240,
+   "kod": "XANO-B",
+   "år": 2022,
+   "splitdatum": [
+    "2022-06-14"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 57.858,
+   "shares_efter": 57.985,
+   "faktisk_kvot": 1.002195029209444,
+   "reflekterad": false
+  },
+  {
+   "insid": 241,
+   "kod": "AFRY",
+   "år": 2010,
+   "splitdatum": [
+    "2010-05-31"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 69.3569,
+   "shares_efter": 68.12,
+   "faktisk_kvot": 0.9821661579453523,
+   "reflekterad": false
+  },
+  {
+   "insid": 241,
+   "kod": "AFRY",
+   "år": 2014,
+   "splitdatum": [
+    "2014-06-13"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 77.78,
+   "shares_efter": 77.252,
+   "faktisk_kvot": 0.9932116225250707,
+   "reflekterad": false
+  },
+  {
+   "insid": 243,
+   "kod": "KDEV",
+   "år": 2022,
+   "splitdatum": [
+    "2022-01-13"
+   ],
+   "splitfaktor": 1.1292576419213973,
+   "shares_fore": 175.421,
+   "shares_efter": 270.077,
+   "faktisk_kvot": 1.5395933212101174,
+   "reflekterad": false
+  },
+  {
+   "insid": 244,
+   "kod": "BOUL",
+   "år": 2018,
+   "splitdatum": [
+    "2018-06-01"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 19.156,
+   "shares_efter": 19.352,
+   "faktisk_kvot": 1.0102317811651702,
+   "reflekterad": false
+  },
+  {
+   "insid": 244,
+   "kod": "BOUL",
+   "år": 2022,
+   "splitdatum": [
+    "2022-11-09"
+   ],
+   "splitfaktor": 1.4122137404580153,
+   "shares_fore": 19.416,
+   "shares_efter": 38.833,
+   "faktisk_kvot": 2.0000515039142974,
+   "reflekterad": false
+  },
+  {
+   "insid": 246,
+   "kod": "MOB",
+   "år": 2022,
+   "splitdatum": [
+    "2022-05-10"
+   ],
+   "splitfaktor": 1.035661218424963,
+   "shares_fore": 4.3039,
+   "shares_efter": 9.8269,
+   "faktisk_kvot": 2.283254722461024,
+   "reflekterad": false
+  },
+  {
+   "insid": 246,
+   "kod": "MOB",
+   "år": 2023,
+   "splitdatum": [
+    "2023-05-24",
+    "2023-08-11"
+   ],
+   "splitfaktor": 0.15000000000000002,
+   "shares_fore": 9.8269,
+   "shares_efter": 27.961,
+   "faktisk_kvot": 2.845353061494469,
+   "reflekterad": false
+  },
+  {
+   "insid": 24,
+   "kod": "AXFO",
+   "år": 2015,
+   "splitdatum": [
+    "2015-04-17"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 209.872,
+   "shares_efter": 209.871,
+   "faktisk_kvot": 0.9999952351909736,
+   "reflekterad": false
+  },
+  {
+   "insid": 252,
+   "kod": "VIT-B",
+   "år": 2015,
+   "splitdatum": [
+    "2015-12-22"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 28.005,
+   "shares_efter": 29.396,
+   "faktisk_kvot": 1.0496697018389574,
+   "reflekterad": false
+  },
+  {
+   "insid": 255,
+   "kod": "MOMENT",
+   "år": 2023,
+   "splitdatum": [
+    "2023-06-16"
+   ],
+   "splitfaktor": 0.05,
+   "shares_fore": 22.5999,
+   "shares_efter": 22.599,
+   "faktisk_kvot": 0.9999601768149416,
+   "reflekterad": false
+  },
+  {
+   "insid": 278,
+   "kod": "CRED-A",
+   "år": 2021,
+   "splitdatum": [
+    "2021-04-27"
+   ],
+   "splitfaktor": 10.0,
+   "shares_fore": 124.65,
+   "shares_efter": 135.762,
+   "faktisk_kvot": 1.0891456077015644,
+   "reflekterad": false
+  },
+  {
+   "insid": 27,
+   "kod": "BEGR",
+   "år": 2015,
+   "splitdatum": [
+    "2015-05-12"
+   ],
+   "splitfaktor": 1.8557046979865772,
+   "shares_fore": 3.4003,
+   "shares_efter": 9.0161,
+   "faktisk_kvot": 2.651560156456783,
+   "reflekterad": false
+  },
+  {
+   "insid": 27,
+   "kod": "BEGR",
+   "år": 2016,
+   "splitdatum": [
+    "2016-05-19"
+   ],
+   "splitfaktor": 0.05,
+   "shares_fore": 9.0161,
+   "shares_efter": 12.9832,
+   "faktisk_kvot": 1.4400017746032099,
+   "reflekterad": false
+  },
+  {
+   "insid": 27,
+   "kod": "BEGR",
+   "år": 2025,
+   "splitdatum": [
+    "2025-08-28"
+   ],
+   "splitfaktor": 1.1176129779837776,
+   "shares_fore": 12.9832,
+   "shares_efter": 19.475,
+   "faktisk_kvot": 1.500015404522768,
+   "reflekterad": false
+  },
+  {
+   "insid": 28,
+   "kod": "BEIJ-B",
+   "år": 2007,
+   "splitdatum": [
+    "2007-05-29"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 224.1441,
+   "shares_efter": 224.1441,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 28,
+   "kod": "BEIJ-B",
+   "år": 2012,
+   "splitdatum": [
+    "2012-05-29"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 382.7027,
+   "shares_efter": 381.8919,
+   "faktisk_kvot": 0.997881384165829,
+   "reflekterad": false
+  },
+  {
+   "insid": 28,
+   "kod": "BEIJ-B",
+   "år": 2018,
+   "splitdatum": [
+    "2018-04-24"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 381.9009,
+   "shares_efter": 381.9009,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 28,
+   "kod": "BEIJ-B",
+   "år": 2021,
+   "splitdatum": [
+    "2021-04-23"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 381.9009,
+   "shares_efter": 382.304,
+   "faktisk_kvot": 1.0010555094266602,
+   "reflekterad": false
+  },
+  {
+   "insid": 293,
+   "kod": "EPIS-B",
+   "år": 2011,
+   "splitdatum": [
+    "2011-07-20"
+   ],
+   "splitfaktor": 0.16666666666666666,
+   "shares_fore": 2.32,
+   "shares_efter": 4.63,
+   "faktisk_kvot": 1.995689655172414,
+   "reflekterad": false
+  },
+  {
+   "insid": 29,
+   "kod": "BEIA-B",
+   "år": 2018,
+   "splitdatum": [
+    "2018-05-29"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 60.262,
+   "shares_efter": 60.262,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 2,
+   "kod": "AAK",
+   "år": 2018,
+   "splitdatum": [
+    "2018-06-13"
+   ],
+   "splitfaktor": 6.000023964149632,
+   "shares_fore": 253.728,
+   "shares_efter": 253.728,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 301,
+   "kod": "HNSA",
+   "år": 2010,
+   "splitdatum": [
+    "2010-03-17"
+   ],
+   "splitfaktor": 1.1358024691358024,
+   "shares_fore": 3.86,
+   "shares_efter": 7.7,
+   "faktisk_kvot": 1.9948186528497411,
+   "reflekterad": false
+  },
+  {
+   "insid": 302,
+   "kod": "STEF-B",
+   "år": 2014,
+   "splitdatum": [
+    "2014-02-14",
+    "2014-12-16"
+   ],
+   "splitfaktor": 0.29975922953451045,
+   "shares_fore": 0.645,
+   "shares_efter": 3.854,
+   "faktisk_kvot": 5.975193798449612,
+   "reflekterad": false
+  },
+  {
+   "insid": 30,
+   "kod": "EPEN",
+   "år": 2011,
+   "splitdatum": [
+    "2011-06-27"
+   ],
+   "splitfaktor": 3.0,
+   "shares_fore": 18.9,
+   "shares_efter": 18.9,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 312,
+   "kod": "VISC",
+   "år": 2023,
+   "splitdatum": [
+    "2023-12-13"
+   ],
+   "splitfaktor": 0.05,
+   "shares_fore": 76.7,
+   "shares_efter": 90.08,
+   "faktisk_kvot": 1.1744458930899608,
+   "reflekterad": false
+  },
+  {
+   "insid": 32,
+   "kod": "BETS-B",
+   "år": 2015,
+   "splitdatum": [
+    "2015-05-22"
+   ],
+   "splitfaktor": 3.0,
+   "shares_fore": 136.8,
+   "shares_efter": 138.2,
+   "faktisk_kvot": 1.0102339181286548,
+   "reflekterad": false
+  },
+  {
+   "insid": 33,
+   "kod": "BILI-A",
+   "år": 2015,
+   "splitdatum": [
+    "2015-05-27"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 100.604,
+   "shares_efter": 100.812,
+   "faktisk_kvot": 1.002067512226154,
+   "reflekterad": false
+  },
+  {
+   "insid": 33,
+   "kod": "BILI-A",
+   "år": 2017,
+   "splitdatum": [
+    "2017-06-05"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 102.262,
+   "shares_efter": 102.37,
+   "faktisk_kvot": 1.0010561107742857,
+   "reflekterad": false
+  },
+  {
+   "insid": 355,
+   "kod": "VESTUM",
+   "år": 2014,
+   "splitdatum": [
+    "2014-06-16"
+   ],
+   "splitfaktor": 1.1142857142857143,
+   "shares_fore": 0.0997,
+   "shares_efter": 0.1815,
+   "faktisk_kvot": 1.8204613841524573,
+   "reflekterad": false
+  },
+  {
+   "insid": 355,
+   "kod": "VESTUM",
+   "år": 2017,
+   "splitdatum": [
+    "2017-08-03"
+   ],
+   "splitfaktor": 1.027237354085603,
+   "shares_fore": 0.5304,
+   "shares_efter": 0.939,
+   "faktisk_kvot": 1.7703619909502262,
+   "reflekterad": false
+  },
+  {
+   "insid": 355,
+   "kod": "VESTUM",
+   "år": 2019,
+   "splitdatum": [
+    "2019-08-23"
+   ],
+   "splitfaktor": 1.5,
+   "shares_fore": 2.5648,
+   "shares_efter": 16.1483,
+   "faktisk_kvot": 6.2961244541484715,
+   "reflekterad": false
+  },
+  {
+   "insid": 355,
+   "kod": "VESTUM",
+   "år": 2020,
+   "splitdatum": [
+    "2020-07-16"
+   ],
+   "splitfaktor": 0.002,
+   "shares_fore": 16.1483,
+   "shares_efter": 36.9909,
+   "faktisk_kvot": 2.29069933057969,
+   "reflekterad": false
+  },
+  {
+   "insid": 355,
+   "kod": "VESTUM",
+   "år": 2021,
+   "splitdatum": [
+    "2021-12-28"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 36.9909,
+   "shares_efter": 348.498,
+   "faktisk_kvot": 9.421181966375514,
+   "reflekterad": false
+  },
+  {
+   "insid": 357,
+   "kod": "WISE",
+   "år": 2015,
+   "splitdatum": [
+    "2015-06-23"
+   ],
+   "splitfaktor": 0.05,
+   "shares_fore": 7.3909,
+   "shares_efter": 7.3909,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 35,
+   "kod": "BIOG-B",
+   "år": 2022,
+   "splitdatum": [
+    "2022-05-18"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 100.98,
+   "shares_efter": 100.982,
+   "faktisk_kvot": 1.0000198059021588,
+   "reflekterad": false
+  },
+  {
+   "insid": 36,
+   "kod": "BINV",
+   "år": 2015,
+   "splitdatum": [
+    "2015-04-23"
+   ],
+   "splitfaktor": 1.1070075757575757,
+   "shares_fore": 4.5116,
+   "shares_efter": 6.5168,
+   "faktisk_kvot": 1.444454295593581,
+   "reflekterad": false
+  },
+  {
+   "insid": 36,
+   "kod": "BINV",
+   "år": 2016,
+   "splitdatum": [
+    "2016-03-21"
+   ],
+   "splitfaktor": 1.08,
+   "shares_fore": 6.5168,
+   "shares_efter": 11.3089,
+   "faktisk_kvot": 1.7353455683771175,
+   "reflekterad": false
+  },
+  {
+   "insid": 36,
+   "kod": "BINV",
+   "år": 2019,
+   "splitdatum": [
+    "2019-03-22"
+   ],
+   "splitfaktor": 1.0027063599458728,
+   "shares_fore": 14.032,
+   "shares_efter": 20.0708,
+   "faktisk_kvot": 1.4303591790193841,
+   "reflekterad": false
+  },
+  {
+   "insid": 36,
+   "kod": "BINV",
+   "år": 2020,
+   "splitdatum": [
+    "2020-07-15",
+    "2020-12-14"
+   ],
+   "splitfaktor": 0.04071428571428571,
+   "shares_fore": 20.0708,
+   "shares_efter": 39.376,
+   "faktisk_kvot": 1.961855033182534,
+   "reflekterad": false
+  },
+  {
+   "insid": 375,
+   "kod": "BUFAB",
+   "år": 2025,
+   "splitdatum": [
+    "2025-05-09"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 189.355,
+   "shares_efter": 189.787,
+   "faktisk_kvot": 1.0022814290618152,
+   "reflekterad": false
+  },
+  {
+   "insid": 38,
+   "kod": "BORG",
+   "år": 2007,
+   "splitdatum": [
+    "2007-04-27"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 23.21,
+   "shares_efter": 25.04,
+   "faktisk_kvot": 1.0788453252908228,
+   "reflekterad": false
+  },
+  {
+   "insid": 391,
+   "kod": "IMMU",
+   "år": 2023,
+   "splitdatum": [
+    "2023-07-10"
+   ],
+   "splitfaktor": 1.0856911883589329,
+   "shares_fore": 9.97,
+   "shares_efter": 43.1574,
+   "faktisk_kvot": 4.328726178535606,
+   "reflekterad": false
+  },
+  {
+   "insid": 391,
+   "kod": "IMMU",
+   "år": 2024,
+   "splitdatum": [
+    "2024-06-03"
+   ],
+   "splitfaktor": 0.05,
+   "shares_fore": 43.1574,
+   "shares_efter": 50.359,
+   "faktisk_kvot": 1.1668682543434035,
+   "reflekterad": false
+  },
+  {
+   "insid": 393,
+   "kod": "FASTAT",
+   "år": 2015,
+   "splitdatum": [
+    "2015-09-30"
+   ],
+   "splitfaktor": 0.125,
+   "shares_fore": 24.975,
+   "shares_efter": 61.44,
+   "faktisk_kvot": 2.46006006006006,
+   "reflekterad": false
+  },
+  {
+   "insid": 393,
+   "kod": "FASTAT",
+   "år": 2021,
+   "splitdatum": [
+    "2021-01-18"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 72.393,
+   "shares_efter": 77.028,
+   "faktisk_kvot": 1.0640255273299906,
+   "reflekterad": false
+  },
+  {
+   "insid": 403,
+   "kod": "HANZA",
+   "år": 2015,
+   "splitdatum": [
+    "2015-07-31"
+   ],
+   "splitfaktor": 1.1310861423220975,
+   "shares_fore": 6.612,
+   "shares_efter": 11.81,
+   "faktisk_kvot": 1.7861464004839687,
+   "reflekterad": false
+  },
+  {
+   "insid": 405,
+   "kod": "HTRO",
+   "år": 2022,
+   "splitdatum": [
+    "2022-06-02"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 191.74,
+   "shares_efter": 200.871,
+   "faktisk_kvot": 1.0476217794930636,
+   "reflekterad": false
+  },
+  {
+   "insid": 41,
+   "kod": "BONG",
+   "år": 2013,
+   "splitdatum": [
+    "2013-07-18"
+   ],
+   "splitfaktor": 1.7002762430939227,
+   "shares_fore": 17.48,
+   "shares_efter": 156.66,
+   "faktisk_kvot": 8.962242562929061,
+   "reflekterad": false
+  },
+  {
+   "insid": 42,
+   "kod": "BRIN-B",
+   "år": 2016,
+   "splitdatum": [
+    "2016-11-28"
+   ],
+   "splitfaktor": 1.0141509433962264,
+   "shares_fore": 52.591,
+   "shares_efter": 72.3,
+   "faktisk_kvot": 1.3747599399136734,
+   "reflekterad": false
+  },
+  {
+   "insid": 431,
+   "kod": "HUMBLE",
+   "år": 2016,
+   "splitdatum": [
+    "2016-05-02"
+   ],
+   "splitfaktor": 1.0678807947019868,
+   "shares_fore": 3.788,
+   "shares_efter": 6.501,
+   "faktisk_kvot": 1.7162090813093982,
+   "reflekterad": false
+  },
+  {
+   "insid": 431,
+   "kod": "HUMBLE",
+   "år": 2018,
+   "splitdatum": [
+    "2018-05-24"
+   ],
+   "splitfaktor": 1.0340425531914894,
+   "shares_fore": 9.727,
+   "shares_efter": 25.859,
+   "faktisk_kvot": 2.658476405880539,
+   "reflekterad": false
+  },
+  {
+   "insid": 440,
+   "kod": "LIFCO-B",
+   "år": 2021,
+   "splitdatum": [
+    "2021-05-06"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 454.215,
+   "shares_efter": 454.215,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 44,
+   "kod": "BURE",
+   "år": 2007,
+   "splitdatum": [
+    "2007-07-04"
+   ],
+   "splitfaktor": 0.1,
+   "shares_fore": 62.82,
+   "shares_efter": 93.23,
+   "faktisk_kvot": 1.4840815027061447,
+   "reflekterad": false
+  },
+  {
+   "insid": 471,
+   "kod": "STORY-B",
+   "år": 2015,
+   "splitdatum": [
+    "2015-08-25"
+   ],
+   "splitfaktor": 0.1,
+   "shares_fore": 43.818,
+   "shares_efter": 43.818,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 478,
+   "kod": "SANION",
+   "år": 2015,
+   "splitdatum": [
+    "2015-01-15"
+   ],
+   "splitfaktor": 1.052927927927928,
+   "shares_fore": 13.882,
+   "shares_efter": 20.841,
+   "faktisk_kvot": 1.501296643134995,
+   "reflekterad": false
+  },
+  {
+   "insid": 478,
+   "kod": "SANION",
+   "år": 2024,
+   "splitdatum": [
+    "2024-01-17"
+   ],
+   "splitfaktor": 1.1818543573418225,
+   "shares_fore": 64.127,
+   "shares_efter": 111.238,
+   "faktisk_kvot": 1.7346515508288243,
+   "reflekterad": false
+  },
+  {
+   "insid": 48,
+   "kod": "NELLY",
+   "år": 2020,
+   "splitdatum": [
+    "2020-12-28"
+   ],
+   "splitfaktor": 0.1,
+   "shares_fore": 14.98,
+   "shares_efter": 16.014,
+   "faktisk_kvot": 1.0690253671562082,
+   "reflekterad": false
+  },
+  {
+   "insid": 505,
+   "kod": "AQ",
+   "år": 2024,
+   "splitdatum": [
+    "2024-05-20"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 91.47,
+   "shares_efter": 91.47,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 557,
+   "kod": "RAIL",
+   "år": 2017,
+   "splitdatum": [
+    "2017-10-05"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 21.9,
+   "shares_efter": 21.9,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 569,
+   "kod": "SEZI",
+   "år": 2016,
+   "splitdatum": [
+    "2016-05-26"
+   ],
+   "splitfaktor": 1.037037037037037,
+   "shares_fore": 14.823,
+   "shares_efter": 27.799,
+   "faktisk_kvot": 1.875396343520205,
+   "reflekterad": false
+  },
+  {
+   "insid": 569,
+   "kod": "SEZI",
+   "år": 2017,
+   "splitdatum": [
+    "2017-03-09"
+   ],
+   "splitfaktor": 1.019163763066202,
+   "shares_fore": 27.799,
+   "shares_efter": 39.372,
+   "faktisk_kvot": 1.4163099392064462,
+   "reflekterad": false
+  },
+  {
+   "insid": 569,
+   "kod": "SEZI",
+   "år": 2023,
+   "splitdatum": [
+    "2023-02-16"
+   ],
+   "splitfaktor": 1.013903743315508,
+   "shares_fore": 69.883,
+   "shares_efter": 119.054,
+   "faktisk_kvot": 1.7036189058855518,
+   "reflekterad": false
+  },
+  {
+   "insid": 57,
+   "kod": "CORE-A",
+   "år": 2011,
+   "splitdatum": [
+    "2011-06-14"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 377.95,
+   "shares_efter": 373.35,
+   "faktisk_kvot": 0.9878290779203599,
+   "reflekterad": false
+  },
+  {
+   "insid": 57,
+   "kod": "CORE-A",
+   "år": 2017,
+   "splitdatum": [
+    "2017-12-08"
+   ],
+   "splitfaktor": 11.0,
+   "shares_fore": 366.955,
+   "shares_efter": 366.374,
+   "faktisk_kvot": 0.9984166995953183,
+   "reflekterad": false
+  },
+  {
+   "insid": 57,
+   "kod": "CORE-A",
+   "år": 2018,
+   "splitdatum": [
+    "2018-01-16"
+   ],
+   "splitfaktor": 0.5,
+   "shares_fore": 366.374,
+   "shares_efter": 364.881,
+   "faktisk_kvot": 0.9959249291707379,
+   "reflekterad": false
+  },
+  {
+   "insid": 598,
+   "kod": "AJA-B",
+   "år": 2025,
+   "splitdatum": [
+    "2025-11-18"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 29.148,
+   "shares_efter": 29.149,
+   "faktisk_kvot": 1.0000343076711953,
+   "reflekterad": false
+  },
+  {
+   "insid": 602,
+   "kod": "DUST",
+   "år": 2024,
+   "splitdatum": [
+    "2023-11-13"
+   ],
+   "splitfaktor": 1.9072139303482587,
+   "shares_fore": 113.118,
+   "shares_efter": 452.475,
+   "faktisk_kvot": 4.000026520978094,
+   "reflekterad": false
+  },
+  {
+   "insid": 602,
+   "kod": "DUST",
+   "år": 2025,
+   "splitdatum": [
+    "2025-05-06"
+   ],
+   "splitfaktor": 1.6887298747763864,
+   "shares_fore": 452.475,
+   "shares_efter": 1362.25,
+   "faktisk_kvot": 3.0106635725730704,
+   "reflekterad": false
+  },
+  {
+   "insid": 63,
+   "kod": "DIOS",
+   "år": 2017,
+   "splitdatum": [
+    "2017-01-03"
+   ],
+   "splitfaktor": 1.2751322751322751,
+   "shares_fore": 74.729,
+   "shares_efter": 132.041,
+   "faktisk_kvot": 1.7669311779898031,
+   "reflekterad": false
+  },
+  {
+   "insid": 67,
+   "kod": "EAST",
+   "år": 2024,
+   "splitdatum": [
+    "2024-05-13"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 88.832,
+   "shares_efter": 89.481,
+   "faktisk_kvot": 1.0073059257925072,
+   "reflekterad": false
+  },
+  {
+   "insid": 71,
+   "kod": "EKTA-B",
+   "år": 2013,
+   "splitdatum": [
+    "2012-09-12"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 376.44,
+   "shares_efter": 380.67,
+   "faktisk_kvot": 1.0112368504941027,
+   "reflekterad": false
+  },
+  {
+   "insid": 739,
+   "kod": "ALIG",
+   "år": 2023,
+   "splitdatum": [
+    "2023-03-02"
+   ],
+   "splitfaktor": 1.3394495412844036,
+   "shares_fore": 54.158,
+   "shares_efter": 107.573,
+   "faktisk_kvot": 1.986280881864175,
+   "reflekterad": false
+  },
+  {
+   "insid": 73,
+   "kod": "ENEA",
+   "år": 2008,
+   "splitdatum": [
+    "2008-05-30"
+   ],
+   "splitfaktor": 0.05,
+   "shares_fore": 18.33,
+   "shares_efter": 18.02,
+   "faktisk_kvot": 0.983087834151664,
+   "reflekterad": false
+  },
+  {
+   "insid": 745,
+   "kod": "TOBII",
+   "år": 2024,
+   "splitdatum": [
+    "2024-03-13"
+   ],
+   "splitfaktor": 1.3879040667361835,
+   "shares_fore": 106.182,
+   "shares_efter": 233.68,
+   "faktisk_kvot": 2.2007496562505886,
+   "reflekterad": false
+  },
+  {
+   "insid": 746,
+   "kod": "TROAX",
+   "år": 2019,
+   "splitdatum": [
+    "2019-06-18"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 60.0,
+   "shares_efter": 60.0,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 748,
+   "kod": "CANTA",
+   "år": 2017,
+   "splitdatum": [
+    "2017-01-17",
+    "2017-11-28"
+   ],
+   "splitfaktor": 1.059815335206744,
+   "shares_fore": 20.917,
+   "shares_efter": 32.075,
+   "faktisk_kvot": 1.5334416981402688,
+   "reflekterad": false
+  },
+  {
+   "insid": 748,
+   "kod": "CANTA",
+   "år": 2022,
+   "splitdatum": [
+    "2022-07-22"
+   ],
+   "splitfaktor": 1.2016376663254862,
+   "shares_fore": 100.192,
+   "shares_efter": 166.987,
+   "faktisk_kvot": 1.6666699936122644,
+   "reflekterad": false
+  },
+  {
+   "insid": 750,
+   "kod": "EVO",
+   "år": 2019,
+   "splitdatum": [
+    "2019-05-23"
+   ],
+   "splitfaktor": 5.0,
+   "shares_fore": 179.85,
+   "shares_efter": 180.737,
+   "faktisk_kvot": 1.0049318876841813,
+   "reflekterad": false
+  },
+  {
+   "insid": 754,
+   "kod": "INISS-B",
+   "år": 2017,
+   "splitdatum": [
+    "2017-05-11"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 14.4144,
+   "shares_efter": 14.4144,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 754,
+   "kod": "INISS-B",
+   "år": 2021,
+   "splitdatum": [
+    "2021-06-30"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 15.7327,
+   "shares_efter": 18.006,
+   "faktisk_kvot": 1.1444952233246677,
+   "reflekterad": false
+  },
+  {
+   "insid": 7,
+   "kod": "ANOD-B",
+   "år": 2022,
+   "splitdatum": [
+    "2022-05-17"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 134.112,
+   "shares_efter": 133.728,
+   "faktisk_kvot": 0.9971367215461705,
+   "reflekterad": false
+  },
+  {
+   "insid": 80,
+   "kod": "FABG",
+   "år": 2007,
+   "splitdatum": [
+    "2007-05-31"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 382.6,
+   "shares_efter": 343.8,
+   "faktisk_kvot": 0.898588604286461,
+   "reflekterad": false
+  },
+  {
+   "insid": 80,
+   "kod": "FABG",
+   "år": 2018,
+   "splitdatum": [
+    "2018-04-26"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 330.784,
+   "shares_efter": 330.784,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 81,
+   "kod": "FAG",
+   "år": 2014,
+   "splitdatum": [
+    "2014-05-23"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 113.49,
+   "shares_efter": 113.508,
+   "faktisk_kvot": 1.0001586042823156,
+   "reflekterad": false
+  },
+  {
+   "insid": 81,
+   "kod": "FAG",
+   "år": 2017,
+   "splitdatum": [
+    "2017-06-15"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 113.742,
+   "shares_efter": 114.274,
+   "faktisk_kvot": 1.0046772520265161,
+   "reflekterad": false
+  },
+  {
+   "insid": 82,
+   "kod": "FPAR-A",
+   "år": 2018,
+   "splitdatum": [
+    "2018-05-28"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 181.233,
+   "shares_efter": 181.233,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 83,
+   "kod": "BALD-B",
+   "år": 2010,
+   "splitdatum": [
+    "2010-06-10"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 676.2284,
+   "shares_efter": 896.7606,
+   "faktisk_kvot": 1.3261208786853673,
+   "reflekterad": false
+  },
+  {
+   "insid": 83,
+   "kod": "BALD-B",
+   "år": 2022,
+   "splitdatum": [
+    "2022-05-25"
+   ],
+   "splitfaktor": 6.0,
+   "shares_fore": 1079.784,
+   "shares_efter": 1119.0,
+   "faktisk_kvot": 1.0363183747860683,
+   "reflekterad": false
+  },
+  {
+   "insid": 87,
+   "kod": "FPIP",
+   "år": 2012,
+   "splitdatum": [
+    "2012-06-11"
+   ],
+   "splitfaktor": 2.047846889952153,
+   "shares_fore": 12.18,
+   "shares_efter": 48.94,
+   "faktisk_kvot": 4.018062397372742,
+   "reflekterad": false
+  },
+  {
+   "insid": 8,
+   "kod": "ADDT-B",
+   "år": 2014,
+   "splitdatum": [
+    "2013-12-10"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 267.48,
+   "shares_efter": 264.54,
+   "faktisk_kvot": 0.9890085240017945,
+   "reflekterad": false
+  },
+  {
+   "insid": 8,
+   "kod": "ADDT-B",
+   "år": 2021,
+   "splitdatum": [
+    "2020-09-15"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 268.492,
+   "shares_efter": 268.991,
+   "faktisk_kvot": 1.0018585283732848,
+   "reflekterad": false
+  },
+  {
+   "insid": 908,
+   "kod": "SINCH",
+   "år": 2021,
+   "splitdatum": [
+    "2021-06-17"
+   ],
+   "splitfaktor": 10.0,
+   "shares_fore": 585.05,
+   "shares_efter": 746.163,
+   "faktisk_kvot": 1.2753833005726007,
+   "reflekterad": false
+  },
+  {
+   "insid": 926,
+   "kod": "SF",
+   "år": 2020,
+   "splitdatum": [
+    "2020-12-23"
+   ],
+   "splitfaktor": 10.0,
+   "shares_fore": 252.2,
+   "shares_efter": 324.161,
+   "faktisk_kvot": 1.2853330689928628,
+   "reflekterad": false
+  },
+  {
+   "insid": 928,
+   "kod": "VICO",
+   "år": 2024,
+   "splitdatum": [
+    "2024-09-17"
+   ],
+   "splitfaktor": 1.0277777777777777,
+   "shares_fore": 111.723,
+   "shares_efter": 234.579,
+   "faktisk_kvot": 2.099648237157971,
+   "reflekterad": false
+  },
+  {
+   "insid": 95,
+   "kod": "HEBA-B",
+   "år": 2008,
+   "splitdatum": [
+    "2008-05-28"
+   ],
+   "splitfaktor": 3.0,
+   "shares_fore": 165.12,
+   "shares_efter": 165.12,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 95,
+   "kod": "HEBA-B",
+   "år": 2019,
+   "splitdatum": [
+    "2019-06-04"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 165.12,
+   "shares_efter": 165.12,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 95,
+   "kod": "HEBA-B",
+   "år": 2022,
+   "splitdatum": [
+    "2022-04-29",
+    "2022-05-18"
+   ],
+   "splitfaktor": 4.0,
+   "shares_fore": 165.12,
+   "shares_efter": 165.12,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 97,
+   "kod": "HM-B",
+   "år": 2010,
+   "splitdatum": [
+    "2010-06-01"
+   ],
+   "splitfaktor": 2.0,
+   "shares_fore": 1655.0,
+   "shares_efter": 1655.0,
+   "faktisk_kvot": 1.0,
+   "reflekterad": false
+  },
+  {
+   "insid": 983,
+   "kod": "XBRANE",
+   "år": 2025,
+   "splitdatum": [
+    "2025-10-17"
+   ],
+   "splitfaktor": 0.008,
+   "shares_fore": 12.2359,
+   "shares_efter": 20.605,
+   "faktisk_kvot": 1.683979110649809,
+   "reflekterad": false
+  },
+  {
+   "insid": 98,
+   "kod": "HEXA-B",
+   "år": 2007,
+   "splitdatum": [
+    "2007-06-11"
+   ],
+   "splitfaktor": 3.0000031260061832,
+   "shares_fore": 2046.8,
+   "shares_efter": 2124.5,
+   "faktisk_kvot": 1.0379616963064295,
+   "reflekterad": false
+  },
+  {
+   "insid": 98,
+   "kod": "HEXA-B",
+   "år": 2021,
+   "splitdatum": [
+    "2021-05-19"
+   ],
+   "splitfaktor": 7.0,
+   "shares_fore": 2572.808,
+   "shares_efter": 2599.293,
+   "faktisk_kvot": 1.010294199955846,
+   "reflekterad": false
+  },
+  {
+   "insid": 99,
+   "kod": "HPOL-B",
+   "år": 2015,
+   "splitdatum": [
+    "2015-05-18"
+   ],
+   "splitfaktor": 10.0,
+   "shares_fore": 344.2,
+   "shares_efter": 344.201,
+   "faktisk_kvot": 1.0000029052876236,
+   "reflekterad": false
+  }
+ ],
+ "eps_konsistens_kring_split_n": 273,
+ "eps_konsistens_kring_split_under_10pct": 0.8974358974358975,
+ "eps_konsistens_ovrigt_under_10pct": 0.9726596675415573
+}

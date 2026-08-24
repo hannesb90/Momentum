@@ -1,0 +1,604 @@
+{
+ "borttagna": [
+  [
+   "academediagamla",
+   "AcadeMedia AB",
+   "ACAD",
+   "2010-09-10"
+  ],
+  [
+   "agroupofretailassetssweden",
+   "A Group Of Retail Assets Sweden AB (Agora)",
+   null,
+   "2018-12-04"
+  ],
+  [
+   "akeliusresidentialproperty",
+   "Akelius Residential AB",
+   null,
+   "2025-04-07"
+  ],
+  [
+   "allgon",
+   "ALLGON AB",
+   null,
+   "2021-03-02"
+  ],
+  [
+   "allianceoilcompanyltd",
+   "Alliance Oil Company Ltd. SDB",
+   null,
+   "2013-12-16"
+  ],
+  [
+   "atari",
+   "Atari SA SDB",
+   null,
+   "2021-10-22"
+  ],
+  [
+   "besqab",
+   "Besqab AB",
+   "BESQAB",
+   "2021-07-19"
+  ],
+  [
+   "besqabbostadsutveckling",
+   "Besqab Bostadsutveckling AB",
+   "BESQAB",
+   "2024-04-11"
+  ],
+  [
+   "blackearthfarmingltd",
+   "Black Earth Farming Ltd.",
+   null,
+   "2017-12-13"
+  ],
+  [
+   "cavotec",
+   "Cavotec SA",
+   "CCC",
+   "2025-07-30"
+  ],
+  [
+   "concentholding",
+   "Concent Holding AB",
+   null,
+   "2018-10-12"
+  ],
+  [
+   "dagon",
+   "Dagon AB",
+   "WISE",
+   "2012-06-08"
+  ],
+  [
+   "fabegefddrott",
+   "Drott AB",
+   "FABG",
+   "2005-01-14"
+  ],
+  [
+   "ecomteamssweden",
+   "eCom Teams Sweden AB",
+   "FOOT-B",
+   "2025-04-11"
+  ],
+  [
+   "fastpartner",
+   "Fast Partner AB",
+   "FPAR-A",
+   "2022-03-23"
+  ],
+  [
+   "fenixoutdoor",
+   "Fenix Outdoor AB",
+   "FOI-B",
+   "2014-07-04"
+  ],
+  [
+   "hancap",
+   "Hancap AB",
+   null,
+   "2019-03-19"
+  ],
+  [
+   "hufvudstaden",
+   "Hufvudstaden AB",
+   "HUFV-A",
+   "2020-01-30"
+  ],
+  [
+   "hogkullen",
+   "Högkullen",
+   null,
+   "2018-07-18"
+  ],
+  [
+   "kindredgroupplc",
+   "Kindred Group Plc. SDB",
+   "KAMBI",
+   "2024-11-11"
+  ],
+  [
+   "lightlabsweden",
+   "Lightlab Sweden AB",
+   null,
+   "2020-03-12"
+  ],
+  [
+   "mashupireland",
+   "Mashup Ireland AB",
+   "NEO-B",
+   "2026-04-02"
+  ],
+  [
+   "medicoverholdingsa",
+   "Medicover Holding S.A",
+   "MCOV-B",
+   "2006-12-07"
+  ],
+  [
+   "medirox",
+   "Medirox AB",
+   null,
+   "2016-12-21"
+  ],
+  [
+   "mertiva",
+   "Mertiva AB",
+   "DMYD-B",
+   "2020-10-30"
+  ],
+  [
+   "munters",
+   "Munters AB",
+   "MTRS",
+   "2010-12-23"
+  ],
+  [
+   "mvvholding",
+   "MVV Holding AB",
+   null,
+   "2020-02-21"
+  ],
+  [
+   "nordeabank",
+   "Nordea Bank AB",
+   "NDA-SE",
+   "2018-09-28"
+  ],
+  [
+   "nordnetgamla",
+   "Nordnet AB (gamla)",
+   "SAVE",
+   "2017-02-17"
+  ],
+  [
+   "novakandpharma",
+   "Novakand Pharma AB",
+   "LARK",
+   "2026-04-13"
+  ],
+  [
+   "pharmaciacorp",
+   "Pharmacia Corp SDB",
+   "PFE",
+   "2003-04-11"
+  ],
+  [
+   "ratos",
+   "Ratos AB",
+   "RATO-A",
+   "2017-06-09"
+  ],
+  [
+   "sagax",
+   "Sagax AB",
+   "SAGA-B",
+   "2021-04-01"
+  ],
+  [
+   "samhallsbyggnadsbolagetinorden",
+   "Samhällsbyggnadsbolaget i Norden AB",
+   "SBB-B",
+   "2021-04-21"
+  ],
+  [
+   "sapa",
+   "Sapa AB",
+   "GRNG",
+   "2005-06-17"
+  ],
+  [
+   "servage",
+   "Servage AB",
+   null,
+   "2013-05-10"
+  ],
+  [
+   "signaturfastigheter",
+   "Signatur Fastigheter AB",
+   "SIGN-B",
+   "2021-10-22"
+  ],
+  [
+   "smartvalor",
+   "Smart Valor AG",
+   null,
+   "2024-05-31"
+  ],
+  [
+   "vefltd",
+   "VEF Ltd SDB",
+   "VEFAB",
+   "2021-07-02"
+  ],
+  [
+   "victoriapark",
+   "Victoria Park AB",
+   "VICP-A",
+   "2019-07-04"
+  ],
+  [
+   "vnvgloballtd",
+   "VNV Global Ltd SDB",
+   "VNIL-SDB",
+   "2020-06-26"
+  ],
+  [
+   "vostokgasltd",
+   "Vostok Gas Ltd SDB",
+   "VNIL-SDB",
+   "2009-01-30"
+  ]
+ ],
+ "tillagda": [
+  [
+   "collector",
+   "Collector AB",
+   "COLL",
+   "2022-08-11"
+  ]
+ ],
+ "andrade": [
+  [
+   "capiogamla",
+   "Capio AB",
+   "2006-11-17",
+   "2018-11-28"
+  ],
+  [
+   "iarsystems",
+   "I.A.R Systems AB",
+   "2005-04-25",
+   "2025-11-03"
+  ],
+  [
+   "nordicwaterproofingholdingas",
+   "Nordic Waterproofing Holding A/S",
+   "2020-11-25",
+   "2025-03-24"
+  ],
+  [
+   "oriflamecosmeticssa",
+   "Oriflame Cosmetics S.A, SDB",
+   "2015-07-02",
+   "2019-07-17"
+  ],
+  [
+   "transcomworldwideab",
+   "Transcom WorldWide AB",
+   "2017-04-10",
+   "2014-11-24"
+  ]
+ ],
+ "kod_andrad": [
+  [
+   "acceleratornordic",
+   "Accelerator Nordic AB",
+   "SYNT",
+   null
+  ],
+  [
+   "ainax",
+   "Ainax AB",
+   "VOLV-B",
+   null
+  ],
+  [
+   "annehemfastighetergamla",
+   "Annehem Fastigheter AB (gamla)",
+   "PEAB-B",
+   null
+  ],
+  [
+   "autolivinc",
+   "Autoliv Inc. SDB",
+   "ALIV-SDB",
+   null
+  ],
+  [
+   "biophausia",
+   "BioPhausia AB",
+   "MVIR",
+   null
+  ],
+  [
+   "bohogroup",
+   "Boho Group AB",
+   "QUART-PREF",
+   "QUART"
+  ],
+  [
+   "bostadsabdrott",
+   "Bostads AB Drott",
+   "FABG",
+   null
+  ],
+  [
+   "brinovafastighetergamla",
+   "Brinova Fastigheter AB (gamla)",
+   "PEAB-B",
+   null
+  ],
+  [
+   "catenamedia",
+   "Catena Media P.L.C",
+   "CTM",
+   "CTM-TO1"
+  ],
+  [
+   "cerenoscientific",
+   "Cereno Scientific AB",
+   "CRNO-B",
+   null
+  ],
+  [
+   "clinescientific",
+   "Cline Scientific AB",
+   "CLINE-B",
+   null
+  ],
+  [
+   "coffeestaingroup",
+   "Coffee Stain Group AB",
+   "EMBRAC-B",
+   "COFFEE-B"
+  ],
+  [
+   "comhemholding",
+   "Com Hem Holding AB",
+   "TEL2-B",
+   null
+  ],
+  [
+   "custos",
+   "Custos AB",
+   "ORES",
+   null
+  ],
+  [
+   "custosfdjohnsonpump",
+   "Custos AB",
+   "ORES",
+   null
+  ],
+  [
+   "dinbostadsverige",
+   "Din Bostad Sverige AB",
+   "BALD-B",
+   null
+  ],
+  [
+   "doublebondpharmaceuticalinternational",
+   "Double Bond Pharmaceutical International AB",
+   "DBP-B",
+   null
+  ],
+  [
+   "fazerkonfektyrservice",
+   "Fazer Konfektyr Service AB",
+   "CLA-B",
+   null
+  ],
+  [
+   "gambro",
+   "Gambro AB",
+   "ABB",
+   null
+  ],
+  [
+   "gunneboindustrier",
+   "Gunnebo Industrier AB",
+   "GUNN",
+   null
+  ],
+  [
+   "halmslattenfastighets",
+   "Halmslätten Fastighets AB",
+   "SFAST",
+   "HALMEN"
+  ],
+  [
+   "hedsontechnologiesinternational",
+   "Hedson Technologies International AB",
+   "HOME-B",
+   null
+  ],
+  [
+   "hq",
+   "HQ AB",
+   "ORES",
+   null
+  ],
+  [
+   "kindredgroupplc",
+   "Kindred Group Plc. SDB",
+   "KAMBI",
+   null
+  ],
+  [
+   "kinnevikindustriforvaltning",
+   "Kinnevik Industriförvaltnings AB",
+   "KINV-A",
+   null
+  ],
+  [
+   "klarabosverige",
+   "KlaraBo Sverige AB",
+   "KLARA-B",
+   null
+  ],
+  [
+   "metrointernationalsa",
+   "Metro International S.A.",
+   "MTG-A",
+   null
+  ],
+  [
+   "millicominternationalcellularsa",
+   "Millicom International Cellular S.A, SDB",
+   "KINV-A",
+   "MIC-SDB"
+  ],
+  [
+   "mrgreenco",
+   "Mr Green & Co AB",
+   "TRAN-B",
+   null
+  ],
+  [
+   "mtgmoderntimesgroup",
+   "MTG - Modern Times Group AB",
+   "MTG-A",
+   null
+  ],
+  [
+   "nordicasiainvestmentgroup1987",
+   "Nordic Asia Investment Group 1987 AB",
+   "NAIG-B",
+   null
+  ],
+  [
+   "offentligahusinorden",
+   "Offentliga Hus i Norden AB",
+   "SBB-B",
+   null
+  ],
+  [
+   "panionanimalhealth",
+   "Panion Animal Health AB",
+   "COMBI",
+   null
+  ],
+  [
+   "peabindustri",
+   "Peab Industri AB",
+   "PEAB-B",
+   null
+  ],
+  [
+   "ratos",
+   "Ratos AB",
+   "RATO-A",
+   "RATO-B"
+  ],
+  [
+   "sebskandinaviskaenskildabanken",
+   "SEB - Skandinaviska Enskilda Banken AB",
+   "SEB-C",
+   "SEB-A"
+  ],
+  [
+   "secotools",
+   "Seco Tools AB",
+   "SAND",
+   null
+  ],
+  [
+   "selectimmunepharma",
+   "SelectImmune Pharma AB",
+   "SELECT-B",
+   null
+  ],
+  [
+   "shbsvenskahandelsbanken",
+   "SHB - Svenska Handelsbanken AB",
+   "SHB-B",
+   "SHB-A"
+  ],
+  [
+   "shtsmarthightech",
+   "SHT Smart High-Tech AB",
+   "SHT-B",
+   null
+  ],
+  [
+   "signaturfastigheter",
+   "Signatur Fastigheter AB",
+   "SIGN-B",
+   null
+  ],
+  [
+   "skandiaforsakringsaktiebolag",
+   "Skandia Försäkringsaktiebolag",
+   "OLDM",
+   null
+  ],
+  [
+   "skf",
+   "SKF (Aktiebolaget SKF)",
+   "SKF-B",
+   null
+  ],
+  [
+   "solidforsakringsaktiebolag",
+   "Solid Försäkringsaktiebolag",
+   "RESURS",
+   null
+  ],
+  [
+   "saki",
+   "SäkI AB",
+   "LATO-B",
+   null
+  ],
+  [
+   "trainalliance",
+   "Train Alliance Sweden AB",
+   "TRAIN-B",
+   null
+  ],
+  [
+   "transferator",
+   "Transferator AB",
+   "TRAN-B",
+   null
+  ],
+  [
+   "turnit",
+   "TurnIT AB",
+   "IAR-B",
+   null
+  ],
+  [
+   "veteranpoolen",
+   "Veteranpoolen AB",
+   "HOME-B",
+   null
+  ],
+  [
+   "oresundinvestment",
+   "Öresund Investment AB",
+   "ORES",
+   null
+  ],
+  [
+   "1618strict",
+   "1,618 Strict AB",
+   "RAIL",
+   null
+  ]
+ ]
+}

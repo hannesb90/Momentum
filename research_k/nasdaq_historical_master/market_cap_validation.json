@@ -1,0 +1,94 @@
+{
+ "schema": "MARKET_CAP_VALIDATION_V1",
+ "created_utc": "2026-08-18T20:27:10+00:00",
+ "formel_enligt_kallan": "Market Capitalization. Calculated as the No of Shares Listed * Reference Price at the last trading day of month",
+ "empirisk_verifiering": {
+  "n": 60887,
+  "median": 1.0,
+  "p1": 0.996296,
+  "p99": 1.002,
+  "andel_inom_0.1pct": 0.968844
+ },
+ "avvikande_observationer": {
+  "n": 1897,
+  "andel": 0.031156,
+  "exempel": [
+   {
+    "kod": "ANOD B",
+    "manad": "2009-08",
+    "kvot": 1.0052
+   },
+   {
+    "kod": "CLA B",
+    "manad": "2009-08",
+    "kvot": 0.9965
+   },
+   {
+    "kod": "ELAN B",
+    "manad": "2009-08",
+    "kvot": 0.9773
+   },
+   {
+    "kod": "FAG",
+    "manad": "2009-08",
+    "kvot": 0.9956
+   },
+   {
+    "kod": "GVKO B",
+    "manad": "2009-08",
+    "kvot": 1.0076
+   },
+   {
+    "kod": "HEBA B",
+    "manad": "2009-08",
+    "kvot": 0.9913
+   },
+   {
+    "kod": "HUFV C",
+    "manad": "2009-08",
+    "kvot": 1.0811
+   },
+   {
+    "kod": "IFS A",
+    "manad": "2009-08",
+    "kvot": 1.0077
+   }
+  ],
+  "atgard": "EJ KORRIGERADE — dokumenteras endast"
+ },
+ "valuta": {
+  "SEK": 73687
+ },
+ "niva": "instrument",
+ "tidpunkt": "sista handelsdagen i manaden",
+ "coverage_totalt": 0.9963,
+ "coverage_per_ar": {
+  "2009": 0.9975,
+  "2010": 0.993,
+  "2011": 0.9918,
+  "2012": 0.9954,
+  "2013": 0.995,
+  "2014": 0.9934,
+  "2015": 0.9955,
+  "2016": 0.9977,
+  "2017": 0.9981,
+  "2018": 0.9971,
+  "2019": 0.9974,
+  "2020": 0.997,
+  "2021": 0.9967,
+  "2022": 0.9968,
+  "2023": 0.9982,
+  "2024": 0.9971,
+  "2025": 0.9971,
+  "2026": 0.9979
+ },
+ "coverage_senare_avnoterade": {
+  "coverage": 0.9854,
+  "n_obs": 13112
+ },
+ "coverage_overlevare": {
+  "coverage": 0.9999,
+  "n_obs": 50733
+ },
+ "survivorship_gap_pp": 1.45
+}

@@ -1,0 +1,9 @@
+{
+ "schema": "PIT_LEAKAGE_QA_V1",
+ "created_utc": "2026-08-18T20:26:06+00:00",
+ "regel": "known_from ar faktiskt release_time; observationsmanaden M far aldrig vara >= known_from",
+ "n_observationer": 73958,
+ "utan_publiceringsdatum": 0,
+ "violations": 0,
+ "exempel": []
+}

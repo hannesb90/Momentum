@@ -1,0 +1,56 @@
+{
+ "schema": "FIRST_NORTH_P2_SPEC_V1",
+ "created_utc": "2026-08-18T20:29:34+00:00",
+ "status": "SPECIFIKATION — ingen ingestion i detta uppdrag",
+ "sample": {
+  "fil": "raw/nasdaq_segment/first_north/first_north_instrument_2026-07.xlsx",
+  "sha256": "bc2833669bc807135e1de074c05d56c8cf035900ef944dfccffafd406763d9b3"
+ },
+ "gemensamma_falt": [
+  "Instrument",
+  "Orderbook Code",
+  "ISIN",
+  "Instrument Type",
+  "Industry",
+  "Supersector",
+  "Round Lot",
+  "Currency",
+  "Delisted",
+  "No of Shares Listed",
+  "Market Cap",
+  "Latest Paid",
+  "Issuer Country"
+ ],
+ "avvikande_schema": {
+  "saknas": [
+   "Location"
+  ],
+  "namnskillnad": {
+   "Issuer Code": "motsvarar Main Markets Company Code"
+  },
+  "segmentvokabular": "First North-nivaer (t.ex. 'First North Premier') i stallet for Large/Mid/Small Cap"
+ },
+ "aterunvandbart_direkt": [
+  "ole2.py",
+  "biff8.py",
+  "bladval via r:id",
+  "namnbaserad headerdetektor",
+  "Excel-serialdatum for Delisted",
+  "identitets- och intervallbyggare",
+  "PIT publiceringslagg"
+ ],
+ "kraver_anpassning": [
+  "Location defaultas eller harleds",
+  "segmentvokabularen utokas",
+  "Issuer Code mappas mot company_code",
+  "filtret 'segment in Large/Mid/Small' byts"
+ ],
+ "aterstaende_historik": "EJ FASTSTALLD — endast 4 manader (2026-04..2026-07) natta. Kraver samma paginerade rå-JSON-discovery som Main Market innan ingestion planeras.",
+ "P2_uppdrag": [
+  "1. Paginerad discovery av hela First North-serien",
+  "2. Faststall historikens djup",
+  "3. Implementera First North-profil i parsern",
+  "4. Ingestion + samma QA-svit som P0",
+  "5. Separat governance-registrering"
+ ]
+}

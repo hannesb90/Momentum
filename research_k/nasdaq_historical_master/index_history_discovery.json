@@ -1,0 +1,19 @@
+{
+  "schema": "INDEX_HISTORY_DISCOVERY_V1",
+  "created_utc": "2026-08-18T20:18:51+00:00",
+  "INDEX_LEVEL_HISTORY": {
+    "status": "TROLIGEN TILLGANGLIG",
+    "kalla": "indexes.nasdaqomx.com Index/Overview-sidor for OMXS30, OMXSB, OMXSLCPI/GI, OMXSMCPI, NOMXSCSEPI m.fl.",
+    "verifierat": "NEJ — ingen nedladdning gjord i detta uppdrag"
+  },
+  "CONSTITUENT_HISTORY": {
+    "status": "EJ VERIFIERAD",
+    "notering": "En daterad OMXS30-medlemskapsfil finns i legacy (momentum_prod_work/momentum_ml/data/omx30_membership_pit.csv, 50 rader med member_from/member_to). Ovriga index saknar verifierad historik.",
+    "VARNING": "Att dagens constituents visas pa Nasdaqs sidor ar INTE evidens for att historiska constituents ar tillgangliga."
+  },
+  "WEIGHT_HISTORY": {
+    "status": "EJ VERIFIERAD — inga historiska vikter identifierade"
+  },
+  "First North Index Development": "Aggregatfilen 'Total Equity Trading - First North' innehaller ett blad 'Index Development' — outforskat.",
+  "atkomst": "PUBLIC_ARCHIVE for indexnivaer, UNKNOWN for historiska constituents och vikter"
+}

@@ -1,0 +1,8 @@
+{
+  "schema": "REFERENCE_DATA_DISCOVERY_V1",
+  "created_utc": "2026-08-18T20:18:51+00:00",
+  "status": "DELVIS — sokning gav 62 bilagor under 'Reference Data' men huvudsakligen IT-notiser, protokolluppdateringar och enstaka listor (t.ex. 'ISINs by CCP Spotlight 2.xlsx'). Ingen historisk referensdataserie identifierad i denna sokning.",
+  "VIKTIGT": "Listed shares och share capital finns REDAN i Main Market-manadsfilerna som 'No of Shares Listed' med 99,66 % tackning over 201 manader. Det historiska share-count-problemet loses darmed sannolikt UTAN separat referensdatakalla.",
+  "atkomst": "UNKNOWN — inget prisatt/kontobelagt flode identifierat i denna inventering",
+  "nasta_atgard": "Lag prioritet. Main Market-serien tacker behovet."
+}

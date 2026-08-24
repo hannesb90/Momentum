@@ -1,0 +1,14 @@
+{
+  "schema": "CORPORATE_ACTIONS_DISCOVERY_V1",
+  "created_utc": "2026-08-18T20:18:51+00:00",
+  "status": "INGEN HISTORISK EVENTSERIE IDENTIFIERAD i denna sokning. Traffarna under 'Corporate Actions' ar procedurdokument, marknadsmodellnotiser och enstaka PDF:er — inte ett strukturerat historiskt dataset.",
+  "eventfamiljer": {
+    "dividends": "NOT_AVAILABLE i denna kalla",
+    "splits / reverse splits": "NOT_AVAILABLE som serie, men HARLEDBART ur no_of_shares_listed-forandringar manad over manad i Main Market-filerna",
+    "changes in number of shares": "PRIMARY_CANDIDATE via no_of_shares_listed (201 manader)",
+    "listings / delistings": "REDAN_CANONICAL via membership + delisted-faltet",
+    "rights issues / redemption / M&A": "NOT_AVAILABLE"
+  },
+  "jamforelse": "Skatteverket (daterade noteringar/avnoteringar/namnbyten), Borsdata (rapportdata), MFN (66 402 PIT-stamplade pressmeddelanden) forblir primara for eventdata. Nasdaq ersatter dem INTE.",
+  "klassificering": "QA_SOURCE for share-count-forandringar, i ovrigt NOT_AVAILABLE"
+}

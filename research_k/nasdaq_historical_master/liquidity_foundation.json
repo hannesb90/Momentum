@@ -1,0 +1,193 @@
+{
+ "schema": "LIQUIDITY_FOUNDATION_V1",
+ "created_utc": "2026-08-18T20:27:10+00:00",
+ "falt": {
+  "total_turnover": {
+   "coverage": 0.9986,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 201,
+   "median": 75222303.105,
+   "p99": 13715402829.7897,
+   "max": 46784688703.9831,
+   "negativa": 0,
+   "cov_avnoterade": 0.9972,
+   "cov_overlevare": 0.9999
+  },
+  "total_traded_shares": {
+   "coverage": 0.9986,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 201,
+   "median": 1647307.0,
+   "p99": 203704062.0,
+   "max": 10951731232.0,
+   "negativa": 0,
+   "cov_avnoterade": 0.9972,
+   "cov_overlevare": 0.9999
+  },
+  "total_trades": {
+   "coverage": 0.9986,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 201,
+   "median": 4416.0,
+   "p99": 184127.0,
+   "max": 1030448.0,
+   "negativa": 0,
+   "cov_avnoterade": 0.9972,
+   "cov_overlevare": 0.9999
+  },
+  "traded_days": {
+   "coverage": 0.9962,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 201,
+   "median": 1.0,
+   "p99": 1.0,
+   "max": 1.0,
+   "negativa": 0,
+   "cov_avnoterade": 0.984,
+   "cov_overlevare": 0.9998
+  },
+  "listed_days": {
+   "coverage": 0.9975,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 201,
+   "median": 21.0,
+   "p99": 23.0,
+   "max": 32.0,
+   "negativa": 0,
+   "cov_avnoterade": 0.986,
+   "cov_overlevare": 0.9999
+  },
+  "turnover_velocity": {
+   "coverage": 0.9952,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 201,
+   "median": 0.344246,
+   "p99": 6.6046,
+   "max": 224728215.0973,
+   "negativa": 0,
+   "cov_avnoterade": 0.984,
+   "cov_overlevare": 0.9998
+  },
+  "avg_closing_spread": {
+   "coverage": 0.9659,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 200,
+   "median": 0.005765,
+   "p99": 0.0914,
+   "max": 0.9926,
+   "negativa": 0,
+   "cov_avnoterade": 0.97,
+   "cov_overlevare": 0.982
+  },
+  "vwap": {
+   "coverage": 0.8381,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 171,
+   "median": 67.77,
+   "p99": 566.16,
+   "max": 1960.0369,
+   "negativa": 0,
+   "cov_avnoterade": 0.8282,
+   "cov_overlevare": 0.8298
+  },
+  "high_paid": {
+   "coverage": 0.8359,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 171,
+   "median": 73.0,
+   "p99": 598.5,
+   "max": 2300.0,
+   "negativa": 0,
+   "cov_avnoterade": 0.8176,
+   "cov_overlevare": 0.8292
+  },
+  "low_paid": {
+   "coverage": 0.8367,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 171,
+   "median": 62.75,
+   "p99": 542.0,
+   "max": 1943.0,
+   "negativa": 0,
+   "cov_avnoterade": 0.8182,
+   "cov_overlevare": 0.8302
+  },
+  "otc_turnover": {
+   "coverage": 0.301,
+   "first": "2009-08",
+   "last": "2023-02",
+   "n_manader": 160,
+   "median": 972234.39753,
+   "p99": 348435219.0,
+   "max": 4305976908.35,
+   "negativa": 0,
+   "cov_avnoterade": 0.2193,
+   "cov_overlevare": 0.3208
+  },
+  "otc_trades": {
+   "coverage": 0.303,
+   "first": "2009-08",
+   "last": "2023-02",
+   "n_manader": 160,
+   "median": 11.0,
+   "p99": 1031.0,
+   "max": 14408.0,
+   "negativa": 0,
+   "cov_avnoterade": 0.2219,
+   "cov_overlevare": 0.3228
+  },
+  "avg_turnover": {
+   "coverage": 0.9962,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 201,
+   "median": 3624585.705263,
+   "p99": 669954391.155,
+   "max": 4401775196.185,
+   "negativa": 0,
+   "cov_avnoterade": 0.984,
+   "cov_overlevare": 0.9998
+  },
+  "avg_trade_size": {
+   "coverage": 0.9986,
+   "first": "2009-08",
+   "last": "2026-07",
+   "n_manader": 201,
+   "median": 18985.91053,
+   "p99": 130043.3436,
+   "max": 4452599.0493,
+   "negativa": 0,
+   "cov_avnoterade": 0.9972,
+   "cov_overlevare": 0.9999
+  },
+  "_semantik": {
+   "avg_closing_spread": {
+    "status": "SEMANTICS_VERIFIED",
+    "enhet": "decimalbrak dar 0,01 = 1 %",
+    "bevis": "Nasdaqs egna likviditetsgruppsdefinitioner i filen: 'A-Group: ... Spread < 1%' och 'C-Group: ... Spread > 5%'. Observerad median 0,0058 och p99 0,0914 ar konsistent."
+   },
+   "vwap": {
+    "status": "SEMANTICS_VERIFIED",
+    "definition": "Volume Weighted Average Price. Turnover / Volume during the period, taking into account trades that have updated the average daily price (trades that are executed in continuous trading and within the current spread). Adjusted for Corporate Actions."
+   },
+   "turnover_velocity": {
+    "status": "SEMANTICS_VERIFIED",
+    "definition": "Turnover during period / Average Market Cap during period * 250 / Number of listed days"
+   },
+   "otc": {
+    "status": "SEMANTICS_VERIFIED",
+    "notering": "Instrumentbladets not i moderna filer: 'OTC figures are not included in this report'. OTC-kolumnerna upphor 2023-02."
+   }
+  }
+ }
+}

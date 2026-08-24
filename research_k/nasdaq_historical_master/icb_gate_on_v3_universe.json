@@ -1,0 +1,34 @@
+{
+ "2014_2019": {
+  "industry": {
+   "coverage": 0.954,
+   "n": 2370,
+   "min_panel": 0.8667,
+   "p10": 0.9,
+   "median": 0.9667
+  },
+  "supersector": {
+   "coverage": 0.954,
+   "n": 2370,
+   "min_panel": 0.8667,
+   "p10": 0.9,
+   "median": 0.9667
+  }
+ },
+ "2020_2026": {
+  "industry": {
+   "coverage": 0.9495,
+   "n": 1980,
+   "min_panel": 0.8667,
+   "p10": 0.9,
+   "median": 0.9667
+  },
+  "supersector": {
+   "coverage": 0.9495,
+   "n": 1980,
+   "min_panel": 0.8667,
+   "p10": 0.9,
+   "median": 0.9667
+  }
+ }
+}

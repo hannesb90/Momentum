@@ -1,0 +1,115 @@
+{
+  "schema": "FIRST_NORTH_REBUILT_V2",
+  "created_utc": "2026-08-24T12:31:14+00:00",
+  "stages": {
+    "RAW_COMPLETE": {
+      "input": 200,
+      "success": 200,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": null
+    },
+    "PARSE_COMPLETE": {
+      "input": 200,
+      "success": 200,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": "workbook_audit.csv"
+    },
+    "PIT_COMPLETE": {
+      "input": 61771,
+      "success": 41793,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": "pit_intervals.json.gz"
+    },
+    "QA_COMPLETE": {
+      "input": 61771,
+      "success": 61771,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": "qa.json"
+    },
+    "FOUNDATION_COMPLETE": {
+      "input": 61771,
+      "success": 1780,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": "instrument_identity_history.json.gz"
+    },
+    "IDENTITY_COMPLETE": {
+      "input": 4,
+      "success": 4,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": "identity_resolution.csv"
+    }
+  },
+  "classification": {
+    "FIRST_NORTH_LEGACY_V1": 128,
+    "FIRST_NORTH_MODERN_V1": 72
+  },
+  "qa": {
+    "duplicate_instrument_month": 0,
+    "mapping_conflicts": 2161,
+    "interval_overlap": 0,
+    "future_mutation": "PASS",
+    "future_leakage_rows": 0,
+    "cross_market_contamination": "PASS",
+    "source_hash_traceability": "PASS",
+    "result": "PASS"
+  },
+  "unique_instruments": 1780,
+  "unique_issuers": 1010,
+  "period_coverage": [
+    "2009-08",
+    "2026-07"
+  ],
+  "identity_resolution": [
+    {
+      "ticker": "SEYE",
+      "resolved": "YES",
+      "canonical_issuer": "Smart Eye AB",
+      "isin": "SE0009268279",
+      "first_verified_month": "2016-12",
+      "last_verified_month": "2026-04",
+      "provenance": "rebuilt content-addressed CNS First North observations"
+    },
+    {
+      "ticker": "ACCON",
+      "resolved": "YES",
+      "canonical_issuer": "Acconeer AB",
+      "isin": "SE0010546242",
+      "first_verified_month": "2017-12",
+      "last_verified_month": "2026-04",
+      "provenance": "rebuilt content-addressed CNS First North observations"
+    },
+    {
+      "ticker": "SECARE",
+      "resolved": "YES",
+      "canonical_issuer": "Swedencare AB",
+      "isin": "SE0008294078|SE0015988167",
+      "first_verified_month": "2016-06",
+      "last_verified_month": "2026-04",
+      "provenance": "rebuilt content-addressed CNS First North observations"
+    },
+    {
+      "ticker": "PTRK",
+      "resolved": "YES",
+      "canonical_issuer": "Physitrack PLC",
+      "isin": "GB00BK80TJ35",
+      "first_verified_month": "2021-06",
+      "last_verified_month": "2026-07",
+      "provenance": "rebuilt content-addressed CNS First North observations"
+    }
+  ],
+  "FIRST_NORTH_INGESTION": "PASS",
+  "main_market_mutated": false,
+  "production_mutation_performed": false
+}

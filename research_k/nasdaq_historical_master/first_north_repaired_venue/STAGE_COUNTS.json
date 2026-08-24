@@ -1,0 +1,53 @@
+{
+  "created_utc": "2026-08-24T12:31:14+00:00",
+  "stages": {
+    "RAW_COMPLETE": {
+      "input": 200,
+      "success": 200,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": null
+    },
+    "PARSE_COMPLETE": {
+      "input": 200,
+      "success": 200,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": "workbook_audit.csv"
+    },
+    "PIT_COMPLETE": {
+      "input": 61771,
+      "success": 41793,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": "pit_intervals.json.gz"
+    },
+    "QA_COMPLETE": {
+      "input": 61771,
+      "success": 61771,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": "qa.json"
+    },
+    "FOUNDATION_COMPLETE": {
+      "input": 61771,
+      "success": 1780,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": "instrument_identity_history.json.gz"
+    },
+    "IDENTITY_COMPLETE": {
+      "input": 4,
+      "success": 4,
+      "skipped": 0,
+      "quarantined": 0,
+      "failed": 0,
+      "output": "identity_resolution.csv"
+    }
+  }
+}

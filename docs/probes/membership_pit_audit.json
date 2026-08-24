@@ -1,0 +1,4481 @@
+{
+ "definition": "Prisexistens är inte membership. Endast explicit destination till Nasdaq Stockholm/Nordiska listan/O-/A-listan räknas som verifierad entry.",
+ "n_panel_codes": 420,
+ "n_codes_with_explicit_main_list_entry": 77,
+ "n_codes_without_explicit_main_list_entry": 343,
+ "n_ledger_membership_verified": 9,
+ "n_ledger_membership_unknown": 411,
+ "n_panel_rows_membership_verified": 431,
+ "n_panel_rows_membership_unknown": 29642,
+ "share_panel_rows_membership_verified": 0.014331792637914408,
+ "n_confirmed_pre_entry_rows_lower_bound": 0,
+ "n_confirmed_pre_entry_codes_lower_bound": 0,
+ "confirmed_pre_entry_rows": [],
+ "entry_evidence": {
+  "ABLI": [
+   {
+    "date": "2013-04-10",
+    "year": 2013,
+    "evidence": "Ny notering på Nordiska listan 10 april. Överförd från Aktietorget.",
+    "slug": "abliva"
+   }
+  ],
+  "ACAD": [
+   {
+    "date": "2001-06-28",
+    "year": 2001,
+    "evidence": "Ny notering på O-listan. Överförd från SBI-listan 28 juni.",
+    "slug": "academediagamla"
+   }
+  ],
+  "ADAPT": [
+   {
+    "date": "2019-07-01",
+    "year": 2019,
+    "evidence": "Ny notering på Nasdaq Stockholm den 1 juli",
+    "slug": "adapteo"
+   }
+  ],
+  "AGRO": [
+   {
+    "date": "2010-12-08",
+    "year": 2010,
+    "evidence": "Ny notering på Nordiska listan 8 december. Överförd från First North.",
+    "slug": "agromino"
+   }
+  ],
+  "AJA-B": [
+   {
+    "date": "2024-06-19",
+    "year": 2024,
+    "evidence": "Ny notering på Nasdaq Stockholm den 19 juni. Överförd från First North.",
+    "slug": "byggmastareandersjahlstromholding"
+   }
+  ],
+  "ALVO-SDB": [
+   {
+    "date": "2025-05-19",
+    "year": 2025,
+    "evidence": "Ny notering av SDB på Nasdaq Stockholm den 19 maj, introduktionskurs 87,51 kr. Alvotech är sedan tidigate noterade på Nasdaq USA och Nasdaq Iceland",
+    "slug": "alvotech"
+   }
+  ],
+  "AM1S": [
+   {
+    "date": "2014-12-08",
+    "year": 2014,
+    "evidence": "Ny notering på Nasdaq Stockholm (Nordiska listan) 8 december",
+    "slug": "ahlstrommunksjo"
+   }
+  ],
+  "ARION-SDB": [
+   {
+    "date": "2018-06-15",
+    "year": 2018,
+    "evidence": "Ny notering av SDR (Swedish Depository Receipts) på Nasdaq Stockholm den 15 juni, introduktionskurs 6,11 kr",
+    "slug": "arionbanki"
+   }
+  ],
+  "ATRE": [
+   {
+    "date": "2009-06-15",
+    "year": 2009,
+    "evidence": "Ny notering på Nordiska listan 15 juni. Överförd från First North.",
+    "slug": "a3allmannaitochtelekomaktiebolagetab"
+   }
+  ],
+  "BALD-B": [
+   {
+    "date": "1999-10-12",
+    "year": 1999,
+    "evidence": "Ny notering på O-listan 12 oktober",
+    "slug": "balderfastighet"
+   }
+  ],
+  "BESQAB": [
+   {
+    "date": "2014-06-12",
+    "year": 2014,
+    "evidence": "Ny notering på Nordiska listan 12 juni, introduktionskurs 73 kr",
+    "slug": "besqabbostadsutveckling"
+   }
+  ],
+  "BFG": [
+   {
+    "date": "2021-10-15",
+    "year": 2021,
+    "evidence": "Ny notering på Nasdaq Stockholm den 15 oktober, introduktionskurs 75 kr",
+    "slug": "byggfaktagroupnordicholdco"
+   }
+  ],
+  "BILL": [
+   {
+    "date": "2001-11-20",
+    "year": 2001,
+    "evidence": "Ny notering på O-listan 20 november",
+    "slug": "billerud"
+   }
+  ],
+  "BORG": [
+   {
+    "date": "2007-05-04",
+    "year": 2007,
+    "evidence": "Ny notering på Nordiska listan. Överförd från First North 4 maj.",
+    "slug": "bjornborg"
+   }
+  ],
+  "CALTX": [
+   {
+    "date": "2018-06-29",
+    "year": 2018,
+    "evidence": "Ny notering på Nasdaq Stockholm den 29 juni, introduktionskurs 45 kr",
+    "slug": "calliditastherapeutics"
+   }
+  ],
+  "CARY": [
+   {
+    "date": "2021-09-23",
+    "year": 2021,
+    "evidence": "Ny notering på Nasdaq Stockholm den 23 september, introduktionskurs 70 kr",
+    "slug": "carygroupholding"
+   }
+  ],
+  "CCC": [
+   {
+    "date": "2025-07-09",
+    "year": 2025,
+    "evidence": "Ny notering på Nasdaq Stockholm den 9 juli",
+    "slug": "cavotecgroup"
+   }
+  ],
+  "CIBUS": [
+   {
+    "date": "2021-06-01",
+    "year": 2021,
+    "evidence": "Ny notering på Nasdaq Stockholm den 1 juni. Överförd från First North.",
+    "slug": "cibusnordicrealestate"
+   }
+  ],
+  "CPAC-SPAC": [
+   {
+    "date": "2021-06-23",
+    "year": 2021,
+    "evidence": "Ny notering på Nasdaq Stockholm den 23 juni, introduktionskurs 100 kr",
+    "slug": "creaspac"
+   }
+  ],
+  "CS": [
+   {
+    "date": "2022-12-19",
+    "year": 2022,
+    "evidence": "Ny notering på Nasdaq Stockholm den 19 december. Överförd från First North.",
+    "slug": "coinsharesinternationallimited"
+   }
+  ],
+  "DIOS": [
+   {
+    "date": "2006-05-22",
+    "year": 2006,
+    "evidence": "Ny notering på O-listan 22 maj, introduktionskurs 31 kr",
+    "slug": "diosfastigheter"
+   }
+  ],
+  "EDGE": [
+   {
+    "date": "2016-12-09",
+    "year": 2016,
+    "evidence": "Ny notering på Nasdaq Stockholm den 9 december, introduktionskurs 29 kr",
+    "slug": "edgeware"
+   }
+  ],
+  "ENDO": [
+   {
+    "date": "2012-11-07",
+    "year": 2012,
+    "evidence": "Ny notering på Nordiska listan 7 november. Överförd från FirstNorth.",
+    "slug": "endomines"
+   }
+  ],
+  "ENG": [
+   {
+    "date": "2016-09-29",
+    "year": 2016,
+    "evidence": "Ny notering på Nasdaq Stockholm den 29 september, introduktionskurs 52 kr.",
+    "slug": "internationellaengelskaskolanisverigeholdingsiiab"
+   }
+  ],
+  "EOLU-B": [
+   {
+    "date": "2015-02-02",
+    "year": 2015,
+    "evidence": "Ny notering på Nasdaq Stockholm (Nordiska listan) 2 februari. Överförd från First North.",
+    "slug": "eolus"
+   }
+  ],
+  "ETX": [
+   {
+    "date": "2010-11-12",
+    "year": 2010,
+    "evidence": "Ny notering på Nordiska listan 12 november",
+    "slug": "etrion"
+   }
+  ],
+  "EVO": [
+   {
+    "date": "2017-06-07",
+    "year": 2017,
+    "evidence": "Ny notering på Nasdaq Stockholm den 7 juni. Överförd från First North.",
+    "slug": "evolution"
+   }
+  ],
+  "FABG": [
+   {
+    "date": "1998-09-24",
+    "year": 1998,
+    "evidence": "Ny notering på O-listan 24 september",
+    "slug": "fabegefddrott"
+   }
+  ],
+  "FMM-B": [
+   {
+    "date": "2017-04-10",
+    "year": 2017,
+    "evidence": "Ny notering på Nasdaq Stockholm den 10 april, introduktionskurs 68 kr",
+    "slug": "fmmattsson"
+   }
+  ],
+  "FNOX": [
+   {
+    "date": "2022-04-13",
+    "year": 2022,
+    "evidence": "Ny notering på Nasdaq Stockholm den 13 april. Överförd från Nordic SME (tidigare Nordic MTF).",
+    "slug": "fortnox"
+   }
+  ],
+  "FOI-B": [
+   {
+    "date": "2014-06-26",
+    "year": 2014,
+    "evidence": "Ny notering på Nordiska listan 26 juni. Se nedan under Annan information för mer info.",
+    "slug": "fenixoutdoorinternational"
+   }
+  ],
+  "FPAR-A": [
+   {
+    "date": "1994-02-14",
+    "year": 1994,
+    "evidence": "Ny notering på O-listan 14 februari",
+    "slug": "fastpartner"
+   }
+  ],
+  "GRNG": [
+   {
+    "date": "2014-10-10",
+    "year": 2014,
+    "evidence": "Ny notering på Nasdaq Stockholm den 10 oktober, introduktionskurs 42,50 kr. Bolaget har tidigare varit noterat under namnet Sapa AB, för mer information se Annan information nedan.",
+    "slug": "granges"
+   },
+   {
+    "date": "2002-11-26",
+    "year": 2002,
+    "evidence": "Ny notering på O-listan. Överförd från A-listan 26 november",
+    "slug": "sapa"
+   },
+   {
+    "date": "1999-09-02",
+    "year": 1999,
+    "evidence": "Ny notering på A-listan. Överförd från O-listan 2 september.",
+    "slug": "sapa"
+   },
+   {
+    "date": "1997-05-21",
+    "year": 1997,
+    "evidence": "Ny notering på O-listan 21 maj",
+    "slug": "sapa"
+   }
+  ],
+  "GUNN": [
+   {
+    "date": "1996-03-13",
+    "year": 1996,
+    "evidence": "Ny notering på A-listan 13 mars",
+    "slug": "gunnebo"
+   },
+   {
+    "date": "1993-03-13",
+    "year": 1993,
+    "evidence": "Ny notering på O-listan 13 mars",
+    "slug": "gunnebo"
+   }
+  ],
+  "HANDI": [
+   {
+    "date": "2017-10-10",
+    "year": 2017,
+    "evidence": "Ny notering på Nasdaq Stockholm den 10 oktober, introduktionskurs 50 kr",
+    "slug": "handicaregroup"
+   }
+  ],
+  "HEM-B": [
+   {
+    "date": "2015-05-12",
+    "year": 2015,
+    "evidence": "Ny notering på Nasdaq Stockholm (Nordiska listan) 12 maj. Överförd från First North.",
+    "slug": "hembla"
+   },
+   {
+    "date": "2001-06-01",
+    "year": 2001,
+    "evidence": "Ny notering på O-listan 1 juni, introduktionskurs 115 kr",
+    "slug": "hembla"
+   }
+  ],
+  "HEMF": [
+   {
+    "date": "2014-03-21",
+    "year": 2014,
+    "evidence": "Ny notering på Nordiska listan 21 mars, introduktionskurs 93 kr",
+    "slug": "hemfosafastigheter"
+   }
+  ],
+  "HIQ": [
+   {
+    "date": "1999-04-12",
+    "year": 1999,
+    "evidence": "Ny notering på O-listan 12 april, introduktionskurs 106 kr.",
+    "slug": "hiqinternational"
+   }
+  ],
+  "HM-B": [
+   {
+    "date": "1997-06-10",
+    "year": 1997,
+    "evidence": "Ny notering på O-listan. Överförd från A-listan 10 juni.",
+    "slug": "hmhennesmauritz"
+   },
+   {
+    "date": "1974-06-17",
+    "year": 1974,
+    "evidence": "Ny  notering på A-listan 17 juni",
+    "slug": "hmhennesmauritz"
+   }
+  ],
+  "IAR-B": [
+   {
+    "date": "2000-07-11",
+    "year": 2000,
+    "evidence": "Ny notering på O-listan 11 juli",
+    "slug": "iarsystems"
+   },
+   {
+    "date": "1999-01-04",
+    "year": 1999,
+    "evidence": "Ny notering på O-listan 4 januari",
+    "slug": "iarsystemsgroup"
+   }
+  ],
+  "IMMU": [
+   {
+    "date": "2018-01-15",
+    "year": 2018,
+    "evidence": "Ny notering på Nasdaq Stockholm den 15 januari. Överförd från First North.",
+    "slug": "mendus"
+   }
+  ],
+  "IPCO": [
+   {
+    "date": "2018-06-08",
+    "year": 2018,
+    "evidence": "Ny notering på Nasdaq Stockholm den 8 juni. Överförd från First North.",
+    "slug": "internationalpetroleumcorporation"
+   }
+  ],
+  "JOMA": [
+   {
+    "date": "2019-06-05",
+    "year": 2019,
+    "evidence": "Ny notering på Nasdaq Stockholm den 5 juni, introduktionskurs 90 kr",
+    "slug": "johnmattsonfastighetsforetagen"
+   }
+  ],
+  "JOSE": [
+   {
+    "date": "2014-06-19",
+    "year": 2014,
+    "evidence": "Ny notering på Nordiska listan 19 juni",
+    "slug": "josemariaresources"
+   }
+  ],
+  "KLOV-PREF": [
+   {
+    "date": "1997-06-19",
+    "year": 1997,
+    "evidence": "Ny notering på O-listan 19 juni",
+    "slug": "coremkelly"
+   }
+  ],
+  "MANG": [
+   {
+    "date": "2022-02-24",
+    "year": 2022,
+    "evidence": "Ny notering på Nasdaq Stockholm den 24 februari. Överförd från First North.",
+    "slug": "mangold"
+   }
+  ],
+  "MCOV-B": [
+   {
+    "date": "1997-07-01",
+    "year": 1997,
+    "evidence": "Ny notering på O-listan 1 juli",
+    "slug": "medicoverholdingsa"
+   }
+  ],
+  "MEKO": [
+   {
+    "date": "2000-05-29",
+    "year": 2000,
+    "evidence": "Ny notering på O-listan 29 maj, introduktionskurs 110 kr",
+    "slug": "meko"
+   }
+  ],
+  "MIC-SDB": [
+   {
+    "date": "2004-03-30",
+    "year": 2004,
+    "evidence": "Ny notering på O-listan 30 mars",
+    "slug": "millicominternationalcellularsa"
+   }
+  ],
+  "MTRS": [
+   {
+    "date": "2017-05-19",
+    "year": 2017,
+    "evidence": "Ny notering på Nasdaq Stockholm den 19 maj, introduktionskurs 55 kr",
+    "slug": "muntersgroup"
+   }
+  ],
+  "NDA-SE": [
+   {
+    "date": "1997-12-15",
+    "year": 1997,
+    "evidence": "Ny notering på A-listan 15 december",
+    "slug": "nordeabank"
+   }
+  ],
+  "NET-B": [
+   {
+    "date": "2009-01-13",
+    "year": 2009,
+    "evidence": "Ny notering på Nordiska listan 13 januari. Överförd från NGM Equity.",
+    "slug": "netent"
+   }
+  ],
+  "NIL-B": [
+   {
+    "date": "2018-04-04",
+    "year": 2018,
+    "evidence": "Ny notering på Nasdaq Stockholm den 4 april. Överförd från First North.",
+    "slug": "nilorngruppen"
+   }
+  ],
+  "NORVA": [
+   {
+    "date": "2021-12-09",
+    "year": 2021,
+    "evidence": "Ny notering på Nasdaq Stockholm den 9 december, introduktionskurs 36 kr",
+    "slug": "norva24group"
+   }
+  ],
+  "NWG": [
+   {
+    "date": "2020-11-30",
+    "year": 2020,
+    "evidence": "Ny notering på Nasdaq Stockholm den 30 november, se nedan",
+    "slug": "nordicwaterproofingholdingab"
+   },
+   {
+    "date": "2016-06-10",
+    "year": 2016,
+    "evidence": "Ny notering på Nasdaq Stockholm den 10 juni, introduktionskurs 71 kr",
+    "slug": "nordicwaterproofingholdingas"
+   }
+  ],
+  "OCTV-SDB": [
+   {
+    "date": "2026-05-25",
+    "year": 2026,
+    "evidence": "Ny notering på Nasdaq Stockholm den 25 maj",
+    "slug": "octaveintelligence"
+   }
+  ],
+  "OPUS": [
+   {
+    "date": "2013-07-02",
+    "year": 2013,
+    "evidence": "Ny notering på Nordiska listan 2 juli. Överförd från First North.",
+    "slug": "opusgroup"
+   }
+  ],
+  "ORRON": [
+   {
+    "date": "2003-10-02",
+    "year": 2003,
+    "evidence": "Ny notering på O-listan. Överförd från Nya Marknaden 2 oktober",
+    "slug": "orronenergy"
+   }
+  ],
+  "OX2": [
+   {
+    "date": "2022-04-06",
+    "year": 2022,
+    "evidence": "Ny notering på Nasdaq Stockholm den 6 april. Överförd från First North.",
+    "slug": "ox2"
+   }
+  ],
+  "RECI-B": [
+   {
+    "date": "2014-04-03",
+    "year": 2014,
+    "evidence": "Ny notering på Nordiska listan 3 april, introduktionskurs 78 kr",
+    "slug": "recipharm"
+   }
+  ],
+  "SAFETY-B": [
+   {
+    "date": "2000-03-01",
+    "year": 2000,
+    "evidence": "Ny notering på O-listan. Överförd från OTC-listan 1 mars.",
+    "slug": "ledstiernan"
+   }
+  ],
+  "SAVE": [
+   {
+    "date": "2000-04-19",
+    "year": 2000,
+    "evidence": "Ny notering på O-listan. Överförd från Nya Marknaden 19 april.",
+    "slug": "nordnetgamla"
+   }
+  ],
+  "SBB-B": [
+   {
+    "date": "2019-09-20",
+    "year": 2019,
+    "evidence": "Ny notering av B-aktien och D-aktien på Nasdaq Stockholm den 20 september",
+    "slug": "samhallsbyggnadsbolagetinorden"
+   }
+  ],
+  "SMF": [
+   {
+    "date": "2011-10-20",
+    "year": 2011,
+    "evidence": "Ny notering på Nordiska listan 20 oktober",
+    "slug": "semafoinc"
+   }
+  ],
+  "SPOR": [
+   {
+    "date": "2015-05-18",
+    "year": 2015,
+    "evidence": "Ny notering på Nasdaq Stockholm 18 maj. Överförd från First North.",
+    "slug": "sportamore"
+   }
+  ],
+  "SSM": [
+   {
+    "date": "2017-04-06",
+    "year": 2017,
+    "evidence": "Ny notering på Nasdaq Stockholm den 6 april, introduktionskurs 59 kr",
+    "slug": "ssmholding"
+   }
+  ],
+  "STE-A": [
+   {
+    "date": "1998-12-29",
+    "year": 1998,
+    "evidence": "Ny notering på A-listan 29 december",
+    "slug": "storaenso"
+   }
+  ],
+  "STEF-B": [
+   {
+    "date": "2018-04-10",
+    "year": 2018,
+    "evidence": "Ny notering på Nasdaq Stockholm den 10 april. Överförd från First North.",
+    "slug": "stendorrenfastigheter"
+   }
+  ],
+  "STWK": [
+   {
+    "date": "1987-05-21",
+    "year": 1987,
+    "evidence": "Ny notering på O-listan 21 maj",
+    "slug": "stockwikforvaltning"
+   }
+  ],
+  "SWOL-B": [
+   {
+    "date": "2008-06-12",
+    "year": 2008,
+    "evidence": "Ny notering på Nordiska listan 12 juni. Överförd från First North.",
+    "slug": "swedol"
+   }
+  ],
+  "TETY": [
+   {
+    "date": "2013-05-02",
+    "year": 2013,
+    "evidence": "Ny notering på Nordiska listan 2 maj. Överförd från First North.",
+    "slug": "tethysoil"
+   }
+  ],
+  "TIETOS": [
+   {
+    "date": "1999-07-09",
+    "year": 1999,
+    "evidence": "Ny notering på A-listan 9 juli",
+    "slug": "tietoevry"
+   }
+  ],
+  "TRENT": [
+   {
+    "date": "1998-12-30",
+    "year": 1998,
+    "evidence": "Ny notering på O-listan 30 december",
+    "slug": "trention"
+   }
+  ],
+  "TRIAN-B": [
+   {
+    "date": "2020-12-17",
+    "year": 2020,
+    "evidence": "Ny notering på Nasdaq Stockholm den 17 december. Överförd från First North.",
+    "slug": "trianon"
+   }
+  ],
+  "VNE-SDB": [
+   {
+    "date": "2018-07-02",
+    "year": 2018,
+    "evidence": "Ny notering på Nasdaq Stockholm den 2 juli, introduktionskurs se nedan",
+    "slug": "veoneerinc"
+   }
+  ],
+  "WBGR-B": [
+   {
+    "date": "2020-10-13",
+    "year": 2020,
+    "evidence": "Ny notering på Nasdaq Stockholm den 13 oktober, introduktionskurs 96 kr",
+    "slug": "wastbygggruppen"
+   }
+  ],
+  "WISE": [
+   {
+    "date": "2002-06-27",
+    "year": 2002,
+    "evidence": "Ny notering på O-listan. Överförd från Nya Marknaden 27 juni.",
+    "slug": "dagon"
+   }
+  ]
+ },
+ "nasdaq_ledger": {
+  "definition": "Nasdaq Stockholm Main Market (Large/Mid/Small), not First North/NGM/Spotlight",
+  "study_start": "2020-01-01",
+  "rules": [
+   "price existence is not membership",
+   "current Börsdata marketId is not backfilled membership evidence",
+   "name/redomiciliation events do not reset membership",
+   "post-start admission requires a dated Nasdaq source"
+  ],
+  "coverage": {
+   "n_codes": 420,
+   "n_dated_post_start_admissions": 9,
+   "n_membership_verified": 9,
+   "n_membership_unknown": 411,
+   "unknown_handling": "member_from=null; observable trading is retained from the study window, but is never described as verified membership."
+  },
+  "rows": [
+   {
+    "kod": "8TRA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "AAK",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ABB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ABLI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ACAD",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ACAST",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ACE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ACRI-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ADAPT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ADDT-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "AFRY",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "AGRO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "AJA-B",
+    "member_from": "2024-06-19",
+    "member_to": null,
+    "source": "https://www.skatteverket.se/privat/skatter/vardepapper/aktiehistorik/b/byggmastareandersjahlstromholding.4.12815e4f14a62bc048f1bb9.html",
+    "membership_verified": true,
+    "basis": "NASDAQ_DATED_ADMISSION",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ALFA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ALIF-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ALIG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ALLEI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ALLIGO-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ALVO-SDB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "AM1S",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "AMBEA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ANNE-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ANOD-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ANOT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "APOTEA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "AQ",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ARION-SDB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ARISE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ARJO-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ARP",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ARPL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ASKER",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ASMDEE-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ASSA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ATCO-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ATIC",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ATORX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ATRE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ATRLJ-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ATT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ATVEXA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "AVARDA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "AXFO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "AZA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "AZN",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "B3",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BALCO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BALD-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BEGR",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BEIA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BEIJ-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BERG-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BERNER-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BESQAB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BETCO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BETS-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BFG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BHG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BICO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BILI-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BILL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BINV",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BIOA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BIOG-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BIOT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BMAX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BOL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BONAV-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BONEX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BONG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BOOZT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BORG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BOUL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BRAV",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BRG-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BRIN-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BTS-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BUFAB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BULTEN",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "BURE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CALTX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CAMX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CANTA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CARA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CARY",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CAST",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CAT-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CATE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CCC",
+    "member_from": "2025-07-09",
+    "member_to": null,
+    "source": "https://www.skatteverket.se/privat/skatter/vardepapper/aktiehistorik/c/cavotecgroup.4.40cab8f8197edf03e64b7e.html",
+    "membership_verified": true,
+    "basis": "NASDAQ_DATED_ADMISSION",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CCOR-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CEVI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CIBUS",
+    "member_from": "2021-06-01",
+    "member_to": null,
+    "source": "https://view.news.eu.nasdaq.com/view?id=b962695069092abd205e07a3b25ad262c&lang=en",
+    "membership_verified": true,
+    "basis": "NASDAQ_DATED_ADMISSION",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CINPHA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CINT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CLA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CLAS-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CNCJO-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "COIC",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "COLL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "COOR",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CORE-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CPAC-SPAC",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CRAD-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CRED-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CS",
+    "member_from": "2022-12-19",
+    "member_to": null,
+    "source": "https://view.news.eu.nasdaq.com/view?id=b73bb1e1553859aa75da92f912793c707&lang=en",
+    "membership_verified": true,
+    "basis": "NASDAQ_DATED_ADMISSION",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CTEK",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "CTT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "DEDI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "DIOS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "DOM",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "DORO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "DUNI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "DURC-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "DUST",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "DYVOX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EAST",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EDGE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EG7",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EGTX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EKTA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ELAN-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ELON",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ELOS-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ELTEL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ELUX-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EMBRAC-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EMIL-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ENDO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ENEA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ENG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ENGCON-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ENITY",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EOLU-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EPEN",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EPI-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EPIS-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EPRO-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EQL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EQT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ERIC-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ESSITY-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ETX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EVO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "EWRK",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FABG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FAG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FASTAT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FEEL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FLAT-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FLERIE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FMM-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FNM",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FNOVA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FNOX",
+    "member_from": "2022-04-13",
+    "member_to": null,
+    "source": "https://www.nasdaq.com/press-release/nasdaq-stockholm-welcomes-fortnox-to-the-nasdaq-main-market-2022-04-13",
+    "membership_verified": true,
+    "basis": "NASDAQ_DATED_ADMISSION",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FOI-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FPAR-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "FPIP",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "G2M",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "G5EN",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "GETI-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "GHP",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "GPG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "GREEN",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "GRNG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "GUNN",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HACK",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HAKI-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HANDI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HANZA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HAV-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HEBA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HEM",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HEM-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HEMF",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HEXA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HIQ",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HLDX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HM-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HMS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HNSA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HOFI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HOLM-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HPOL-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HTRO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HUFV-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HUM",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HUMBLE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "HUSQ-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "IAR-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "IBT-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ICA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "IMMNOV",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "IMMU",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "INDT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "INDU-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "INFREA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "INISS-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "INSTAL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "INTEA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "INTRUM",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "INVE-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "INWI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "IPCO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "IRLAB-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "IRRAS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "IS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ISOFOL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ITAB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "IVSO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "JM",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "JOMA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "JOSE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "K2A-PREF",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "KABE-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "KAR",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "KARNEL-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "KDEV",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "KFAST-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "KINV-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "KLED",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "KLOV-PREF",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "KNOW",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LAGR-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LAMM-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LATO-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LEO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LIAB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LIFCO-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LIME",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LINC",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LOGI-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LOOMIS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LUG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "LUMI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MAG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MAHA-A",
+    "member_from": "2020-12-16",
+    "member_to": null,
+    "source": "https://www.nasdaq.com/docs/2021/04/28/0850-Q21_Surveillance-Annual-Report-2020-Update_OGC-V2.pdf",
+    "membership_verified": true,
+    "basis": "NASDAQ_DATED_ADMISSION",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MANG",
+    "member_from": "2022-02-24",
+    "member_to": null,
+    "source": "https://view.news.eu.nasdaq.com/view?id=bcbec1af5f35799d334682d260724f285&lang=en",
+    "membership_verified": true,
+    "basis": "NASDAQ_DATED_ADMISSION",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MCAP",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MCOV-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MEAB-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MEKO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MIC-SDB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MILDEF",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MIPS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MMGR-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MOB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MOMENT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MORROW",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MSAB-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MSON-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MTRS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MULQ",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MVIR",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "MYCR",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NAXS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NCAB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NCC-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NDA-SE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NELLY",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NEOBO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NET-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NETEL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NETI-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NEWA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NIBE-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NICA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NIL-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NIVI-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NMAN",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NOBA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NOBINA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NOLA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NORB-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NORION",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NORVA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NOTE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NP3-PREF",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NPAPER",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NTEK-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NWG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "NYF",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "OCTV-SDB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "OEM-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ONCO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "OP",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "OPUS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ORRON",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ORX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "OVZON",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "OX2",
+    "member_from": "2022-04-06",
+    "member_to": null,
+    "source": "https://www.nasdaq.com/docs/2025/02/27/Changes-to-the-list-Nasdaq-Stockholm-2022.pdf",
+    "membership_verified": true,
+    "basis": "NASDAQ_DATED_ADMISSION",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PACT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PCELL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PDX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PEAB-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PENG-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PIERCE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PION-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PLAZ-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PNDX-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PREC",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PREV-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PRFO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PRIC-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PRISMA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PROB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PROF-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "PUBLI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "QLINEA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "QLIRO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "RAIL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "RATO-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "RAY-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "RECI-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "REJL-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "RESURS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "RIZZO-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ROKO-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "RROS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "RUSTA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "RVRC",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SAAB-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SAFETY-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SAGA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SAMPO-SEK",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SAND",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SANION",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SAS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SAVE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SBB-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SCA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SCST",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SDIP-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SEAF",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SEB-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SECT-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SECU-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SEDANA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SEMC",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SEZI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SF",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SFAST",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SGG",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SHB-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SHOT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SILEX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SINCH",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SINT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SIVE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SKA-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SKIS-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SLEEP",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SLP-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SMCRT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SMF",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SOBI",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SOF-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SPOR",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SRNKE-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SSAB-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SSM",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "STAR-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "STE-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "STEF-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "STOR-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "STORY-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "STRAX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "STWK",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SVEAF",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SVED-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SVIK",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SVOL-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SWEC-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SWED-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SWMA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SWOL-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SYNACT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SYNSAM",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "SYSR",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TEL2-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TELIA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TETY",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "THULE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TIETOS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TOBII",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TRAC-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TRAD",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TRANS",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TREL-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TRENT",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TRIAN-B",
+    "member_from": "2020-12-17",
+    "member_to": null,
+    "source": "https://view.news.eu.nasdaq.com/view?id=b5e092f1f87f0bee257fc1d49655a4395&lang=en",
+    "membership_verified": true,
+    "basis": "NASDAQ_DATED_ADMISSION",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TROAX",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "TRUE-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VBG-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VEFAB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VESTUM",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VICO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VIMIAN",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VISC",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VIT-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VITR",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VIVA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VNE-SDB",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VNV",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VOLCAR-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VOLO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VOLV-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VPLAY-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "VSURE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "WALL-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "WBGR-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "WIHL",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "WISE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "WTW-A",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "XANO-B",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "XBRANE",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "XSPRAY",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "XVIVO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "YUBICO",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   },
+   {
+    "kod": "ZETA",
+    "member_from": null,
+    "member_to": null,
+    "source": null,
+    "membership_verified": false,
+    "basis": "HISTORICAL_MEMBERSHIP_UNKNOWN",
+    "observation_window_from": "2020-01-01"
+   }
+  ]
+ },
+ "n_rows_before_ledger_membership_after_rebuild": 0,
+ "status": "KÄND DATASETBEGRÄNSNING: daterade admissions filtreras; övrig historisk membership är explicit okänd och har ingen påhittad entry_date"
+}

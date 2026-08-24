@@ -1,0 +1,61 @@
+{
+  "schema": "IMPLEMENTATION_PRIORITY_V1",
+  "created_utc": "2026-08-18T20:18:51+00:00",
+  "kriterier": [
+    "forsknings-/systemvarde",
+    "PIT-kvalitet",
+    "historisk coverage",
+    "survivorship-sakerhet",
+    "implementation effort",
+    "redundans mot befintlig data"
+  ],
+  "prioritering": [
+    {
+      "P": "P0",
+      "uppgift": "Main Market monthly master extraction",
+      "status": "RAW REDAN HAMTAT (201/201)",
+      "varde": "HOGST — market cap, listed shares, turnover, trades, spread, historisk ICB",
+      "pit": "PIT_SAFE_WITH_LAG, publiceringslagg verifierat",
+      "coverage": "2009-08..2026-07, 99,6-99,9 %",
+      "survivorship": "avnoterade inkluderade per Nasdaqs egen not",
+      "effort": "LAG — parser finns",
+      "redundans": "lag — 4 NEW_DATA + 3 NASDAQ_BETTER_SOURCE"
+    },
+    {
+      "P": "P1",
+      "uppgift": "Historisk ICB/sektor-intervallserie ur samma filer",
+      "varde": "HOGT — K1 kan inte representera sektorbyten alls och har 0 % tackning 2014-2019",
+      "pit": "PIT_SAFE_WITH_LAG",
+      "effort": "LAG — datan ar redan extraherad",
+      "notering": "Ersatter INTE K1 automatiskt; kraver egen validering och governancebeslut"
+    },
+    {
+      "P": "P2",
+      "uppgift": "First North monthly",
+      "varde": "MEDEL — utvidgar universumet",
+      "effort": "MEDEL — parser behover en First North-profil (Location saknas, annan segmentvokabular)",
+      "blockerare": "historikens djup ej faststallt"
+    },
+    {
+      "P": "P3",
+      "uppgift": "Corporate-action QA via no_of_shares_listed-forandringar",
+      "varde": "MEDEL — splitdetektion utan ny datakalla",
+      "effort": "LAG"
+    },
+    {
+      "P": "P4",
+      "uppgift": "Index history",
+      "varde": "LAGT-MEDEL",
+      "effort": "MEDEL",
+      "blockerare": "historiska constituents och vikter EJ verifierade"
+    },
+    {
+      "P": "P5",
+      "uppgift": "QuoteView / flows",
+      "varde": "LAGT relativt kostnad",
+      "effort": "HOG",
+      "notering": "avg_closing_spread tacker redan spreadbehovet manadsvis"
+    }
+  ],
+  "avvikelse_fran_forslagen_ordning": "Historisk ICB flyttas fran outtalad plats till P1, fore First North. Skalet ar empiriskt: K1 har 0 av 420 instrument med mer an ett intervall och 0 % tackning i 2014-2019, medan Nasdaq visar att 23,3 % av instrumenten faktiskt byter industry. Datan ar dessutom redan extraherad."
+}

@@ -1,0 +1,37 @@
+{
+ "schema": "TEMPORAL_SURVIVORSHIP_QA_V1",
+ "created_utc": "2026-08-18T20:27:10+00:00",
+ "manader": 201,
+ "saknade_manader": [
+  "2010-09",
+  "2011-08",
+  "2013-03"
+ ],
+ "duplicate_instrument_month": 0,
+ "overlappande_identitetsintervall": 0,
+ "instrumentluckor": {
+  "EXPECTED_ABSENCE": 15,
+  "UNEXPLAINED_GAP": 1
+ },
+ "unexplained_exempel": [
+  {
+   "kod": "MMGR B",
+   "gap": [
+    "2021-11",
+    "2022-03"
+   ],
+   "manader": 3,
+   "klass": "UNEXPLAINED_GAP"
+  }
+ ],
+ "isin_transitions": 267,
+ "segment_intervals": 1133,
+ "delistings": 208,
+ "code_reuse_confirmed": 3,
+ "survivorship": {
+  "instrument_totalt": 763,
+  "senare_avnoterade": 194,
+  "narvarande_sista_manaden": 416
+ },
+ "ingen_interpolation": true
+}

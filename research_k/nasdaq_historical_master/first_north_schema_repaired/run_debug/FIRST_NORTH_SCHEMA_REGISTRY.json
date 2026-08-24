@@ -1,0 +1,3721 @@
+{
+  "registry": {
+    "FN_SCHEMA_00091ee1356c7e90": {
+      "expected_data_width": 11,
+      "field_to_data_index": {
+        "currency": 9,
+        "delisted": 10,
+        "industry": 5,
+        "instrument": 0,
+        "instrument_type": 4,
+        "isin": 3,
+        "issuer_code": 1,
+        "lp_yes": 8,
+        "orderbook_id": 2,
+        "supersector": 6,
+        "ticker": 2
+      },
+      "file_type": "xls",
+      "fingerprint": {
+        "data_vector_width": 11,
+        "file_type": "xls",
+        "header_rows": [
+          60
+        ],
+        "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "isin",
+          "instrument type",
+          "industry",
+          "super sector",
+          "round lot",
+          "lp yes=y",
+          "currency",
+          "delisted",
+          "",
+          "no of shares listed",
+          "market cap",
+          "latest paid",
+          "",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades",
+          "",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades",
+          "",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "",
+          "otc no of trades"
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2016-08",
+      "header_rows": [
+        60
+      ],
+      "last_observed": "2016-08",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 9,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            9
+          ]
+        },
+        "delisted": {
+          "data_column_index": 10,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            10
+          ]
+        },
+        "industry": {
+          "data_column_index": 5,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            5
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 4,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            4
+          ]
+        },
+        "isin": {
+          "data_column_index": 3,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            3
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 6,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            6
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "schema_id": "FN_SCHEMA_00091ee1356c7e90",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 61,
+          "disclosure_id": 726421,
+          "header_row": 60,
+          "report_month": "2016-08"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 275,
+          "data_start_row": 61,
+          "disclosure_id": 726421,
+          "header_row": 60,
+          "report_month": "2016-08",
+          "sha256": "37d1689d54b33af270ee290766496e0d71116ee0342cddca841dd90e01d23ee0"
+        }
+      ]
+    },
+    "FN_SCHEMA_0256a3b3503903d2": {
+      "expected_data_width": 15,
+      "field_to_data_index": {
+        "currency": 13,
+        "delisted": 14,
+        "industry": 7,
+        "instrument": 0,
+        "instrument_type": 5,
+        "isin": 3,
+        "issuer_code": 1,
+        "lp_yes": 11,
+        "orderbook_id": 2,
+        "supersector": 9,
+        "ticker": 2
+      },
+      "file_type": "xls",
+      "fingerprint": {
+        "data_vector_width": 15,
+        "file_type": "xls",
+        "header_rows": [
+          507
+        ],
+        "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "isin",
+          "",
+          "instrument type",
+          "",
+          "industry",
+          "",
+          "super sector",
+          "round lot",
+          "lp yes=y",
+          "",
+          "currency",
+          "delisted",
+          "",
+          "no of shares listed",
+          "",
+          "",
+          "market cap",
+          "",
+          "latest paid",
+          "listed days",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          ""
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2023-12",
+      "header_rows": [
+        507
+      ],
+      "last_observed": "2023-12",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 13,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            13
+          ]
+        },
+        "delisted": {
+          "data_column_index": 14,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            14
+          ]
+        },
+        "industry": {
+          "data_column_index": 7,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            7
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 5,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            5
+          ]
+        },
+        "isin": {
+          "data_column_index": 3,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            3
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 9,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            9
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "schema_id": "FN_SCHEMA_0256a3b3503903d2",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 508,
+          "disclosure_id": 1267619,
+          "header_row": 507,
+          "report_month": "2023-12"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 515,
+          "data_start_row": 508,
+          "disclosure_id": 1267619,
+          "header_row": 507,
+          "report_month": "2023-12",
+          "sha256": "f62da7e747ac8e42204639542273aba2de5e04cb49eb917cb733c61efa443652"
+        }
+      ]
+    },
+    "FN_SCHEMA_04e1c9b0569fb890": {
+      "expected_data_width": 11,
+      "field_to_data_index": {
+        "currency": 9,
+        "delisted": 10,
+        "industry": 5,
+        "instrument": 0,
+        "instrument_type": 4,
+        "isin": 3,
+        "issuer_code": 1,
+        "lp_yes": 8,
+        "orderbook_id": 2,
+        "supersector": 6,
+        "ticker": 2
+      },
+      "file_type": "xls",
+      "fingerprint": {
+        "data_vector_width": 11,
+        "file_type": "xls",
+        "header_rows": [
+          70
+        ],
+        "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "isin",
+          "instrument type",
+          "industry",
+          "super sector",
+          "round lot",
+          "lp yes=y",
+          "currency",
+          "delisted",
+          "",
+          "no of shares listed",
+          "market cap",
+          "latest paid",
+          "",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades",
+          "",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades"
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2017-12",
+      "header_rows": [
+        70
+      ],
+      "last_observed": "2017-12",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 9,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            9
+          ]
+        },
+        "delisted": {
+          "data_column_index": 10,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            10
+          ]
+        },
+        "industry": {
+          "data_column_index": 5,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            5
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 4,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            4
+          ]
+        },
+        "isin": {
+          "data_column_index": 3,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            3
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 6,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            6
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "schema_id": "FN_SCHEMA_04e1c9b0569fb890",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 71,
+          "disclosure_id": 817840,
+          "header_row": 70,
+          "report_month": "2017-12"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 373,
+          "data_start_row": 71,
+          "disclosure_id": 817840,
+          "header_row": 70,
+          "report_month": "2017-12",
+          "sha256": "1d41f4fceb8fe1a2c709062aca06c91dc912f0d16825c7c668635bc0e0f1c6b0"
+        }
+      ]
+    },
+    "FN_SCHEMA_06e91968b31f4acc": {
+      "expected_data_width": 20,
+      "field_to_data_index": {
+        "currency": 15,
+        "delisted": 19,
+        "industry": 9,
+        "instrument": 0,
+        "instrument_type": 6,
+        "isin": 4,
+        "issuer_code": 1,
+        "issuer_country": 16,
+        "lp_yes": 14,
+        "orderbook_id": 2,
+        "supersector": 12,
+        "ticker": 2
+      },
+      "file_type": "xlsx",
+      "fingerprint": {
+        "data_vector_width": 20,
+        "file_type": "xlsx",
+        "header_rows": [
+          95
+        ],
+        "merged_ranges_signature": "dbd3c70db46f0c79fc0a8dbc6b4b6f2834676fab525e1085ccad081de8e66a71",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "",
+          "isin",
+          "",
+          "instrument type",
+          "",
+          "",
+          "industry",
+          "",
+          "",
+          "super sector",
+          "round lot",
+          "lp yes=y",
+          "currency",
+          "issuer country",
+          "",
+          "",
+          "delisted",
+          "",
+          "no of shares listed",
+          "",
+          "market cap",
+          "",
+          "",
+          "latest paid",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          ""
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2025-03",
+      "header_rows": [
+        95
+      ],
+      "last_observed": "2025-03",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "issuer_country",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 15,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            15
+          ]
+        },
+        "delisted": {
+          "data_column_index": 19,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            19
+          ]
+        },
+        "industry": {
+          "data_column_index": 9,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            9
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 6,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            6
+          ]
+        },
+        "isin": {
+          "data_column_index": 4,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            4
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 12,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            12
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "dbd3c70db46f0c79fc0a8dbc6b4b6f2834676fab525e1085ccad081de8e66a71",
+      "schema_id": "FN_SCHEMA_06e91968b31f4acc",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 96,
+          "disclosure_id": 1354563,
+          "header_row": 95,
+          "report_month": "2025-03"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 532,
+          "data_start_row": 96,
+          "disclosure_id": 1354563,
+          "header_row": 95,
+          "report_month": "2025-03",
+          "sha256": "d2229443a721b57706fc2b2427248270cd9c4d67c21053c9929689755cc5e651"
+        }
+      ]
+    },
+    "FN_SCHEMA_06eba34246ae466e": {
+      "expected_data_width": 23,
+      "field_to_data_index": {
+        "currency": 18,
+        "delisted": 22,
+        "industry": 9,
+        "instrument": 0,
+        "instrument_type": 7,
+        "isin": 5,
+        "issuer_code": 1,
+        "issuer_country": 20,
+        "lp_yes": 17,
+        "orderbook_id": 2,
+        "supersector": 13,
+        "ticker": 2
+      },
+      "file_type": "xlsx",
+      "fingerprint": {
+        "data_vector_width": 23,
+        "file_type": "xlsx",
+        "header_rows": [
+          7
+        ],
+        "merged_ranges_signature": "f4468d07885d47dbd36340f08265418e3b5c85e24ed08637b50c3fd423026c83",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "",
+          "",
+          "isin",
+          "",
+          "instrument type",
+          "",
+          "industry",
+          "",
+          "",
+          "",
+          "super sector",
+          "",
+          "round lot",
+          "",
+          "lp yes=y",
+          "currency",
+          "",
+          "issuer country",
+          "",
+          "delisted",
+          "",
+          "no of shares listed",
+          "",
+          "",
+          "market cap",
+          "",
+          "",
+          "latest paid",
+          "",
+          "",
+          "listed days",
+          "",
+          "",
+          "total turnover",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "",
+          "total no of trades",
+          "",
+          "",
+          "average turnover",
+          "",
+          "",
+          "average no of traded shares",
+          "",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "",
+          "traded days",
+          "",
+          "",
+          "turnover velocity",
+          "",
+          "",
+          "average closing spread",
+          "",
+          "",
+          "vwap",
+          "",
+          "",
+          "high paid",
+          "",
+          "low paid",
+          "",
+          "",
+          "",
+          "listed days",
+          "",
+          "",
+          "total turnover",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "",
+          "total no of trades",
+          "",
+          "",
+          "average turnover",
+          "",
+          "",
+          "average no of traded shares",
+          "",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "",
+          "traded days",
+          "",
+          "",
+          "turnover velocity",
+          "",
+          "",
+          "average closing spread",
+          "",
+          "",
+          "vwap",
+          "",
+          "",
+          "high paid",
+          "",
+          "low paid",
+          "",
+          "",
+          "",
+          "listed days",
+          "",
+          "",
+          "total turnover",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "",
+          "total no of trades",
+          "",
+          "",
+          "average turnover",
+          "",
+          "",
+          "average no of traded shares",
+          "",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "",
+          "traded days",
+          "",
+          "",
+          "turnover velocity",
+          "",
+          "",
+          "",
+          "average closing spread",
+          "",
+          "",
+          "vwap",
+          "",
+          "",
+          "high paid",
+          "",
+          "",
+          "",
+          "low paid",
+          "",
+          ""
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2025-11",
+      "header_rows": [
+        7
+      ],
+      "last_observed": "2025-11",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "issuer_country",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 18,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            18
+          ]
+        },
+        "delisted": {
+          "data_column_index": 22,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            22
+          ]
+        },
+        "industry": {
+          "data_column_index": 9,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            9
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 7,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            7
+          ]
+        },
+        "isin": {
+          "data_column_index": 5,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            5
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 13,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            13
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "f4468d07885d47dbd36340f08265418e3b5c85e24ed08637b50c3fd423026c83",
+      "schema_id": "FN_SCHEMA_06eba34246ae466e",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 8,
+          "disclosure_id": 1404017,
+          "header_row": 7,
+          "report_month": "2025-11"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 82,
+          "data_start_row": 8,
+          "disclosure_id": 1404017,
+          "header_row": 7,
+          "report_month": "2025-11",
+          "sha256": "b94f016ca42e9bc387679c2ca5cf4455cb8d7493af4ce9fcf81992934e3c829e"
+        }
+      ]
+    },
+    "FN_SCHEMA_0805a9f63904c419": {
+      "expected_data_width": 19,
+      "field_to_data_index": {
+        "currency": 17,
+        "delisted": 18,
+        "industry": 8,
+        "instrument": 0,
+        "instrument_type": 6,
+        "isin": 4,
+        "issuer_code": 1,
+        "lp_yes": 15,
+        "orderbook_id": 2,
+        "supersector": 12,
+        "ticker": 2
+      },
+      "file_type": "xlsx",
+      "fingerprint": {
+        "data_vector_width": 19,
+        "file_type": "xlsx",
+        "header_rows": [
+          7
+        ],
+        "merged_ranges_signature": "d186959dc16c241a8a94c8cdfdf5aac085d122ab3a2883f21b9df15545cf720e",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "",
+          "isin",
+          "",
+          "instrument type",
+          "",
+          "industry",
+          "",
+          "",
+          "",
+          "super sector",
+          "round lot",
+          "",
+          "lp yes=y",
+          "",
+          "currency",
+          "delisted",
+          "",
+          "no of shares listed",
+          "",
+          "market cap",
+          "",
+          "",
+          "latest paid",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "",
+          "low paid",
+          "",
+          "",
+          ""
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2024-09",
+      "header_rows": [
+        7
+      ],
+      "last_observed": "2024-09",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 17,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            17
+          ]
+        },
+        "delisted": {
+          "data_column_index": 18,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            18
+          ]
+        },
+        "industry": {
+          "data_column_index": 8,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            8
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 6,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            6
+          ]
+        },
+        "isin": {
+          "data_column_index": 4,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            4
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 12,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            12
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "d186959dc16c241a8a94c8cdfdf5aac085d122ab3a2883f21b9df15545cf720e",
+      "schema_id": "FN_SCHEMA_0805a9f63904c419",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 8,
+          "disclosure_id": 1319365,
+          "header_row": 7,
+          "report_month": "2024-09"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 492,
+          "data_start_row": 8,
+          "disclosure_id": 1319365,
+          "header_row": 7,
+          "report_month": "2024-09",
+          "sha256": "3a345c1d1d3427ef8e9c364c4dc7f832d44ddbc84c9b0d3987275dec6f92c41e"
+        }
+      ]
+    },
+    "FN_SCHEMA_09a8551967188dc9": {
+      "expected_data_width": 11,
+      "field_to_data_index": {
+        "currency": 9,
+        "delisted": 10,
+        "industry": 5,
+        "instrument": 0,
+        "instrument_type": 4,
+        "isin": 3,
+        "issuer_code": 1,
+        "lp_yes": 8,
+        "orderbook_id": 2,
+        "supersector": 6,
+        "ticker": 2
+      },
+      "file_type": "xls",
+      "fingerprint": {
+        "data_vector_width": 11,
+        "file_type": "xls",
+        "header_rows": [
+          66
+        ],
+        "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "isin",
+          "instrument type",
+          "industry",
+          "super sector",
+          "round lot",
+          "lp yes=y",
+          "currency",
+          "delisted",
+          "",
+          "no of shares listed",
+          "market cap",
+          "latest paid",
+          "",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades",
+          "",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades",
+          "",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades"
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2018-07",
+      "header_rows": [
+        66
+      ],
+      "last_observed": "2019-06",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 9,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            9
+          ]
+        },
+        "delisted": {
+          "data_column_index": 10,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            10
+          ]
+        },
+        "industry": {
+          "data_column_index": 5,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            5
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 4,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            4
+          ]
+        },
+        "isin": {
+          "data_column_index": 3,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            3
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 6,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            6
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "schema_id": "FN_SCHEMA_09a8551967188dc9",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 67,
+          "disclosure_id": 850027,
+          "header_row": 66,
+          "report_month": "2018-07"
+        },
+        {
+          "data_start_row": 67,
+          "disclosure_id": 854608,
+          "header_row": 66,
+          "report_month": "2018-08"
+        },
+        {
+          "data_start_row": 67,
+          "disclosure_id": 888387,
+          "header_row": 66,
+          "report_month": "2019-04"
+        }
+      ],
+      "workbook_count": 4,
+      "workbooks": [
+        {
+          "data_end_row": 390,
+          "data_start_row": 67,
+          "disclosure_id": 850027,
+          "header_row": 66,
+          "report_month": "2018-07",
+          "sha256": "2ef5507643ffc5d385fecc2da65a45537979794815a732f158231ca8625f5a05"
+        },
+        {
+          "data_end_row": 392,
+          "data_start_row": 67,
+          "disclosure_id": 854608,
+          "header_row": 66,
+          "report_month": "2018-08",
+          "sha256": "14d89f969cbf7322b23d9bf932af08e1dbaa17a3ea9c00ff36e72d50424dce5e"
+        },
+        {
+          "data_end_row": 421,
+          "data_start_row": 67,
+          "disclosure_id": 888387,
+          "header_row": 66,
+          "report_month": "2019-04",
+          "sha256": "734f2ea2521f3819e01a1409d018850dd6cbff542887cfddc273d5ad1c01594c"
+        },
+        {
+          "data_end_row": 418,
+          "data_start_row": 67,
+          "disclosure_id": 896806,
+          "header_row": 66,
+          "report_month": "2019-06",
+          "sha256": "bfd1e043dd13e0f12d712b60b74a6995874b0c405522d6f77e3b6e895719d71a"
+        }
+      ]
+    },
+    "FN_SCHEMA_0a2375f13d9a36bf": {
+      "expected_data_width": 11,
+      "field_to_data_index": {
+        "currency": 9,
+        "delisted": 10,
+        "industry": 5,
+        "instrument": 0,
+        "instrument_type": 4,
+        "isin": 3,
+        "issuer_code": 1,
+        "lp_yes": 8,
+        "orderbook_id": 2,
+        "supersector": 6,
+        "ticker": 2
+      },
+      "file_type": "xls",
+      "fingerprint": {
+        "data_vector_width": 11,
+        "file_type": "xls",
+        "header_rows": [
+          66
+        ],
+        "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "isin",
+          "instrument type",
+          "industry",
+          "super sector",
+          "round lot",
+          "lp yes=y",
+          "currency",
+          "delisted",
+          "",
+          "no of shares listed",
+          "market cap",
+          "latest paid",
+          "",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades",
+          "",
+          "",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades"
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2019-01",
+      "header_rows": [
+        66
+      ],
+      "last_observed": "2019-01",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 9,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            9
+          ]
+        },
+        "delisted": {
+          "data_column_index": 10,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            10
+          ]
+        },
+        "industry": {
+          "data_column_index": 5,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            5
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 4,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            4
+          ]
+        },
+        "isin": {
+          "data_column_index": 3,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            3
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 6,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            6
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "schema_id": "FN_SCHEMA_0a2375f13d9a36bf",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 67,
+          "disclosure_id": 874482,
+          "header_row": 66,
+          "report_month": "2019-01"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 406,
+          "data_start_row": 67,
+          "disclosure_id": 874482,
+          "header_row": 66,
+          "report_month": "2019-01",
+          "sha256": "d200a70300fe93774bdc324e409f0c807ca52a4c54637689e17d261d0243bd50"
+        }
+      ]
+    },
+    "FN_SCHEMA_0a73ecb890ae572c": {
+      "expected_data_width": 19,
+      "field_to_data_index": {
+        "currency": 16,
+        "delisted": 18,
+        "industry": 8,
+        "instrument": 0,
+        "instrument_type": 6,
+        "isin": 4,
+        "issuer_code": 1,
+        "lp_yes": 15,
+        "orderbook_id": 2,
+        "supersector": 11,
+        "ticker": 2
+      },
+      "file_type": "xlsx",
+      "fingerprint": {
+        "data_vector_width": 19,
+        "file_type": "xlsx",
+        "header_rows": [
+          510
+        ],
+        "merged_ranges_signature": "cac9df3ac2aab75655b48bd1d4532e2e2710edd7ddcdbb5111ad52fa2e41ed09",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "",
+          "isin",
+          "",
+          "instrument type",
+          "",
+          "industry",
+          "",
+          "",
+          "super sector",
+          "",
+          "round lot",
+          "",
+          "lp yes=y",
+          "currency",
+          "",
+          "delisted",
+          "no of shares listed",
+          "",
+          "market cap",
+          "",
+          "",
+          "latest paid",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "",
+          "low paid",
+          "",
+          ""
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2024-08",
+      "header_rows": [
+        510
+      ],
+      "last_observed": "2024-08",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 16,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            16
+          ]
+        },
+        "delisted": {
+          "data_column_index": 18,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            18
+          ]
+        },
+        "industry": {
+          "data_column_index": 8,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            8
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 6,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            6
+          ]
+        },
+        "isin": {
+          "data_column_index": 4,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            4
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 11,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            11
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "cac9df3ac2aab75655b48bd1d4532e2e2710edd7ddcdbb5111ad52fa2e41ed09",
+      "schema_id": "FN_SCHEMA_0a73ecb890ae572c",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 511,
+          "disclosure_id": 1314486,
+          "header_row": 510,
+          "report_month": "2024-08"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 581,
+          "data_start_row": 511,
+          "disclosure_id": 1314486,
+          "header_row": 510,
+          "report_month": "2024-08",
+          "sha256": "d6204d40d3ca4a3e90d7b17d442193b3a483e44d0063ce3b97e26b4a2ec5b0b0"
+        }
+      ]
+    },
+    "FN_SCHEMA_0b79983c294f7635": {
+      "expected_data_width": 15,
+      "field_to_data_index": {
+        "currency": 12,
+        "delisted": 14,
+        "industry": 7,
+        "instrument": 0,
+        "instrument_type": 5,
+        "isin": 3,
+        "issuer_code": 1,
+        "lp_yes": 11,
+        "orderbook_id": 2,
+        "supersector": 9,
+        "ticker": 2
+      },
+      "file_type": "xls",
+      "fingerprint": {
+        "data_vector_width": 15,
+        "file_type": "xls",
+        "header_rows": [
+          526
+        ],
+        "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "isin",
+          "",
+          "instrument type",
+          "",
+          "industry",
+          "",
+          "super sector",
+          "round lot",
+          "lp yes=y",
+          "currency",
+          "",
+          "delisted",
+          "",
+          "no of shares listed",
+          "",
+          "",
+          "market cap",
+          "",
+          "latest paid",
+          "",
+          "listed days",
+          "total turnover",
+          "",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "",
+          "",
+          "listed days",
+          "total turnover",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "",
+          "",
+          "listed days",
+          "total turnover",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "",
+          "vwap",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2023-07",
+      "header_rows": [
+        526
+      ],
+      "last_observed": "2023-07",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 12,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            12
+          ]
+        },
+        "delisted": {
+          "data_column_index": 14,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            14
+          ]
+        },
+        "industry": {
+          "data_column_index": 7,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            7
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 5,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            5
+          ]
+        },
+        "isin": {
+          "data_column_index": 3,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            3
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 9,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            9
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "schema_id": "FN_SCHEMA_0b79983c294f7635",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 527,
+          "disclosure_id": 1240869,
+          "header_row": 526,
+          "report_month": "2023-07"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 534,
+          "data_start_row": 527,
+          "disclosure_id": 1240869,
+          "header_row": 526,
+          "report_month": "2023-07",
+          "sha256": "981b20d694988acb89104ed28a08fdd559905145754dd45ad6cec8d515b77ed8"
+        }
+      ]
+    },
+    "FN_SCHEMA_0c779ce86db7d89a": {
+      "expected_data_width": 18,
+      "field_to_data_index": {
+        "currency": 15,
+        "delisted": 17,
+        "industry": 8,
+        "instrument": 0,
+        "instrument_type": 6,
+        "isin": 4,
+        "issuer_code": 1,
+        "lp_yes": 14,
+        "orderbook_id": 2,
+        "supersector": 10,
+        "ticker": 2
+      },
+      "file_type": "xls",
+      "fingerprint": {
+        "data_vector_width": 18,
+        "file_type": "xls",
+        "header_rows": [
+          550
+        ],
+        "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "",
+          "isin",
+          "",
+          "instrument type",
+          "",
+          "industry",
+          "",
+          "super sector",
+          "",
+          "round lot",
+          "",
+          "lp yes=y",
+          "currency",
+          "",
+          "delisted",
+          "no of shares listed",
+          "",
+          "market cap",
+          "",
+          "",
+          "latest paid",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "",
+          "average closing spread",
+          "",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "",
+          "total turnover",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "",
+          "average no of trades",
+          "",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "",
+          "low paid",
+          ""
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2023-06",
+      "header_rows": [
+        550
+      ],
+      "last_observed": "2023-06",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 15,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            15
+          ]
+        },
+        "delisted": {
+          "data_column_index": 17,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            17
+          ]
+        },
+        "industry": {
+          "data_column_index": 8,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            8
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 6,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            6
+          ]
+        },
+        "isin": {
+          "data_column_index": 4,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            4
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 10,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            10
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "schema_id": "FN_SCHEMA_0c779ce86db7d89a",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 551,
+          "disclosure_id": 1236959,
+          "header_row": 550,
+          "report_month": "2023-06"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 627,
+          "data_start_row": 551,
+          "disclosure_id": 1236959,
+          "header_row": 550,
+          "report_month": "2023-06",
+          "sha256": "82eb64671267c43ae10d7802c57d35effa6238135104dad9bf114a2d256da23b"
+        }
+      ]
+    },
+    "FN_SCHEMA_0e16330086c673d1": {
+      "expected_data_width": 11,
+      "field_to_data_index": {
+        "currency": 9,
+        "delisted": 10,
+        "industry": 5,
+        "instrument": 0,
+        "instrument_type": 4,
+        "isin": 3,
+        "issuer_code": 1,
+        "lp_yes": 8,
+        "orderbook_id": 2,
+        "supersector": 6,
+        "ticker": 2
+      },
+      "file_type": "xls",
+      "fingerprint": {
+        "data_vector_width": 11,
+        "file_type": "xls",
+        "header_rows": [
+          6
+        ],
+        "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "isin",
+          "instrument type",
+          "industry",
+          "super sector",
+          "round lot",
+          "lp yes=y",
+          "currency",
+          "delisted",
+          "no of shares listed",
+          "market cap",
+          "latest paid",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades",
+          "listed days",
+          "total turnover",
+          "total no of traded shares",
+          "total no of trades",
+          "average turnover",
+          "average no of traded shares",
+          "average no of trades",
+          "average trade size",
+          "traded days",
+          "turnover velocity",
+          "average closing spread",
+          "vwap",
+          "high paid",
+          "low paid",
+          "otc turnover",
+          "otc no of trades",
+          ""
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2021-10",
+      "header_rows": [
+        6
+      ],
+      "last_observed": "2022-08",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 9,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            9
+          ]
+        },
+        "delisted": {
+          "data_column_index": 10,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            10
+          ]
+        },
+        "industry": {
+          "data_column_index": 5,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            5
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 4,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            4
+          ]
+        },
+        "isin": {
+          "data_column_index": 3,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            3
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 6,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            6
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "schema_id": "FN_SCHEMA_0e16330086c673d1",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 7,
+          "disclosure_id": 1122379,
+          "header_row": 6,
+          "report_month": "2021-10"
+        },
+        {
+          "data_start_row": 7,
+          "disclosure_id": 1128197,
+          "header_row": 6,
+          "report_month": "2021-11"
+        },
+        {
+          "data_start_row": 7,
+          "disclosure_id": 1134123,
+          "header_row": 6,
+          "report_month": "2021-12"
+        }
+      ],
+      "workbook_count": 4,
+      "workbooks": [
+        {
+          "data_end_row": 94,
+          "data_start_row": 7,
+          "disclosure_id": 1122379,
+          "header_row": 6,
+          "report_month": "2021-10",
+          "sha256": "2ae79ab0422fe5733adfc2fa6b1be438c0678cb2c8a8c27e35206d8e028e21db"
+        },
+        {
+          "data_end_row": 91,
+          "data_start_row": 7,
+          "disclosure_id": 1128197,
+          "header_row": 6,
+          "report_month": "2021-11",
+          "sha256": "892209f4810f7c479cdddf00466486da788d3294722d09735509891663d20bac"
+        },
+        {
+          "data_end_row": 100,
+          "data_start_row": 7,
+          "disclosure_id": 1134123,
+          "header_row": 6,
+          "report_month": "2021-12",
+          "sha256": "9217bc05355d2e7e9a67b39829ba2c5717f7f75e6797bd9367d8a172595d7afc"
+        },
+        {
+          "data_end_row": 97,
+          "data_start_row": 7,
+          "disclosure_id": 1179174,
+          "header_row": 6,
+          "report_month": "2022-08",
+          "sha256": "a03b5fad7d8c31132146d11d4e1cf4472effe0510a84c2c2d26eadd5d373b578"
+        }
+      ]
+    },
+    "FN_SCHEMA_0e789910dfff83de": {
+      "expected_data_width": 19,
+      "field_to_data_index": {
+        "currency": 14,
+        "delisted": 18,
+        "industry": 8,
+        "instrument": 0,
+        "instrument_type": 6,
+        "isin": 3,
+        "issuer_code": 1,
+        "issuer_country": 15,
+        "lp_yes": 13,
+        "orderbook_id": 2,
+        "supersector": 11,
+        "ticker": 2
+      },
+      "file_type": "xlsx",
+      "fingerprint": {
+        "data_vector_width": 19,
+        "file_type": "xlsx",
+        "header_rows": [
+          7
+        ],
+        "merged_ranges_signature": "dbd3c70db46f0c79fc0a8dbc6b4b6f2834676fab525e1085ccad081de8e66a71",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "isin",
+          "",
+          "",
+          "instrument type",
+          "",
+          "industry",
+          "",
+          "",
+          "super sector",
+          "round lot",
+          "lp yes=y",
+          "currency",
+          "issuer country",
+          "",
+          "",
+          "delisted",
+          "",
+          "no of shares listed",
+          "",
+          "market cap",
+          "",
+          "",
+          "latest paid",
+          "",
+          "listed days",
+          "total turnover",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "total turnover",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "listed days",
+          "total turnover",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          "",
+          ""
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2025-03",
+      "header_rows": [
+        7
+      ],
+      "last_observed": "2025-03",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "issuer_country",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 14,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            14
+          ]
+        },
+        "delisted": {
+          "data_column_index": 18,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            18
+          ]
+        },
+        "industry": {
+          "data_column_index": 8,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            8
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 6,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            6
+          ]
+        },
+        "isin": {
+          "data_column_index": 3,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            3
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 11,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            11
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "dbd3c70db46f0c79fc0a8dbc6b4b6f2834676fab525e1085ccad081de8e66a71",
+      "schema_id": "FN_SCHEMA_0e789910dfff83de",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 8,
+          "disclosure_id": 1354563,
+          "header_row": 7,
+          "report_month": "2025-03"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 86,
+          "data_start_row": 8,
+          "disclosure_id": 1354563,
+          "header_row": 7,
+          "report_month": "2025-03",
+          "sha256": "d2229443a721b57706fc2b2427248270cd9c4d67c21053c9929689755cc5e651"
+        }
+      ]
+    },
+    "FN_SCHEMA_0ee1ef41700bf532": {
+      "expected_data_width": 15,
+      "field_to_data_index": {
+        "currency": 12,
+        "delisted": 14,
+        "industry": 7,
+        "instrument": 0,
+        "instrument_type": 5,
+        "isin": 3,
+        "issuer_code": 1,
+        "lp_yes": 11,
+        "orderbook_id": 2,
+        "supersector": 9,
+        "ticker": 2
+      },
+      "file_type": "xlsx",
+      "fingerprint": {
+        "data_vector_width": 15,
+        "file_type": "xlsx",
+        "header_rows": [
+          502
+        ],
+        "merged_ranges_signature": "cac9df3ac2aab75655b48bd1d4532e2e2710edd7ddcdbb5111ad52fa2e41ed09",
+        "normalized_header_structure": [
+          "instrument",
+          "issuer code",
+          "orderbook code",
+          "isin",
+          "",
+          "instrument type",
+          "",
+          "industry",
+          "",
+          "super sector",
+          "round lot",
+          "lp yes=y",
+          "currency",
+          "",
+          "delisted",
+          "",
+          "no of shares listed",
+          "",
+          "",
+          "market cap",
+          "",
+          "latest paid",
+          "",
+          "listed days",
+          "total turnover",
+          "",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "",
+          "vwap",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "",
+          "",
+          "listed days",
+          "total turnover",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "",
+          "vwap",
+          "",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "",
+          "",
+          "listed days",
+          "total turnover",
+          "",
+          "",
+          "total no of traded shares",
+          "",
+          "total no of trades",
+          "",
+          "average turnover",
+          "",
+          "average no of traded shares",
+          "",
+          "",
+          "average no of trades",
+          "",
+          "average trade size",
+          "",
+          "traded days",
+          "",
+          "turnover velocity",
+          "",
+          "average closing spread",
+          "",
+          "",
+          "vwap",
+          "high paid",
+          "low paid",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "sheet_name": "Instrument Trading Details"
+      },
+      "first_observed": "2024-08",
+      "header_rows": [
+        502
+      ],
+      "last_observed": "2024-08",
+      "logical_field_vector": [
+        "instrument",
+        "issuer_code",
+        "ticker",
+        "orderbook_id",
+        "isin",
+        "instrument_type",
+        "industry",
+        "supersector",
+        "lp_yes",
+        "currency",
+        "delisted"
+      ],
+      "mapping_evidence": {
+        "currency": {
+          "data_column_index": 12,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "currency",
+          "physical_header_cells": [
+            12
+          ]
+        },
+        "delisted": {
+          "data_column_index": 14,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "delisted",
+          "physical_header_cells": [
+            14
+          ]
+        },
+        "industry": {
+          "data_column_index": 7,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "industry",
+          "physical_header_cells": [
+            7
+          ]
+        },
+        "instrument": {
+          "data_column_index": 0,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument",
+          "physical_header_cells": [
+            0
+          ]
+        },
+        "instrument_type": {
+          "data_column_index": 5,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "instrument type",
+          "physical_header_cells": [
+            5
+          ]
+        },
+        "isin": {
+          "data_column_index": 3,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "isin",
+          "physical_header_cells": [
+            3
+          ]
+        },
+        "issuer_code": {
+          "data_column_index": 1,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "issuer code",
+          "physical_header_cells": [
+            1
+          ]
+        },
+        "location": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "orderbook_id": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        },
+        "segment": {
+          "data_column_index": null,
+          "mapping_method": "SOURCE_FIELD_ABSENT",
+          "normalized_header": null,
+          "physical_header_cells": []
+        },
+        "supersector": {
+          "data_column_index": 9,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "super sector",
+          "physical_header_cells": [
+            9
+          ]
+        },
+        "ticker": {
+          "data_column_index": 2,
+          "mapping_method": "SECTION_HEADER_EXACT_COORDINATE",
+          "normalized_header": "orderbook code",
+          "physical_header_cells": [
+            2
+          ]
+        }
+      },
+      "merged_ranges_signature": "cac9df3ac2aab75655b48bd1d4532e2e2710edd7ddcdbb5111ad52fa2e41ed09",
+      "schema_id": "FN_SCHEMA_0ee1ef41700bf532",
+      "sheet": "Instrument Trading Details",
+      "validation_examples": [
+        {
+          "data_start_row": 503,
+          "disclosure_id": 1314486,
+          "header_row": 502,
+          "report_month": "2024-08"
+        }
+      ],
+      "workbook_count": 1,
+      "workbooks": [
+        {
+          "data_end_row": 510,
+          "data_start_row": 5

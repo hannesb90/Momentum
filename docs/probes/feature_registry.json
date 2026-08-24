@@ -1,0 +1,468 @@
+{
+ "CORE": [
+  {
+   "id": "mom_4w",
+   "formel": "adj[T]/adj[T-4v]-1",
+   "lookback_veckor": 4,
+   "hypotes": "Kortsiktig prismomentum.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "mom_13w",
+   "formel": "adj[T]/adj[T-13v]-1",
+   "lookback_veckor": 13,
+   "hypotes": "Medelfristig momentum.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "mom_26w",
+   "formel": "adj[T]/adj[T-26v]-1",
+   "lookback_veckor": 26,
+   "hypotes": "Halvårsmomentum.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "mom_52w",
+   "formel": "adj[T]/adj[T-52v]-1",
+   "lookback_veckor": 52,
+   "hypotes": "Standard 12-månadersmomentum.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "mom_12_1",
+   "formel": "adj[T-4v]/adj[T-52v]-1",
+   "lookback_veckor": 52,
+   "hypotes": "12-1-momentum, undviker kortsiktig reversering.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "mom_relative_index_52w",
+   "formel": "mom_52w[instrument]-mom_52w[index]",
+   "lookback_veckor": 52,
+   "hypotes": "Momentum relativt egenbyggt likaviktat marknadsindex.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A) + internt index",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "residual_momentum_52w",
+   "formel": "kumulativ residual (ret-beta*index_ret), 52v",
+   "lookback_veckor": 52,
+   "hypotes": "Momentum i avkastning ej förklarad av marknadsexponering.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A) + internt index",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "trend_strength_52w",
+   "formel": "t-stat, OLS(log(adj)~tid), 52v",
+   "lookback_veckor": 52,
+   "hypotes": "Trendens statistiska styrka/konsekvens.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "trend_consistency_52w",
+   "formel": "andel positiva veckor, 52v",
+   "lookback_veckor": 52,
+   "hypotes": "Robust mot enskilda extremveckor.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "momentum_acceleration_13w",
+   "formel": "mom_13w[T]-mom_13w[T-13v]",
+   "lookback_veckor": 26,
+   "hypotes": "Accelererar/bromsar momentumet.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "reversal_1w",
+   "formel": "-(adj[T]/adj[T-1v]-1)",
+   "lookback_veckor": 1,
+   "hypotes": "Kortsiktig överreaktion, motsatt riktning mot momentum.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "vol_13w",
+   "formel": "std(veckoavkastningar,13v)",
+   "lookback_veckor": 13,
+   "hypotes": "Realiserad volatilitet, medelfristig.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "vol_52w",
+   "formel": "std(veckoavkastningar,52v)",
+   "lookback_veckor": 52,
+   "hypotes": "Realiserad volatilitet, långsiktig.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "downside_vol_52w",
+   "formel": "std(negativa veckoavkastningar,52v)",
+   "lookback_veckor": 52,
+   "hypotes": "Semi-deviation — bara nedsidan bestraffas.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "beta_52w",
+   "formel": "cov(ret,index_ret)/var(index_ret), 52v",
+   "lookback_veckor": 52,
+   "hypotes": "Systematisk marknadsexponering.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A) + internt index",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "idio_vol_52w",
+   "formel": "std(residualer från marknadsmodell), 52v",
+   "lookback_veckor": 52,
+   "hypotes": "Bolagsspecifik volatilitet efter beta.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "skew_52w",
+   "formel": "skewness(veckoavkastningar,52v)",
+   "lookback_veckor": 52,
+   "hypotes": "Asymmetri i avkastningsfördelningen.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "kurtosis_52w",
+   "formel": "excess kurtosis(veckoavkastningar,52v)",
+   "lookback_veckor": 52,
+   "hypotes": "Svansmassa/tail risk.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "price_vs_sma26w",
+   "formel": "adj[T]/mean(adj,26v)-1",
+   "lookback_veckor": 26,
+   "hypotes": "Trendföljning.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "price_vs_sma52w",
+   "formel": "adj[T]/mean(adj,52v)-1",
+   "lookback_veckor": 52,
+   "hypotes": "Långsiktig trendföljning.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "high52w_ratio",
+   "formel": "adj[T]/max(adj,52v)",
+   "lookback_veckor": 52,
+   "hypotes": "Närhet till 52v-högsta.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "low52w_ratio",
+   "formel": "adj[T]/min(adj,52v)",
+   "lookback_veckor": 52,
+   "hypotes": "Avstånd till 52v-lägsta.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "drawdown_current_104w",
+   "formel": "adj[T]/max(adj,104v)-1",
+   "lookback_veckor": 104,
+   "hypotes": "Aktuell nedgång från topp, bredare fönster.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "max_drawdown_52w",
+   "formel": "min(adj[t]/running_max(adj)-1), 52v",
+   "lookback_veckor": 52,
+   "hypotes": "Värsta realiserade nedgången i fönstret.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "risk_adj_momentum_52w",
+   "formel": "mom_52w/vol_52w",
+   "lookback_veckor": 52,
+   "hypotes": "Momentum per riskenhet.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "turnover_13w_msek",
+   "formel": "UTESLUTEN: kräver QA-godkänt faktiskt ojusterat handelspris",
+   "lookback_veckor": 13,
+   "status": "UTESLUTEN",
+   "hypotes": "Likviditetsproxy.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "volume_trend_13w",
+   "formel": "mean(v,4v)/mean(v,föreg.9v)-1",
+   "lookback_veckor": 13,
+   "hypotes": "Volymmomentum.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "illiquidity_amihud_13w",
+   "formel": "UTESLUTEN: kräver QA-godkänt faktiskt ojusterat handelspris",
+   "lookback_veckor": 13,
+   "status": "UTESLUTEN",
+   "hypotes": "Amihud illikviditet.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "rank_mom_52w_pct",
+   "formel": "percentilrang av mom_52w, samma panel_date",
+   "lookback_veckor": 0,
+   "hypotes": "Tvärsnittsrang, robust för rankingmodeller.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A)",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "market_regime_trend",
+   "formel": "index[T]/SMA(index,26v)-1",
+   "lookback_veckor": 26,
+   "hypotes": "Marknadstrend, kontext-feature.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A) + internt index",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  },
+  {
+   "id": "market_regime_vol",
+   "formel": "std(index veckoavkastningar,13v)",
+   "lookback_veckor": 13,
+   "hypotes": "Marknadsvolatilitetsregim.",
+   "lager": "CORE",
+   "kalla": "adj, v (Spår A) + internt index",
+   "missing": "null vid otillräcklig lookback-historik, aldrig imputerat"
+  }
+ ],
+ "FUNDAMENTA": [
+  {
+   "id": "roe_ttm",
+   "formel": "profit_To_Equity_Holders/total_Equity",
+   "hypotes": "Lönsamhet på eget kapital.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "roa_ttm",
+   "formel": "profit_To_Equity_Holders/total_Assets",
+   "hypotes": "Lönsamhet på totalt kapital.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "roic_proxy_ttm",
+   "formel": "operating_Income/(total_Equity+net_Debt)",
+   "hypotes": "Avkastning på investerat kapital, FÖRE-skatt-approximation (ingen skattefältvariabel bland godkända Spår B-fält).",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "gross_margin_ttm",
+   "formel": "gross_Income/revenues [materialitetsgrind]",
+   "hypotes": "Prissättningsmakt/kostnadsstruktur.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "operating_margin_ttm",
+   "formel": "operating_Income/revenues [materialitetsgrind]",
+   "hypotes": "Rörelselönsamhet.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "ebitda_margin_ttm",
+   "formel": "B-extra EBITDA value_sek/revenues [materialitetsgrind]",
+   "hypotes": "Rörelselönsamhet före av- och nedskrivningar.",
+   "lager": "FUNDAMENTA",
+   "kalla": "B-extra KPI R12 + R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "net_margin_ttm",
+   "formel": "profit_To_Equity_Holders/revenues [materialitetsgrind]",
+   "hypotes": "Nettolönsamhet.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "fcf_margin_ttm",
+   "formel": "free_Cash_Flow/revenues [materialitetsgrind]",
+   "hypotes": "Kassaflödeskvalitet.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "ocf_margin_ttm",
+   "formel": "cash_Flow_From_Operating_Activities/revenues [materialitetsgrind]",
+   "hypotes": "Operativt kassaflöde relativt omsättning, före investeringar.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "accruals_ttm",
+   "formel": "(profit_To_Equity_Holders-cash_Flow_From_Operating_Activities)/total_Assets",
+   "hypotes": "Sloan accruals — earnings quality.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "net_debt_to_equity",
+   "formel": "net_Debt/total_Equity",
+   "hypotes": "Finansiell risk/belåningsgrad.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "equity_ratio_ttm",
+   "formel": "total_Equity/total_Assets",
+   "hypotes": "Soliditet.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "current_ratio",
+   "formel": "current_Assets/current_Liabilities",
+   "hypotes": "Kortsiktig likviditet.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "asset_turnover_ttm",
+   "formel": "revenues/total_Assets",
+   "hypotes": "Kapitaleffektivitet (DuPont-komponent).",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "revenue_growth_yoy",
+   "formel": "revenues[T]/revenues[T-52v]-1 [materialitetsgrind på BÅDA punkterna]",
+   "hypotes": "Omsättningstillväxt TTM.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "eps_growth_yoy",
+   "formel": "EPS[T]/EPS[T-52v]-1, samma tecken krävs [materialitetsgrind via profit_To_Equity_Holders på BÅDA punkterna]",
+   "hypotes": "Resultattillväxt per aktie.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "shares_growth_yoy",
+   "formel": "number_Of_Shares[T]/number_Of_Shares[T-52v]-1",
+   "hypotes": "Aktieutspädning eller återköp.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "dividend_yield_ttm",
+   "formel": "UTESLUTEN: per-aktie/prisbasis inte generellt QA-verifierad",
+   "status": "UTESLUTEN",
+   "hypotes": "Direktavkastning.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "fcf_yield_ttm",
+   "formel": "UTESLUTEN: pris×aktieantal ger inte verifierat PIT-börsvärde",
+   "status": "UTESLUTEN",
+   "hypotes": "Fritt kassaflöde relativt börsvärde — värderingsfaktor.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "return_since_last_report_ttm",
+   "formel": "adj[T]/adj[vid report_date]-1",
+   "hypotes": "Post-earnings-announcement drift (PEAD), robust ersättning för legacyns trasiga attention_gap-formel.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B), adj (Spår A)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "fundamenta_days_since",
+   "formel": "T-report_date",
+   "ej_feature": true,
+   "hypotes": "Provenance/staleness.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  },
+  {
+   "id": "has_fundamenta",
+   "formel": "bool",
+   "ej_feature": true,
+   "hypotes": "Obligatorisk provenance-flagga.",
+   "lager": "FUNDAMENTA",
+   "kalla": "R12 (Spår B)",
+   "missing": "null om has_fundamenta=False, om nämnare=0/saknas, eller (för marginal-/tillväxtmått) om materialitetsgrinden ej uppfylls"
+  }
+ ],
+ "registry_version": "1.2.0"
+}

@@ -1,0 +1,102 @@
+{
+  "schema": "NASDAQ_SOURCE_COMPARISON_V1",
+  "created_utc": "2026-08-18T20:17:45+00:00",
+  "jamforelse": [
+    {
+      "field": "market_cap",
+      "existing_source": "INGEN — Borsdata market cap ar DATA_BLOCKED (odaterad snapshot, saknar historik for avnoterade)",
+      "nasdaq_source": "Instrument Trading Details, 201 manader, 99,63 %, SEK, instrumentniva, inkl avnoterade",
+      "pit_quality": "PIT_SAFE_WITH_LAG, verifierad formel",
+      "classification": "NEW_DATA",
+      "reason": "Loser en datatyp som hittills varit helt blockerad i projektet."
+    },
+    {
+      "field": "no_of_shares_listed",
+      "existing_source": "Borsdata number_Of_Shares — identifierad som EPS-denominator, 0/68 tackning for avnoterade, K2A-dom BLOCKERAD",
+      "nasdaq_source": "201 manader, 99,66 %, faktiskt noterade aktier per instrument",
+      "pit_quality": "PIT_SAFE_WITH_LAG",
+      "classification": "NASDAQ_BETTER_SOURCE",
+      "reason": "Faktiskt antal noterade aktier fran borsen sjalv, med avnoterade inkluderade."
+    },
+    {
+      "field": "turnover / traded_shares / trades",
+      "existing_source": "volym saknas helt fore 2020 (G149: strukturellt enfonster)",
+      "nasdaq_source": "201 manader, ~99,9 %, manadsupplost",
+      "pit_quality": "PIT_SAFE_WITH_LAG",
+      "classification": "NEW_DATA",
+      "reason": "Volymblockeringen fore 2020 var strukturell. Nasdaq har manadsdata fran 2009-08."
+    },
+    {
+      "field": "vwap / high / low",
+      "existing_source": "dagliga justerade stangningskurser",
+      "nasdaq_source": "manadsvarden, 83,7 %",
+      "pit_quality": "PIT_SAFE_WITH_LAG",
+      "classification": "NASDAQ_QA_SOURCE",
+      "reason": "Prisdatan ar redan daglig och finare. Nasdaq duger som oberoende QA mot prisryggraden."
+    },
+    {
+      "field": "avg_closing_spread",
+      "existing_source": "INGEN — spread var DATA_BLOCKED i Batch 11 (FRIC-B-familjen)",
+      "nasdaq_source": "201 manader, 96,6 %",
+      "pit_quality": "PIT_SAFE_WITH_LAG",
+      "classification": "NEW_DATA",
+      "reason": "Batch 11 stangde hela friktionsfamiljen med skalet att ingen spreadserie finns. Den finns.",
+      "flagga": "SEMANTICS_UNRESOLVED — enhet ej verifierad"
+    },
+    {
+      "field": "otc_turnover / otc_trades",
+      "existing_source": "INGEN",
+      "nasdaq_source": "2009-08..2023-02",
+      "pit_quality": "PIT_SAFE_WITH_LAG",
+      "classification": "NEW_DATA",
+      "reason": "Off-book-aktivitet, tidigare helt franvarande. Upphor dock 2023-02."
+    },
+    {
+      "field": "industry / supersector",
+      "existing_source": "K1 canonical_sector — 0 av 420 instrument har mer an ett intervall, valid_from 2020-01-02 for 82,9 %",
+      "nasdaq_source": "201 manader; 176 av 756 instrument (23,3 %) byter industry, 398 (52,6 %) byter supersector; regimskifte 2012-02",
+      "pit_quality": "PIT_SAFE_WITH_LAG",
+      "classification": "NASDAQ_BETTER_SOURCE",
+      "reason": "K1 kan inte representera sektorbyten alls och har 0 % tackning i 2014-2019. Nasdaq har verkliga manadssnapshots med observerade byten."
+    },
+    {
+      "field": "segment",
+      "existing_source": "nasdaq_market_cap_segment_pit (redan registrerad)",
+      "nasdaq_source": "samma",
+      "pit_quality": "PIT_SAFE_WITH_LAG",
+      "classification": "REDAN_CANONICAL",
+      "reason": "Redan i data governance som ALLOWED_FOR_POPULATION_STRATIFICATION_ONLY."
+    },
+    {
+      "field": "membership / delisted",
+      "existing_source": "H0 V3 anvander redan denna kalla",
+      "nasdaq_source": "samma",
+      "pit_quality": "PIT_SAFE / EVENT_DATED",
+      "classification": "REDAN_CANONICAL",
+      "reason": "Utgor H0 V3:s eligibility."
+    },
+    {
+      "field": "isin / orderbook / company_code",
+      "existing_source": "membership_h1419_v2 (bakatprojicerad), Avanza-probe (odaterad)",
+      "nasdaq_source": "201 manader med ISIN-historik per orderbook",
+      "pit_quality": "PIT_SAFE_WITH_LAG",
+      "classification": "NASDAQ_BETTER_SOURCE",
+      "reason": "Enda kallan med tidsberoende ISIN-identitet; 159 av 707 instrument har flera ISIN."
+    },
+    {
+      "field": "currency / round_lot / lp_flag / issuer_country",
+      "existing_source": "INGEN",
+      "nasdaq_source": "referensmetadata per manad",
+      "pit_quality": "PIT_SAFE_WITH_LAG",
+      "classification": "DUPLICATE_BUT_USEFUL",
+      "reason": "Referensmetadata utan kand anvandning idag, men billig att bevara och kan behovas for valutahantering och handelbarhet."
+    }
+  ],
+  "sammanfattning": {
+    "NEW_DATA": 4,
+    "NASDAQ_BETTER_SOURCE": 3,
+    "NASDAQ_QA_SOURCE": 1,
+    "REDAN_CANONICAL": 2,
+    "DUPLICATE_BUT_USEFUL": 1
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "status": "SUPERSEDED_BY_RAW_CACHE_COLLISION",
+  "scope": ["previous FIRST_NORTH_INGESTION FAIL", "monthly-path raw cache", "quarantine classifications derived from that cache"],
+  "root_causes": ["Location incorrectly used as negative First North marker", "raw object keyed by YYYY-MM instead of CNS publication+attachment provenance"],
+  "replacement": "research_k/nasdaq_historical_master/first_north_rebuilt",
+  "rule": "No legacy raw object or classification is ground truth for rebuilt foundation."
+}
